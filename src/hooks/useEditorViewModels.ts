@@ -19,6 +19,7 @@ interface UseEditorViewModelsParams {
   t: TranslateFn;
   expandedSections: ExpandedSections;
   onToggleSection: (section: keyof ExpandedSections) => void;
+  onExpandSection: (section: keyof ExpandedSections) => void;
   templates: TemplateSectionProps;
   canvas: CanvasSizeSectionProps;
   content: ContentSectionProps;
@@ -51,6 +52,7 @@ export function useEditorViewModels({
   t,
   expandedSections,
   onToggleSection,
+  onExpandSection,
   templates,
   canvas,
   content,
@@ -82,6 +84,7 @@ export function useEditorViewModels({
     t,
     expandedSections,
     onToggleSection,
+    onExpandSection,
     templates,
     canvas,
     content,

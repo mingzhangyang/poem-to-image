@@ -16,7 +16,7 @@ const exportScaleOptions: Array<{ value: ExportScale; labelKey: 'exportQualitySt
 
 export function SidebarFooter({ t, exportScale, onExportScaleChange, onDownload }: SidebarFooterProps) {
   return (
-    <div className="p-6 border-t border-gray-100 bg-white sticky bottom-0">
+    <div className="px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-6 border-t border-gray-100 bg-white md:sticky md:bottom-0">
       <label className="block mb-3">
         <span className="block text-sm font-medium text-gray-700 mb-2">{t('exportQuality')}</span>
         <select

@@ -15,8 +15,11 @@ export function useCanvasScale(
       }
 
       const { clientWidth, clientHeight } = containerRef.current;
-      const availableWidth = clientWidth - 64;
-      const availableHeight = clientHeight - 64;
+      const computedStyle = window.getComputedStyle(containerRef.current);
+      const horizontalPadding = Number.parseFloat(computedStyle.paddingLeft) + Number.parseFloat(computedStyle.paddingRight);
+      const verticalPadding = Number.parseFloat(computedStyle.paddingTop) + Number.parseFloat(computedStyle.paddingBottom);
+      const availableWidth = clientWidth - horizontalPadding;
+      const availableHeight = clientHeight - verticalPadding;
       const scaleX = availableWidth / canvasWidth;
       const scaleY = availableHeight / canvasHeight;
 

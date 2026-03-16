@@ -47,6 +47,10 @@ export default function App() {
     setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
   };
 
+  const expandSection = (section: keyof ExpandedSections) => {
+    setExpandedSections((prev) => (prev[section] ? prev : { ...prev, [section]: true }));
+  };
+
   const previewRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -123,6 +127,7 @@ export default function App() {
     t,
     expandedSections,
     onToggleSection: toggleSection,
+    onExpandSection: expandSection,
     templates: {
       templates: editorTemplates,
       activeTemplateId,
@@ -200,7 +205,7 @@ export default function App() {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row font-sans text-gray-800">
+    <div className="min-h-dvh bg-gray-50 flex flex-col md:flex-row font-sans text-gray-800">
       <Sidebar {...sidebarProps} />
 
       <CanvasPreview {...canvasPreviewProps} />

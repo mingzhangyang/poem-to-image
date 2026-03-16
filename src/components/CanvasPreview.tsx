@@ -43,7 +43,10 @@ export function CanvasPreview({
     : 'none';
 
   return (
-    <div ref={containerRef} className="flex-1 flex items-center justify-center p-8 bg-gray-200/50 overflow-hidden relative">
+    <section
+      ref={containerRef}
+      className="order-1 flex items-center justify-center bg-gray-200/50 overflow-hidden relative h-[100dvh] min-h-[420px] p-4 pt-6 pb-24 sm:p-6 md:order-2 md:flex-1 md:h-auto md:min-h-[100dvh] md:max-h-none md:p-8"
+    >
       <TransparentGrid visible={backgroundType === 'transparent'} />
 
       <div style={{ transform: `scale(${scale})`, transformOrigin: 'center', transition: 'transform 0.2s ease-out' }}>
@@ -99,6 +102,6 @@ export function CanvasPreview({
           </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 }
