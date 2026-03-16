@@ -333,6 +333,10 @@ export const editorTemplates: EditorTemplateDefinition[] = [
         rotation: -8,
         opacity: 0.84,
       },
+      poemPosition: {
+        positionX: 50,
+        positionY: 50,
+      },
       customTexts: [],
     },
   },
@@ -380,6 +384,10 @@ export const editorTemplates: EditorTemplateDefinition[] = [
         size: 96,
         rotation: -4,
         opacity: 0.72,
+      },
+      poemPosition: {
+        positionX: 50,
+        positionY: 50,
       },
       customTexts: [],
     },
@@ -429,6 +437,10 @@ export const editorTemplates: EditorTemplateDefinition[] = [
         rotation: -6,
         opacity: 0.78,
       },
+      poemPosition: {
+        positionX: 50,
+        positionY: 50,
+      },
       customTexts: [],
     },
   },
@@ -476,6 +488,10 @@ export const editorTemplates: EditorTemplateDefinition[] = [
         size: 92,
         rotation: -3,
         opacity: 0.76,
+      },
+      poemPosition: {
+        positionX: 50,
+        positionY: 50,
       },
       customTexts: [],
     },

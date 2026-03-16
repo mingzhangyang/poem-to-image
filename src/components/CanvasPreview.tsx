@@ -42,10 +42,15 @@ export function CanvasPreview({
   borderStyle,
   showStamp,
   stamp,
+  poemPosition,
+  onPoemPositionChange,
   onStampChange,
   canvasWidth,
   canvasHeight,
   customTexts,
+  onCustomTextChange,
+  onInteractionStart,
+  onInteractionEnd,
   previewZoom,
   onPreviewZoomChange,
   onPreviewZoomReset,
@@ -314,11 +319,15 @@ export function CanvasPreview({
                 />
 
                 <CustomTextItems
+                  frameRef={previewRef}
                   customTexts={customTexts}
                   fontFamily={fontFamily}
                   lineHeight={lineHeight}
                   letterSpacing={letterSpacing}
                   sharedTextShadow={sharedTextShadow}
+                  onCustomTextChange={onCustomTextChange}
+                  onInteractionStart={onInteractionStart}
+                  onInteractionEnd={onInteractionEnd}
                 />
 
                 <PoemContent
@@ -338,7 +347,11 @@ export function CanvasPreview({
                   borderStyle={borderStyle}
                   showStamp={showStamp}
                   stamp={stamp}
+                  poemPosition={poemPosition}
+                  onPoemPositionChange={onPoemPositionChange}
                   onStampChange={onStampChange}
+                  onInteractionStart={onInteractionStart}
+                  onInteractionEnd={onInteractionEnd}
                 />
               </div>
             </div>

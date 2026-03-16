@@ -1,30 +1,52 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { toBlob } from 'html-to-image';
-import type { RefObject } from 'react';
-import type { ExportScale } from '../types';
+import { useCallback, useState } from 'react';
+import { renderCanvasExportBlob } from '../export/renderCanvasExport';
+import type { BorderStyle, CustomText, ExportScale, PositionedElement, StampConfig, TextAlign, WritingMode } from '../types';
 
 interface UseImageExporterBackgroundOptions {
   backgroundType: 'solid' | 'gradient' | 'transparent' | 'image' | 'ai';
-  backgroundStyle: import('react').CSSProperties;
+  backgroundColor: string;
+  gradientColor1: string;
+  gradientColor2: string;
+  gradientDirection: string;
+  backgroundImage: string | null;
   bgBrightness: number;
   bgBlur: number;
-  canvasWidth: number;
-  canvasHeight: number;
 }
 
-const PRECOMPUTE_DEBOUNCE_MS = 800;
+interface UseImageExporterTypographyOptions {
+  text: string;
+  fontFamily: string;
+  fontSize: number;
+  textColor: string;
+  textAlign: TextAlign;
+  writingMode: WritingMode;
+  padding: number;
+  lineHeight: number;
+  letterSpacing: number;
+  columns: number;
+  columnGap: number;
+  textShadowEnabled: boolean;
+  textShadowColor: string;
+  textShadowBlur: number;
+  textShadowOffsetY: number;
+  textShadowOffsetX: number;
+  poemPosition: PositionedElement;
+}
 
-function renderToBlob(node: HTMLElement, canvasWidth: number, canvasHeight: number, exportScale: ExportScale) {
-  return toBlob(node, {
-    cacheBust: false,
-    pixelRatio: exportScale,
-    canvasWidth,
-    canvasHeight,
-    style: {
-      transform: 'scale(1)',
-      transformOrigin: 'top left',
-    },
-  });
+interface UseImageExporterDecorationsOptions {
+  showBorder: boolean;
+  borderStyle: BorderStyle;
+  showStamp: boolean;
+  stamp: StampConfig;
+  customTexts: CustomText[];
+}
+
+interface UseImageExporterSceneOptions {
+  canvasWidth: number;
+  canvasHeight: number;
+  background: UseImageExporterBackgroundOptions;
+  typography: UseImageExporterTypographyOptions;
+  decorations: UseImageExporterDecorationsOptions;
 }
 
 function downloadBlob(blob: Blob) {
@@ -37,74 +59,41 @@ function downloadBlob(blob: Blob) {
 }
 
 export function useImageExporter(
-  previewRef: RefObject<HTMLDivElement | null>,
   exportScale: ExportScale,
-  backgroundOptions: UseImageExporterBackgroundOptions,
+  scene: UseImageExporterSceneOptions,
+  waitForSceneSettled: () => Promise<void>,
 ) {
   const [isExporting, setIsExporting] = useState(false);
-  const cachedBlobRef = useRef<Blob | null>(null);
-  const debounceTimerRef = useRef<ReturnType<typeof setTimeout>>();
-  const versionRef = useRef(0);
-
-  const { canvasWidth, canvasHeight } = backgroundOptions;
-
-  useEffect(() => {
-    const node = previewRef.current;
-    if (!node) return;
-
-    const precompute = () => {
-      cachedBlobRef.current = null;
-      clearTimeout(debounceTimerRef.current);
-      debounceTimerRef.current = setTimeout(() => {
-        const version = ++versionRef.current;
-        renderToBlob(node, canvasWidth, canvasHeight, exportScale)
-          .then((blob) => {
-            if (version === versionRef.current && blob) {
-              cachedBlobRef.current = blob;
-            }
-          })
-          .catch(() => {});
-      }, PRECOMPUTE_DEBOUNCE_MS);
-    };
-
-    const observer = new MutationObserver(precompute);
-    observer.observe(node, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      characterData: true,
-    });
-
-    precompute();
-
-    return () => {
-      observer.disconnect();
-      clearTimeout(debounceTimerRef.current);
-    };
-  }, [previewRef, canvasWidth, canvasHeight, exportScale]);
-
-  const exportImage = useCallback(() => {
-    if (previewRef.current === null || isExporting) return;
-
-    if (cachedBlobRef.current) {
-      downloadBlob(cachedBlobRef.current);
+  const exportImage = useCallback(async () => {
+    if (isExporting) {
       return;
     }
 
     setIsExporting(true);
-    renderToBlob(previewRef.current, canvasWidth, canvasHeight, exportScale)
-      .then((blob) => {
-        if (!blob) return;
-        cachedBlobRef.current = blob;
-        downloadBlob(blob);
-      })
-      .catch((error) => {
-        console.error('Failed to generate image', error);
-      })
-      .finally(() => {
-        setIsExporting(false);
+
+    try {
+      await waitForSceneSettled();
+
+      const blob = await renderCanvasExportBlob({
+        canvasWidth: scene.canvasWidth,
+        canvasHeight: scene.canvasHeight,
+        exportScale,
+        background: scene.background,
+        typography: scene.typography,
+        decorations: scene.decorations,
       });
-  }, [previewRef, canvasWidth, canvasHeight, exportScale, isExporting]);
+
+      if (!blob) {
+        return;
+      }
+
+      downloadBlob(blob);
+    } catch (error) {
+      console.error('Failed to generate image', error);
+    } finally {
+      setIsExporting(false);
+    }
+  }, [exportScale, isExporting, scene, waitForSceneSettled]);
 
   return { exportImage, isExporting };
 }

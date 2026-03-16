@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { getDefaultStampTextForLanguage } from '../stampDefaults';
 import type { Language } from '../translations';
-import type { BorderStyle, CustomText, StampConfig, TemplateDecorationsConfig, TranslateFn, WritingMode } from '../types';
+import type { BorderStyle, CustomText, PositionedElement, StampConfig, TemplateDecorationsConfig, TranslateFn, WritingMode } from '../types';
 
 interface UseDecorationsConfigParams {
   language: Language;
@@ -20,6 +20,11 @@ export function useDecorationsConfig({
   writingMode,
   onCustomTextAdded,
 }: UseDecorationsConfigParams) {
+  const createDefaultPoemPosition = (): PositionedElement => ({
+    positionX: 50,
+    positionY: 50,
+  });
+
   const createDefaultStamp = (): StampConfig => ({
     text: getDefaultStampTextForLanguage(language),
     style: 'square',
@@ -34,6 +39,7 @@ export function useDecorationsConfig({
   const [borderStyle, setBorderStyle] = useState<BorderStyle>('solid');
   const [showStamp, setShowStamp] = useState(false);
   const [stamp, setStamp] = useState<StampConfig>(() => createDefaultStamp());
+  const [poemPosition, setPoemPosition] = useState<PositionedElement>(() => createDefaultPoemPosition());
   const [customTexts, setCustomTexts] = useState<CustomText[]>([]);
   const previousLanguageRef = useRef(language);
 
@@ -56,6 +62,8 @@ export function useDecorationsConfig({
         color: textColor,
         writingMode,
         rotation: 0,
+        positionX: 50,
+        positionY: Math.min(82, 24 + prev.length * 12),
       },
     ]);
 
@@ -74,6 +82,10 @@ export function useDecorationsConfig({
     setStamp((prev) => ({ ...prev, ...updates }));
   };
 
+  const updatePoemPosition = (updates: Partial<PositionedElement>) => {
+    setPoemPosition((prev) => ({ ...prev, ...updates }));
+  };
+
   const resetStampPosition = () => {
     setStamp((prev) => ({
       ...prev,
@@ -87,6 +99,7 @@ export function useDecorationsConfig({
     setBorderStyle(template.borderStyle);
     setShowStamp(template.showStamp);
     setStamp(template.stamp);
+    setPoemPosition(template.poemPosition);
     setCustomTexts(template.customTexts);
   };
 
@@ -95,11 +108,13 @@ export function useDecorationsConfig({
     borderStyle,
     showStamp,
     stamp,
+    poemPosition,
     customTexts,
     setShowBorder,
     setBorderStyle,
     setShowStamp,
     setStamp: updateStamp,
+    setPoemPosition: updatePoemPosition,
     resetStampPosition,
     addCustomText,
     updateCustomText,

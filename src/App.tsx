@@ -31,6 +31,8 @@ export default function App() {
   const [presetSize, setPresetSize] = useState('1080x1350');
   const [exportScale, setExportScale] = useState<ExportScale>(2);
   const [activeTemplateId, setActiveTemplateId] = useState<EditorTemplateId | null>(null);
+  const activeInteractionCountRef = useRef(0);
+  const pendingSceneSettleResolversRef = useRef<Array<() => void>>([]);
 
   const [expandedSections, setExpandedSections] = useState<ExpandedSections>({
     templates: true,
@@ -115,15 +117,82 @@ export default function App() {
     onCustomTextAdded: () => setExpandedSections((prev) => ({ ...prev, decorations: true })),
   });
 
+  const onInteractionStart = useCallback(() => {
+    activeInteractionCountRef.current += 1;
+  }, []);
+
+  const onInteractionEnd = useCallback(() => {
+    activeInteractionCountRef.current = Math.max(0, activeInteractionCountRef.current - 1);
+
+    if (activeInteractionCountRef.current !== 0) {
+      return;
+    }
+
+    const resolvers = pendingSceneSettleResolversRef.current.splice(0);
+
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        resolvers.forEach((resolve) => resolve());
+      });
+    });
+  }, []);
+
+  const waitForSceneSettled = useCallback(async () => {
+    if (activeInteractionCountRef.current > 0) {
+      await new Promise<void>((resolve) => {
+        pendingSceneSettleResolversRef.current.push(resolve);
+      });
+      return;
+    }
+
+    await new Promise<void>((resolve) => {
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => resolve());
+      });
+    });
+  }, []);
+
   const scale = useCanvasScale(containerRef, canvasWidth, canvasHeight);
-  const { exportImage: handleDownload, isExporting } = useImageExporter(previewRef, exportScale, {
-    backgroundType: background.backgroundType,
-    backgroundStyle: background.backgroundStyle,
-    bgBrightness: background.bgBrightness,
-    bgBlur: background.bgBlur,
+  const { exportImage: handleDownload, isExporting } = useImageExporter(exportScale, {
     canvasWidth,
     canvasHeight,
-  });
+    background: {
+      backgroundType: background.backgroundType,
+      backgroundColor: background.backgroundColor,
+      gradientColor1: background.gradientColor1,
+      gradientColor2: background.gradientColor2,
+      gradientDirection: background.gradientDirection,
+      backgroundImage: background.backgroundImage,
+      bgBrightness: background.bgBrightness,
+      bgBlur: background.bgBlur,
+    },
+    typography: {
+      text: text || t('poemPlaceholder'),
+      fontFamily: typography.fontFamily,
+      fontSize: typography.fontSize,
+      textColor: typography.textColor,
+      textAlign: typography.textAlign,
+      writingMode: typography.writingMode,
+      padding: typography.padding,
+      lineHeight: typography.lineHeight,
+      letterSpacing: typography.letterSpacing,
+      columns: typography.columns,
+      columnGap: typography.columnGap,
+      textShadowEnabled: typography.textShadowEnabled,
+      textShadowColor: typography.textShadowColor,
+      textShadowBlur: typography.textShadowBlur,
+      textShadowOffsetY: typography.textShadowOffsetY,
+      textShadowOffsetX: typography.textShadowOffsetX,
+      poemPosition: decorations.poemPosition,
+    },
+    decorations: {
+      showBorder: decorations.showBorder,
+      borderStyle: decorations.borderStyle,
+      showStamp: decorations.showStamp,
+      stamp: decorations.stamp,
+      customTexts: decorations.customTexts,
+    },
+  }, waitForSceneSettled);
   const handlePreviewZoomReset = () => setPreviewZoom(1);
   const previousLanguageRef = useRef(language);
 
@@ -168,6 +237,8 @@ export default function App() {
       decorations.showBorder === templateDecorations.showBorder &&
       decorations.borderStyle === templateDecorations.borderStyle &&
       decorations.showStamp === templateDecorations.showStamp &&
+      decorations.poemPosition.positionX === templateDecorations.poemPosition.positionX &&
+      decorations.poemPosition.positionY === templateDecorations.poemPosition.positionY &&
       decorations.stamp.text === templateDecorations.stamp.text &&
       decorations.stamp.style === templateDecorations.stamp.style &&
       decorations.stamp.positionX === templateDecorations.stamp.positionX &&
@@ -272,6 +343,8 @@ export default function App() {
     decorations.showBorder,
     decorations.borderStyle,
     decorations.showStamp,
+    decorations.poemPosition.positionX,
+    decorations.poemPosition.positionY,
     decorations.stamp.text,
     decorations.stamp.style,
     decorations.stamp.positionX,
@@ -338,12 +411,14 @@ export default function App() {
       borderStyle: decorations.borderStyle,
       showStamp: decorations.showStamp,
       stamp: decorations.stamp,
+      poemPosition: decorations.poemPosition,
       customTexts: decorations.customTexts,
       onAddCustomText: decorations.addCustomText,
       onShowBorderChange: decorations.setShowBorder,
       onBorderStyleChange: decorations.setBorderStyle,
       onShowStampChange: decorations.setShowStamp,
       onStampChange: decorations.setStamp,
+      onPoemPositionChange: decorations.setPoemPosition,
       onResetStampPosition: decorations.resetStampPosition,
       onCustomTextChange: decorations.updateCustomText,
       onCustomTextRemove: decorations.removeCustomText,
@@ -373,10 +448,15 @@ export default function App() {
     borderStyle: decorations.borderStyle,
     showStamp: decorations.showStamp,
     stamp: decorations.stamp,
+    poemPosition: decorations.poemPosition,
+    onPoemPositionChange: decorations.setPoemPosition,
     onStampChange: decorations.setStamp,
     canvasWidth,
     canvasHeight,
     customTexts: decorations.customTexts,
+    onCustomTextChange: decorations.updateCustomText,
+    onInteractionStart,
+    onInteractionEnd,
     previewZoom,
     onPreviewZoomChange: setPreviewZoom,
     onPreviewZoomReset: handlePreviewZoomReset,

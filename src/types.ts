@@ -17,6 +17,17 @@ export interface CustomText {
   color: string;
   writingMode: WritingMode;
   rotation: number;
+  positionX: number;
+  positionY: number;
+  exportLeft?: number;
+  exportTop?: number;
+}
+
+export interface PositionedElement {
+  positionX: number;
+  positionY: number;
+  exportLeft?: number;
+  exportTop?: number;
 }
 
 export interface ExpandedSections {
@@ -72,6 +83,7 @@ export interface TemplateDecorationsConfig {
   borderStyle: BorderStyle;
   showStamp: boolean;
   stamp: StampConfig;
+  poemPosition: PositionedElement;
   customTexts: CustomText[];
 }
 
@@ -171,12 +183,14 @@ export interface DecorationsSectionProps {
   borderStyle: BorderStyle;
   showStamp: boolean;
   stamp: StampConfig;
+  poemPosition: PositionedElement;
   customTexts: CustomText[];
   onAddCustomText: () => void;
   onShowBorderChange: (value: boolean) => void;
   onBorderStyleChange: (value: BorderStyle) => void;
   onShowStampChange: (value: boolean) => void;
   onStampChange: (updates: Partial<StampConfig>) => void;
+  onPoemPositionChange: (updates: Partial<PositionedElement>) => void;
   onResetStampPosition: () => void;
   onCustomTextChange: (id: string, updates: Partial<CustomText>) => void;
   onCustomTextRemove: (id: string) => void;
@@ -232,10 +246,15 @@ export interface CanvasPreviewProps {
   borderStyle: BorderStyle;
   showStamp: boolean;
   stamp: StampConfig;
+  poemPosition: PositionedElement;
+  onPoemPositionChange: (updates: Partial<PositionedElement>) => void;
   onStampChange: (updates: Partial<StampConfig>) => void;
   canvasWidth: number;
   canvasHeight: number;
   customTexts: CustomText[];
+  onCustomTextChange: (id: string, updates: Partial<CustomText>) => void;
+  onInteractionStart: () => void;
+  onInteractionEnd: () => void;
   previewZoom: number;
   onPreviewZoomChange: (value: number) => void;
   onPreviewZoomReset: () => void;

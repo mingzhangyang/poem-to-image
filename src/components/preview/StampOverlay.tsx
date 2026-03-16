@@ -1,11 +1,13 @@
+import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties, RefObject } from 'react';
-import { motion } from 'motion/react';
 import type { StampConfig } from '../../types';
 
 interface StampOverlayProps {
   frameRef: RefObject<HTMLDivElement | null>;
   stamp: StampConfig;
   onStampChange: (updates: Partial<StampConfig>) => void;
+  onInteractionStart: () => void;
+  onInteractionEnd: () => void;
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -62,40 +64,80 @@ function getTextLayout(stamp: StampConfig): CSSProperties {
   return { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gridTemplateRows: 'repeat(2, minmax(0, 1fr))' };
 }
 
-export function StampOverlay({ frameRef, stamp, onStampChange }: StampOverlayProps) {
+export function StampOverlay({ frameRef, stamp, onStampChange, onInteractionStart, onInteractionEnd }: StampOverlayProps) {
   const characters = Array.from(stamp.text || '印').slice(0, 4);
+  const [livePosition, setLivePosition] = useState({ positionX: stamp.positionX, positionY: stamp.positionY });
+  const isDraggingRef = useRef(false);
 
-  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent) => {
+  useEffect(() => {
+    if (!isDraggingRef.current) {
+      setLivePosition({ positionX: stamp.positionX, positionY: stamp.positionY });
+    }
+  }, [stamp.positionX, stamp.positionY]);
+
+  const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     const frameRect = frameRef.current?.getBoundingClientRect();
-    const stampRect = (event.currentTarget as HTMLDivElement | null)?.getBoundingClientRect();
 
-    if (!frameRect || !stampRect) {
+    if (!frameRect || (event.pointerType === 'mouse' && event.button !== 0)) {
       return;
     }
 
-    const centerX = stampRect.left + stampRect.width / 2;
-    const centerY = stampRect.top + stampRect.height / 2;
-    const positionX = clamp(((centerX - frameRect.left) / frameRect.width) * 100, 6, 94);
-    const positionY = clamp(((centerY - frameRect.top) / frameRect.height) * 100, 6, 94);
+    event.preventDefault();
+    const startPosition = livePosition;
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const livePositionRef = { current: startPosition };
+    const pointerId = event.pointerId;
+    isDraggingRef.current = true;
+    onInteractionStart();
 
-    onStampChange({ positionX, positionY });
+    const finishInteraction = () => {
+      isDraggingRef.current = false;
+      onStampChange(livePositionRef.current);
+      onInteractionEnd();
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointercancel', handlePointerUp);
+    };
+
+    const handlePointerMove = (moveEvent: PointerEvent) => {
+      if (moveEvent.pointerId !== pointerId) {
+        return;
+      }
+
+      const nextPosition = {
+        positionX: clamp(startPosition.positionX + ((moveEvent.clientX - startX) / frameRect.width) * 100, 6, 94),
+        positionY: clamp(startPosition.positionY + ((moveEvent.clientY - startY) / frameRect.height) * 100, 6, 94),
+      };
+
+      livePositionRef.current = nextPosition;
+      setLivePosition(nextPosition);
+    };
+
+    const handlePointerUp = (upEvent: PointerEvent) => {
+      if (upEvent.pointerId !== pointerId) {
+        return;
+      }
+
+      finishInteraction();
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointercancel', handlePointerUp);
   };
 
   return (
     <div
       className="absolute pointer-events-none"
       style={{
-        left: `${stamp.positionX}%`,
-        top: `${stamp.positionY}%`,
+        left: `${livePosition.positionX}%`,
+        top: `${livePosition.positionY}%`,
         transform: 'translate(-50%, -50%)',
       }}
     >
-      <motion.div
-        key={`${stamp.positionX}-${stamp.positionY}`}
-        drag
-        dragMomentum={false}
-        dragConstraints={frameRef}
-        onDragEnd={handleDragEnd}
+      <div
+        onPointerDown={handlePointerDown}
         className="pointer-events-auto relative flex cursor-grab touch-none select-none items-center justify-center active:cursor-grabbing"
         style={{
           ...getFrameStyle(stamp),
@@ -119,7 +161,7 @@ export function StampOverlay({ frameRef, stamp, onStampChange }: StampOverlayPro
             <span key={`${character}-${index}`}>{character}</span>
           ))}
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }

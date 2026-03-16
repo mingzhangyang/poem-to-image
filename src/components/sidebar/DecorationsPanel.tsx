@@ -2,6 +2,12 @@ import { Plus, Stamp, Trash2 } from 'lucide-react';
 import type { BorderStyle, DecorationsSectionProps, ExpandedSections, StampStyle, TranslateFn } from '../../types';
 import { ControlSection } from '../ControlSection';
 
+const BORDER_STYLE_LABELS: Record<BorderStyle, 'borderSolid' | 'borderDashed' | 'borderDouble'> = {
+  solid: 'borderSolid',
+  dashed: 'borderDashed',
+  double: 'borderDouble',
+};
+
 interface DecorationsPanelProps {
   t: TranslateFn;
   expanded: ExpandedSections['decorations'];
@@ -11,7 +17,7 @@ interface DecorationsPanelProps {
 
 export function DecorationsPanel({ t, expanded, onToggle, decorations }: DecorationsPanelProps) {
   const summaryParts = [
-    decorations.showBorder ? t(`border${decorations.borderStyle.charAt(0).toUpperCase()}${decorations.borderStyle.slice(1)}` as const) : null,
+    decorations.showBorder ? t(BORDER_STYLE_LABELS[decorations.borderStyle]) : null,
     decorations.showStamp ? t('showStamp') : null,
     `${decorations.customTexts.length} ${t('customTexts')}`,
   ].filter(Boolean);

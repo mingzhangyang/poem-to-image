@@ -43,10 +43,15 @@ interface UseEditorViewModelsParams {
   borderStyle: CanvasPreviewProps['borderStyle'];
   showStamp: boolean;
   stamp: CanvasPreviewProps['stamp'];
+  poemPosition: CanvasPreviewProps['poemPosition'];
+  onPoemPositionChange: CanvasPreviewProps['onPoemPositionChange'];
   onStampChange: CanvasPreviewProps['onStampChange'];
   canvasWidth: number;
   canvasHeight: number;
   customTexts: CustomText[];
+  onCustomTextChange: CanvasPreviewProps['onCustomTextChange'];
+  onInteractionStart: CanvasPreviewProps['onInteractionStart'];
+  onInteractionEnd: CanvasPreviewProps['onInteractionEnd'];
   previewZoom: number;
   onPreviewZoomChange: CanvasPreviewProps['onPreviewZoomChange'];
   onPreviewZoomReset: CanvasPreviewProps['onPreviewZoomReset'];
@@ -82,10 +87,15 @@ export function useEditorViewModels({
   borderStyle,
   showStamp,
   stamp,
+  poemPosition,
+  onPoemPositionChange,
   onStampChange,
   canvasWidth,
   canvasHeight,
   customTexts,
+  onCustomTextChange,
+  onInteractionStart,
+  onInteractionEnd,
   previewZoom,
   onPreviewZoomChange,
   onPreviewZoomReset,
@@ -139,10 +149,15 @@ export function useEditorViewModels({
     borderStyle,
     showStamp,
     stamp,
+    poemPosition,
+    onPoemPositionChange,
     onStampChange,
     canvasWidth,
     canvasHeight,
     customTexts,
+    onCustomTextChange,
+    onInteractionStart,
+    onInteractionEnd,
     previewZoom,
     onPreviewZoomChange,
     onPreviewZoomReset,
