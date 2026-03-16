@@ -1,15 +1,21 @@
 import { AlignCenter, AlignLeft, AlignRight, LayoutTemplate } from 'lucide-react';
+import { getOtherFontOptions, getRecommendedFontOptions } from '../../fontOptions';
+import type { Language } from '../../translations';
 import type { ExpandedSections, TextAlign, TranslateFn, TypographySectionProps, WritingMode } from '../../types';
 import { ControlSection } from '../ControlSection';
 
 interface TypographyPanelProps {
+  language: Language;
   t: TranslateFn;
   expanded: ExpandedSections['typography'];
   onToggle: () => void;
   typography: TypographySectionProps;
 }
 
-export function TypographyPanel({ t, expanded, onToggle, typography }: TypographyPanelProps) {
+export function TypographyPanel({ language, t, expanded, onToggle, typography }: TypographyPanelProps) {
+  const recommendedFonts = getRecommendedFontOptions(language);
+  const otherFonts = getOtherFontOptions(language);
+
   return (
     <ControlSection
       title={t('typography')}
@@ -25,15 +31,20 @@ export function TypographyPanel({ t, expanded, onToggle, typography }: Typograph
             onChange={(event) => typography.onFontFamilyChange(event.target.value)}
             className="w-full p-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
           >
-            <option value='"Noto Serif SC", serif'>Serif (宋体/明朝)</option>
-            <option value='"Noto Sans SC", sans-serif'>Sans Serif (黑体)</option>
-            <option value='"Ma Shan Zheng", cursive'>Ma Shan Zheng (手写楷体)</option>
-            <option value='"Zhi Mang Xing", cursive'>Zhi Mang Xing (手写行书)</option>
-            <option value='"Liu Jian Mao Cao", cursive'>Liu Jian Mao Cao (手写草书)</option>
-            <option value='"Long Cang", cursive'>Long Cang (手写行草)</option>
-            <option value='"ZCOOL XiaoWei", serif'>ZCOOL XiaoWei (小魏碑)</option>
-            <option value='"ZCOOL QingKe HuangYou", cursive'>QingKe HuangYou (站酷黄油)</option>
-            <option value="monospace">Monospace (等宽)</option>
+            <optgroup label={t('fontGroupRecommended')}>
+              {recommendedFonts.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label={t('fontGroupAll')}>
+              {otherFonts.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </optgroup>
           </select>
         </div>
 

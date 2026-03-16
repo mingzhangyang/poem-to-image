@@ -1,4 +1,288 @@
-import type { EditorTemplateDefinition } from './types';
+import { getTemplateFontForLanguage } from './fontOptions';
+import type { Language } from './translations';
+import type { EditorTemplateDefinition, EditorTemplateId, TemplateDecorationsConfig, TemplateTypographyConfig } from './types';
+
+const templateTypographyOverrides: Record<EditorTemplateId, Partial<Record<Language, Partial<TemplateTypographyConfig>>>> = {
+  'ink-wash': {
+    'zh-CN': {
+      writingMode: 'vertical-rl',
+      fontSize: 38,
+      padding: 72,
+      lineHeight: 1.9,
+      letterSpacing: 8,
+      columns: 1,
+      textAlign: 'center',
+    },
+    'zh-TW': {
+      writingMode: 'vertical-rl',
+      fontSize: 36,
+      padding: 80,
+      lineHeight: 1.85,
+      letterSpacing: 7,
+      columns: 1,
+      textAlign: 'center',
+    },
+    ja: {
+      writingMode: 'vertical-rl',
+      fontSize: 36,
+      padding: 88,
+      lineHeight: 1.75,
+      letterSpacing: 6,
+      columns: 1,
+      textAlign: 'center',
+    },
+    ko: {
+      writingMode: 'horizontal-tb',
+      fontSize: 32,
+      padding: 88,
+      lineHeight: 1.72,
+      letterSpacing: 0,
+      columns: 1,
+      textAlign: 'center',
+    },
+    en: {
+      writingMode: 'horizontal-tb',
+      fontSize: 34,
+      padding: 96,
+      lineHeight: 1.65,
+      letterSpacing: 0,
+      columns: 1,
+      textAlign: 'center',
+    },
+    es: {
+      writingMode: 'horizontal-tb',
+      fontSize: 34,
+      padding: 96,
+      lineHeight: 1.65,
+      letterSpacing: 0,
+      columns: 1,
+      textAlign: 'center',
+    },
+    fr: {
+      writingMode: 'horizontal-tb',
+      fontSize: 34,
+      padding: 96,
+      lineHeight: 1.62,
+      letterSpacing: 0,
+      columns: 1,
+      textAlign: 'center',
+    },
+    de: {
+      writingMode: 'horizontal-tb',
+      fontSize: 33,
+      padding: 96,
+      lineHeight: 1.62,
+      letterSpacing: 0,
+      columns: 1,
+      textAlign: 'center',
+    },
+  },
+  'modern-minimal': {
+    ja: {
+      fontSize: 31,
+      lineHeight: 1.78,
+      letterSpacing: 0,
+      padding: 84,
+    },
+    ko: {
+      fontSize: 32,
+      lineHeight: 1.72,
+      letterSpacing: 0,
+      padding: 84,
+    },
+    en: {
+      fontSize: 32,
+      lineHeight: 1.58,
+      letterSpacing: 0,
+      padding: 96,
+    },
+    es: {
+      fontSize: 32,
+      lineHeight: 1.6,
+      letterSpacing: 0,
+      padding: 96,
+    },
+    fr: {
+      fontSize: 31,
+      lineHeight: 1.62,
+      letterSpacing: 0,
+      padding: 96,
+    },
+    de: {
+      fontSize: 31,
+      lineHeight: 1.62,
+      letterSpacing: 0,
+      padding: 96,
+    },
+  },
+  cyberpunk: {
+    'zh-CN': {
+      fontSize: 32,
+      lineHeight: 1.65,
+      letterSpacing: 2,
+    },
+    'zh-TW': {
+      fontSize: 31,
+      lineHeight: 1.65,
+      letterSpacing: 2,
+    },
+    ja: {
+      fontSize: 30,
+      lineHeight: 1.7,
+      letterSpacing: 1,
+    },
+    ko: {
+      fontSize: 30,
+      lineHeight: 1.62,
+      letterSpacing: 0,
+    },
+    en: {
+      fontSize: 31,
+      lineHeight: 1.58,
+      letterSpacing: 1,
+    },
+    es: {
+      fontSize: 31,
+      lineHeight: 1.6,
+      letterSpacing: 1,
+    },
+    fr: {
+      fontSize: 30,
+      lineHeight: 1.62,
+      letterSpacing: 1,
+    },
+    de: {
+      fontSize: 30,
+      lineHeight: 1.62,
+      letterSpacing: 1,
+    },
+  },
+  'japanese-magazine': {
+    'zh-CN': {
+      writingMode: 'vertical-rl',
+      textAlign: 'left',
+      fontSize: 33,
+      padding: 84,
+      lineHeight: 1.9,
+      letterSpacing: 4,
+      columns: 1,
+      columnGap: 32,
+    },
+    'zh-TW': {
+      writingMode: 'vertical-rl',
+      textAlign: 'left',
+      fontSize: 33,
+      padding: 84,
+      lineHeight: 1.88,
+      letterSpacing: 4,
+      columns: 1,
+      columnGap: 32,
+    },
+    ja: {
+      writingMode: 'vertical-rl',
+      textAlign: 'left',
+      fontSize: 34,
+      padding: 88,
+      lineHeight: 1.82,
+      letterSpacing: 4,
+      columns: 1,
+      columnGap: 32,
+    },
+    ko: {
+      writingMode: 'horizontal-tb',
+      textAlign: 'left',
+      fontSize: 29,
+      padding: 80,
+      lineHeight: 1.76,
+      letterSpacing: 0,
+      columns: 2,
+      columnGap: 40,
+    },
+    en: {
+      writingMode: 'horizontal-tb',
+      textAlign: 'left',
+      fontSize: 30,
+      padding: 88,
+      lineHeight: 1.62,
+      letterSpacing: 0,
+      columns: 2,
+      columnGap: 44,
+    },
+    es: {
+      writingMode: 'horizontal-tb',
+      textAlign: 'left',
+      fontSize: 30,
+      padding: 88,
+      lineHeight: 1.66,
+      letterSpacing: 0,
+      columns: 2,
+      columnGap: 44,
+    },
+    fr: {
+      writingMode: 'horizontal-tb',
+      textAlign: 'left',
+      fontSize: 29,
+      padding: 88,
+      lineHeight: 1.68,
+      letterSpacing: 0,
+      columns: 2,
+      columnGap: 44,
+    },
+    de: {
+      writingMode: 'horizontal-tb',
+      textAlign: 'left',
+      fontSize: 29,
+      padding: 88,
+      lineHeight: 1.68,
+      letterSpacing: 0,
+      columns: 2,
+      columnGap: 44,
+    },
+  },
+};
+
+const templateDecorationsOverrides: Record<EditorTemplateId, Partial<Record<Language, Partial<TemplateDecorationsConfig>>>> = {
+  'ink-wash': {
+    en: { stamp: { text: 'Seal' } },
+    'zh-CN': { stamp: { text: '雅印' } },
+    'zh-TW': { stamp: { text: '雅印' } },
+    ja: { stamp: { text: '雅印' } },
+    ko: { stamp: { text: '낙관' } },
+    es: { stamp: { text: 'Sello' } },
+    fr: { stamp: { text: 'Sceau' } },
+    de: { stamp: { text: 'Siegel' } },
+  },
+  'modern-minimal': {
+    en: { stamp: { text: 'Mark' } },
+    'zh-CN': { stamp: { text: '印记' } },
+    'zh-TW': { stamp: { text: '印記' } },
+    ja: { stamp: { text: '印' } },
+    ko: { stamp: { text: '표식' } },
+    es: { stamp: { text: 'Marca' } },
+    fr: { stamp: { text: 'Marque' } },
+    de: { stamp: { text: 'Zeichen' } },
+  },
+  cyberpunk: {
+    en: { stamp: { text: 'NEO' } },
+    'zh-CN': { stamp: { text: '霓' } },
+    'zh-TW': { stamp: { text: '霓' } },
+    ja: { stamp: { text: '電' } },
+    ko: { stamp: { text: '네온' } },
+    es: { stamp: { text: 'NEO' } },
+    fr: { stamp: { text: 'NEO' } },
+    de: { stamp: { text: 'NEO' } },
+  },
+  'japanese-magazine': {
+    en: { stamp: { text: 'Edit' } },
+    'zh-CN': { stamp: { text: '编辑' } },
+    'zh-TW': { stamp: { text: '編輯' } },
+    ja: { stamp: { text: '雑誌' } },
+    ko: { stamp: { text: '편집' } },
+    es: { stamp: { text: 'Edic.' } },
+    fr: { stamp: { text: 'Édito' } },
+    de: { stamp: { text: 'Redak.' } },
+  },
+};
 
 export const editorTemplates: EditorTemplateDefinition[] = [
   {
@@ -194,3 +478,35 @@ export const editorTemplates: EditorTemplateDefinition[] = [
     },
   },
 ];
+
+export function getTemplateDefinition(templateId: EditorTemplateId) {
+  return editorTemplates.find((template) => template.id === templateId) ?? null;
+}
+
+export function resolveTemplateForLanguage(templateId: EditorTemplateId, language: Language) {
+  const template = getTemplateDefinition(templateId);
+
+  if (!template) {
+    return null;
+  }
+
+  const typographyOverride = templateTypographyOverrides[templateId][language];
+  const decorationsOverride = templateDecorationsOverrides[templateId][language];
+
+  return {
+    ...template,
+    typography: {
+      ...template.typography,
+      ...typographyOverride,
+      fontFamily: getTemplateFontForLanguage(templateId, language),
+    },
+    decorations: {
+      ...template.decorations,
+      ...decorationsOverride,
+      stamp: {
+        ...template.decorations.stamp,
+        ...decorationsOverride?.stamp,
+      },
+    },
+  } satisfies EditorTemplateDefinition;
+}

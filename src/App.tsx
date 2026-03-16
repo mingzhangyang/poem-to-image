@@ -8,7 +8,7 @@ import { useDecorationsConfig } from './hooks/useDecorationsConfig';
 import { useEditorViewModels } from './hooks/useEditorViewModels';
 import { useImageExporter } from './hooks/useImageExporter';
 import { useTypographyConfig } from './hooks/useTypographyConfig';
-import { editorTemplates } from './templates';
+import { editorTemplates, resolveTemplateForLanguage } from './templates';
 import type { EditorTemplateId, ExpandedSections, ExportScale } from './types';
 
 const ACTIVE_TEMPLATE_STORAGE_KEY = 'poem-to-image.active-template';
@@ -60,8 +60,9 @@ export default function App() {
     canvasHeight,
     t,
   });
-  const typography = useTypographyConfig();
+  const typography = useTypographyConfig(language);
   const decorations = useDecorationsConfig({
+    language,
     t,
     fontSize: typography.fontSize,
     textColor: typography.textColor,
@@ -71,9 +72,62 @@ export default function App() {
 
   const scale = useCanvasScale(containerRef, canvasWidth, canvasHeight);
   const handleDownload = useImageExporter(previewRef, canvasWidth, canvasHeight, exportScale);
+  const previousLanguageRef = useRef(language);
+
+  const matchesActiveTemplateTypography = (templateId: EditorTemplateId, templateLanguage: Language) => {
+    const resolvedTemplate = resolveTemplateForLanguage(templateId, templateLanguage);
+
+    if (!resolvedTemplate) {
+      return false;
+    }
+
+    const { typography: templateTypography } = resolvedTemplate;
+
+    return (
+      typography.fontFamily === templateTypography.fontFamily &&
+      typography.fontSize === templateTypography.fontSize &&
+      typography.textColor === templateTypography.textColor &&
+      typography.textAlign === templateTypography.textAlign &&
+      typography.writingMode === templateTypography.writingMode &&
+      typography.padding === templateTypography.padding &&
+      typography.lineHeight === templateTypography.lineHeight &&
+      typography.letterSpacing === templateTypography.letterSpacing &&
+      typography.columns === templateTypography.columns &&
+      typography.columnGap === templateTypography.columnGap &&
+      typography.textShadowEnabled === templateTypography.textShadowEnabled &&
+      typography.textShadowColor === templateTypography.textShadowColor &&
+      typography.textShadowBlur === templateTypography.textShadowBlur &&
+      typography.textShadowOffsetY === templateTypography.textShadowOffsetY &&
+      typography.textShadowOffsetX === templateTypography.textShadowOffsetX
+    );
+  };
+
+  const matchesActiveTemplateDecorations = (templateId: EditorTemplateId, templateLanguage: Language) => {
+    const resolvedTemplate = resolveTemplateForLanguage(templateId, templateLanguage);
+
+    if (!resolvedTemplate) {
+      return false;
+    }
+
+    const { decorations: templateDecorations } = resolvedTemplate;
+
+    return (
+      decorations.showBorder === templateDecorations.showBorder &&
+      decorations.borderStyle === templateDecorations.borderStyle &&
+      decorations.showStamp === templateDecorations.showStamp &&
+      decorations.stamp.text === templateDecorations.stamp.text &&
+      decorations.stamp.style === templateDecorations.stamp.style &&
+      decorations.stamp.positionX === templateDecorations.stamp.positionX &&
+      decorations.stamp.positionY === templateDecorations.stamp.positionY &&
+      decorations.stamp.size === templateDecorations.stamp.size &&
+      decorations.stamp.rotation === templateDecorations.stamp.rotation &&
+      decorations.stamp.opacity === templateDecorations.stamp.opacity &&
+      decorations.customTexts.length === templateDecorations.customTexts.length
+    );
+  };
 
   const applyTemplateById = (templateId: EditorTemplateId, options?: { expandSections?: boolean }) => {
-    const template = editorTemplates.find((item) => item.id === templateId);
+    const template = resolveTemplateForLanguage(templateId, language);
 
     if (!template) {
       return false;
@@ -123,6 +177,57 @@ export default function App() {
 
     window.localStorage.setItem(ACTIVE_TEMPLATE_STORAGE_KEY, activeTemplateId);
   }, [activeTemplateId]);
+
+  useEffect(() => {
+    const previousLanguage = previousLanguageRef.current;
+    const shouldSyncTypography = activeTemplateId ? matchesActiveTemplateTypography(activeTemplateId, previousLanguage) : false;
+    const shouldSyncDecorations = activeTemplateId ? matchesActiveTemplateDecorations(activeTemplateId, previousLanguage) : false;
+
+    if (activeTemplateId && (shouldSyncTypography || shouldSyncDecorations)) {
+      const resolvedTemplate = resolveTemplateForLanguage(activeTemplateId, language);
+
+      if (resolvedTemplate) {
+        if (shouldSyncTypography) {
+          typography.applyTypographyTemplate(resolvedTemplate.typography);
+        }
+
+        if (shouldSyncDecorations) {
+          decorations.applyDecorationsTemplate(resolvedTemplate.decorations);
+        }
+      }
+    }
+
+    previousLanguageRef.current = language;
+  }, [
+    activeTemplateId,
+    language,
+    typography.fontFamily,
+    typography.fontSize,
+    typography.textColor,
+    typography.textAlign,
+    typography.writingMode,
+    typography.padding,
+    typography.lineHeight,
+    typography.letterSpacing,
+    typography.columns,
+    typography.columnGap,
+    typography.textShadowEnabled,
+    typography.textShadowColor,
+    typography.textShadowBlur,
+    typography.textShadowOffsetY,
+    typography.textShadowOffsetX,
+    decorations.showBorder,
+    decorations.borderStyle,
+    decorations.showStamp,
+    decorations.stamp.text,
+    decorations.stamp.style,
+    decorations.stamp.positionX,
+    decorations.stamp.positionY,
+    decorations.stamp.size,
+    decorations.stamp.rotation,
+    decorations.stamp.opacity,
+    decorations.customTexts.length,
+  ]);
 
   const { sidebarProps, canvasPreviewProps } = useEditorViewModels({
     language,

@@ -1,12 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { getDefaultFontForLanguage } from '../fontOptions';
+import type { Language } from '../translations';
 import type { TemplateTypographyConfig, TypographySectionProps } from '../types';
 
 type TypographyConfigResult = TypographySectionProps & {
   applyTypographyTemplate: (template: TemplateTypographyConfig) => void;
 };
 
-export function useTypographyConfig(): TypographyConfigResult {
-  const [fontFamily, setFontFamily] = useState('"Noto Serif SC", serif');
+export function useTypographyConfig(language: Language): TypographyConfigResult {
+  const [fontFamily, setFontFamily] = useState(() => getDefaultFontForLanguage(language));
   const [fontSize, setFontSize] = useState(32);
   const [textColor, setTextColor] = useState('#1e293b');
   const [textAlign, setTextAlign] = useState<'left' | 'center' | 'right'>('center');
@@ -21,6 +23,16 @@ export function useTypographyConfig(): TypographyConfigResult {
   const [textShadowBlur, setTextShadowBlur] = useState(10);
   const [textShadowOffsetY, setTextShadowOffsetY] = useState(2);
   const [textShadowOffsetX, setTextShadowOffsetX] = useState(0);
+  const previousLanguageRef = useRef(language);
+
+  useEffect(() => {
+    const previousLanguage = previousLanguageRef.current;
+    const previousDefaultFont = getDefaultFontForLanguage(previousLanguage);
+    const nextDefaultFont = getDefaultFontForLanguage(language);
+
+    setFontFamily((currentFontFamily) => (currentFontFamily === previousDefaultFont ? nextDefaultFont : currentFontFamily));
+    previousLanguageRef.current = language;
+  }, [language]);
 
   const applyTypographyTemplate = (template: TemplateTypographyConfig) => {
     setFontFamily(template.fontFamily);

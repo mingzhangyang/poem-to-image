@@ -136,6 +136,7 @@ export function Sidebar({
 
       <div>
         <TypographyPanel
+          language={language}
           t={t}
           expanded={expandedSections.typography}
           onToggle={() => onToggleSection('typography')}
@@ -197,6 +198,7 @@ export function Sidebar({
             background={background}
           />
           <TypographyPanel
+            language={language}
             t={t}
             expanded={expandedSections.typography}
             onToggle={() => onToggleSection('typography')}
