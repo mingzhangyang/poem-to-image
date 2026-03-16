@@ -1,11 +1,13 @@
 import { useCallback } from 'react';
 import { toPng } from 'html-to-image';
 import type { RefObject } from 'react';
+import type { ExportScale } from '../types';
 
 export function useImageExporter(
   previewRef: RefObject<HTMLDivElement | null>,
   canvasWidth: number,
   canvasHeight: number,
+  exportScale: ExportScale,
 ) {
   return useCallback(() => {
     if (previewRef.current === null) {
@@ -14,7 +16,7 @@ export function useImageExporter(
 
     toPng(previewRef.current, {
       cacheBust: true,
-      pixelRatio: 2,
+      pixelRatio: exportScale,
       canvasWidth,
       canvasHeight,
       style: {
@@ -31,5 +33,5 @@ export function useImageExporter(
       .catch((error) => {
         console.error('Failed to generate image', error);
       });
-  }, [previewRef, canvasWidth, canvasHeight]);
+  }, [previewRef, canvasWidth, canvasHeight, exportScale]);
 }

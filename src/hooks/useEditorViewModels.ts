@@ -25,6 +25,8 @@ interface UseEditorViewModelsParams {
   background: BackgroundSectionProps;
   typography: TypographySectionProps;
   decorations: DecorationsSectionProps;
+  exportScale: SidebarProps['exportScale'];
+  onExportScaleChange: SidebarProps['onExportScaleChange'];
   onDownload: () => void;
   containerRef: CanvasPreviewProps['containerRef'];
   previewRef: CanvasPreviewProps['previewRef'];
@@ -55,6 +57,8 @@ export function useEditorViewModels({
   background,
   typography,
   decorations,
+  exportScale,
+  onExportScaleChange,
   onDownload,
   containerRef,
   previewRef,
@@ -84,6 +88,8 @@ export function useEditorViewModels({
     background,
     typography,
     decorations,
+    exportScale,
+    onExportScaleChange,
     onDownload,
   };
 

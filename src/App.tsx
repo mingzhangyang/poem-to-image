@@ -9,7 +9,7 @@ import { useEditorViewModels } from './hooks/useEditorViewModels';
 import { useImageExporter } from './hooks/useImageExporter';
 import { useTypographyConfig } from './hooks/useTypographyConfig';
 import { editorTemplates } from './templates';
-import type { EditorTemplateId, ExpandedSections } from './types';
+import type { EditorTemplateId, ExpandedSections, ExportScale } from './types';
 
 const ACTIVE_TEMPLATE_STORAGE_KEY = 'poem-to-image.active-template';
 
@@ -22,6 +22,7 @@ export default function App() {
   const [canvasWidth, setCanvasWidth] = useState(1080);
   const [canvasHeight, setCanvasHeight] = useState(1440);
   const [presetSize, setPresetSize] = useState('1080x1440');
+  const [exportScale, setExportScale] = useState<ExportScale>(2);
   const [activeTemplateId, setActiveTemplateId] = useState<EditorTemplateId | null>(null);
 
   const [expandedSections, setExpandedSections] = useState<ExpandedSections>({
@@ -65,7 +66,7 @@ export default function App() {
   });
 
   const scale = useCanvasScale(containerRef, canvasWidth, canvasHeight);
-  const handleDownload = useImageExporter(previewRef, canvasWidth, canvasHeight);
+  const handleDownload = useImageExporter(previewRef, canvasWidth, canvasHeight, exportScale);
 
   const applyTemplateById = (templateId: EditorTemplateId) => {
     const template = editorTemplates.find((item) => item.id === templateId);
@@ -178,6 +179,8 @@ export default function App() {
       onCustomTextChange: decorations.updateCustomText,
       onCustomTextRemove: decorations.removeCustomText,
     },
+    exportScale,
+    onExportScaleChange: setExportScale,
     onDownload: handleDownload,
     containerRef,
     previewRef,

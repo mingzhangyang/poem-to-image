@@ -20,6 +20,8 @@ export function Sidebar({
   background,
   typography,
   decorations,
+  exportScale,
+  onExportScaleChange,
   onDownload,
 }: SidebarProps) {
   return (
@@ -70,7 +72,12 @@ export function Sidebar({
         />
       </div>
 
-      <SidebarFooter t={t} onDownload={onDownload} />
+      <SidebarFooter
+        t={t}
+        exportScale={exportScale}
+        onExportScaleChange={onExportScaleChange}
+        onDownload={onDownload}
+      />
     </div>
   );
 }

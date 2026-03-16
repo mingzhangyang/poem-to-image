@@ -6,6 +6,7 @@ export type WritingMode = 'horizontal-tb' | 'vertical-rl';
 export type TextAlign = 'left' | 'center' | 'right';
 export type BorderStyle = 'solid' | 'dashed' | 'double';
 export type EditorTemplateId = 'ink-wash' | 'modern-minimal' | 'cyberpunk' | 'japanese-magazine';
+export type ExportScale = 1 | 2 | 3;
 
 export interface CustomText {
   id: string;
@@ -179,6 +180,8 @@ export interface SidebarProps {
   background: BackgroundSectionProps;
   typography: TypographySectionProps;
   decorations: DecorationsSectionProps;
+  exportScale: ExportScale;
+  onExportScaleChange: (value: ExportScale) => void;
   onDownload: () => void;
 }
 
