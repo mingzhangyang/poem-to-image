@@ -1,7 +1,7 @@
-import { Sparkles } from 'lucide-react';
 import type { Language } from '../../translations';
 import type { TranslateFn } from '../../types';
 import { useAppAuth } from '../../context/auth';
+import { Logo } from '../logo';
 
 interface SidebarHeaderProps {
   language: Language;
@@ -18,7 +18,7 @@ export function SidebarHeader({ language, onLanguageChange, t, isSheet = false, 
     <div className={`${isSheet ? 'px-4 py-4' : 'px-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-4 sm:p-6'} border-b border-gray-100 flex items-start justify-between gap-3`}>
       <div className="min-w-0">
         <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2 text-indigo-900">
-          <Sparkles className="w-6 h-6 text-indigo-500" />
+          <Logo className="w-7 h-7" />
           <span className="truncate">{t('appTitle')}</span>
         </h1>
         <p className="text-sm text-gray-500 mt-1">{t('subtitle')}</p>

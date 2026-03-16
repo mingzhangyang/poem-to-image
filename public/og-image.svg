@@ -1,0 +1,69 @@
+<svg viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#1e1b4b" />
+    </linearGradient>
+    <clipPath id="inkDrop">
+      <path d="M256 48C256 48 112 240 112 352C112 431.5 176.5 496 256 496C335.5 496 400 431.5 400 352C400 240 256 48 256 48Z" />
+    </clipPath>
+    <linearGradient id="mountainGrad1" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#475569" />
+      <stop offset="100%" stop-color="#1e293b" />
+    </linearGradient>
+    <linearGradient id="mountainGrad2" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#334155" />
+      <stop offset="100%" stop-color="#0f172a" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bgGrad)" />
+
+  <!-- Subtle grid lines -->
+  <g stroke="#1e293b" stroke-width="1" opacity="0.5">
+    <line x1="0" y1="105" x2="1200" y2="105" />
+    <line x1="0" y1="210" x2="1200" y2="210" />
+    <line x1="0" y1="315" x2="1200" y2="315" />
+    <line x1="0" y1="420" x2="1200" y2="420" />
+    <line x1="0" y1="525" x2="1200" y2="525" />
+    <line x1="200" y1="0" x2="200" y2="630" />
+    <line x1="400" y1="0" x2="400" y2="630" />
+    <line x1="600" y1="0" x2="600" y2="630" />
+    <line x1="800" y1="0" x2="800" y2="630" />
+    <line x1="1000" y1="0" x2="1000" y2="630" />
+  </g>
+
+  <!-- Logo (scaled from 512 to ~220px, centered vertically, left side) -->
+  <g transform="translate(110, 95) scale(0.43)">
+    <rect width="512" height="512" rx="112" fill="#1e293b" />
+    <g clip-path="url(#inkDrop)">
+      <rect x="112" y="48" width="288" height="448" fill="#f8fafc" />
+      <circle cx="256" cy="220" r="48" fill="#ef4444" />
+      <g stroke="#cbd5e1" stroke-width="6" stroke-linecap="round">
+        <line x1="340" y1="120" x2="340" y2="280" />
+        <line x1="310" y1="150" x2="310" y2="260" />
+        <line x1="280" y1="100" x2="280" y2="200" />
+      </g>
+      <path d="M80 420 L180 280 L260 360 L340 240 L440 420 Z" fill="url(#mountainGrad1)" />
+      <path d="M150 450 L250 320 L320 380 L400 290 L480 450 Z" fill="url(#mountainGrad2)" />
+    </g>
+    <path
+      d="M256 48C256 48 112 240 112 352C112 431.5 176.5 496 256 496C335.5 496 400 431.5 400 352C400 240 256 48 256 48Z"
+      fill="none"
+      stroke="#38bdf8"
+      stroke-width="8"
+      opacity="0.8"
+    />
+  </g>
+
+  <!-- App name -->
+  <text x="380" y="270" font-family="Georgia, serif" font-size="96" font-weight="bold" fill="#f1f5f9" letter-spacing="-2">InkPoem</text>
+
+  <!-- Tagline -->
+  <text x="382" y="340" font-family="Georgia, serif" font-size="32" fill="#94a3b8">Turn your poems into beautiful art</text>
+
+  <!-- Decorative cyan glow accent -->
+  <circle cx="1150" cy="80" r="120" fill="#38bdf8" opacity="0.05" />
+  <circle cx="50" cy="580" r="80" fill="#6366f1" opacity="0.07" />
+</svg>

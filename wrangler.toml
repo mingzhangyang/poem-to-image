@@ -12,4 +12,4 @@ not_found_handling = "single-page-application"
 [[d1_databases]]
 binding = "DB"
 database_name = "poem-to-image"
-database_id = "your-d1-database-id-here"
+database_id = "995b0467-4d5c-4762-b9a4-14793af88349"
