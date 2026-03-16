@@ -443,21 +443,6 @@ export function Sidebar({
         ) : (
           <>
             {sections()}
-            <SidebarFooter
-              t={t}
-              canvasWidth={canvasWidth}
-              canvasHeight={canvasHeight}
-              exportFormat={exportFormat}
-              onExportFormatChange={onExportFormatChange}
-              exportScale={exportScale}
-              onExportScaleChange={onExportScaleChange}
-              onDownload={onDownload}
-              onShare={onShare}
-              isExporting={isExporting}
-              isSharing={isSharing}
-              canShare={canShare}
-              showActionButtons={false}
-            />
           </>
         )}
       </aside>

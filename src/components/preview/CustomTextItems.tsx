@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { RefObject } from 'react';
+import type { PointerEvent as ReactPointerEvent, RefObject } from 'react';
 import type { CustomText } from '../../types';
 
 interface CustomTextItemsProps {
@@ -51,7 +51,7 @@ function DraggableCustomTextItem({
     }
   }, [customText.positionX, customText.positionY]);
 
-  const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+  const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     const frameRect = frameRef.current?.getBoundingClientRect();
 
     if (!frameRect || (event.pointerType === 'mouse' && event.button !== 0)) {

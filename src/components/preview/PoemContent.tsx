@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { RefObject } from 'react';
+import type { PointerEvent as ReactPointerEvent, RefObject } from 'react';
 import type { BorderStyle, PositionedElement, StampConfig, TextAlign, TranslateFn, WritingMode } from '../../types';
 import { StampOverlay } from './StampOverlay';
 
@@ -68,7 +68,7 @@ export function PoemContent({
     }
   }, [poemPosition]);
 
-  const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+  const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     const frameRect = poemFrameRef.current?.getBoundingClientRect();
 
     if (!frameRect || (event.pointerType === 'mouse' && event.button !== 0)) {

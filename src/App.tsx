@@ -474,13 +474,6 @@ export default function App() {
     canvasHeight,
     customTexts: decorations.customTexts,
     onCustomTextChange: decorations.updateCustomText,
-    exportFormat,
-    exportScale,
-    onDownload: handleDownload,
-    onShare: handleShare,
-    isExporting,
-    isSharing,
-    canShare,
     onInteractionStart,
     onInteractionEnd,
     previewZoom,
@@ -490,7 +483,7 @@ export default function App() {
   });
 
   return (
-    <div className="min-h-dvh bg-transparent flex flex-col md:flex-row font-sans text-[var(--app-ink)]">
+    <div className="min-h-dvh bg-transparent flex flex-col md:flex-row font-sans text-(--app-ink)">
       <title>InkPoem – Turn Poems into Beautiful Art with AI</title>
       <meta name="description" content="Turn your poems into stunning visual art with AI. Customize typography, backgrounds, and styles. Export in high resolution. Free to start." />
       <link rel="canonical" href="https://inkpoem.com/" />

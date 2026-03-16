@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Download, Loader2, Maximize2, Minus, Plus, Share2 } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
+import { Download, Maximize2, Minus, Plus, Share2, X } from 'lucide-react';
 import type { CanvasPreviewProps } from '../types';
+import { SidebarFooter } from './sidebar/SidebarFooter';
 import { BackgroundLayer } from './preview/BackgroundLayer';
 import { CustomTextItems } from './preview/CustomTextItems';
 import { PoemContent } from './preview/PoemContent';
@@ -15,6 +17,8 @@ const exportFormatLabelKeys = {
   jpg: 'exportFormatJpg',
   webp: 'exportFormatWebp',
 } as const;
+
+type OutputModalMode = 'save' | 'share';
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -58,7 +62,9 @@ export function CanvasPreview({
   customTexts,
   onCustomTextChange,
   exportFormat,
+  onExportFormatChange,
   exportScale,
+  onExportScaleChange,
   onDownload,
   onShare,
   isExporting,
@@ -77,6 +83,7 @@ export function CanvasPreview({
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDraggingPreview, setIsDraggingPreview] = useState(false);
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
+  const [activeOutputModal, setActiveOutputModal] = useState<OutputModalMode | null>(null);
 
   // Refs for pinch-to-zoom
   const activePointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
@@ -137,6 +144,27 @@ export function CanvasPreview({
     }));
   }, [maxPanX, maxPanY]);
 
+  useEffect(() => {
+    if (!activeOutputModal) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setActiveOutputModal(null);
+      }
+    };
+
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [activeOutputModal]);
+
   // Ctrl+scroll (or Cmd+scroll on Mac) wheel zoom — non-passive so we can preventDefault
   useEffect(() => {
     const viewport = viewportRef.current;
@@ -159,6 +187,35 @@ export function CanvasPreview({
     setPan({ x: 0, y: 0 });
     onPreviewZoomReset();
   };
+
+  const handleOpenSaveModal = () => {
+    if (isOutputBusy) {
+      return;
+    }
+
+    setActiveOutputModal('save');
+  };
+
+  const handleOpenShareModal = () => {
+    if (isOutputBusy) {
+      return;
+    }
+
+    setActiveOutputModal('share');
+  };
+
+  const handleSaveFromModal = () => {
+    onDownload();
+    setActiveOutputModal(null);
+  };
+
+  const handleShareFromModal = () => {
+    onShare();
+    setActiveOutputModal(null);
+  };
+
+  const modalTitle = activeOutputModal === 'save' ? t('saveImageModalTitle') : t('shareImageModalTitle');
+  const modalDescription = activeOutputModal === 'save' ? t('saveImageModalDescription') : t('shareImageModalDescription');
 
   const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     activePointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
@@ -281,53 +338,88 @@ export function CanvasPreview({
         </button>
       </div>
 
-      <div className="hidden md:flex absolute bottom-6 right-6 z-20 w-[min(22rem,calc(100%-3rem))] flex-col gap-3 rounded-[1.6rem] border border-white/70 bg-[rgba(255,253,249,0.86)] p-4 shadow-[0_22px_56px_var(--app-accent-shadow)] backdrop-blur-md">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-(--app-accent-500)">{t('exportAndShare')}</p>
-          <p className="mt-2 text-sm font-medium text-(--app-accent-900)">{exportSummary}</p>
-        </div>
+      <div className="hidden md:flex absolute bottom-6 right-6 z-20 items-center gap-3 rounded-[1.6rem] border border-white/70 bg-[rgba(255,253,249,0.86)] p-3 shadow-[0_22px_56px_var(--app-accent-shadow)] backdrop-blur-md">
+        <button
+          type="button"
+          onClick={handleOpenSaveModal}
+          disabled={isOutputBusy}
+          className="app-button-primary rounded-2xl px-4 py-3 text-sm font-medium disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        >
+          <Download className="h-4 w-4" />
+          {t('saveImage')}
+        </button>
 
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={onDownload}
-            disabled={isOutputBusy}
-            className="app-button-primary w-full rounded-2xl px-4 py-3 text-sm font-medium disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            {isExporting ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                {t('exportingImage')}
-              </>
-            ) : (
-              <>
-                <Download className="h-4 w-4" />
-                {t('exportImage')}
-              </>
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={onShare}
-            disabled={isOutputBusy || !canShare}
-            className="app-button-secondary w-full rounded-2xl px-4 py-3 text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            title={t('shareImage')}
-          >
-            {isSharing ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                {t('sharingImage')}
-              </>
-            ) : (
-              <>
-                <Share2 className="h-4 w-4" />
-                {t('shareImage')}
-              </>
-            )}
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={handleOpenShareModal}
+          disabled={isOutputBusy}
+          className="app-button-secondary rounded-2xl px-4 py-3 text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        >
+          <Share2 className="h-4 w-4" />
+          {t('shareImage')}
+        </button>
       </div>
+
+      <AnimatePresence>
+        {activeOutputModal ? (
+          <>
+            <motion.button
+              type="button"
+              className="hidden md:block fixed inset-0 z-30 bg-[rgba(31,52,54,0.36)] backdrop-blur-[3px]"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setActiveOutputModal(null)}
+              aria-label={t('closeControls')}
+            />
+
+            <motion.div
+              className="hidden md:flex fixed inset-0 z-40 items-center justify-center p-6"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 12 }}
+            >
+              <div className="w-full max-w-md overflow-hidden rounded-[2rem] border border-white/75 bg-[linear-gradient(180deg,rgba(255,253,249,0.98),rgba(255,250,242,0.96))] shadow-[0_28px_80px_var(--app-accent-shadow)]">
+                <div className="flex items-start justify-between gap-4 border-b border-[rgba(34,48,52,0.06)] px-6 py-5">
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-(--app-accent-500)">{modalTitle}</p>
+                    <p className="mt-2 text-sm text-gray-600">{modalDescription}</p>
+                    <p className="mt-2 text-sm font-medium text-(--app-accent-900)">{exportSummary}</p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveOutputModal(null)}
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[rgba(34,48,52,0.08)] bg-white/80 text-(--app-accent-700) transition-colors hover:bg-(--app-accent-50)"
+                    aria-label={t('closeControls')}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="px-6 py-6">
+                  <SidebarFooter
+                    t={t}
+                    canvasWidth={canvasWidth}
+                    canvasHeight={canvasHeight}
+                    exportFormat={exportFormat}
+                    onExportFormatChange={onExportFormatChange}
+                    exportScale={exportScale}
+                    onExportScaleChange={onExportScaleChange}
+                    onDownload={handleSaveFromModal}
+                    onShare={handleShareFromModal}
+                    isExporting={isExporting}
+                    isSharing={isSharing}
+                    canShare={canShare}
+                    actionMode={activeOutputModal}
+                    surface="modal"
+                  />
+                </div>
+              </div>
+            </motion.div>
+          </>
+        ) : null}
+      </AnimatePresence>
 
       <div
         ref={viewportRef}

@@ -264,7 +264,9 @@ export interface CanvasPreviewProps {
   customTexts: CustomText[];
   onCustomTextChange: (id: string, updates: Partial<CustomText>) => void;
   exportFormat: ExportFormat;
+  onExportFormatChange: (value: ExportFormat) => void;
   exportScale: ExportScale;
+  onExportScaleChange: (value: ExportScale) => void;
   onDownload: () => void;
   onShare: () => void;
   isExporting: boolean;

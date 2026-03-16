@@ -22,6 +22,8 @@ interface SidebarFooterProps {
   canShare: boolean;
   showActionButtons?: boolean;
   title?: string;
+  actionMode?: 'both' | 'save' | 'share';
+  surface?: 'sidebar' | 'modal';
 }
 
 const exportFormatOptions: Array<{ value: ExportFormat; labelKey: 'exportFormatPng' | 'exportFormatJpg' | 'exportFormatWebp' }> = [
@@ -59,11 +61,19 @@ export function SidebarFooter({
   canShare,
   showActionButtons = true,
   title,
+  actionMode = 'both',
+  surface = 'sidebar',
 }: SidebarFooterProps) {
   const isBusy = isExporting || isSharing;
+  const shouldShowSaveAction = actionMode === 'both' || actionMode === 'save';
+  const shouldShowShareAction = actionMode === 'both' || actionMode === 'share';
+  const containerClassName = surface === 'modal'
+    ? 'p-0'
+    : 'px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-6 border-t border-[rgba(34,48,52,0.06)] bg-[linear-gradient(180deg,rgba(255,253,249,0.86),rgba(255,250,242,0.96))] md:sticky md:bottom-0';
+  const actionGridClassName = shouldShowSaveAction && shouldShowShareAction ? 'grid grid-cols-2 gap-3' : 'grid grid-cols-1 gap-3';
 
   return (
-    <div className="px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-6 border-t border-[rgba(34,48,52,0.06)] bg-[linear-gradient(180deg,rgba(255,253,249,0.86),rgba(255,250,242,0.96))] md:sticky md:bottom-0">
+    <div className={containerClassName}>
       {title ? (
         <div className="mb-4">
           <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-(--app-accent-500)">{title}</p>
@@ -104,42 +114,46 @@ export function SidebarFooter({
       </label>
 
       {showActionButtons ? (
-        <div className="grid grid-cols-2 gap-3">
-          <button
-            onClick={onDownload}
-            disabled={isBusy}
-            className="app-button-primary w-full py-3 px-4 disabled:opacity-70 disabled:cursor-not-allowed rounded-xl font-medium transition-all flex items-center justify-center gap-2"
-          >
-            {isExporting ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                {t('exportingImage')}
-              </>
-            ) : (
-              <>
-                <Download className="w-5 h-5" />
-                {t('exportImage')}
-              </>
-            )}
-          </button>
+        <div className={actionGridClassName}>
+          {shouldShowSaveAction ? (
+            <button
+              onClick={onDownload}
+              disabled={isBusy}
+              className="app-button-primary w-full py-3 px-4 disabled:opacity-70 disabled:cursor-not-allowed rounded-xl font-medium transition-all flex items-center justify-center gap-2"
+            >
+              {isExporting ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  {t('exportingImage')}
+                </>
+              ) : (
+                <>
+                  <Download className="w-5 h-5" />
+                  {t('saveImage')}
+                </>
+              )}
+            </button>
+          ) : null}
 
-          <button
-            onClick={onShare}
-            disabled={isBusy || !canShare}
-            className="app-button-secondary w-full py-3 px-4 disabled:opacity-60 disabled:cursor-not-allowed rounded-xl font-medium transition-all flex items-center justify-center gap-2"
-          >
-            {isSharing ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                {t('sharingImage')}
-              </>
-            ) : (
-              <>
-                <Share2 className="w-5 h-5" />
-                {t('shareImage')}
-              </>
-            )}
-          </button>
+          {shouldShowShareAction ? (
+            <button
+              onClick={onShare}
+              disabled={isBusy || !canShare}
+              className="app-button-secondary w-full py-3 px-4 disabled:opacity-60 disabled:cursor-not-allowed rounded-xl font-medium transition-all flex items-center justify-center gap-2"
+            >
+              {isSharing ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  {t('sharingImage')}
+                </>
+              ) : (
+                <>
+                  <Share2 className="w-5 h-5" />
+                  {t('shareImage')}
+                </>
+              )}
+            </button>
+          ) : null}
         </div>
       ) : null}
     </div>

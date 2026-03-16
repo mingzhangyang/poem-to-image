@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { CSSProperties, RefObject } from 'react';
+import type { CSSProperties, PointerEvent as ReactPointerEvent, RefObject } from 'react';
 import type { StampConfig } from '../../types';
 
 interface StampOverlayProps {
@@ -75,7 +75,7 @@ export function StampOverlay({ frameRef, stamp, onStampChange, onInteractionStar
     }
   }, [stamp.positionX, stamp.positionY]);
 
-  const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+  const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     const frameRect = frameRef.current?.getBoundingClientRect();
 
     if (!frameRect || (event.pointerType === 'mouse' && event.button !== 0)) {
