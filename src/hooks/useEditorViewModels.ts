@@ -39,7 +39,8 @@ interface UseEditorViewModelsParams {
   showBorder: boolean;
   borderStyle: CanvasPreviewProps['borderStyle'];
   showStamp: boolean;
-  stampText: string;
+  stamp: CanvasPreviewProps['stamp'];
+  onStampChange: CanvasPreviewProps['onStampChange'];
   canvasWidth: number;
   canvasHeight: number;
   customTexts: CustomText[];
@@ -72,7 +73,8 @@ export function useEditorViewModels({
   showBorder,
   borderStyle,
   showStamp,
-  stampText,
+  stamp,
+  onStampChange,
   canvasWidth,
   canvasHeight,
   customTexts,
@@ -123,7 +125,8 @@ export function useEditorViewModels({
     showBorder,
     borderStyle,
     showStamp,
-    stampText,
+    stamp,
+    onStampChange,
     canvasWidth,
     canvasHeight,
     customTexts,

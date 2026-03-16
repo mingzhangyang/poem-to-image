@@ -1,5 +1,7 @@
+import { useRef } from 'react';
 import { motion } from 'motion/react';
-import type { BorderStyle, TextAlign, TranslateFn, WritingMode } from '../../types';
+import type { BorderStyle, StampConfig, TextAlign, TranslateFn, WritingMode } from '../../types';
+import { StampOverlay } from './StampOverlay';
 
 interface PoemContentProps {
   t: TranslateFn;
@@ -17,7 +19,8 @@ interface PoemContentProps {
   showBorder: boolean;
   borderStyle: BorderStyle;
   showStamp: boolean;
-  stampText: string;
+  stamp: StampConfig;
+  onStampChange: (updates: Partial<StampConfig>) => void;
 }
 
 export function PoemContent({
@@ -36,10 +39,14 @@ export function PoemContent({
   showBorder,
   borderStyle,
   showStamp,
-  stampText,
+  stamp,
+  onStampChange,
 }: PoemContentProps) {
+  const frameRef = useRef<HTMLDivElement>(null);
+
   return (
     <div
+      ref={frameRef}
       className={`relative z-10 flex flex-col items-center justify-center w-full h-full ${showBorder ? 'border-4' : ''}`}
       style={{
         borderColor: textColor,
@@ -65,27 +72,9 @@ export function PoemContent({
         >
           {text || t('poemPlaceholder')}
         </div>
-
-        {showStamp ? (
-          <div
-            className="mt-8 border-2 rounded-sm flex items-center justify-center font-bold"
-            style={{
-              borderColor: '#dc2626',
-              color: '#dc2626',
-              width: `${fontSize * 1.5}px`,
-              height: `${fontSize * 1.5}px`,
-              fontSize: `${fontSize * 0.8}px`,
-              fontFamily: '"Ma Shan Zheng", cursive',
-              writingMode: 'horizontal-tb',
-              opacity: 0.8,
-              transform: 'rotate(-5deg)',
-              alignSelf: writingMode === 'vertical-rl' ? 'flex-end' : 'auto',
-            }}
-          >
-            {stampText}
-          </div>
-        ) : null}
       </motion.div>
+
+      {showStamp ? <StampOverlay frameRef={frameRef} stamp={stamp} onStampChange={onStampChange} /> : null}
     </div>
   );
 }

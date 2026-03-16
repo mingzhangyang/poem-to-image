@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { BorderStyle, CustomText, TemplateDecorationsConfig, TranslateFn, WritingMode } from '../types';
+import type { BorderStyle, CustomText, StampConfig, TemplateDecorationsConfig, TranslateFn, WritingMode } from '../types';
 
 interface UseDecorationsConfigParams {
   t: TranslateFn;
@@ -16,10 +16,20 @@ export function useDecorationsConfig({
   writingMode,
   onCustomTextAdded,
 }: UseDecorationsConfigParams) {
+  const createDefaultStamp = (): StampConfig => ({
+    text: '印记',
+    style: 'square',
+    positionX: 80,
+    positionY: 80,
+    size: Math.round(fontSize * 2.5),
+    rotation: -8,
+    opacity: 0.82,
+  });
+
   const [showBorder, setShowBorder] = useState(false);
   const [borderStyle, setBorderStyle] = useState<BorderStyle>('solid');
   const [showStamp, setShowStamp] = useState(false);
-  const [stampText, setStampText] = useState('印');
+  const [stamp, setStamp] = useState<StampConfig>(createDefaultStamp);
   const [customTexts, setCustomTexts] = useState<CustomText[]>([]);
 
   const addCustomText = () => {
@@ -46,11 +56,23 @@ export function useDecorationsConfig({
     setCustomTexts((prev) => prev.filter((customText) => customText.id !== id));
   };
 
+  const updateStamp = (updates: Partial<StampConfig>) => {
+    setStamp((prev) => ({ ...prev, ...updates }));
+  };
+
+  const resetStampPosition = () => {
+    setStamp((prev) => ({
+      ...prev,
+      positionX: 80,
+      positionY: 80,
+    }));
+  };
+
   const applyDecorationsTemplate = (template: TemplateDecorationsConfig) => {
     setShowBorder(template.showBorder);
     setBorderStyle(template.borderStyle);
     setShowStamp(template.showStamp);
-    setStampText(template.stampText);
+    setStamp(template.stamp);
     setCustomTexts(template.customTexts);
   };
 
@@ -58,12 +80,13 @@ export function useDecorationsConfig({
     showBorder,
     borderStyle,
     showStamp,
-    stampText,
+    stamp,
     customTexts,
     setShowBorder,
     setBorderStyle,
     setShowStamp,
-    setStampText,
+    setStamp: updateStamp,
+    resetStampPosition,
     addCustomText,
     updateCustomText,
     removeCustomText,

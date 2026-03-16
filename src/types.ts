@@ -5,6 +5,7 @@ export type BackgroundType = 'solid' | 'gradient' | 'transparent' | 'image' | 'a
 export type WritingMode = 'horizontal-tb' | 'vertical-rl';
 export type TextAlign = 'left' | 'center' | 'right';
 export type BorderStyle = 'solid' | 'dashed' | 'double';
+export type StampStyle = 'square' | 'round' | 'brush';
 export type EditorTemplateId = 'ink-wash' | 'modern-minimal' | 'cyberpunk' | 'japanese-magazine';
 export type ExportScale = 1 | 2 | 3;
 
@@ -24,6 +25,16 @@ export interface ExpandedSections {
   background: boolean;
   typography: boolean;
   decorations: boolean;
+}
+
+export interface StampConfig {
+  text: string;
+  style: StampStyle;
+  positionX: number;
+  positionY: number;
+  size: number;
+  rotation: number;
+  opacity: number;
 }
 
 export interface TemplateBackgroundConfig {
@@ -58,7 +69,7 @@ export interface TemplateDecorationsConfig {
   showBorder: boolean;
   borderStyle: BorderStyle;
   showStamp: boolean;
-  stampText: string;
+  stamp: StampConfig;
   customTexts: CustomText[];
 }
 
@@ -155,13 +166,14 @@ export interface DecorationsSectionProps {
   showBorder: boolean;
   borderStyle: BorderStyle;
   showStamp: boolean;
-  stampText: string;
+  stamp: StampConfig;
   customTexts: CustomText[];
   onAddCustomText: () => void;
   onShowBorderChange: (value: boolean) => void;
   onBorderStyleChange: (value: BorderStyle) => void;
   onShowStampChange: (value: boolean) => void;
-  onStampTextChange: (value: string) => void;
+  onStampChange: (updates: Partial<StampConfig>) => void;
+  onResetStampPosition: () => void;
   onCustomTextChange: (id: string, updates: Partial<CustomText>) => void;
   onCustomTextRemove: (id: string) => void;
 }
@@ -213,7 +225,8 @@ export interface CanvasPreviewProps {
   showBorder: boolean;
   borderStyle: BorderStyle;
   showStamp: boolean;
-  stampText: string;
+  stamp: StampConfig;
+  onStampChange: (updates: Partial<StampConfig>) => void;
   canvasWidth: number;
   canvasHeight: number;
   customTexts: CustomText[];

@@ -32,7 +32,8 @@ export function CanvasPreview({
   showBorder,
   borderStyle,
   showStamp,
-  stampText,
+  stamp,
+  onStampChange,
   canvasWidth,
   canvasHeight,
   customTexts,
@@ -97,7 +98,8 @@ export function CanvasPreview({
               showBorder={showBorder}
               borderStyle={borderStyle}
               showStamp={showStamp}
-              stampText={stampText}
+              stamp={stamp}
+              onStampChange={onStampChange}
             />
           </div>
         </div>

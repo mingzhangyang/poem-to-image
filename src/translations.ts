@@ -87,7 +87,16 @@ export const translations = {
     errNoPrompt: "Please provide a poem or a prompt for the AI.",
     errNoImage: "Failed to generate image. The model did not return an image part.",
     errGenFailed: "Failed to generate AI background.",
-    defaultCustomText: "Custom Text"
+    defaultCustomText: "Custom Text",
+    stampStyle: "Stamp Style",
+    stampStyleSquare: "Square Seal",
+    stampStyleRound: "Round Seal",
+    stampStyleBrush: "Brush Seal",
+    stampSize: "Stamp Size",
+    stampRotation: "Stamp Rotation",
+    stampOpacity: "Stamp Opacity",
+    resetStampPosition: "Reset Position",
+    dragStampHint: "Drag the stamp in the preview"
   },
   'zh-CN': {
     appTitle: "诗词生成图片",
@@ -177,7 +186,16 @@ export const translations = {
     errNoPrompt: "请提供诗词或AI提示词。",
     errNoImage: "生成图片失败。模型未返回图片部分。",
     errGenFailed: "生成AI背景失败。",
-    defaultCustomText: "自定义文字"
+    defaultCustomText: "自定义文字",
+    stampStyle: "印章样式",
+    stampStyleSquare: "方章",
+    stampStyleRound: "圆章",
+    stampStyleBrush: "写意章",
+    stampSize: "印章大小",
+    stampRotation: "印章角度",
+    stampOpacity: "印章透明度",
+    resetStampPosition: "重置位置",
+    dragStampHint: "可在预览中拖拽印章"
   },
   'zh-TW': {
     appTitle: "詩詞生成圖片",
@@ -267,7 +285,16 @@ export const translations = {
     errNoPrompt: "請提供詩詞或AI提示詞。",
     errNoImage: "生成圖片失敗。模型未返回圖片部分。",
     errGenFailed: "生成AI背景失敗。",
-    defaultCustomText: "自定義文字"
+    defaultCustomText: "自定義文字",
+    stampStyle: "印章樣式",
+    stampStyleSquare: "方章",
+    stampStyleRound: "圓章",
+    stampStyleBrush: "寫意章",
+    stampSize: "印章大小",
+    stampRotation: "印章角度",
+    stampOpacity: "印章透明度",
+    resetStampPosition: "重設位置",
+    dragStampHint: "可在預覽中拖曳印章"
   },
   ja: {
     appTitle: "詩から画像へ",
@@ -357,7 +384,16 @@ export const translations = {
     errNoPrompt: "詩またはAIプロンプトを提供してください。",
     errNoImage: "画像の生成に失敗しました。モデルは画像部分を返しませんでした。",
     errGenFailed: "AI背景の生成に失敗しました。",
-    defaultCustomText: "カスタムテキスト"
+    defaultCustomText: "カスタムテキスト",
+    stampStyle: "印章スタイル",
+    stampStyleSquare: "角印",
+    stampStyleRound: "丸印",
+    stampStyleBrush: "朱墨印",
+    stampSize: "印章サイズ",
+    stampRotation: "印章の角度",
+    stampOpacity: "印章の不透明度",
+    resetStampPosition: "位置をリセット",
+    dragStampHint: "プレビュー上で印章をドラッグ"
   },
   ko: {
     appTitle: "시를 이미지로",
@@ -447,7 +483,16 @@ export const translations = {
     errNoPrompt: "시 또는 AI 프롬프트를 제공해주세요.",
     errNoImage: "이미지 생성 실패. 모델이 이미지 부분을 반환하지 않았습니다.",
     errGenFailed: "AI 배경 생성 실패.",
-    defaultCustomText: "사용자 정의 텍스트"
+    defaultCustomText: "사용자 정의 텍스트",
+    stampStyle: "도장 스타일",
+    stampStyleSquare: "사각 인장",
+    stampStyleRound: "원형 인장",
+    stampStyleBrush: "붓터치 인장",
+    stampSize: "도장 크기",
+    stampRotation: "도장 각도",
+    stampOpacity: "도장 투명도",
+    resetStampPosition: "위치 재설정",
+    dragStampHint: "미리보기에서 도장을 드래그하세요"
   },
   es: {
     appTitle: "Poema a Imagen",
@@ -537,7 +582,16 @@ export const translations = {
     errNoPrompt: "Por favor, proporciona un poema o una instrucción para la IA.",
     errNoImage: "Error al generar la imagen. El modelo no devolvió una imagen.",
     errGenFailed: "Error al generar el fondo con IA.",
-    defaultCustomText: "Texto Personalizado"
+    defaultCustomText: "Texto Personalizado",
+    stampStyle: "Estilo del sello",
+    stampStyleSquare: "Sello cuadrado",
+    stampStyleRound: "Sello redondo",
+    stampStyleBrush: "Sello de tinta",
+    stampSize: "Tamaño del sello",
+    stampRotation: "Rotación del sello",
+    stampOpacity: "Opacidad del sello",
+    resetStampPosition: "Restablecer posición",
+    dragStampHint: "Arrastra el sello en la vista previa"
   },
   fr: {
     appTitle: "Poème en Image",
@@ -627,7 +681,16 @@ export const translations = {
     errNoPrompt: "Veuillez fournir un poème ou une instruction pour l'IA.",
     errNoImage: "Échec de la génération de l'image. Le modèle n'a pas renvoyé d'image.",
     errGenFailed: "Échec de la génération de l'arrière-plan IA.",
-    defaultCustomText: "Texte Personnalisé"
+    defaultCustomText: "Texte Personnalisé",
+    stampStyle: "Style du sceau",
+    stampStyleSquare: "Sceau carré",
+    stampStyleRound: "Sceau rond",
+    stampStyleBrush: "Sceau encre",
+    stampSize: "Taille du sceau",
+    stampRotation: "Rotation du sceau",
+    stampOpacity: "Opacité du sceau",
+    resetStampPosition: "Réinitialiser la position",
+    dragStampHint: "Faites glisser le sceau dans l'aperçu"
   },
   de: {
     appTitle: "Gedicht zu Bild",
@@ -717,7 +780,16 @@ export const translations = {
     errNoPrompt: "Bitte gib ein Gedicht oder einen KI-Prompt an.",
     errNoImage: "Bildgenerierung fehlgeschlagen. Das Modell hat kein Bild zurückgegeben.",
     errGenFailed: "KI-Hintergrund konnte nicht generiert werden.",
-    defaultCustomText: "Eigener Text"
+    defaultCustomText: "Eigener Text",
+    stampStyle: "Stempelstil",
+    stampStyleSquare: "Quadratischer Stempel",
+    stampStyleRound: "Runder Stempel",
+    stampStyleBrush: "Pinselstempel",
+    stampSize: "Stempelgröße",
+    stampRotation: "Stempelwinkel",
+    stampOpacity: "Stempeltransparenz",
+    resetStampPosition: "Position zurücksetzen",
+    dragStampHint: "Stempel in der Vorschau ziehen"
   }
 };
 

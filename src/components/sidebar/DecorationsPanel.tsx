@@ -1,5 +1,5 @@
 import { Plus, Stamp, Trash2 } from 'lucide-react';
-import type { BorderStyle, DecorationsSectionProps, ExpandedSections, TranslateFn } from '../../types';
+import type { BorderStyle, DecorationsSectionProps, ExpandedSections, StampStyle, TranslateFn } from '../../types';
 import { ControlSection } from '../ControlSection';
 
 interface DecorationsPanelProps {
@@ -62,16 +62,90 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
               {t('showStamp')}
             </label>
             {decorations.showStamp ? (
-              <input
-                type="text"
-                value={decorations.stampText}
-                onChange={(event) => decorations.onStampTextChange(event.target.value.slice(0, 2))}
-                maxLength={2}
-                className="w-16 p-1 text-xs border border-gray-200 rounded focus:ring-2 focus:ring-indigo-500 text-center"
-                placeholder={t('stampText')}
-              />
+              <span className="text-[11px] font-medium rounded-full bg-red-50 px-2 py-1 text-red-700">{t('dragStampHint')}</span>
             ) : null}
           </div>
+
+          {decorations.showStamp ? (
+            <div className="rounded-xl bg-white border border-gray-200 p-3 space-y-3">
+              <div className="grid grid-cols-[1fr_auto] gap-2 items-center">
+                <label className="text-xs text-gray-500">{t('stampText')}</label>
+                <button
+                  type="button"
+                  onClick={decorations.onResetStampPosition}
+                  className="text-[11px] font-medium text-indigo-600 hover:text-indigo-700"
+                >
+                  {t('resetStampPosition')}
+                </button>
+                <input
+                  type="text"
+                  value={decorations.stamp.text}
+                  onChange={(event) => decorations.onStampChange({ text: event.target.value.slice(0, 4) })}
+                  maxLength={4}
+                  className="col-span-2 w-full p-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 text-center"
+                  placeholder={t('stampText')}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">{t('stampStyle')}</label>
+                <select
+                  value={decorations.stamp.style}
+                  onChange={(event) => decorations.onStampChange({ style: event.target.value as StampStyle })}
+                  className="w-full p-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="square">{t('stampStyleSquare')}</option>
+                  <option value="round">{t('stampStyleRound')}</option>
+                  <option value="brush">{t('stampStyleBrush')}</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs text-gray-500">
+                  <span>{t('stampSize')}</span>
+                  <span>{decorations.stamp.size}px</span>
+                </div>
+                <input
+                  type="range"
+                  min="56"
+                  max="180"
+                  value={decorations.stamp.size}
+                  onChange={(event) => decorations.onStampChange({ size: Number(event.target.value) })}
+                  className="w-full accent-red-600"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs text-gray-500">
+                  <span>{t('stampRotation')}</span>
+                  <span>{decorations.stamp.rotation}°</span>
+                </div>
+                <input
+                  type="range"
+                  min="-45"
+                  max="45"
+                  value={decorations.stamp.rotation}
+                  onChange={(event) => decorations.onStampChange({ rotation: Number(event.target.value) })}
+                  className="w-full accent-red-600"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs text-gray-500">
+                  <span>{t('stampOpacity')}</span>
+                  <span>{Math.round(decorations.stamp.opacity * 100)}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="35"
+                  max="100"
+                  value={Math.round(decorations.stamp.opacity * 100)}
+                  onChange={(event) => decorations.onStampChange({ opacity: Number(event.target.value) / 100 })}
+                  className="w-full accent-red-600"
+                />
+              </div>
+            </div>
+          ) : null}
         </div>
 
         {decorations.customTexts.length > 0 ? (
