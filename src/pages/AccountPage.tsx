@@ -6,6 +6,7 @@ import { useAppAuth } from '../context/auth';
 import { useBalance } from '../hooks/useBalance';
 import { useBillingPackages } from '../hooks/useBillingPackages';
 import { useBillingHistory, type TransactionItem } from '../hooks/useBillingHistory';
+import { useCheckoutReturn } from '../hooks/useCheckoutReturn';
 import { Logo } from '../components/logo';
 
 const CLERK_CONFIGURED = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
@@ -27,11 +28,13 @@ function typeLabel(type: TransactionItem['type']) {
 
 export function AccountPage() {
   const { isSignedIn, getToken } = useAppAuth();
-  const { balance, isLoading: isLoadingBalance } = useBalance();
+  const { balance, isLoading: isLoadingBalance, refetch: refetchBalance } = useBalance();
   const { packages, isLoading: isLoadingPackages } = useBillingPackages();
-  const { items: history, isLoading: isLoadingHistory } = useBillingHistory();
+  const { items: history, isLoading: isLoadingHistory, refetch: refetchHistory } = useBillingHistory();
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [purchaseError, setPurchaseError] = useState<string | null>(null);
+
+  useCheckoutReturn({ getToken, refetchBalance, refetchHistory });
 
   const handlePurchase = useCallback(async (packageId: string) => {
     setIsPurchasing(true);
@@ -44,7 +47,7 @@ export function AccountPage() {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ packageId }),
+        body: JSON.stringify({ packageId, returnPath: window.location.pathname }),
       });
       const data = (await response.json()) as { checkoutUrl?: string; error?: string };
       if (data.checkoutUrl) {

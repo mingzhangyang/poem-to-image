@@ -8,6 +8,7 @@ import { useBalance } from './hooks/useBalance';
 import { useBillingHistory } from './hooks/useBillingHistory';
 import { useBillingPackages } from './hooks/useBillingPackages';
 import { useCanvasScale } from './hooks/useCanvasScale';
+import { useCheckoutReturn } from './hooks/useCheckoutReturn';
 import { useDecorationsConfig } from './hooks/useDecorationsConfig';
 import { useEditorViewModels } from './hooks/useEditorViewModels';
 import { useImageExporter } from './hooks/useImageExporter';
@@ -44,25 +45,10 @@ export default function App() {
   // Billing state
   const { balance, isLoading: isLoadingBalance, refetch: refetchBalance } = useBalance();
   const { packages, isLoading: isLoadingPackages } = useBillingPackages();
-  const { items: history, isLoading: isLoadingHistory } = useBillingHistory();
+  const { items: history, isLoading: isLoadingHistory, refetch: refetchHistory } = useBillingHistory();
   const [isPurchasing, setIsPurchasing] = useState(false);
 
-  // Handle Stripe redirect result
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const billingStatus = params.get('billing');
-
-    if (billingStatus === 'success') {
-      // Poll for balance update
-      const timer = setTimeout(() => refetchBalance(), 2000);
-      window.history.replaceState({}, '', window.location.pathname);
-      return () => clearTimeout(timer);
-    }
-
-    if (billingStatus === 'cancel') {
-      window.history.replaceState({}, '', window.location.pathname);
-    }
-  }, [refetchBalance]);
+  useCheckoutReturn({ getToken, refetchBalance, refetchHistory });
 
   const handlePurchase = useCallback(
     async (packageId: string) => {
@@ -75,7 +61,7 @@ export default function App() {
             'Content-Type': 'application/json',
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
-          body: JSON.stringify({ packageId }),
+          body: JSON.stringify({ packageId, returnPath: window.location.pathname }),
         });
 
         const data = (await response.json()) as { checkoutUrl?: string; error?: string };

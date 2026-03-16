@@ -93,24 +93,55 @@ export async function reserveGeneration(
   provider: string,
   promptLength: number,
   costCredits: number,
-): Promise<{ requestId: string; transactionId: string }> {
+): Promise<{ requestId: string; transactionId: string; balance: number }> {
+  const deductResult = await db
+    .prepare(
+      'UPDATE credit_accounts SET balance = balance - ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ? AND balance >= ?',
+    )
+    .bind(costCredits, userId, costCredits)
+    .run();
+
+  if (deductResult.meta.changes === 0) {
+    throw new Error('Insufficient credits.');
+  }
+
+  const newBalance = await getBalance(db, userId);
   const requestId = newId();
   const transactionId = newId();
 
-  await db.batch([
-    db
+  try {
+    await db.batch([
+      db
+        .prepare(
+          'INSERT INTO generation_requests (id, user_id, provider, prompt_length, cost_credits, status) VALUES (?, ?, ?, ?, ?, ?)',
+        )
+        .bind(requestId, userId, provider, promptLength, costCredits, 'pending'),
+      db
+        .prepare(
+          'INSERT INTO credit_transactions (id, user_id, type, amount, balance_after, related_request_id, provider, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        )
+        .bind(
+          transactionId,
+          userId,
+          'generate_debit',
+          -costCredits,
+          newBalance,
+          requestId,
+          provider,
+          'pending',
+        ),
+    ]);
+  } catch (error) {
+    await db
       .prepare(
-        'INSERT INTO generation_requests (id, user_id, provider, prompt_length, cost_credits, status) VALUES (?, ?, ?, ?, ?, ?)',
+        'UPDATE credit_accounts SET balance = balance + ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?',
       )
-      .bind(requestId, userId, provider, promptLength, costCredits, 'pending'),
-    db
-      .prepare(
-        'INSERT INTO credit_transactions (id, user_id, type, amount, related_request_id, provider, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      )
-      .bind(transactionId, userId, 'generate_debit', -costCredits, requestId, provider, 'pending'),
-  ]);
+      .bind(costCredits, userId)
+      .run();
+    throw error;
+  }
 
-  return { requestId, transactionId };
+  return { requestId, transactionId, balance: newBalance };
 }
 
 /**
@@ -123,29 +154,7 @@ export async function finalizeGenerationSuccess(
   userId: string,
   requestId: string,
   transactionId: string,
-  costCredits: number,
 ): Promise<number> {
-  // Atomic deduction: only proceeds if balance is still sufficient
-  const deductResult = await db
-    .prepare(
-      'UPDATE credit_accounts SET balance = balance - ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ? AND balance >= ?',
-    )
-    .bind(costCredits, userId, costCredits)
-    .run();
-
-  if (deductResult.meta.changes === 0) {
-    // Balance was insufficient — concurrent request consumed the credits first
-    await db.batch([
-      db
-        .prepare('UPDATE generation_requests SET status = ?, error_message = ? WHERE id = ?')
-        .bind('failed', 'Insufficient credits (concurrent request).', requestId),
-      db
-        .prepare('UPDATE credit_transactions SET status = ? WHERE id = ?')
-        .bind('failed', transactionId),
-    ]);
-    throw new Error('Insufficient credits.');
-  }
-
   const newBalance = await getBalance(db, userId);
 
   await db.batch([
@@ -163,17 +172,32 @@ export async function finalizeGenerationSuccess(
 /** Finalize failed generation: mark both records failed, no balance change. */
 export async function finalizeGenerationFailure(
   db: D1Database,
+  userId: string,
   requestId: string,
   transactionId: string,
+  costCredits: number,
   errorMessage: string,
 ): Promise<void> {
+  const requestUpdate = await db
+    .prepare('UPDATE generation_requests SET status = ?, error_message = ? WHERE id = ? AND status = ?')
+    .bind('failed', errorMessage, requestId, 'pending')
+    .run();
+
+  if (requestUpdate.meta.changes === 0) {
+    return;
+  }
+
+  await db
+    .prepare(
+      'UPDATE credit_accounts SET balance = balance + ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?',
+    )
+    .bind(costCredits, userId)
+    .run();
+
   await db.batch([
     db
-      .prepare('UPDATE generation_requests SET status = ?, error_message = ? WHERE id = ?')
-      .bind('failed', errorMessage, requestId),
-    db
-      .prepare('UPDATE credit_transactions SET status = ? WHERE id = ?')
-      .bind('failed', transactionId),
+      .prepare('UPDATE credit_transactions SET status = ?, balance_after = ? WHERE id = ?')
+      .bind('failed', await getBalance(db, userId), transactionId),
   ]);
 }
 

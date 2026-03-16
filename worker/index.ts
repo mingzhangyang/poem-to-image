@@ -5,6 +5,7 @@ import {
   handleGetBalance,
   handleGetPackages,
   handleCreateCheckoutSession,
+  handleGetCheckoutStatus,
   handleStripeWebhook,
   handleGetHistory,
 } from './billing';
@@ -101,10 +102,26 @@ async function handleGenerateAiBackground(request: Request, env: Env): Promise<R
   let transactionId: string | null = null;
 
   if (userId && db) {
-    // Reserve the generation (idempotent requestId support)
-    const reserved = await reserveGeneration(db, userId, provider, prompt.length, costCredits);
-    requestId = reserved.requestId;
-    transactionId = reserved.transactionId;
+    try {
+      const reserved = await reserveGeneration(db, userId, provider, prompt.length, costCredits);
+      requestId = reserved.requestId;
+      transactionId = reserved.transactionId;
+    } catch (error) {
+      if (error instanceof Error && error.message === 'Insufficient credits.') {
+        const balance = await getBalance(db, userId);
+        return json(
+          {
+            error: 'Insufficient credits.',
+            code: 'INSUFFICIENT_CREDITS',
+            balance,
+            required: costCredits,
+          },
+          402,
+        );
+      }
+
+      return badRequest('Failed to reserve credits.', 502);
+    }
   }
 
   // Call the AI provider
@@ -122,7 +139,7 @@ async function handleGenerateAiBackground(request: Request, env: Env): Promise<R
     // Finalize: deduct credits
     let newBalance: number | null = null;
     if (userId && db && requestId && transactionId) {
-      newBalance = await finalizeGenerationSuccess(db, userId, requestId, transactionId, costCredits);
+      newBalance = await finalizeGenerationSuccess(db, userId, requestId, transactionId);
     }
 
     return json({
@@ -134,8 +151,8 @@ async function handleGenerateAiBackground(request: Request, env: Env): Promise<R
     const message = error instanceof Error ? error.message : 'Failed to generate AI background.';
 
     // Mark as failed (no credit deduction)
-    if (db && requestId && transactionId) {
-      await finalizeGenerationFailure(db, requestId, transactionId, message);
+    if (db && userId && requestId && transactionId) {
+      await finalizeGenerationFailure(db, userId, requestId, transactionId, costCredits, message);
     }
 
     return badRequest(message, 502);
@@ -202,6 +219,16 @@ export default {
         env.STRIPE_SECRET_KEY,
         getAppOrigin(request),
       );
+    }
+
+    if (pathname === '/api/billing/checkout-status') {
+      if (request.method !== 'GET') return badRequest('Method not allowed.', 405);
+      if (!env.CLERK_SECRET_KEY || !env.DB || !env.STRIPE_SECRET_KEY) {
+        return json({ error: 'Billing not configured.' }, 503);
+      }
+      const user = await getAuthenticatedUser(request, env.CLERK_SECRET_KEY);
+      if (!user) return unauthorized();
+      return handleGetCheckoutStatus(request, env.DB, user.userId, user.email, env.STRIPE_SECRET_KEY);
     }
 
     if (pathname === '/api/billing/webhook/stripe') {
