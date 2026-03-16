@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Maximize2, Minus, Plus } from 'lucide-react';
+import { Download, Loader2, Maximize2, Minus, Plus, Share2 } from 'lucide-react';
 import type { CanvasPreviewProps } from '../types';
 import { BackgroundLayer } from './preview/BackgroundLayer';
 import { CustomTextItems } from './preview/CustomTextItems';
@@ -9,6 +9,12 @@ import { TransparentGrid } from './preview/TransparentGrid';
 const ZOOM_MIN = 0.7;
 const ZOOM_MAX = 2.0;
 const ZOOM_STEP = 0.1;
+
+const exportFormatLabelKeys = {
+  png: 'exportFormatPng',
+  jpg: 'exportFormatJpg',
+  webp: 'exportFormatWebp',
+} as const;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -51,6 +57,13 @@ export function CanvasPreview({
   canvasHeight,
   customTexts,
   onCustomTextChange,
+  exportFormat,
+  exportScale,
+  onDownload,
+  onShare,
+  isExporting,
+  isSharing,
+  canShare,
   onInteractionStart,
   onInteractionEnd,
   previewZoom,
@@ -82,6 +95,8 @@ export function CanvasPreview({
   const previewScalePercent = Math.round(effectiveScale * 100);
   const scaledWidth = canvasWidth * effectiveScale;
   const scaledHeight = canvasHeight * effectiveScale;
+  const exportSummary = `${t(exportFormatLabelKeys[exportFormat])} · ${canvasWidth * exportScale} x ${canvasHeight * exportScale} px`;
+  const isOutputBusy = isExporting || isSharing;
   const maxPanX = Math.max((scaledWidth - viewportSize.width) / 2, 0);
   const maxPanY = Math.max((scaledHeight - viewportSize.height) / 2, 0);
   const canPan = maxPanX > 0 || maxPanY > 0;
@@ -264,6 +279,54 @@ export function CanvasPreview({
         >
           <Maximize2 size={11} />
         </button>
+      </div>
+
+      <div className="hidden md:flex absolute bottom-6 right-6 z-20 w-[min(22rem,calc(100%-3rem))] flex-col gap-3 rounded-[1.6rem] border border-white/70 bg-[rgba(255,253,249,0.86)] p-4 shadow-[0_22px_56px_var(--app-accent-shadow)] backdrop-blur-md">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-(--app-accent-500)">{t('exportAndShare')}</p>
+          <p className="mt-2 text-sm font-medium text-(--app-accent-900)">{exportSummary}</p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={onDownload}
+            disabled={isOutputBusy}
+            className="app-button-primary w-full rounded-2xl px-4 py-3 text-sm font-medium disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            {isExporting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {t('exportingImage')}
+              </>
+            ) : (
+              <>
+                <Download className="h-4 w-4" />
+                {t('exportImage')}
+              </>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={onShare}
+            disabled={isOutputBusy || !canShare}
+            className="app-button-secondary w-full rounded-2xl px-4 py-3 text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            title={t('shareImage')}
+          >
+            {isSharing ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {t('sharingImage')}
+              </>
+            ) : (
+              <>
+                <Share2 className="h-4 w-4" />
+                {t('shareImage')}
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       <div

@@ -14,7 +14,7 @@ import { useEditorViewModels } from './hooks/useEditorViewModels';
 import { useImageExporter } from './hooks/useImageExporter';
 import { useTypographyConfig } from './hooks/useTypographyConfig';
 import { editorTemplates, resolveTemplateForLanguage } from './templates';
-import type { EditorTemplateId, ExpandedSections, ExportScale } from './types';
+import type { EditorTemplateId, ExpandedSections, ExportFormat, ExportScale } from './types';
 
 const ACTIVE_TEMPLATE_STORAGE_KEY = 'poem-to-image.active-template';
 
@@ -29,6 +29,7 @@ export default function App() {
   const [canvasWidth, setCanvasWidth] = useState(1080);
   const [canvasHeight, setCanvasHeight] = useState(1350);
   const [presetSize, setPresetSize] = useState('1080x1350');
+  const [exportFormat, setExportFormat] = useState<ExportFormat>('png');
   const [exportScale, setExportScale] = useState<ExportScale>(2);
   const [activeTemplateId, setActiveTemplateId] = useState<EditorTemplateId | null>(null);
   const activeInteractionCountRef = useRef(0);
@@ -155,7 +156,8 @@ export default function App() {
   }, []);
 
   const scale = useCanvasScale(containerRef, canvasWidth, canvasHeight);
-  const { exportImage: handleDownload, isExporting } = useImageExporter(
+  const { exportImage: handleDownload, shareImage: handleShare, isExporting, isSharing, canShare } = useImageExporter(
+    exportFormat,
     exportScale,
     {
       canvasWidth,
@@ -443,10 +445,15 @@ export default function App() {
       isPurchasing,
       onPurchase: handlePurchase,
     },
+    exportFormat,
+    onExportFormatChange: setExportFormat,
     exportScale,
     onExportScaleChange: setExportScale,
     onDownload: handleDownload,
+    onShare: handleShare,
     isExporting,
+    isSharing,
+    canShare,
     containerRef,
     previewRef,
     poemFrameRef,
@@ -467,6 +474,13 @@ export default function App() {
     canvasHeight,
     customTexts: decorations.customTexts,
     onCustomTextChange: decorations.updateCustomText,
+    exportFormat,
+    exportScale,
+    onDownload: handleDownload,
+    onShare: handleShare,
+    isExporting,
+    isSharing,
+    canShare,
     onInteractionStart,
     onInteractionEnd,
     previewZoom,

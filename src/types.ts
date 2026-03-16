@@ -9,6 +9,7 @@ export type BorderStyle = 'solid' | 'dashed' | 'double';
 export type StampStyle = 'square' | 'round' | 'brush';
 export type EditorTemplateId = 'ink-wash' | 'modern-minimal' | 'cyberpunk' | 'japanese-magazine';
 export type ExportScale = 1 | 2 | 3;
+export type ExportFormat = 'png' | 'jpg' | 'webp';
 
 export interface CustomText {
   id: string;
@@ -214,10 +215,15 @@ export interface SidebarProps {
   billing: BillingSectionProps;
   canvasWidth: number;
   canvasHeight: number;
+  exportFormat: ExportFormat;
+  onExportFormatChange: (value: ExportFormat) => void;
   exportScale: ExportScale;
   onExportScaleChange: (value: ExportScale) => void;
   onDownload: () => void;
+  onShare: () => void;
   isExporting: boolean;
+  isSharing: boolean;
+  canShare: boolean;
 }
 
 export interface CanvasPreviewProps {
@@ -257,6 +263,13 @@ export interface CanvasPreviewProps {
   canvasHeight: number;
   customTexts: CustomText[];
   onCustomTextChange: (id: string, updates: Partial<CustomText>) => void;
+  exportFormat: ExportFormat;
+  exportScale: ExportScale;
+  onDownload: () => void;
+  onShare: () => void;
+  isExporting: boolean;
+  isSharing: boolean;
+  canShare: boolean;
   onInteractionStart: () => void;
   onInteractionEnd: () => void;
   previewZoom: number;

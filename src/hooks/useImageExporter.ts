@@ -1,7 +1,7 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import type { RefObject } from 'react';
 import { getCanvasContentRect, renderCanvasExport } from '../export/renderCanvasExport';
-import type { BorderStyle, CustomText, ExportScale, PositionedElement, StampConfig, TextAlign, WritingMode } from '../types';
+import type { BorderStyle, CustomText, ExportFormat, ExportScale, PositionedElement, StampConfig, TextAlign, WritingMode } from '../types';
 
 interface UseImageExporterBackgroundOptions {
   backgroundType: 'solid' | 'gradient' | 'transparent' | 'image' | 'ai';
@@ -268,15 +268,54 @@ function collectPoemGlyphs(poemTextElement: HTMLDivElement, frameRect: DOMRect) 
   }));
 }
 
-function toBlob(canvas: HTMLCanvasElement) {
+function getExportMimeType(format: ExportFormat) {
+  if (format === 'jpg') {
+    return 'image/jpeg';
+  }
+
+  if (format === 'webp') {
+    return 'image/webp';
+  }
+
+  return 'image/png';
+}
+
+function getExportFilename(format: ExportFormat) {
+  return `poem-image.${format}`;
+}
+
+function createOpaqueCanvasCopy(sourceCanvas: HTMLCanvasElement, fillStyle: string) {
+  const opaqueCanvas = document.createElement('canvas');
+  opaqueCanvas.width = sourceCanvas.width;
+  opaqueCanvas.height = sourceCanvas.height;
+
+  const opaqueContext = opaqueCanvas.getContext('2d');
+
+  if (!opaqueContext) {
+    return sourceCanvas;
+  }
+
+  opaqueContext.fillStyle = fillStyle;
+  opaqueContext.fillRect(0, 0, opaqueCanvas.width, opaqueCanvas.height);
+  opaqueContext.drawImage(sourceCanvas, 0, 0);
+
+  return opaqueCanvas;
+}
+
+function exportCanvasToBlob(canvas: HTMLCanvasElement, format: ExportFormat) {
+  const mimeType = getExportMimeType(format);
+  const sourceCanvas = format === 'jpg' ? createOpaqueCanvasCopy(canvas, '#ffffff') : canvas;
+  const quality = format === 'png' ? undefined : 0.92;
+
   return new Promise<Blob | null>((resolve) => {
-    canvas.toBlob(resolve, 'image/png');
+    sourceCanvas.toBlob(resolve, mimeType, quality);
   });
 }
 
 async function drawPoemSnapshot(
   canvas: HTMLCanvasElement,
   scene: UseImageExporterSceneOptions,
+  exportScale: ExportScale,
   domRefs: UseImageExporterDomRefs,
 ) {
   const poemFrameElement = domRefs.poemFrameRef.current;
@@ -314,7 +353,7 @@ async function drawPoemSnapshot(
     : glyphs.map((glyph) => ({ text: glyph.text, glyphs: [glyph] }));
 
   ctx.save();
-  ctx.scale(scene.exportScale, scene.exportScale);
+  ctx.scale(exportScale, exportScale);
   ctx.fillStyle = computedStyle.color;
   ctx.font = buildCanvasFont(computedStyle);
   ctx.textBaseline = 'top';
@@ -360,74 +399,134 @@ async function drawPoemSnapshot(
   return true;
 }
 
-function downloadBlob(blob: Blob) {
+function downloadBlob(blob: Blob, format: ExportFormat) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
-  link.download = 'poem-image.png';
+  link.download = getExportFilename(format);
   link.href = url;
   link.click();
   URL.revokeObjectURL(url);
 }
 
+function supportsFileShare() {
+  if (typeof navigator === 'undefined' || typeof navigator.share !== 'function' || typeof File === 'undefined') {
+    return false;
+  }
+
+  if (typeof navigator.canShare !== 'function') {
+    return true;
+  }
+
+  try {
+    const probeFile = new File(['share'], 'share-test.png', { type: 'image/png' });
+    return navigator.canShare({ files: [probeFile] });
+  } catch {
+    return false;
+  }
+}
+
 export function useImageExporter(
+  exportFormat: ExportFormat,
   exportScale: ExportScale,
   scene: UseImageExporterSceneOptions,
   domRefs: UseImageExporterDomRefs,
   waitForSceneSettled: () => Promise<void>,
 ) {
   const [isExporting, setIsExporting] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
+  const canShare = useMemo(() => supportsFileShare(), []);
+
+  const renderOutputCanvas = useCallback(async () => {
+    await waitForSceneSettled();
+
+    const exportScene = {
+      canvasWidth: scene.canvasWidth,
+      canvasHeight: scene.canvasHeight,
+      exportScale,
+      background: scene.background,
+      typography: scene.typography,
+      decorations: scene.decorations,
+    };
+    const shouldSnapshotPoem = scene.typography.columns > 1 && domRefs.poemFrameRef.current && domRefs.poemTextRef.current;
+    let canvas = await renderCanvasExport(exportScene, { skipPoem: shouldSnapshotPoem });
+
+    if (shouldSnapshotPoem) {
+      try {
+        const didDrawSnapshot = await drawPoemSnapshot(
+          canvas,
+          { ...scene, canvasWidth: scene.canvasWidth, canvasHeight: scene.canvasHeight },
+          exportScale,
+          domRefs,
+        );
+
+        if (!didDrawSnapshot) {
+          canvas = await renderCanvasExport(exportScene);
+        }
+      } catch (snapshotError) {
+        console.error('Failed to snapshot poem layout, falling back to canvas poem renderer', snapshotError);
+        canvas = await renderCanvasExport(exportScene);
+      }
+    }
+
+    return canvas;
+  }, [domRefs, exportScale, scene, waitForSceneSettled]);
+
+  const createOutputBlob = useCallback(async () => {
+    const canvas = await renderOutputCanvas();
+    return exportCanvasToBlob(canvas, exportFormat);
+  }, [exportFormat, renderOutputCanvas]);
 
   const exportImage = useCallback(async () => {
-    if (isExporting) {
+    if (isExporting || isSharing) {
       return;
     }
 
     setIsExporting(true);
 
     try {
-      await waitForSceneSettled();
-
-      const exportScene = {
-        canvasWidth: scene.canvasWidth,
-        canvasHeight: scene.canvasHeight,
-        exportScale,
-        background: scene.background,
-        typography: scene.typography,
-        decorations: scene.decorations,
-      };
-      const shouldSnapshotPoem = scene.typography.columns > 1 && domRefs.poemFrameRef.current && domRefs.poemTextRef.current;
-      let canvas = await renderCanvasExport(exportScene, { skipPoem: shouldSnapshotPoem });
-
-      if (shouldSnapshotPoem) {
-        try {
-          const didDrawSnapshot = await drawPoemSnapshot(
-            canvas,
-            { ...scene, canvasWidth: scene.canvasWidth, canvasHeight: scene.canvasHeight },
-            domRefs,
-          );
-
-          if (!didDrawSnapshot) {
-            canvas = await renderCanvasExport(exportScene);
-          }
-        } catch (snapshotError) {
-          console.error('Failed to snapshot poem layout, falling back to canvas poem renderer', snapshotError);
-          canvas = await renderCanvasExport(exportScene);
-        }
-      }
-
-      const blob = await toBlob(canvas);
+      const blob = await createOutputBlob();
 
       if (!blob) {
         return;
       }
 
-      downloadBlob(blob);
+      downloadBlob(blob, exportFormat);
     } catch (error) {
       console.error('Failed to generate image', error);
     } finally {
       setIsExporting(false);
     }
-  }, [domRefs, exportScale, isExporting, scene, waitForSceneSettled]);
+  }, [createOutputBlob, exportFormat, isExporting, isSharing]);
 
-  return { exportImage, isExporting };
+  const shareImage = useCallback(async () => {
+    if (!canShare || isExporting || isSharing) {
+      return;
+    }
+
+    setIsSharing(true);
+
+    try {
+      const blob = await createOutputBlob();
+
+      if (!blob) {
+        return;
+      }
+
+      const file = new File([blob], getExportFilename(exportFormat), { type: getExportMimeType(exportFormat) });
+      await navigator.share({
+        files: [file],
+        title: document.title,
+      });
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        return;
+      }
+
+      console.error('Failed to share image', error);
+    } finally {
+      setIsSharing(false);
+    }
+  }, [canShare, createOutputBlob, exportFormat, isExporting, isSharing]);
+
+  return { exportImage, shareImage, isExporting, isSharing, canShare };
 }

@@ -28,10 +28,15 @@ interface UseEditorViewModelsParams {
   typography: TypographySectionProps;
   decorations: DecorationsSectionProps;
   billing: BillingSectionProps;
+  exportFormat: SidebarProps['exportFormat'];
+  onExportFormatChange: SidebarProps['onExportFormatChange'];
   exportScale: SidebarProps['exportScale'];
   onExportScaleChange: SidebarProps['onExportScaleChange'];
   onDownload: () => void;
+  onShare: () => void;
   isExporting: boolean;
+  isSharing: boolean;
+  canShare: boolean;
   containerRef: CanvasPreviewProps['containerRef'];
   previewRef: CanvasPreviewProps['previewRef'];
   poemFrameRef: CanvasPreviewProps['poemFrameRef'];
@@ -74,10 +79,15 @@ export function useEditorViewModels({
   typography,
   decorations,
   billing,
+  exportFormat,
+  onExportFormatChange,
   exportScale,
   onExportScaleChange,
   onDownload,
+  onShare,
   isExporting,
+  isSharing,
+  canShare,
   containerRef,
   previewRef,
   poemFrameRef,
@@ -121,10 +131,15 @@ export function useEditorViewModels({
     billing,
     canvasWidth,
     canvasHeight,
+    exportFormat,
+    onExportFormatChange,
     exportScale,
     onExportScaleChange,
     onDownload,
+    onShare,
     isExporting,
+    isSharing,
+    canShare,
   };
 
   const canvasPreviewProps: CanvasPreviewProps = {
@@ -164,6 +179,13 @@ export function useEditorViewModels({
     canvasHeight,
     customTexts,
     onCustomTextChange,
+    exportFormat,
+    exportScale,
+    onDownload,
+    onShare,
+    isExporting,
+    isSharing,
+    canShare,
     onInteractionStart,
     onInteractionEnd,
     previewZoom,

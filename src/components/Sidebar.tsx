@@ -32,10 +32,15 @@ export function Sidebar({
   billing,
   canvasWidth,
   canvasHeight,
+  exportFormat,
+  onExportFormatChange,
   exportScale,
   onExportScaleChange,
   onDownload,
+  onShare,
   isExporting,
+  isSharing,
+  canShare,
 }: SidebarProps) {
   const [activeMobilePanel, setActiveMobilePanel] = useState<MobilePanel | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -299,10 +304,16 @@ export function Sidebar({
           t={t}
           canvasWidth={canvasWidth}
           canvasHeight={canvasHeight}
+          exportFormat={exportFormat}
+          onExportFormatChange={onExportFormatChange}
           exportScale={exportScale}
           onExportScaleChange={onExportScaleChange}
           onDownload={onDownload}
+          onShare={onShare}
           isExporting={isExporting}
+          isSharing={isSharing}
+          canShare={canShare}
+          title={t('exportAndShare')}
         />
       );
     }
@@ -391,7 +402,7 @@ export function Sidebar({
               transition={{ type: 'spring', stiffness: 320, damping: 32 }}
               role="dialog"
               aria-modal="true"
-              aria-label={t('controlsPanelTitle')}
+              aria-label={activeMobilePanel === 'export' ? t('exportAndShare') : t('controlsPanelTitle')}
             >
               <div className="px-4 pt-3 pb-2 border-b border-[rgba(34,48,52,0.06)]">
                 <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-gray-200" />
@@ -407,7 +418,7 @@ export function Sidebar({
                 </div>
               </div>
 
-              <SidebarHeader t={t} isSheet balance={billing.balance} />
+              {activeMobilePanel === 'export' ? null : <SidebarHeader t={t} isSheet balance={billing.balance} />}
               {mobileSections()}
             </motion.aside>
           </>
@@ -436,10 +447,16 @@ export function Sidebar({
               t={t}
               canvasWidth={canvasWidth}
               canvasHeight={canvasHeight}
+              exportFormat={exportFormat}
+              onExportFormatChange={onExportFormatChange}
               exportScale={exportScale}
               onExportScaleChange={onExportScaleChange}
               onDownload={onDownload}
+              onShare={onShare}
               isExporting={isExporting}
+              isSharing={isSharing}
+              canShare={canShare}
+              showActionButtons={false}
             />
           </>
         )}
