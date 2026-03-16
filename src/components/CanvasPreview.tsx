@@ -1,10 +1,13 @@
-import { RotateCcw, ZoomIn } from 'lucide-react';
-import { motion } from 'motion/react';
+import { useEffect, useRef, useState } from 'react';
 import type { CanvasPreviewProps } from '../types';
 import { BackgroundLayer } from './preview/BackgroundLayer';
 import { CustomTextItems } from './preview/CustomTextItems';
 import { PoemContent } from './preview/PoemContent';
 import { TransparentGrid } from './preview/TransparentGrid';
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
 
 export function CanvasPreview({
   containerRef,
@@ -43,11 +46,101 @@ export function CanvasPreview({
   onPreviewZoomReset,
   scale,
 }: CanvasPreviewProps) {
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const dragStartRef = useRef({ x: 0, y: 0 });
+  const panStartRef = useRef({ x: 0, y: 0 });
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isDraggingPreview, setIsDraggingPreview] = useState(false);
+  const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
+
   const sharedTextShadow = textShadowEnabled
     ? `${textShadowOffsetX}px ${textShadowOffsetY}px ${textShadowBlur}px ${textShadowColor}`
     : 'none';
   const effectiveScale = scale * previewZoom;
   const previewScalePercent = Math.round(effectiveScale * 100);
+  const scaledWidth = canvasWidth * effectiveScale;
+  const scaledHeight = canvasHeight * effectiveScale;
+  const maxPanX = Math.max((scaledWidth - viewportSize.width) / 2, 0);
+  const maxPanY = Math.max((scaledHeight - viewportSize.height) / 2, 0);
+  const canPan = maxPanX > 0 || maxPanY > 0;
+
+  useEffect(() => {
+    const updateViewportSize = () => {
+      if (!viewportRef.current) {
+        return;
+      }
+
+      setViewportSize({
+        width: viewportRef.current.clientWidth,
+        height: viewportRef.current.clientHeight,
+      });
+    };
+
+    const viewport = viewportRef.current;
+
+    updateViewportSize();
+    window.addEventListener('resize', updateViewportSize);
+
+    const resizeObserver = typeof ResizeObserver === 'undefined' || !viewport
+      ? null
+      : new ResizeObserver(() => updateViewportSize());
+
+    resizeObserver?.observe(viewport);
+
+    return () => {
+      window.removeEventListener('resize', updateViewportSize);
+      resizeObserver?.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    setPan((currentPan) => ({
+      x: clamp(currentPan.x, -maxPanX, maxPanX),
+      y: clamp(currentPan.y, -maxPanY, maxPanY),
+    }));
+  }, [maxPanX, maxPanY]);
+
+  const handleFitViewport = () => {
+    setPan({ x: 0, y: 0 });
+    onPreviewZoomReset();
+  };
+
+  const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!canPan || event.pointerType === 'mouse' && event.button !== 0) {
+      return;
+    }
+
+    dragStartRef.current = { x: event.clientX, y: event.clientY };
+    panStartRef.current = pan;
+    setIsDraggingPreview(true);
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDraggingPreview) {
+      return;
+    }
+
+    const deltaX = event.clientX - dragStartRef.current.x;
+    const deltaY = event.clientY - dragStartRef.current.y;
+
+    setPan({
+      x: clamp(panStartRef.current.x + deltaX, -maxPanX, maxPanX),
+      y: clamp(panStartRef.current.y + deltaY, -maxPanY, maxPanY),
+    });
+  };
+
+  const handlePointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDraggingPreview) {
+      return;
+    }
+
+    setIsDraggingPreview(false);
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  };
 
   return (
     <section
@@ -56,85 +149,114 @@ export function CanvasPreview({
     >
       <TransparentGrid visible={backgroundType === 'transparent'} />
 
-      <div className="hidden md:flex absolute right-6 top-6 z-20 items-center gap-3 rounded-2xl border border-white/75 bg-white/92 px-4 py-3 shadow-[0_18px_40px_rgba(15,23,42,0.14)] backdrop-blur">
-        <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
-          <ZoomIn className="h-4 w-4 text-gray-500" />
-          <span>{t('previewZoom')}</span>
-          <span className="min-w-12 text-right font-semibold text-gray-950">{previewScalePercent}%</span>
-        </div>
+      <div className="hidden md:flex absolute right-6 top-6 z-20 items-center gap-2 rounded-full border border-white/60 bg-white/68 px-3 py-2 text-xs text-gray-600 shadow-[0_10px_24px_rgba(15,23,42,0.08)] backdrop-blur-sm opacity-55 transition-opacity duration-200 hover:opacity-100 focus-within:opacity-100">
+        <span className="min-w-10 text-right font-medium text-gray-800">{previewScalePercent}%</span>
 
         <input
           type="range"
-          min="60"
-          max="100"
+          min="70"
+          max="200"
           step="1"
           value={Math.round(previewZoom * 100)}
           onChange={(event) => onPreviewZoomChange(Number(event.target.value) / 100)}
-          className="h-2 w-36 cursor-pointer accent-gray-950"
+          className="h-1.5 w-24 cursor-pointer accent-gray-800"
           aria-label={t('previewZoom')}
+          title={t('previewZoom')}
         />
 
         <button
           type="button"
-          onClick={onPreviewZoomReset}
-          className="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:border-gray-300 hover:bg-gray-50"
+          onClick={handleFitViewport}
+          className="inline-flex items-center justify-center rounded-full border border-gray-200/80 px-2.5 py-1 text-[11px] font-medium text-gray-700 transition-colors hover:border-gray-300 hover:bg-white/80 hover:text-gray-950"
+          aria-label={t('fitToViewport')}
+          title={t('fitToViewport')}
         >
-          <RotateCcw className="h-4 w-4" />
-          <span>{t('fitToViewport')}</span>
+          Fit
         </button>
       </div>
 
-      <div style={{ transform: `scale(${effectiveScale})`, transformOrigin: 'center', transition: 'transform 0.2s ease-out' }}>
+      <div
+        ref={viewportRef}
+        className={`relative flex h-full w-full items-center justify-center overflow-hidden ${canPan ? (isDraggingPreview ? 'cursor-grabbing' : 'cursor-grab') : ''}`}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+        onLostPointerCapture={handlePointerUp}
+      >
+        {canPan ? (
+          <>
+            <div className="pointer-events-none absolute inset-3 rounded-[28px] border border-white/80 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.1),0_0_0_1px_rgba(255,255,255,0.35)] md:inset-4" />
+            <div className="pointer-events-none absolute inset-x-3 top-3 h-12 rounded-t-[28px] bg-linear-to-b from-white/22 to-transparent md:inset-x-4 md:top-4" />
+            <div className="pointer-events-none absolute inset-x-3 bottom-3 h-12 rounded-b-[28px] bg-linear-to-t from-white/22 to-transparent md:inset-x-4 md:bottom-4" />
+            <div className="pointer-events-none absolute inset-y-3 left-3 w-12 rounded-l-[28px] bg-linear-to-r from-white/18 to-transparent md:inset-y-4 md:left-4" />
+            <div className="pointer-events-none absolute inset-y-3 right-3 w-12 rounded-r-[28px] bg-linear-to-l from-white/18 to-transparent md:inset-y-4 md:right-4" />
+            <div className="pointer-events-none absolute left-3 top-3 h-6 w-6 rounded-tl-[20px] border-l-2 border-t-2 border-white/90 md:left-4 md:top-4" />
+            <div className="pointer-events-none absolute right-3 top-3 h-6 w-6 rounded-tr-[20px] border-r-2 border-t-2 border-white/90 md:right-4 md:top-4" />
+            <div className="pointer-events-none absolute bottom-3 left-3 h-6 w-6 rounded-bl-[20px] border-b-2 border-l-2 border-white/90 md:bottom-4 md:left-4" />
+            <div className="pointer-events-none absolute bottom-3 right-3 h-6 w-6 rounded-br-[20px] border-b-2 border-r-2 border-white/90 md:bottom-4 md:right-4" />
+          </>
+        ) : null}
+
         <div
-          className="relative shadow-2xl flex items-center justify-center overflow-hidden"
           style={{
-            width: `${canvasWidth}px`,
-            height: `${canvasHeight}px`,
+            transform: `translate(${pan.x}px, ${pan.y}px)`,
+            transition: isDraggingPreview ? 'none' : 'transform 0.2s ease-out',
           }}
         >
-          <div
-            ref={previewRef}
-            className="w-full h-full flex items-center justify-center relative overflow-hidden"
-            style={{
-              width: `${canvasWidth}px`,
-              height: `${canvasHeight}px`,
-              padding: `${padding}px`,
-            }}
-          >
-            <BackgroundLayer
-              backgroundType={backgroundType}
-              backgroundStyle={backgroundStyle}
-              bgBrightness={bgBrightness}
-              bgBlur={bgBlur}
-            />
+          <div style={{ transform: `scale(${effectiveScale})`, transformOrigin: 'center', transition: isDraggingPreview ? 'none' : 'transform 0.2s ease-out' }}>
+            <div
+              className="relative shadow-2xl flex items-center justify-center overflow-hidden"
+              style={{
+                width: `${canvasWidth}px`,
+                height: `${canvasHeight}px`,
+              }}
+            >
+              <div
+                ref={previewRef}
+                className="w-full h-full flex items-center justify-center relative overflow-hidden"
+                style={{
+                  width: `${canvasWidth}px`,
+                  height: `${canvasHeight}px`,
+                  padding: `${padding}px`,
+                }}
+              >
+                <BackgroundLayer
+                  backgroundType={backgroundType}
+                  backgroundStyle={backgroundStyle}
+                  bgBrightness={bgBrightness}
+                  bgBlur={bgBlur}
+                />
 
-            <CustomTextItems
-              customTexts={customTexts}
-              fontFamily={fontFamily}
-              lineHeight={lineHeight}
-              letterSpacing={letterSpacing}
-              sharedTextShadow={sharedTextShadow}
-            />
+                <CustomTextItems
+                  customTexts={customTexts}
+                  fontFamily={fontFamily}
+                  lineHeight={lineHeight}
+                  letterSpacing={letterSpacing}
+                  sharedTextShadow={sharedTextShadow}
+                />
 
-            <PoemContent
-              t={t}
-              text={text}
-              fontFamily={fontFamily}
-              fontSize={fontSize}
-              textColor={textColor}
-              textAlign={textAlign}
-              writingMode={writingMode}
-              lineHeight={lineHeight}
-              letterSpacing={letterSpacing}
-              columnCount={columns}
-              columnGap={columnGap}
-              sharedTextShadow={sharedTextShadow}
-              showBorder={showBorder}
-              borderStyle={borderStyle}
-              showStamp={showStamp}
-              stamp={stamp}
-              onStampChange={onStampChange}
-            />
+                <PoemContent
+                  t={t}
+                  text={text}
+                  fontFamily={fontFamily}
+                  fontSize={fontSize}
+                  textColor={textColor}
+                  textAlign={textAlign}
+                  writingMode={writingMode}
+                  lineHeight={lineHeight}
+                  letterSpacing={letterSpacing}
+                  columnCount={columns}
+                  columnGap={columnGap}
+                  sharedTextShadow={sharedTextShadow}
+                  showBorder={showBorder}
+                  borderStyle={borderStyle}
+                  showStamp={showStamp}
+                  stamp={stamp}
+                  onStampChange={onStampChange}
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>
