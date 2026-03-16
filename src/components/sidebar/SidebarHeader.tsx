@@ -1,15 +1,19 @@
 import { Sparkles } from 'lucide-react';
 import type { Language } from '../../translations';
 import type { TranslateFn } from '../../types';
+import { useAppAuth } from '../../context/auth';
 
 interface SidebarHeaderProps {
   language: Language;
   onLanguageChange: (value: Language) => void;
   t: TranslateFn;
   isSheet?: boolean;
+  balance?: number | null;
 }
 
-export function SidebarHeader({ language, onLanguageChange, t, isSheet = false }: SidebarHeaderProps) {
+export function SidebarHeader({ language, onLanguageChange, t, isSheet = false, balance }: SidebarHeaderProps) {
+  const { isSignedIn } = useAppAuth();
+
   return (
     <div className={`${isSheet ? 'px-4 py-4' : 'px-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-4 sm:p-6'} border-b border-gray-100 flex items-start justify-between gap-3`}>
       <div className="min-w-0">
@@ -18,6 +22,11 @@ export function SidebarHeader({ language, onLanguageChange, t, isSheet = false }
           <span className="truncate">{t('appTitle')}</span>
         </h1>
         <p className="text-sm text-gray-500 mt-1">{t('subtitle')}</p>
+        {isSignedIn && balance !== null && balance !== undefined && (
+          <p className="text-xs text-indigo-600 mt-0.5 font-medium">
+            {balance} {t('credits')}
+          </p>
+        )}
       </div>
       <select
         value={language}

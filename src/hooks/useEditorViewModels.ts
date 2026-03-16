@@ -1,6 +1,7 @@
 import type { Language } from '../translations';
 import type {
   BackgroundSectionProps,
+  BillingSectionProps,
   CanvasPreviewProps,
   CanvasSizeSectionProps,
   ContentSectionProps,
@@ -26,6 +27,7 @@ interface UseEditorViewModelsParams {
   background: BackgroundSectionProps;
   typography: TypographySectionProps;
   decorations: DecorationsSectionProps;
+  billing: BillingSectionProps;
   exportScale: SidebarProps['exportScale'];
   onExportScaleChange: SidebarProps['onExportScaleChange'];
   onDownload: () => void;
@@ -63,6 +65,7 @@ export function useEditorViewModels({
   background,
   typography,
   decorations,
+  billing,
   exportScale,
   onExportScaleChange,
   onDownload,
@@ -99,6 +102,7 @@ export function useEditorViewModels({
     background,
     typography,
     decorations,
+    billing,
     exportScale,
     onExportScaleChange,
     onDownload,

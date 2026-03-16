@@ -1,6 +1,9 @@
 import { getTemplateFontForLanguage } from './fontOptions';
 import type { Language } from './translations';
-import type { EditorTemplateDefinition, EditorTemplateId, TemplateDecorationsConfig, TemplateTypographyConfig } from './types';
+import type { EditorTemplateDefinition, EditorTemplateId, StampConfig, TemplateDecorationsConfig, TemplateTypographyConfig } from './types';
+
+// Override type allows partial StampConfig since overrides are merged onto the base template's full stamp
+type DecorationsOverride = Omit<Partial<TemplateDecorationsConfig>, 'stamp'> & { stamp?: Partial<StampConfig> };
 
 const templateTypographyOverrides: Record<EditorTemplateId, Partial<Record<Language, Partial<TemplateTypographyConfig>>>> = {
   'ink-wash': {
@@ -241,7 +244,7 @@ const templateTypographyOverrides: Record<EditorTemplateId, Partial<Record<Langu
   },
 };
 
-const templateDecorationsOverrides: Record<EditorTemplateId, Partial<Record<Language, Partial<TemplateDecorationsConfig>>>> = {
+const templateDecorationsOverrides: Record<EditorTemplateId, Partial<Record<Language, DecorationsOverride>>> = {
   'ink-wash': {
     en: { stamp: { text: 'Seal' } },
     'zh-CN': { stamp: { text: '雅印' } },

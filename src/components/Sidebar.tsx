@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { Download, Palette, Settings2, Sparkles, X } from 'lucide-react';
 import type { SidebarProps } from '../types';
 import { BackgroundPanel } from './sidebar/BackgroundPanel';
+import { BillingPanel } from './sidebar/BillingPanel';
 import { CanvasSizePanel } from './sidebar/CanvasSizePanel';
 import { ContentPanel } from './sidebar/ContentPanel';
 import { DecorationsPanel } from './sidebar/DecorationsPanel';
@@ -26,6 +27,7 @@ export function Sidebar({
   background,
   typography,
   decorations,
+  billing,
   exportScale,
   onExportScaleChange,
   onDownload,
@@ -131,6 +133,7 @@ export function Sidebar({
           expanded={expandedSections.background}
           onToggle={() => onToggleSection('background')}
           background={background}
+          balance={billing.balance}
         />
       </div>
 
@@ -150,6 +153,15 @@ export function Sidebar({
           expanded={expandedSections.decorations}
           onToggle={() => onToggleSection('decorations')}
           decorations={decorations}
+        />
+      </div>
+
+      <div>
+        <BillingPanel
+          t={t}
+          expanded={expandedSections.billing}
+          onToggle={() => onToggleSection('billing')}
+          billing={billing}
         />
       </div>
     </div>
@@ -196,6 +208,7 @@ export function Sidebar({
             expanded={expandedSections.background}
             onToggle={() => onToggleSection('background')}
             background={background}
+            balance={billing.balance}
           />
           <TypographyPanel
             language={language}
@@ -209,6 +222,12 @@ export function Sidebar({
             expanded={expandedSections.decorations}
             onToggle={() => onToggleSection('decorations')}
             decorations={decorations}
+          />
+          <BillingPanel
+            t={t}
+            expanded={expandedSections.billing}
+            onToggle={() => onToggleSection('billing')}
+            billing={billing}
           />
         </div>
       );
@@ -313,7 +332,7 @@ export function Sidebar({
                 </div>
               </div>
 
-              <SidebarHeader language={language} onLanguageChange={onLanguageChange} t={t} isSheet />
+              <SidebarHeader language={language} onLanguageChange={onLanguageChange} t={t} isSheet balance={billing.balance} />
               {mobileSections()}
             </motion.aside>
           </>
@@ -321,7 +340,7 @@ export function Sidebar({
       </AnimatePresence>
 
       <aside className="hidden md:flex md:order-1 md:w-80 md:border-r md:border-gray-200 md:h-screen md:overflow-y-auto shrink-0 bg-white shadow-sm z-10 flex-col">
-        <SidebarHeader language={language} onLanguageChange={onLanguageChange} t={t} />
+        <SidebarHeader language={language} onLanguageChange={onLanguageChange} t={t} balance={billing.balance} />
         {sections()}
         <SidebarFooter
           t={t}

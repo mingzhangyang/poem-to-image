@@ -8,9 +8,11 @@ interface UseBackgroundConfigParams {
   canvasWidth: number;
   canvasHeight: number;
   t: TranslateFn;
+  getToken?: () => Promise<string | null>;
+  onBalanceChange?: (newBalance: number) => void;
 }
 
-export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t }: UseBackgroundConfigParams) {
+export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getToken, onBalanceChange }: UseBackgroundConfigParams) {
   const [backgroundType, setBackgroundType] = useState<BackgroundType>('solid');
   const [backgroundColor, setBackgroundColor] = useState('#f8fafc');
   const [gradientColor1, setGradientColor1] = useState('#e0e7ff');
@@ -52,10 +54,12 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t }: UseB
     canvasWidth,
     canvasHeight,
     t,
+    getToken,
     setAiError,
     setIsGeneratingAI,
     setBackgroundImage,
     setBackgroundType,
+    onBalanceChange,
   });
 
   const applyBackgroundTemplate = (template: TemplateBackgroundConfig) => {

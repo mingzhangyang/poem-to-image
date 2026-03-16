@@ -1,153 +1,77 @@
-import { GoogleGenAI } from '@google/genai';
+import { getAuthenticatedUser } from './auth';
+import type { D1Database } from './db';
+import { ensureUser, getBalance, reserveGeneration, finalizeGenerationSuccess, finalizeGenerationFailure } from './db';
+import {
+  handleGetBalance,
+  handleGetPackages,
+  handleCreateCheckoutSession,
+  handleStripeWebhook,
+  handleGetHistory,
+} from './billing';
+import { generateWithGemini, generateWithOpenAi, normalizeProvider, CREDIT_COST } from './ai';
 
-interface Env {
+export interface Env {
   GEMINI_API_KEY?: string;
   OPENAI_API_KEY?: string;
+  CLERK_SECRET_KEY?: string;
+  STRIPE_SECRET_KEY?: string;
+  STRIPE_WEBHOOK_SECRET?: string;
+  DB?: D1Database;
   ASSETS: {
     fetch(input: Request | string, init?: RequestInit): Promise<Response>;
   };
 }
 
-type AiProvider = 'gemini' | 'openai';
 const MAX_AI_PROMPT_LENGTH = 500;
+
+function json(data: unknown, status = 200): Response {
+  return Response.json(data, { status });
+}
+
+function badRequest(message: string, status = 400): Response {
+  return json({ error: message }, status);
+}
+
+function unauthorized(): Response {
+  return json({ error: 'Authentication required.', code: 'UNAUTHORIZED' }, 401);
+}
+
+function getAppOrigin(request: Request): string {
+  const url = new URL(request.url);
+  return `${url.protocol}//${url.host}`;
+}
 
 interface GenerateImageRequest {
   prompt?: string;
   aspectRatio?: string;
-  provider?: AiProvider;
+  provider?: string;
+  requestId?: string;
 }
 
-interface OpenAiImageResponse {
-  data?: Array<{
-    b64_json?: string;
-  }>;
-  error?: {
-    message?: string;
-  };
-}
+async function handleGenerateAiBackground(request: Request, env: Env): Promise<Response> {
+  // Auth: require signed-in user when CLERK_SECRET_KEY is configured
+  const clerkSecretKey = env.CLERK_SECRET_KEY;
+  const db = env.DB;
 
-function json(data: unknown, init?: ResponseInit) {
-  return Response.json(data, init);
-}
+  let userId: string | null = null;
+  let email = '';
 
-function badRequest(message: string, status = 400) {
-  return json({ error: message }, { status });
-}
-
-function normalizeProvider(provider?: string): AiProvider {
-  return provider === 'openai' ? 'openai' : 'gemini';
-}
-
-function resolveOpenAiSize(aspectRatio?: string) {
-  if (aspectRatio === '16:9' || aspectRatio === '4:3') {
-    return '1536x1024';
+  if (clerkSecretKey && db) {
+    const user = await getAuthenticatedUser(request, clerkSecretKey);
+    if (!user) return unauthorized();
+    userId = user.userId;
+    email = user.email;
+    await ensureUser(db, userId, email);
   }
 
-  if (aspectRatio === '9:16' || aspectRatio === '3:4') {
-    return '1024x1536';
-  }
-
-  return '1024x1024';
-}
-
-async function generateWithGemini(prompt: string, aspectRatio: string, env: Env) {
-  if (!env.GEMINI_API_KEY) {
-    return badRequest('Missing GEMINI_API_KEY Worker secret.', 500);
-  }
-
-  const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
-
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.1-flash-image-preview',
-      contents: {
-        parts: [{ text: prompt }],
-      },
-      config: {
-        imageConfig: {
-          aspectRatio,
-          imageSize: '1K',
-        },
-      },
-    });
-
-    for (const part of response.candidates?.[0]?.content?.parts || []) {
-      if (!part.inlineData?.data || !part.inlineData.mimeType) {
-        continue;
-      }
-
-      return json({
-        imageDataUrl: `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`,
-      });
-    }
-
-    return badRequest('The model did not return an image.', 502);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to generate AI background.';
-    return badRequest(message, 502);
-  }
-}
-
-async function generateWithOpenAi(prompt: string, aspectRatio: string, env: Env) {
-  if (!env.OPENAI_API_KEY) {
-    return badRequest('Missing OPENAI_API_KEY Worker secret.', 500);
-  }
-
-  try {
-    const response = await fetch('https://api.openai.com/v1/images/generations', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${env.OPENAI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-image-1',
-        prompt,
-        size: resolveOpenAiSize(aspectRatio),
-        quality: 'medium',
-      }),
-    });
-
-    let payload: OpenAiImageResponse | null = null;
-
-    try {
-      payload = (await response.json()) as OpenAiImageResponse;
-    } catch {
-      payload = null;
-    }
-
-    if (!response.ok) {
-      return badRequest(payload?.error?.message || 'Failed to generate AI background.', 502);
-    }
-
-    const imageBase64 = payload?.data?.[0]?.b64_json;
-
-    if (!imageBase64) {
-      return badRequest('The model did not return an image.', 502);
-    }
-
-    return json({
-      imageDataUrl: `data:image/png;base64,${imageBase64}`,
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to generate AI background.';
-    return badRequest(message, 502);
-  }
-}
-
-async function handleGenerateAiBackground(request: Request, env: Env) {
   let payload: GenerateImageRequest;
-
   try {
     payload = (await request.json()) as GenerateImageRequest;
   } catch {
     return badRequest('Request body must be valid JSON.');
   }
 
-  if (!payload.prompt?.trim()) {
-    return badRequest('Prompt is required.');
-  }
-
+  if (!payload.prompt?.trim()) return badRequest('Prompt is required.');
   if (payload.prompt.trim().length > MAX_AI_PROMPT_LENGTH) {
     return badRequest(`Prompt must be ${MAX_AI_PROMPT_LENGTH} characters or fewer.`);
   }
@@ -155,26 +79,146 @@ async function handleGenerateAiBackground(request: Request, env: Env) {
   const prompt = payload.prompt.trim();
   const aspectRatio = payload.aspectRatio || '1:1';
   const provider = normalizeProvider(payload.provider);
+  const costCredits = CREDIT_COST[provider];
 
-  if (provider === 'openai') {
-    return generateWithOpenAi(prompt, aspectRatio, env);
+  // Credit check (only when billing is configured)
+  if (userId && db) {
+    const balance = await getBalance(db, userId);
+    if (balance < costCredits) {
+      return json(
+        {
+          error: 'Insufficient credits.',
+          code: 'INSUFFICIENT_CREDITS',
+          balance,
+          required: costCredits,
+        },
+        402,
+      );
+    }
   }
 
-  return generateWithGemini(prompt, aspectRatio, env);
+  let requestId: string | null = null;
+  let transactionId: string | null = null;
+
+  if (userId && db) {
+    // Reserve the generation (idempotent requestId support)
+    const reserved = await reserveGeneration(db, userId, provider, prompt.length, costCredits);
+    requestId = reserved.requestId;
+    transactionId = reserved.transactionId;
+  }
+
+  // Call the AI provider
+  try {
+    let result: { imageDataUrl: string };
+
+    if (provider === 'openai') {
+      if (!env.OPENAI_API_KEY) return badRequest('Missing OPENAI_API_KEY Worker secret.', 500);
+      result = await generateWithOpenAi(prompt, aspectRatio, env.OPENAI_API_KEY);
+    } else {
+      if (!env.GEMINI_API_KEY) return badRequest('Missing GEMINI_API_KEY Worker secret.', 500);
+      result = await generateWithGemini(prompt, aspectRatio, env.GEMINI_API_KEY);
+    }
+
+    // Finalize: deduct credits
+    let newBalance: number | null = null;
+    if (userId && db && requestId && transactionId) {
+      newBalance = await finalizeGenerationSuccess(db, userId, requestId, transactionId, costCredits);
+    }
+
+    return json({
+      imageDataUrl: result.imageDataUrl,
+      creditsCharged: userId ? costCredits : 0,
+      balance: newBalance,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to generate AI background.';
+
+    // Mark as failed (no credit deduction)
+    if (db && requestId && transactionId) {
+      await finalizeGenerationFailure(db, requestId, transactionId, message);
+    }
+
+    return badRequest(message, 502);
+  }
+}
+
+async function handleMe(request: Request, env: Env): Promise<Response> {
+  if (!env.CLERK_SECRET_KEY || !env.DB) {
+    return json({ error: 'Auth not configured.' }, 503);
+  }
+
+  const user = await getAuthenticatedUser(request, env.CLERK_SECRET_KEY);
+  if (!user) return unauthorized();
+
+  await ensureUser(env.DB, user.userId, user.email);
+  const balance = await getBalance(env.DB, user.userId);
+
+  return json({ userId: user.userId, email: user.email, balance });
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+    const { pathname } = url;
 
-    if (url.pathname === '/api/ai-background') {
-      if (request.method !== 'POST') {
-        return badRequest('Method not allowed.', 405);
-      }
-
+    // ── AI generation ──────────────────────────────────────────────────
+    if (pathname === '/api/ai-background') {
+      if (request.method !== 'POST') return badRequest('Method not allowed.', 405);
       return handleGenerateAiBackground(request, env);
     }
 
+    // ── Auth ────────────────────────────────────────────────────────────
+    if (pathname === '/api/me') {
+      if (request.method !== 'GET') return badRequest('Method not allowed.', 405);
+      return handleMe(request, env);
+    }
+
+    // ── Billing ─────────────────────────────────────────────────────────
+    if (pathname === '/api/billing/balance') {
+      if (request.method !== 'GET') return badRequest('Method not allowed.', 405);
+      if (!env.CLERK_SECRET_KEY || !env.DB) return json({ error: 'Billing not configured.' }, 503);
+      const user = await getAuthenticatedUser(request, env.CLERK_SECRET_KEY);
+      if (!user) return unauthorized();
+      return handleGetBalance(env.DB, user.userId, user.email);
+    }
+
+    if (pathname === '/api/billing/packages') {
+      if (request.method !== 'GET') return badRequest('Method not allowed.', 405);
+      return handleGetPackages();
+    }
+
+    if (pathname === '/api/billing/checkout-session') {
+      if (request.method !== 'POST') return badRequest('Method not allowed.', 405);
+      if (!env.CLERK_SECRET_KEY || !env.DB || !env.STRIPE_SECRET_KEY) {
+        return json({ error: 'Billing not configured.' }, 503);
+      }
+      const user = await getAuthenticatedUser(request, env.CLERK_SECRET_KEY);
+      if (!user) return unauthorized();
+      return handleCreateCheckoutSession(
+        request,
+        env.DB,
+        user.userId,
+        user.email,
+        env.STRIPE_SECRET_KEY,
+        getAppOrigin(request),
+      );
+    }
+
+    if (pathname === '/api/billing/webhook/stripe') {
+      if (request.method !== 'POST') return badRequest('Method not allowed.', 405);
+      if (!env.DB || !env.STRIPE_WEBHOOK_SECRET) return json({ error: 'Webhook not configured.' }, 503);
+      return handleStripeWebhook(request, env.DB, env.STRIPE_WEBHOOK_SECRET);
+    }
+
+    if (pathname === '/api/billing/history') {
+      if (request.method !== 'GET') return badRequest('Method not allowed.', 405);
+      if (!env.CLERK_SECRET_KEY || !env.DB) return json({ error: 'Billing not configured.' }, 503);
+      const user = await getAuthenticatedUser(request, env.CLERK_SECRET_KEY);
+      if (!user) return unauthorized();
+      return handleGetHistory(env.DB, user.userId, user.email);
+    }
+
+    // ── Static assets ────────────────────────────────────────────────────
     return env.ASSETS.fetch(request);
   },
-} satisfies { fetch(request: Request, env: Env): Promise<Response> | Response };
+} satisfies { fetch(request: Request, env: Env): Promise<Response> };

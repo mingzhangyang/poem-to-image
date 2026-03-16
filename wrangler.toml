@@ -7,3 +7,9 @@ compatibility_flags = ["nodejs_compat"]
 directory = "./dist"
 binding = "ASSETS"
 not_found_handling = "single-page-application"
+
+# D1 database binding (run `wrangler d1 create poem-to-image` to create, then fill in database_id)
+[[d1_databases]]
+binding = "DB"
+database_name = "poem-to-image"
+database_id = "your-d1-database-id-here"

@@ -1,8 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useAppAuth } from './context/auth';
 import { translations, Language, TranslationKey } from './translations';
 import { CanvasPreview } from './components/CanvasPreview';
 import { Sidebar } from './components/Sidebar';
 import { useBackgroundConfig } from './hooks/useBackgroundConfig';
+import { useBalance } from './hooks/useBalance';
+import { useBillingHistory } from './hooks/useBillingHistory';
+import { useBillingPackages } from './hooks/useBillingPackages';
 import { useCanvasScale } from './hooks/useCanvasScale';
 import { useDecorationsConfig } from './hooks/useDecorationsConfig';
 import { useEditorViewModels } from './hooks/useEditorViewModels';
@@ -14,6 +18,7 @@ import type { EditorTemplateId, ExpandedSections, ExportScale } from './types';
 const ACTIVE_TEMPLATE_STORAGE_KEY = 'poem-to-image.active-template';
 
 export default function App() {
+  const { getToken } = useAppAuth();
   const [previewZoom, setPreviewZoom] = useState(1);
   const [language, setLanguage] = useState<Language>('zh-CN');
   const t = (key: TranslationKey) => translations[language][key];
@@ -32,8 +37,59 @@ export default function App() {
     content: true,
     background: true,
     typography: false,
-    decorations: false
+    decorations: false,
+    billing: false,
   });
+
+  // Billing state
+  const { balance, isLoading: isLoadingBalance, refetch: refetchBalance } = useBalance();
+  const { packages, isLoading: isLoadingPackages } = useBillingPackages();
+  const { items: history, isLoading: isLoadingHistory } = useBillingHistory();
+  const [isPurchasing, setIsPurchasing] = useState(false);
+
+  // Handle Stripe redirect result
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const billingStatus = params.get('billing');
+
+    if (billingStatus === 'success') {
+      // Poll for balance update
+      const timer = setTimeout(() => refetchBalance(), 2000);
+      window.history.replaceState({}, '', window.location.pathname);
+      return () => clearTimeout(timer);
+    }
+
+    if (billingStatus === 'cancel') {
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [refetchBalance]);
+
+  const handlePurchase = useCallback(
+    async (packageId: string) => {
+      setIsPurchasing(true);
+      try {
+        const token = await getToken();
+        const response = await fetch('/api/billing/checkout-session', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ packageId }),
+        });
+
+        const data = (await response.json()) as { checkoutUrl?: string; error?: string };
+        if (data.checkoutUrl) {
+          window.location.href = data.checkoutUrl;
+        }
+      } catch {
+        // Purchase failed silently
+      } finally {
+        setIsPurchasing(false);
+      }
+    },
+    [getToken],
+  );
 
   const handlePresetChange = (val: string) => {
     setPresetSize(val);
@@ -60,6 +116,8 @@ export default function App() {
     canvasWidth,
     canvasHeight,
     t,
+    getToken,
+    onBalanceChange: refetchBalance,
   });
   const typography = useTypographyConfig(language);
   const decorations = useDecorationsConfig({
@@ -297,6 +355,16 @@ export default function App() {
       onCustomTextChange: decorations.updateCustomText,
       onCustomTextRemove: decorations.removeCustomText,
     },
+    billing: {
+      balance,
+      isLoadingBalance,
+      packages,
+      isLoadingPackages,
+      history,
+      isLoadingHistory,
+      isPurchasing,
+      onPurchase: handlePurchase,
+    },
     exportScale,
     onExportScaleChange: setExportScale,
     onDownload: handleDownload,
@@ -329,4 +397,3 @@ export default function App() {
     </div>
   );
 }
-

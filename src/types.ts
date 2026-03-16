@@ -26,6 +26,7 @@ export interface ExpandedSections {
   background: boolean;
   typography: boolean;
   decorations: boolean;
+  billing: boolean;
 }
 
 export interface StampConfig {
@@ -196,6 +197,7 @@ export interface SidebarProps {
   background: BackgroundSectionProps;
   typography: TypographySectionProps;
   decorations: DecorationsSectionProps;
+  billing: BillingSectionProps;
   exportScale: ExportScale;
   onExportScaleChange: (value: ExportScale) => void;
   onDownload: () => void;
@@ -237,6 +239,34 @@ export interface CanvasPreviewProps {
   onPreviewZoomChange: (value: number) => void;
   onPreviewZoomReset: () => void;
   scale: number;
+}
+
+export interface BillingPackage {
+  id: string;
+  name: string;
+  credits: number;
+  priceCents: number;
+  currency: string;
+}
+
+export interface BillingTransactionItem {
+  id: string;
+  type: string;
+  amount: number;
+  status: string;
+  provider: string | null;
+  created_at: string;
+}
+
+export interface BillingSectionProps {
+  balance: number | null;
+  isLoadingBalance: boolean;
+  packages: BillingPackage[];
+  isLoadingPackages: boolean;
+  history: BillingTransactionItem[];
+  isLoadingHistory: boolean;
+  isPurchasing: boolean;
+  onPurchase: (packageId: string) => Promise<void>;
 }
 
 export interface ControlSectionProps {

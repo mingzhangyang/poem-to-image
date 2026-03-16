@@ -10,36 +10,36 @@ interface UseAiBackgroundParams {
   canvasWidth: number;
   canvasHeight: number;
   t: TranslateFn;
+  getToken?: () => Promise<string | null>;
   setAiError: (value: string) => void;
   setIsGeneratingAI: (value: boolean) => void;
   setBackgroundImage: (value: string | null) => void;
   setBackgroundType: (value: BackgroundType) => void;
+  onBalanceChange?: (newBalance: number) => void;
 }
 
 function resolveAspectRatio(canvasWidth: number, canvasHeight: number) {
   const ratio = canvasWidth / canvasHeight;
 
-  if (ratio > 1.5) {
-    return '16:9';
-  }
-
-  if (ratio > 1.1) {
-    return '4:3';
-  }
-
-  if (ratio < 0.6) {
-    return '9:16';
-  }
-
-  if (ratio < 0.9) {
-    return '3:4';
-  }
+  if (ratio > 1.5) return '16:9';
+  if (ratio > 1.1) return '4:3';
+  if (ratio < 0.6) return '9:16';
+  if (ratio < 0.9) return '3:4';
 
   return '1:1';
 }
 
 function clampPrompt(value: string) {
   return value.trim().slice(0, MAX_AI_PROMPT_LENGTH);
+}
+
+interface AiBackgroundResponse {
+  error?: string;
+  code?: string;
+  imageDataUrl?: string;
+  creditsCharged?: number;
+  balance?: number | null;
+  required?: number;
 }
 
 export function useAiBackground({
@@ -49,10 +49,12 @@ export function useAiBackground({
   canvasWidth,
   canvasHeight,
   t,
+  getToken,
   setAiError,
   setIsGeneratingAI,
   setBackgroundImage,
   setBackgroundType,
+  onBalanceChange,
 }: UseAiBackgroundParams) {
   return useCallback(async () => {
     if (!text && !aiPrompt) {
@@ -69,11 +71,16 @@ export function useAiBackground({
           `A beautiful, atmospheric, and minimalist background image suitable for a poem. The poem is: "${text}". The image should have plenty of empty space for text, and match the mood of the poem. No text in the image.`,
       );
 
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+
+      if (getToken) {
+        const token = await getToken();
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch('/api/ai-background', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({
           provider: aiProvider,
           prompt,
@@ -81,9 +88,15 @@ export function useAiBackground({
         }),
       });
 
-      const payload = (await response.json()) as { error?: string; imageDataUrl?: string };
+      const payload = (await response.json()) as AiBackgroundResponse;
 
       if (!response.ok) {
+        if (payload.code === 'INSUFFICIENT_CREDITS') {
+          throw new Error(t('errInsufficientCredits'));
+        }
+        if (payload.code === 'UNAUTHORIZED') {
+          throw new Error(t('errSignInRequired'));
+        }
         throw new Error(payload.error || t('errGenFailed'));
       }
 
@@ -94,9 +107,14 @@ export function useAiBackground({
 
       setBackgroundImage(payload.imageDataUrl);
       setBackgroundType('ai');
-    } catch (error: any) {
+
+      if (typeof payload.balance === 'number' && onBalanceChange) {
+        onBalanceChange(payload.balance);
+      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : t('errGenFailed');
       console.error('AI Generation Error:', error);
-      setAiError(error.message || t('errGenFailed'));
+      setAiError(message);
     } finally {
       setIsGeneratingAI(false);
     }
@@ -105,6 +123,8 @@ export function useAiBackground({
     aiPrompt,
     canvasHeight,
     canvasWidth,
+    getToken,
+    onBalanceChange,
     setAiError,
     setBackgroundImage,
     setBackgroundType,

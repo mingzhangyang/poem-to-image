@@ -14,14 +14,17 @@ const backgroundTypeLabels: Record<BackgroundType, TranslationKey> = {
 
 const aiProviders: AiProvider[] = ['gemini', 'openai'];
 
+const CREDIT_COST: Record<'gemini' | 'openai', number> = { gemini: 1, openai: 3 };
+
 interface BackgroundPanelProps {
   t: TranslateFn;
   expanded: ExpandedSections['background'];
   onToggle: () => void;
   background: BackgroundSectionProps;
+  balance?: number | null;
 }
 
-export function BackgroundPanel({ t, expanded, onToggle, background }: BackgroundPanelProps) {
+export function BackgroundPanel({ t, expanded, onToggle, background, balance }: BackgroundPanelProps) {
   return (
     <ControlSection
       title={t('background')}
@@ -134,6 +137,14 @@ export function BackgroundPanel({ t, expanded, onToggle, background }: Backgroun
             />
             <div className="text-right text-xs text-indigo-700/80">
               {background.aiPrompt.length}/{MAX_AI_PROMPT_LENGTH}
+            </div>
+            <div className="flex items-center justify-between text-xs text-indigo-700/70 mb-1">
+              <span>
+                {CREDIT_COST[background.aiProvider]} {CREDIT_COST[background.aiProvider] === 1 ? t('creditsPerGen') : t('creditsPerGenMultiple')}
+              </span>
+              {balance !== null && balance !== undefined && (
+                <span>{t('creditBalance')}: {balance}</span>
+              )}
             </div>
             <button
               onClick={background.onGenerateAiBackground}
