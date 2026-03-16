@@ -26,10 +26,21 @@ export function useCanvasScale(
       setScale(Math.min(scaleX, scaleY, 1));
     };
 
+    const container = containerRef.current;
+
     updateScale();
     window.addEventListener('resize', updateScale);
 
-    return () => window.removeEventListener('resize', updateScale);
+    const resizeObserver = typeof ResizeObserver === 'undefined' || !container
+      ? null
+      : new ResizeObserver(() => updateScale());
+
+    resizeObserver?.observe(container);
+
+    return () => {
+      window.removeEventListener('resize', updateScale);
+      resizeObserver?.disconnect();
+    };
   }, [containerRef, canvasWidth, canvasHeight]);
 
   return scale;

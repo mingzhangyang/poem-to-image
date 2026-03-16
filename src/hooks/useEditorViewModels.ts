@@ -44,6 +44,9 @@ interface UseEditorViewModelsParams {
   canvasWidth: number;
   canvasHeight: number;
   customTexts: CustomText[];
+  previewZoom: number;
+  onPreviewZoomChange: CanvasPreviewProps['onPreviewZoomChange'];
+  onPreviewZoomReset: CanvasPreviewProps['onPreviewZoomReset'];
   scale: number;
 }
 
@@ -78,6 +81,9 @@ export function useEditorViewModels({
   canvasWidth,
   canvasHeight,
   customTexts,
+  previewZoom,
+  onPreviewZoomChange,
+  onPreviewZoomReset,
   scale,
 }: UseEditorViewModelsParams) {
   const sidebarProps: SidebarProps = {
@@ -130,6 +136,9 @@ export function useEditorViewModels({
     canvasWidth,
     canvasHeight,
     customTexts,
+    previewZoom,
+    onPreviewZoomChange,
+    onPreviewZoomReset,
     scale,
   };
 

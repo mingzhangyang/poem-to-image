@@ -99,7 +99,9 @@ export const translations = {
     stampRotation: "Stamp Rotation",
     stampOpacity: "Stamp Opacity",
     resetStampPosition: "Reset Position",
-    dragStampHint: "Drag the stamp in the preview"
+    dragStampHint: "Drag the stamp in the preview",
+    previewZoom: "Preview Zoom",
+    fitToViewport: "Fit to Viewport"
   },
   'zh-CN': {
     appTitle: "诗词生成图片",
@@ -201,7 +203,9 @@ export const translations = {
     stampRotation: "印章角度",
     stampOpacity: "印章透明度",
     resetStampPosition: "重置位置",
-    dragStampHint: "可在预览中拖拽印章"
+    dragStampHint: "可在预览中拖拽印章",
+    previewZoom: "预览缩放",
+    fitToViewport: "适应视口"
   },
   'zh-TW': {
     appTitle: "詩詞生成圖片",
@@ -303,7 +307,9 @@ export const translations = {
     stampRotation: "印章角度",
     stampOpacity: "印章透明度",
     resetStampPosition: "重設位置",
-    dragStampHint: "可在預覽中拖曳印章"
+    dragStampHint: "可在預覽中拖曳印章",
+    previewZoom: "預覽縮放",
+    fitToViewport: "適應視口"
   },
   ja: {
     appTitle: "詩から画像へ",
@@ -405,7 +411,9 @@ export const translations = {
     stampRotation: "印章の角度",
     stampOpacity: "印章の不透明度",
     resetStampPosition: "位置をリセット",
-    dragStampHint: "プレビュー上で印章をドラッグ"
+    dragStampHint: "プレビュー上で印章をドラッグ",
+    previewZoom: "プレビュー倍率",
+    fitToViewport: "画面に合わせる"
   },
   ko: {
     appTitle: "시를 이미지로",
@@ -507,7 +515,9 @@ export const translations = {
     stampRotation: "도장 각도",
     stampOpacity: "도장 투명도",
     resetStampPosition: "위치 재설정",
-    dragStampHint: "미리보기에서 도장을 드래그하세요"
+    dragStampHint: "미리보기에서 도장을 드래그하세요",
+    previewZoom: "미리보기 확대 비율",
+    fitToViewport: "뷰포트에 맞추기"
   },
   es: {
     appTitle: "Poema a Imagen",
@@ -609,7 +619,9 @@ export const translations = {
     stampRotation: "Rotación del sello",
     stampOpacity: "Opacidad del sello",
     resetStampPosition: "Restablecer posición",
-    dragStampHint: "Arrastra el sello en la vista previa"
+    dragStampHint: "Arrastra el sello en la vista previa",
+    previewZoom: "Zoom de vista previa",
+    fitToViewport: "Ajustar a la ventana"
   },
   fr: {
     appTitle: "Poème en Image",
@@ -711,7 +723,9 @@ export const translations = {
     stampRotation: "Rotation du sceau",
     stampOpacity: "Opacité du sceau",
     resetStampPosition: "Réinitialiser la position",
-    dragStampHint: "Faites glisser le sceau dans l'aperçu"
+    dragStampHint: "Faites glisser le sceau dans l'aperçu",
+    previewZoom: "Zoom de l'aperçu",
+    fitToViewport: "Ajuster à la fenêtre"
   },
   de: {
     appTitle: "Gedicht zu Bild",
@@ -813,7 +827,9 @@ export const translations = {
     stampRotation: "Stempelwinkel",
     stampOpacity: "Stempeltransparenz",
     resetStampPosition: "Position zurücksetzen",
-    dragStampHint: "Stempel in der Vorschau ziehen"
+    dragStampHint: "Stempel in der Vorschau ziehen",
+    previewZoom: "Vorschau-Zoom",
+    fitToViewport: "An Viewport anpassen"
   }
 };
 

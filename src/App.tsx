@@ -14,6 +14,7 @@ import type { EditorTemplateId, ExpandedSections, ExportScale } from './types';
 const ACTIVE_TEMPLATE_STORAGE_KEY = 'poem-to-image.active-template';
 
 export default function App() {
+  const [previewZoom, setPreviewZoom] = useState(1);
   const [language, setLanguage] = useState<Language>('zh-CN');
   const t = (key: TranslationKey) => translations[language][key];
 
@@ -72,6 +73,7 @@ export default function App() {
 
   const scale = useCanvasScale(containerRef, canvasWidth, canvasHeight);
   const handleDownload = useImageExporter(previewRef, canvasWidth, canvasHeight, exportScale);
+  const handlePreviewZoomReset = () => setPreviewZoom(1);
   const previousLanguageRef = useRef(language);
 
   const matchesActiveTemplateTypography = (templateId: EditorTemplateId, templateLanguage: Language) => {
@@ -313,6 +315,9 @@ export default function App() {
     canvasWidth,
     canvasHeight,
     customTexts: decorations.customTexts,
+    previewZoom,
+    onPreviewZoomChange: setPreviewZoom,
+    onPreviewZoomReset: handlePreviewZoomReset,
     scale,
   });
 

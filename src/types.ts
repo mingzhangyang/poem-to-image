@@ -233,6 +233,9 @@ export interface CanvasPreviewProps {
   canvasWidth: number;
   canvasHeight: number;
   customTexts: CustomText[];
+  previewZoom: number;
+  onPreviewZoomChange: (value: number) => void;
+  onPreviewZoomReset: () => void;
   scale: number;
 }
 
