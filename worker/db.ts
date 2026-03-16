@@ -16,6 +16,11 @@ export interface D1Result<T = unknown> {
   results: T[];
   success: boolean;
   error?: string;
+  meta: {
+    changes: number;
+    last_row_id: number;
+    duration: number;
+  };
 }
 
 export interface CreditAccount {
@@ -108,7 +113,11 @@ export async function reserveGeneration(
   return { requestId, transactionId };
 }
 
-/** Finalize successful generation: deduct credits and mark records succeeded. */
+/**
+ * Finalize successful generation: deduct credits atomically (only if balance >= cost)
+ * and mark records succeeded.
+ * Throws if balance is insufficient (concurrent request race).
+ */
 export async function finalizeGenerationSuccess(
   db: D1Database,
   userId: string,
@@ -116,13 +125,26 @@ export async function finalizeGenerationSuccess(
   transactionId: string,
   costCredits: number,
 ): Promise<number> {
-  // Deduct and get new balance
-  await db
+  // Atomic deduction: only proceeds if balance is still sufficient
+  const deductResult = await db
     .prepare(
-      'UPDATE credit_accounts SET balance = balance - ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?',
+      'UPDATE credit_accounts SET balance = balance - ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ? AND balance >= ?',
     )
-    .bind(costCredits, userId)
+    .bind(costCredits, userId, costCredits)
     .run();
+
+  if (deductResult.meta.changes === 0) {
+    // Balance was insufficient — concurrent request consumed the credits first
+    await db.batch([
+      db
+        .prepare('UPDATE generation_requests SET status = ?, error_message = ? WHERE id = ?')
+        .bind('failed', 'Insufficient credits (concurrent request).', requestId),
+      db
+        .prepare('UPDATE credit_transactions SET status = ? WHERE id = ?')
+        .bind('failed', transactionId),
+    ]);
+    throw new Error('Insufficient credits.');
+  }
 
   const newBalance = await getBalance(db, userId);
 
@@ -155,24 +177,12 @@ export async function finalizeGenerationFailure(
   ]);
 }
 
-/** Check if a requestId has already been processed (for idempotency). */
-export async function isRequestAlreadyProcessed(
-  db: D1Database,
-  requestId: string,
-): Promise<{ processed: boolean; imageDataUrl?: string }> {
-  const row = await db
-    .prepare('SELECT status FROM generation_requests WHERE id = ?')
-    .bind(requestId)
-    .first<{ status: string }>();
-
-  if (!row) return { processed: false };
-  if (row.status === 'succeeded') return { processed: true };
-  if (row.status === 'failed') return { processed: true };
-
-  return { processed: false };
-}
-
-/** Create order and credit account for Stripe checkout (idempotent by stripe_session_id). */
+/**
+ * Fulfill a Stripe order idempotently.
+ * Uses INSERT OR IGNORE + meta.changes check to prevent double-crediting
+ * even under concurrent webhook delivery.
+ * Returns true if credits were granted, false if already fulfilled.
+ */
 export async function fulfillStripeOrder(
   db: D1Database,
   userId: string,
@@ -182,41 +192,40 @@ export async function fulfillStripeOrder(
   amountPaidCents: number,
   creditsGranted: number,
 ): Promise<boolean> {
-  // Check if already fulfilled
-  const existing = await db
-    .prepare('SELECT id FROM orders WHERE stripe_session_id = ? AND status = ?')
-    .bind(stripeSessionId, 'completed')
-    .first<{ id: string }>();
-
-  if (existing) return false; // Already fulfilled
-
   const orderId = newId();
-  const transactionId = newId();
 
-  // Add credits and record order + transaction
-  await db.batch([
-    db
-      .prepare(
-        'INSERT OR IGNORE INTO orders (id, user_id, stripe_session_id, stripe_payment_intent_id, package_id, amount_paid_cents, credits_granted, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      )
-      .bind(
-        orderId,
-        userId,
-        stripeSessionId,
-        stripePaymentIntentId,
-        packageId,
-        amountPaidCents,
-        creditsGranted,
-        'completed',
-      ),
-    db
-      .prepare(
-        'UPDATE credit_accounts SET balance = balance + ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?',
-      )
-      .bind(creditsGranted, userId),
-  ]);
+  // INSERT OR IGNORE: the UNIQUE constraint on stripe_session_id guarantees
+  // that only one concurrent webhook can insert a row. meta.changes tells us
+  // whether this invocation was the one that inserted.
+  const insertResult = await db
+    .prepare(
+      'INSERT OR IGNORE INTO orders (id, user_id, stripe_session_id, stripe_payment_intent_id, package_id, amount_paid_cents, credits_granted, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    )
+    .bind(
+      orderId,
+      userId,
+      stripeSessionId,
+      stripePaymentIntentId,
+      packageId,
+      amountPaidCents,
+      creditsGranted,
+      'completed',
+    )
+    .run();
+
+  // If no row was inserted, this session was already fulfilled — do not credit again.
+  if (insertResult.meta.changes === 0) return false;
+
+  // Safe to add credits: only one concurrent caller reaches here per session.
+  await db
+    .prepare(
+      'UPDATE credit_accounts SET balance = balance + ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?',
+    )
+    .bind(creditsGranted, userId)
+    .run();
 
   const newBalance = await getBalance(db, userId);
+  const transactionId = newId();
 
   await db
     .prepare(
@@ -237,6 +246,7 @@ export interface TransactionHistoryItem {
   created_at: string;
 }
 
+/** Returns only succeeded transactions — pending/failed are internal bookkeeping. */
 export async function getTransactionHistory(
   db: D1Database,
   userId: string,
@@ -244,9 +254,9 @@ export async function getTransactionHistory(
 ): Promise<TransactionHistoryItem[]> {
   const result = await db
     .prepare(
-      'SELECT id, type, amount, status, provider, created_at FROM credit_transactions WHERE user_id = ? ORDER BY created_at DESC LIMIT ?',
+      'SELECT id, type, amount, status, provider, created_at FROM credit_transactions WHERE user_id = ? AND status = ? ORDER BY created_at DESC LIMIT ?',
     )
-    .bind(userId, limit)
+    .bind(userId, 'succeeded', limit)
     .all<TransactionHistoryItem>();
   return result.results;
 }

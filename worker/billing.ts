@@ -15,9 +15,9 @@ export interface BillingPackage {
 }
 
 export const PACKAGES: BillingPackage[] = [
-  { id: 'starter_100', name: 'Starter', credits: 100, priceCents: 99, currency: 'usd' },
-  { id: 'pro_350', name: 'Pro', credits: 350, priceCents: 499, currency: 'usd' },
-  { id: 'plus_1000', name: 'Plus', credits: 1000, priceCents: 999, currency: 'usd' },
+  { id: 'starter_24', name: 'Starter', credits: 24, priceCents: 199, currency: 'usd' },
+  { id: 'pro_54', name: 'Pro', credits: 54, priceCents: 499, currency: 'usd' },
+  { id: 'plus_112', name: 'Plus', credits: 112, priceCents: 999, currency: 'usd' },
 ];
 
 function json(data: unknown, status = 200): Response {

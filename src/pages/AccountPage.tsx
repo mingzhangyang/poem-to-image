@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { SignInButton, UserButton } from '@clerk/react';
 import { ArrowLeft, CreditCard, Loader2, LogIn } from 'lucide-react';
@@ -27,26 +27,15 @@ function typeLabel(type: TransactionItem['type']) {
 
 export function AccountPage() {
   const { isSignedIn, getToken } = useAppAuth();
-  const { balance, isLoading: isLoadingBalance, refetch: refetchBalance } = useBalance();
+  const { balance, isLoading: isLoadingBalance } = useBalance();
   const { packages, isLoading: isLoadingPackages } = useBillingPackages();
   const { items: history, isLoading: isLoadingHistory } = useBillingHistory();
   const [isPurchasing, setIsPurchasing] = useState(false);
-
-  // Handle Stripe return
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const status = params.get('billing');
-    if (status === 'success') {
-      window.history.replaceState({}, '', window.location.pathname);
-      setTimeout(() => refetchBalance(), 2000);
-    }
-    if (status === 'cancel') {
-      window.history.replaceState({}, '', window.location.pathname);
-    }
-  }, [refetchBalance]);
+  const [purchaseError, setPurchaseError] = useState<string | null>(null);
 
   const handlePurchase = useCallback(async (packageId: string) => {
     setIsPurchasing(true);
+    setPurchaseError(null);
     try {
       const token = await getToken();
       const response = await fetch('/api/billing/checkout-session', {
@@ -57,11 +46,15 @@ export function AccountPage() {
         },
         body: JSON.stringify({ packageId }),
       });
-      const data = (await response.json()) as { checkoutUrl?: string };
-      if (data.checkoutUrl) window.location.href = data.checkoutUrl;
+      const data = (await response.json()) as { checkoutUrl?: string; error?: string };
+      if (data.checkoutUrl) {
+        window.location.href = data.checkoutUrl;
+      } else {
+        setPurchaseError(data.error ?? 'Failed to start checkout. Please try again.');
+        setIsPurchasing(false);
+      }
     } catch {
-      // silent
-    } finally {
+      setPurchaseError('Network error. Please try again.');
       setIsPurchasing(false);
     }
   }, [getToken]);
@@ -163,8 +156,11 @@ export function AccountPage() {
                   ))}
                 </div>
               )}
+              {purchaseError && (
+                <p className="text-xs text-red-500 mt-3">{purchaseError}</p>
+              )}
               <p className="text-xs text-gray-400 mt-3">
-                Gemini AI generation costs 1 credit · OpenAI costs 3 credits
+                Gemini (NanoBanana 2) costs 2 credits · OpenAI costs 1 credit per generation
               </p>
             </section>
 

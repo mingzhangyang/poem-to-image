@@ -103,8 +103,8 @@ export function AboutPage() {
         <section>
           <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 mb-4">Powered By</h2>
           <div className="grid sm:grid-cols-2 gap-3">
-            <PoweredByBadge name="Google Gemini" description="AI image generation (1 credit/gen)" />
-            <PoweredByBadge name="OpenAI" description="AI image generation (3 credits/gen)" />
+            <PoweredByBadge name="Google Gemini" description="AI image generation (2 credits/gen)" />
+            <PoweredByBadge name="OpenAI" description="AI image generation (1 credit/gen)" />
             <PoweredByBadge name="Cloudflare Workers" description="Edge hosting & D1 database" />
             <PoweredByBadge name="Clerk" description="Authentication & user management" />
             <PoweredByBadge name="Stripe" description="Payment processing" />

@@ -3,8 +3,8 @@ import { GoogleGenAI } from '@google/genai';
 export type AiProvider = 'gemini' | 'openai';
 
 export const CREDIT_COST: Record<AiProvider, number> = {
-  gemini: 1,
-  openai: 3,
+  gemini: 2,
+  openai: 1,
 };
 
 export function normalizeProvider(provider?: string): AiProvider {
