@@ -1,9 +1,14 @@
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Maximize2, Minus, Plus } from 'lucide-react';
 import type { CanvasPreviewProps } from '../types';
 import { BackgroundLayer } from './preview/BackgroundLayer';
 import { CustomTextItems } from './preview/CustomTextItems';
 import { PoemContent } from './preview/PoemContent';
 import { TransparentGrid } from './preview/TransparentGrid';
+
+const ZOOM_MIN = 0.7;
+const ZOOM_MAX = 2.0;
+const ZOOM_STEP = 0.1;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -53,6 +58,16 @@ export function CanvasPreview({
   const [isDraggingPreview, setIsDraggingPreview] = useState(false);
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
 
+  // Refs for pinch-to-zoom
+  const activePointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const pinchStartRef = useRef<{ distance: number; zoom: number } | null>(null);
+
+  // Refs to keep callbacks fresh inside non-React event listeners
+  const previewZoomRef = useRef(previewZoom);
+  const onPreviewZoomChangeRef = useRef(onPreviewZoomChange);
+  useEffect(() => { previewZoomRef.current = previewZoom; }, [previewZoom]);
+  useEffect(() => { onPreviewZoomChangeRef.current = onPreviewZoomChange; }, [onPreviewZoomChange]);
+
   const sharedTextShadow = textShadowEnabled
     ? `${textShadowOffsetX}px ${textShadowOffsetY}px ${textShadowBlur}px ${textShadowColor}`
     : 'none';
@@ -100,13 +115,42 @@ export function CanvasPreview({
     }));
   }, [maxPanX, maxPanY]);
 
+  // Ctrl+scroll (or Cmd+scroll on Mac) wheel zoom — non-passive so we can preventDefault
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      // Scale deltaY to a reasonable zoom increment; clamp so one scroll tick isn't huge
+      const delta = clamp(-e.deltaY * 0.003, -0.12, 0.12);
+      const newZoom = clamp(previewZoomRef.current + delta, ZOOM_MIN, ZOOM_MAX);
+      onPreviewZoomChangeRef.current(newZoom);
+    };
+
+    viewport.addEventListener('wheel', handleWheel, { passive: false });
+    return () => viewport.removeEventListener('wheel', handleWheel);
+  }, []);
+
   const handleFitViewport = () => {
     setPan({ x: 0, y: 0 });
     onPreviewZoomReset();
   };
 
   const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!canPan || event.pointerType === 'mouse' && event.button !== 0) {
+    activePointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+    // Two+ pointers → pinch-to-zoom mode
+    if (activePointersRef.current.size >= 2) {
+      setIsDraggingPreview(false);
+      const points = [...activePointersRef.current.values()];
+      const distance = Math.hypot(points[1].x - points[0].x, points[1].y - points[0].y);
+      pinchStartRef.current = { distance, zoom: previewZoomRef.current };
+      return;
+    }
+
+    if (!canPan || (event.pointerType === 'mouse' && event.button !== 0)) {
       return;
     }
 
@@ -117,6 +161,20 @@ export function CanvasPreview({
   };
 
   const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (activePointersRef.current.has(event.pointerId)) {
+      activePointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    }
+
+    // Pinch zoom
+    if (activePointersRef.current.size >= 2 && pinchStartRef.current) {
+      const points = [...activePointersRef.current.values()];
+      const currentDistance = Math.hypot(points[1].x - points[0].x, points[1].y - points[0].y);
+      const ratio = currentDistance / pinchStartRef.current.distance;
+      const newZoom = clamp(pinchStartRef.current.zoom * ratio, ZOOM_MIN, ZOOM_MAX);
+      onPreviewZoomChangeRef.current(newZoom);
+      return;
+    }
+
     if (!isDraggingPreview) {
       return;
     }
@@ -131,6 +189,12 @@ export function CanvasPreview({
   };
 
   const handlePointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    activePointersRef.current.delete(event.pointerId);
+
+    if (activePointersRef.current.size < 2) {
+      pinchStartRef.current = null;
+    }
+
     if (!isDraggingPreview) {
       return;
     }
@@ -149,35 +213,56 @@ export function CanvasPreview({
     >
       <TransparentGrid visible={backgroundType === 'transparent'} />
 
-      <div className="hidden md:flex absolute right-6 top-6 z-20 items-center gap-2 rounded-full border border-white/60 bg-white/68 px-3 py-2 text-xs text-gray-600 shadow-[0_10px_24px_rgba(15,23,42,0.08)] backdrop-blur-sm opacity-55 transition-opacity duration-200 hover:opacity-100 focus-within:opacity-100">
-        <span className="min-w-10 text-right font-medium text-gray-800">{previewScalePercent}%</span>
+      <div className="flex absolute right-4 top-4 z-20 items-center gap-1 rounded-full border border-white/60 bg-white/68 px-2.5 py-1.5 text-xs text-gray-600 shadow-[0_10px_24px_rgba(15,23,42,0.08)] backdrop-blur-sm opacity-55 transition-opacity duration-200 hover:opacity-100 focus-within:opacity-100 md:right-6 md:top-6">
+        <button
+          type="button"
+          onClick={() => onPreviewZoomChange(clamp(previewZoom - ZOOM_STEP, ZOOM_MIN, ZOOM_MAX))}
+          className="flex items-center justify-center w-5 h-5 rounded-full text-gray-600 hover:bg-white/80 hover:text-gray-950 transition-colors"
+          aria-label="Zoom out"
+        >
+          <Minus size={11} />
+        </button>
+
+        <span className="min-w-8 text-center font-medium text-gray-800 tabular-nums">{previewScalePercent}%</span>
 
         <input
           type="range"
-          min="70"
-          max="200"
+          min={Math.round(ZOOM_MIN * 100)}
+          max={Math.round(ZOOM_MAX * 100)}
           step="1"
           value={Math.round(previewZoom * 100)}
           onChange={(event) => onPreviewZoomChange(Number(event.target.value) / 100)}
-          className="h-1.5 w-24 cursor-pointer accent-gray-800"
+          className="hidden md:block h-1.5 w-20 cursor-pointer accent-gray-800"
           aria-label={t('previewZoom')}
           title={t('previewZoom')}
         />
 
         <button
           type="button"
+          onClick={() => onPreviewZoomChange(clamp(previewZoom + ZOOM_STEP, ZOOM_MIN, ZOOM_MAX))}
+          className="flex items-center justify-center w-5 h-5 rounded-full text-gray-600 hover:bg-white/80 hover:text-gray-950 transition-colors"
+          aria-label="Zoom in"
+        >
+          <Plus size={11} />
+        </button>
+
+        <div className="w-px h-3 bg-gray-300/60 mx-0.5" />
+
+        <button
+          type="button"
           onClick={handleFitViewport}
-          className="inline-flex items-center justify-center rounded-full border border-gray-200/80 px-2.5 py-1 text-[11px] font-medium text-gray-700 transition-colors hover:border-gray-300 hover:bg-white/80 hover:text-gray-950"
+          className="flex items-center justify-center w-5 h-5 rounded-full text-gray-600 hover:bg-white/80 hover:text-gray-950 transition-colors"
           aria-label={t('fitToViewport')}
           title={t('fitToViewport')}
         >
-          Fit
+          <Maximize2 size={11} />
         </button>
       </div>
 
       <div
         ref={viewportRef}
         className={`relative flex h-full w-full items-center justify-center overflow-hidden ${canPan ? (isDraggingPreview ? 'cursor-grabbing' : 'cursor-grab') : ''}`}
+        style={{ touchAction: 'none' }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
