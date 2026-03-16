@@ -17,6 +17,8 @@ function clamp(value: number, min: number, max: number) {
 export function CanvasPreview({
   containerRef,
   previewRef,
+  poemFrameRef,
+  poemTextRef,
   t,
   text,
   backgroundType,
@@ -331,6 +333,8 @@ export function CanvasPreview({
                 />
 
                 <PoemContent
+                  poemFrameRef={poemFrameRef}
+                  poemTextRef={poemTextRef}
                   t={t}
                   text={text}
                   fontFamily={fontFamily}

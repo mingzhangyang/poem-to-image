@@ -98,6 +98,8 @@ export default function App() {
 
   const previewRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const poemFrameRef = useRef<HTMLDivElement>(null);
+  const poemTextRef = useRef<HTMLDivElement>(null);
 
   const background = useBackgroundConfig({
     text,
@@ -153,46 +155,54 @@ export default function App() {
   }, []);
 
   const scale = useCanvasScale(containerRef, canvasWidth, canvasHeight);
-  const { exportImage: handleDownload, isExporting } = useImageExporter(exportScale, {
-    canvasWidth,
-    canvasHeight,
-    background: {
-      backgroundType: background.backgroundType,
-      backgroundColor: background.backgroundColor,
-      gradientColor1: background.gradientColor1,
-      gradientColor2: background.gradientColor2,
-      gradientDirection: background.gradientDirection,
-      backgroundImage: background.backgroundImage,
-      bgBrightness: background.bgBrightness,
-      bgBlur: background.bgBlur,
+  const { exportImage: handleDownload, isExporting } = useImageExporter(
+    exportScale,
+    {
+      canvasWidth,
+      canvasHeight,
+      background: {
+        backgroundType: background.backgroundType,
+        backgroundColor: background.backgroundColor,
+        gradientColor1: background.gradientColor1,
+        gradientColor2: background.gradientColor2,
+        gradientDirection: background.gradientDirection,
+        backgroundImage: background.backgroundImage,
+        bgBrightness: background.bgBrightness,
+        bgBlur: background.bgBlur,
+      },
+      typography: {
+        text: text || t('poemPlaceholder'),
+        fontFamily: typography.fontFamily,
+        fontSize: typography.fontSize,
+        textColor: typography.textColor,
+        textAlign: typography.textAlign,
+        writingMode: typography.writingMode,
+        padding: typography.padding,
+        lineHeight: typography.lineHeight,
+        letterSpacing: typography.letterSpacing,
+        columns: typography.columns,
+        columnGap: typography.columnGap,
+        textShadowEnabled: typography.textShadowEnabled,
+        textShadowColor: typography.textShadowColor,
+        textShadowBlur: typography.textShadowBlur,
+        textShadowOffsetY: typography.textShadowOffsetY,
+        textShadowOffsetX: typography.textShadowOffsetX,
+        poemPosition: decorations.poemPosition,
+      },
+      decorations: {
+        showBorder: decorations.showBorder,
+        borderStyle: decorations.borderStyle,
+        showStamp: decorations.showStamp,
+        stamp: decorations.stamp,
+        customTexts: decorations.customTexts,
+      },
     },
-    typography: {
-      text: text || t('poemPlaceholder'),
-      fontFamily: typography.fontFamily,
-      fontSize: typography.fontSize,
-      textColor: typography.textColor,
-      textAlign: typography.textAlign,
-      writingMode: typography.writingMode,
-      padding: typography.padding,
-      lineHeight: typography.lineHeight,
-      letterSpacing: typography.letterSpacing,
-      columns: typography.columns,
-      columnGap: typography.columnGap,
-      textShadowEnabled: typography.textShadowEnabled,
-      textShadowColor: typography.textShadowColor,
-      textShadowBlur: typography.textShadowBlur,
-      textShadowOffsetY: typography.textShadowOffsetY,
-      textShadowOffsetX: typography.textShadowOffsetX,
-      poemPosition: decorations.poemPosition,
+    {
+      poemFrameRef,
+      poemTextRef,
     },
-    decorations: {
-      showBorder: decorations.showBorder,
-      borderStyle: decorations.borderStyle,
-      showStamp: decorations.showStamp,
-      stamp: decorations.stamp,
-      customTexts: decorations.customTexts,
-    },
-  }, waitForSceneSettled);
+    waitForSceneSettled,
+  );
   const handlePreviewZoomReset = () => setPreviewZoom(1);
   const previousLanguageRef = useRef(language);
 
@@ -439,6 +449,8 @@ export default function App() {
     isExporting,
     containerRef,
     previewRef,
+    poemFrameRef,
+    poemTextRef,
     text,
     backgroundType: background.backgroundType,
     backgroundStyle: background.backgroundStyle,

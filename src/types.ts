@@ -221,6 +221,8 @@ export interface SidebarProps {
 export interface CanvasPreviewProps {
   containerRef: RefObject<HTMLDivElement | null>;
   previewRef: RefObject<HTMLDivElement | null>;
+  poemFrameRef: RefObject<HTMLDivElement | null>;
+  poemTextRef: RefObject<HTMLDivElement | null>;
   t: TranslateFn;
   text: string;
   backgroundType: BackgroundType;

@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
+import type { RefObject } from 'react';
 import type { BorderStyle, PositionedElement, StampConfig, TextAlign, TranslateFn, WritingMode } from '../../types';
 import { StampOverlay } from './StampOverlay';
 
 interface PoemContentProps {
+  poemFrameRef: RefObject<HTMLDivElement | null>;
+  poemTextRef: RefObject<HTMLDivElement | null>;
   t: TranslateFn;
   text: string;
   fontFamily: string;
@@ -31,6 +34,8 @@ function clamp(value: number, min: number, max: number) {
 }
 
 export function PoemContent({
+  poemFrameRef,
+  poemTextRef,
   t,
   text,
   fontFamily,
@@ -53,7 +58,6 @@ export function PoemContent({
   onInteractionStart,
   onInteractionEnd,
 }: PoemContentProps) {
-  const frameRef = useRef<HTMLDivElement>(null);
   const poemBoxRef = useRef<HTMLDivElement>(null);
   const [livePosition, setLivePosition] = useState(poemPosition);
   const isDraggingRef = useRef(false);
@@ -65,7 +69,7 @@ export function PoemContent({
   }, [poemPosition]);
 
   const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
-    const frameRect = frameRef.current?.getBoundingClientRect();
+    const frameRect = poemFrameRef.current?.getBoundingClientRect();
 
     if (!frameRect || (event.pointerType === 'mouse' && event.button !== 0)) {
       return;
@@ -123,7 +127,7 @@ export function PoemContent({
 
   return (
     <div
-      ref={frameRef}
+      ref={poemFrameRef}
       className={`relative z-10 flex flex-col items-center justify-center w-full h-full ${showBorder ? 'border-4' : ''}`}
       style={{
         borderColor: textColor,
@@ -146,6 +150,7 @@ export function PoemContent({
           className="pointer-events-auto flex cursor-move flex-col items-center justify-center"
         >
           <div
+            ref={poemTextRef}
             className="whitespace-pre-wrap wrap-break-word max-w-full"
             style={{
               fontFamily,
@@ -167,7 +172,7 @@ export function PoemContent({
 
       {showStamp ? (
         <StampOverlay
-          frameRef={frameRef}
+          frameRef={poemFrameRef}
           stamp={stamp}
           onStampChange={onStampChange}
           onInteractionStart={onInteractionStart}

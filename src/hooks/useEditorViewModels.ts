@@ -34,6 +34,8 @@ interface UseEditorViewModelsParams {
   isExporting: boolean;
   containerRef: CanvasPreviewProps['containerRef'];
   previewRef: CanvasPreviewProps['previewRef'];
+  poemFrameRef: CanvasPreviewProps['poemFrameRef'];
+  poemTextRef: CanvasPreviewProps['poemTextRef'];
   text: string;
   backgroundType: CanvasPreviewProps['backgroundType'];
   backgroundStyle: CanvasPreviewProps['backgroundStyle'];
@@ -78,6 +80,8 @@ export function useEditorViewModels({
   isExporting,
   containerRef,
   previewRef,
+  poemFrameRef,
+  poemTextRef,
   text,
   backgroundType,
   backgroundStyle,
@@ -124,6 +128,8 @@ export function useEditorViewModels({
   const canvasPreviewProps: CanvasPreviewProps = {
     containerRef,
     previewRef,
+    poemFrameRef,
+    poemTextRef,
     t,
     text,
     backgroundType,

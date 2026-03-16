@@ -55,6 +55,10 @@ interface Rect {
   height: number;
 }
 
+interface RenderCanvasExportOptions {
+  skipPoem?: boolean;
+}
+
 function loadImage(src: string) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
     const image = new Image();
@@ -566,7 +570,16 @@ function drawStamp(ctx: CanvasRenderingContext2D, scene: CanvasExportScene, fram
   ctx.restore();
 }
 
-export async function renderCanvasExport(scene: CanvasExportScene) {
+export function getCanvasContentRect(scene: CanvasExportScene): Rect {
+  return {
+    x: scene.typography.padding,
+    y: scene.typography.padding,
+    width: scene.canvasWidth - scene.typography.padding * 2,
+    height: scene.canvasHeight - scene.typography.padding * 2,
+  };
+}
+
+export async function renderCanvasExport(scene: CanvasExportScene, options: RenderCanvasExportOptions = {}) {
   const canvas = document.createElement('canvas');
   canvas.width = scene.canvasWidth * scene.exportScale;
   canvas.height = scene.canvasHeight * scene.exportScale;
@@ -584,18 +597,16 @@ export async function renderCanvasExport(scene: CanvasExportScene) {
   ctx.scale(scene.exportScale, scene.exportScale);
   await drawBackground(ctx, scene);
 
-  const contentRect: Rect = {
-    x: scene.typography.padding,
-    y: scene.typography.padding,
-    width: scene.canvasWidth - scene.typography.padding * 2,
-    height: scene.canvasHeight - scene.typography.padding * 2,
-  };
+  const contentRect = getCanvasContentRect(scene);
 
   if (scene.decorations.showBorder) {
     drawBorder(ctx, contentRect, scene.decorations.borderStyle, scene.typography.textColor);
   }
 
-  drawPoem(ctx, scene, contentRect);
+  if (!options.skipPoem) {
+    drawPoem(ctx, scene, contentRect);
+  }
+
   scene.decorations.customTexts.forEach((customText) => drawCustomText(ctx, customText, scene, contentRect));
 
   if (scene.decorations.showStamp) {
