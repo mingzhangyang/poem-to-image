@@ -3,6 +3,8 @@ import type { ExportScale, TranslateFn } from '../../types';
 
 interface SidebarFooterProps {
   t: TranslateFn;
+  canvasWidth: number;
+  canvasHeight: number;
   exportScale: ExportScale;
   onExportScaleChange: (value: ExportScale) => void;
   onDownload: () => void;
@@ -15,7 +17,11 @@ const exportScaleOptions: Array<{ value: ExportScale; labelKey: 'exportQualitySt
   { value: 3, labelKey: 'exportQualityUltraHd' },
 ];
 
-export function SidebarFooter({ t, exportScale, onExportScaleChange, onDownload, isExporting }: SidebarFooterProps) {
+function getExportDimensionsLabel(canvasWidth: number, canvasHeight: number, scale: ExportScale) {
+  return `${canvasWidth * scale} x ${canvasHeight * scale} px`;
+}
+
+export function SidebarFooter({ t, canvasWidth, canvasHeight, exportScale, onExportScaleChange, onDownload, isExporting }: SidebarFooterProps) {
   return (
     <div className="px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-6 border-t border-[rgba(34,48,52,0.06)] bg-[linear-gradient(180deg,rgba(255,253,249,0.86),rgba(255,250,242,0.96))] md:sticky md:bottom-0">
       <label className="block mb-3">
@@ -28,7 +34,7 @@ export function SidebarFooter({ t, exportScale, onExportScaleChange, onDownload,
         >
           {exportScaleOptions.map((option) => (
             <option key={option.value} value={option.value}>
-              {t(option.labelKey)}
+              {`${t(option.labelKey)} - ${getExportDimensionsLabel(canvasWidth, canvasHeight, option.value)}`}
             </option>
           ))}
         </select>

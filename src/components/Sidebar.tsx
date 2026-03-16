@@ -30,6 +30,8 @@ export function Sidebar({
   typography,
   decorations,
   billing,
+  canvasWidth,
+  canvasHeight,
   exportScale,
   onExportScaleChange,
   onDownload,
@@ -295,6 +297,8 @@ export function Sidebar({
       return (
         <SidebarFooter
           t={t}
+          canvasWidth={canvasWidth}
+          canvasHeight={canvasHeight}
           exportScale={exportScale}
           onExportScaleChange={onExportScaleChange}
           onDownload={onDownload}
@@ -430,6 +434,8 @@ export function Sidebar({
             {sections()}
             <SidebarFooter
               t={t}
+              canvasWidth={canvasWidth}
+              canvasHeight={canvasHeight}
               exportScale={exportScale}
               onExportScaleChange={onExportScaleChange}
               onDownload={onDownload}

@@ -119,6 +119,8 @@ export function useEditorViewModels({
     typography,
     decorations,
     billing,
+    canvasWidth,
+    canvasHeight,
     exportScale,
     onExportScaleChange,
     onDownload,

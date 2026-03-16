@@ -212,6 +212,8 @@ export interface SidebarProps {
   typography: TypographySectionProps;
   decorations: DecorationsSectionProps;
   billing: BillingSectionProps;
+  canvasWidth: number;
+  canvasHeight: number;
   exportScale: ExportScale;
   onExportScaleChange: (value: ExportScale) => void;
   onDownload: () => void;
