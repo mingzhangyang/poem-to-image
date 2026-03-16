@@ -13,7 +13,7 @@ function Section({ title, children }: { title: string; children: import('react')
 
 export function PrivacyPage() {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-transparent">
       <title>Privacy Policy – InkPoem</title>
       <meta name="description" content="Learn how InkPoem collects, uses, and protects your personal data." />
       <meta property="og:title" content="Privacy Policy – InkPoem" />
@@ -21,13 +21,13 @@ export function PrivacyPage() {
       <link rel="canonical" href="https://inkpoem.com/privacy" />
 
       {/* Nav */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
+      <header className="bg-[rgba(255,253,249,0.92)] border-b border-[rgba(34,48,52,0.08)] sticky top-0 z-10 backdrop-blur">
         <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
-          <Link to="/" className="flex items-center gap-2 text-indigo-900 font-bold text-lg">
+          <Link to="/" className="flex items-center gap-2 text-(--app-accent-900) font-bold text-lg">
             <Logo className="w-7 h-7" />
             <span>InkPoem</span>
           </Link>
-          <Link to="/" className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors">
+          <Link to="/" className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-(--app-accent-800) transition-colors">
             <ArrowLeft className="w-4 h-4" />
             Back to Editor
           </Link>
@@ -89,11 +89,11 @@ export function PrivacyPage() {
         </Section>
 
         <Section title="Contact">
-          <p>If you have any questions about this Privacy Policy, please contact us at <a href="mailto:contact@inkpoem.com" className="text-indigo-600 hover:underline">contact@inkpoem.com</a>.</p>
+          <p>If you have any questions about this Privacy Policy, please contact us at <a href="mailto:contact@inkpoem.com" className="app-accent-link hover:underline">contact@inkpoem.com</a>.</p>
         </Section>
       </main>
 
-      <footer className="max-w-2xl mx-auto px-4 py-8 border-t border-gray-200 mt-4">
+      <footer className="max-w-2xl mx-auto px-4 py-8 border-t border-[rgba(34,48,52,0.08)] mt-4">
         <p className="text-xs text-gray-400 text-center">© {new Date().getFullYear()} InkPoem. All rights reserved.</p>
       </footer>
     </div>

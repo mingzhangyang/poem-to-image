@@ -17,14 +17,14 @@ const exportScaleOptions: Array<{ value: ExportScale; labelKey: 'exportQualitySt
 
 export function SidebarFooter({ t, exportScale, onExportScaleChange, onDownload, isExporting }: SidebarFooterProps) {
   return (
-    <div className="px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-6 border-t border-gray-100 bg-white md:sticky md:bottom-0">
+    <div className="px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-6 border-t border-[rgba(34,48,52,0.06)] bg-[linear-gradient(180deg,rgba(255,253,249,0.86),rgba(255,250,242,0.96))] md:sticky md:bottom-0">
       <label className="block mb-3">
         <span className="block text-sm font-medium text-gray-700 mb-2">{t('exportQuality')}</span>
         <select
           value={exportScale}
           onChange={(event) => onExportScaleChange(Number(event.target.value) as ExportScale)}
           disabled={isExporting}
-          className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 outline-none transition focus:border-gray-400 focus:bg-white disabled:opacity-60 disabled:cursor-not-allowed"
+          className="app-select text-sm disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {exportScaleOptions.map((option) => (
             <option key={option.value} value={option.value}>
@@ -37,7 +37,7 @@ export function SidebarFooter({ t, exportScale, onExportScaleChange, onDownload,
       <button
         onClick={onDownload}
         disabled={isExporting}
-        className="w-full py-3 px-4 bg-gray-900 hover:bg-black disabled:opacity-70 disabled:cursor-not-allowed text-white rounded-xl font-medium transition-all flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
+        className="app-button-primary w-full py-3 px-4 disabled:opacity-70 disabled:cursor-not-allowed rounded-xl font-medium transition-all flex items-center justify-center gap-2"
       >
         {isExporting ? (
           <>

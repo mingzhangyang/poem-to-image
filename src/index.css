@@ -1,9 +1,29 @@
 @import url('https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Cormorant+Garamond:wght@400;500;600;700&family=Gowun+Batang:wght@400;700&family=Liu+Jian+Mao+Cao&family=Long+Cang&family=Lora:wght@400;500;700&family=Ma+Shan+Zheng&family=Noto+Sans+JP:wght@400;500;700&family=Noto+Sans+KR:wght@400;500;700&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+JP:wght@400;500;700&family=Noto+Serif+KR:wght@400;500;700&family=Noto+Serif+SC:wght@400;500;700&family=Noto+Serif+TC:wght@400;500;700&family=Playfair+Display:wght@400;500;700&family=Shippori+Mincho:wght@400;500;700&family=Source+Sans+3:wght@400;500;700&family=Space+Mono:wght@400;700&family=Spectral:wght@400;500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Zhi+Mang+Xing&family=ZCOOL+QingKe+HuangYou&family=ZCOOL+XiaoWei&display=swap');
 @import "tailwindcss";
 
+:root {
+	--app-accent-50: #edf4f3;
+	--app-accent-100: #dcebea;
+	--app-accent-200: #bfd6d5;
+	--app-accent-300: #97b8b6;
+	--app-accent-500: #547f7d;
+	--app-accent-600: #406967;
+	--app-accent-700: #335857;
+	--app-accent-800: #294748;
+	--app-accent-900: #1f3436;
+	--app-accent-shadow: rgba(41, 71, 72, 0.16);
+	--app-surface: #fffdf9;
+	--app-surface-strong: #fffaf2;
+	--app-page: #f6f3ec;
+	--app-ink: #223034;
+}
+
 html {
 	min-height: 100%;
-	background: #f8fafc;
+	background:
+		radial-gradient(circle at top left, rgba(191, 214, 213, 0.45), transparent 34%),
+		radial-gradient(circle at top right, rgba(255, 245, 228, 0.75), transparent 30%),
+		linear-gradient(180deg, #fbf8f2 0%, var(--app-page) 100%);
 }
 
 body,
@@ -13,5 +33,125 @@ body,
 
 body {
 	margin: 0;
-	background: #f8fafc;
+	background: transparent;
+	color: var(--app-ink);
+}
+
+::selection {
+	background: rgba(84, 127, 125, 0.18);
+	color: var(--app-accent-900);
+}
+
+.app-panel-surface {
+	background: rgba(255, 253, 249, 0.9);
+	border: 1px solid rgba(34, 48, 52, 0.08);
+	box-shadow: 0 16px 40px rgba(31, 52, 54, 0.05);
+}
+
+.app-soft-surface {
+	background: linear-gradient(180deg, rgba(255, 250, 242, 0.95), rgba(255, 253, 249, 0.92));
+	border: 1px solid rgba(34, 48, 52, 0.06);
+}
+
+.app-input,
+.app-select,
+.app-textarea {
+	width: 100%;
+	border-radius: 0.9rem;
+	border: 1px solid rgba(34, 48, 52, 0.1);
+	background: rgba(255, 253, 249, 0.96);
+	color: var(--app-ink);
+	transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+	outline: none;
+	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.app-input,
+.app-select {
+	padding: 0.65rem 0.8rem;
+}
+
+.app-textarea {
+	padding: 0.8rem 0.9rem;
+}
+
+.app-input:focus,
+.app-select:focus,
+.app-textarea:focus {
+	border-color: var(--app-accent-300);
+	background: #fff;
+	box-shadow: 0 0 0 3px rgba(84, 127, 125, 0.14);
+}
+
+.app-range {
+	width: 100%;
+	accent-color: var(--app-accent-600);
+}
+
+.app-range.app-range-warm {
+	accent-color: #9b5f43;
+}
+
+.app-checkbox {
+	accent-color: var(--app-accent-600);
+}
+
+.app-segment {
+	background: rgba(34, 48, 52, 0.05);
+	border: 1px solid rgba(34, 48, 52, 0.06);
+}
+
+.app-segment-button-active {
+	background: rgba(255, 253, 249, 0.98);
+	color: var(--app-accent-700);
+	box-shadow: 0 8px 18px rgba(31, 52, 54, 0.08);
+}
+
+.app-button-primary {
+	background: var(--app-accent-700);
+	color: white;
+	box-shadow: 0 12px 28px rgba(31, 52, 54, 0.16);
+	transition: background-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.app-button-primary:hover {
+	background: var(--app-accent-800);
+	box-shadow: 0 16px 34px rgba(31, 52, 54, 0.18);
+}
+
+.app-button-primary:disabled {
+	opacity: 0.7;
+	cursor: not-allowed;
+	box-shadow: none;
+}
+
+.app-button-secondary {
+	background: rgba(255, 253, 249, 0.96);
+	color: var(--app-accent-700);
+	border: 1px solid var(--app-accent-200);
+	transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.app-button-secondary:hover {
+	background: var(--app-accent-50);
+	border-color: var(--app-accent-300);
+}
+
+.app-accent-link {
+	color: var(--app-accent-600);
+	transition: color 160ms ease;
+}
+
+.app-accent-link:hover {
+	color: var(--app-accent-800);
+}
+
+.app-status-positive {
+	color: #4f7563;
+	background: rgba(79, 117, 99, 0.12);
+}
+
+.app-status-warning {
+	color: #8a523b;
+	background: rgba(155, 95, 67, 0.12);
 }

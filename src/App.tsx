@@ -33,10 +33,10 @@ export default function App() {
   const [activeTemplateId, setActiveTemplateId] = useState<EditorTemplateId | null>(null);
 
   const [expandedSections, setExpandedSections] = useState<ExpandedSections>({
-    templates: false,
-    canvasSize: true,
+    templates: true,
+    canvasSize: false,
     content: true,
-    background: true,
+    background: false,
     typography: false,
     decorations: false,
     billing: false,
@@ -377,7 +377,7 @@ export default function App() {
   });
 
   return (
-    <div className="min-h-dvh bg-gray-50 flex flex-col md:flex-row font-sans text-gray-800">
+    <div className="min-h-dvh bg-transparent flex flex-col md:flex-row font-sans text-[var(--app-ink)]">
       <title>InkPoem – Turn Poems into Beautiful Art with AI</title>
       <meta name="description" content="Turn your poems into stunning visual art with AI. Customize typography, backgrounds, and styles. Export in high resolution. Free to start." />
       <link rel="canonical" href="https://inkpoem.com/" />

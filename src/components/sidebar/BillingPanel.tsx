@@ -51,7 +51,7 @@ export function BillingPanel({ t, expanded, onToggle, billing }: BillingPanelPro
             <p className="text-sm text-gray-500">{t('errSignInRequired')}</p>
             {CLERK_CONFIGURED ? (
               <SignInButton mode="modal">
-                <button className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2 mx-auto">
+                <button className="app-button-primary px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 mx-auto">
                   <LogIn className="w-4 h-4" /> {t('signIn')}
                 </button>
               </SignInButton>
@@ -62,12 +62,12 @@ export function BillingPanel({ t, expanded, onToggle, billing }: BillingPanelPro
         ) : (
           <>
             {/* User + balance */}
-            <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
+            <div className="app-soft-surface flex items-center justify-between gap-3 p-3 rounded-xl">
               <div className="flex items-center gap-2 min-w-0">
                 {CLERK_CONFIGURED && <UserButton afterSignOutUrl={window.location.href} />}
                 {email && <span className="text-sm text-gray-700 truncate">{email}</span>}
               </div>
-              <div className="shrink-0 flex items-center gap-1.5 text-sm font-semibold text-indigo-700">
+              <div className="shrink-0 flex items-center gap-1.5 text-sm font-semibold text-[var(--app-accent-700)]">
                 {billing.isLoadingBalance ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 ) : (
@@ -95,7 +95,7 @@ export function BillingPanel({ t, expanded, onToggle, billing }: BillingPanelPro
                   {billing.packages.map((pkg) => (
                     <div
                       key={pkg.id}
-                      className="flex items-center justify-between gap-2 p-3 rounded-xl border border-gray-200 bg-white hover:border-indigo-200 hover:bg-indigo-50/30 transition-colors"
+                      className="app-soft-surface flex items-center justify-between gap-2 p-3 rounded-xl hover:border-[var(--app-accent-200)] hover:bg-[rgba(237,244,243,0.5)] transition-colors"
                     >
                       <div>
                         <div className="text-sm font-medium text-gray-900">{pkg.name}</div>
@@ -106,7 +106,7 @@ export function BillingPanel({ t, expanded, onToggle, billing }: BillingPanelPro
                       <button
                         onClick={() => billing.onPurchase(pkg.id)}
                         disabled={billing.isPurchasing}
-                        className="shrink-0 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-lg text-xs font-medium transition-colors"
+                        className="app-button-primary shrink-0 px-3 py-1.5 disabled:opacity-60 disabled:cursor-not-allowed rounded-lg text-xs font-medium"
                       >
                         {billing.isPurchasing ? (
                           <Loader2 className="w-3 h-3 animate-spin" />
@@ -146,7 +146,7 @@ export function BillingPanel({ t, expanded, onToggle, billing }: BillingPanelPro
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <span
-                          className={`font-medium ${item.amount > 0 ? 'text-green-600' : 'text-gray-700'}`}
+                          className={`rounded-full px-2 py-0.5 font-medium ${item.amount > 0 ? 'app-status-positive' : 'app-status-warning'}`}
                         >
                           {formatAmount(item.amount)}
                         </span>

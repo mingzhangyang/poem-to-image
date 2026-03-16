@@ -63,18 +63,18 @@ export function AccountPage() {
   }, [getToken]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-transparent">
       <title>Account – InkPoem</title>
       <meta name="robots" content="noindex, nofollow" />
 
       {/* Nav */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
+      <header className="bg-[rgba(255,253,249,0.92)] border-b border-[rgba(34,48,52,0.08)] sticky top-0 z-10 backdrop-blur">
         <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
-          <Link to="/" className="flex items-center gap-2 text-indigo-900 font-bold text-lg">
+          <Link to="/" className="flex items-center gap-2 text-(--app-accent-900) font-bold text-lg">
             <Logo className="w-7 h-7" />
             <span>InkPoem</span>
           </Link>
-          <Link to="/" className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors">
+          <Link to="/" className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-(--app-accent-800) transition-colors">
             <ArrowLeft className="w-4 h-4" />
             Back to Editor
           </Link>
@@ -85,9 +85,9 @@ export function AccountPage() {
         <h1 className="text-2xl font-bold text-gray-900">Account</h1>
 
         {!isSignedIn ? (
-          <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center space-y-4">
-            <div className="w-14 h-14 bg-indigo-50 rounded-full flex items-center justify-center mx-auto">
-              <LogIn className="w-6 h-6 text-indigo-600" />
+          <div className="app-panel-surface rounded-2xl p-8 text-center space-y-4">
+            <div className="w-14 h-14 bg-(--app-accent-50) rounded-full flex items-center justify-center mx-auto">
+              <LogIn className="w-6 h-6 text-(--app-accent-600)" />
             </div>
             <div>
               <p className="font-semibold text-gray-900">Sign in to manage your account</p>
@@ -97,7 +97,7 @@ export function AccountPage() {
               <SignInButton mode="modal">
                 <button
                   type="button"
-                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-medium transition-colors"
+                  className="app-button-primary inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium"
                 >
                   <LogIn className="w-4 h-4" /> Sign In
                 </button>
@@ -109,7 +109,7 @@ export function AccountPage() {
         ) : (
           <>
             {/* Profile */}
-            <section className="bg-white rounded-2xl border border-gray-200 p-6">
+            <section className="app-panel-surface rounded-2xl p-6">
               <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 mb-4">Profile</h2>
               <div className="flex items-center gap-4">
                 {CLERK_CONFIGURED && <UserButton afterSignOutUrl="/account" />}
@@ -120,18 +120,18 @@ export function AccountPage() {
             </section>
 
             {/* Credits */}
-            <section className="bg-white rounded-2xl border border-gray-200 p-6">
+            <section className="app-panel-surface rounded-2xl p-6">
               <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 mb-4">Credits</h2>
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center">
-                  <CreditCard className="w-5 h-5 text-indigo-600" />
+                <div className="w-12 h-12 bg-(--app-accent-50) rounded-xl flex items-center justify-center">
+                  <CreditCard className="w-5 h-5 text-(--app-accent-600)" />
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">Available balance</p>
                   {isLoadingBalance ? (
                     <Loader2 className="w-4 h-4 animate-spin text-gray-400 mt-0.5" />
                   ) : (
-                    <p className="text-2xl font-bold text-indigo-700">{balance ?? '—'} <span className="text-base font-medium">credits</span></p>
+                    <p className="text-2xl font-bold text-(--app-accent-700)">{balance ?? '—'} <span className="text-base font-medium">credits</span></p>
                   )}
                 </div>
               </div>
@@ -142,7 +142,7 @@ export function AccountPage() {
               ) : (
                 <div className="grid sm:grid-cols-3 gap-3">
                   {packages.map((pkg) => (
-                    <div key={pkg.id} className="flex flex-col gap-3 p-4 rounded-xl border border-gray-200 hover:border-indigo-200 hover:bg-indigo-50/30 transition-colors">
+                    <div key={pkg.id} className="app-soft-surface flex flex-col gap-3 p-4 rounded-xl hover:border-(--app-accent-200) hover:bg-[rgba(237,244,243,0.5)] transition-colors">
                       <div>
                         <p className="font-semibold text-gray-900">{pkg.name}</p>
                         <p className="text-sm text-gray-500 mt-0.5">{pkg.credits} credits</p>
@@ -151,7 +151,7 @@ export function AccountPage() {
                         type="button"
                         onClick={() => handlePurchase(pkg.id)}
                         disabled={isPurchasing}
-                        className="mt-auto w-full py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium transition-colors"
+                        className="app-button-primary mt-auto w-full py-2 rounded-lg text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed"
                       >
                         {isPurchasing ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : `$${(pkg.priceCents / 100).toFixed(2)}`}
                       </button>
@@ -160,7 +160,7 @@ export function AccountPage() {
                 </div>
               )}
               {purchaseError && (
-                <p className="text-xs text-red-500 mt-3">{purchaseError}</p>
+                <p className="app-status-warning inline-flex rounded-full px-3 py-1 text-xs mt-3">{purchaseError}</p>
               )}
               <p className="text-xs text-gray-400 mt-3">
                 Gemini (NanoBanana 2) costs 2 credits · OpenAI costs 1 credit per generation
@@ -168,7 +168,7 @@ export function AccountPage() {
             </section>
 
             {/* Transaction history */}
-            <section className="bg-white rounded-2xl border border-gray-200 p-6">
+            <section className="app-panel-surface rounded-2xl p-6">
               <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 mb-4">Transaction History</h2>
               {isLoadingHistory ? (
                 <div className="flex justify-center py-4"><Loader2 className="w-5 h-5 animate-spin text-gray-400" /></div>
@@ -183,7 +183,7 @@ export function AccountPage() {
                         {item.provider && <span className="ml-1.5 text-xs text-gray-400 capitalize">({item.provider})</span>}
                         <p className="text-xs text-gray-400 mt-0.5">{formatDate(item.created_at)}</p>
                       </div>
-                      <span className={`font-semibold ${item.amount > 0 ? 'text-green-600' : 'text-gray-700'}`}>
+                      <span className={`rounded-full px-2.5 py-0.5 font-semibold ${item.amount > 0 ? 'app-status-positive' : 'app-status-warning'}`}>
                         {item.amount > 0 ? `+${item.amount}` : item.amount}
                       </span>
                     </div>

@@ -9,13 +9,28 @@ interface CanvasSizePanelProps {
   canvas: CanvasSizeSectionProps;
 }
 
+const PRESET_LABELS: Record<string, string> = {
+  '1080x1080': '1:1',
+  '1080x1350': '4:5',
+  '1440x1080': '4:3',
+  '1080x1920': '9:16',
+  '1920x1080': '16:9',
+  '1240x1754': 'A4',
+};
+
 export function CanvasSizePanel({ t, expanded, onToggle, canvas }: CanvasSizePanelProps) {
+  const presetLabel = canvas.presetSize === 'custom'
+    ? t('customSize')
+    : PRESET_LABELS[canvas.presetSize] ?? canvas.presetSize;
+  const summary = `${presetLabel} · ${canvas.canvasWidth}×${canvas.canvasHeight}`;
+
   return (
     <ControlSection
       title={t('canvasSize')}
       icon={<Maximize className="w-4 h-4" />}
       expanded={expanded}
       onToggle={onToggle}
+      summary={summary}
     >
       <div className="space-y-3">
         <div>
@@ -23,7 +38,7 @@ export function CanvasSizePanel({ t, expanded, onToggle, canvas }: CanvasSizePan
           <select
             value={canvas.presetSize}
             onChange={(event) => canvas.onPresetChange(event.target.value)}
-            className="w-full p-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
+            className="app-select text-sm"
           >
             <option value="1080x1080">1:1 (1080x1080)</option>
             <option value="1080x1350">4:5 (1080x1350)</option>
@@ -45,7 +60,7 @@ export function CanvasSizePanel({ t, expanded, onToggle, canvas }: CanvasSizePan
                 max="4000"
                 value={canvas.canvasWidth}
                 onChange={(event) => canvas.onCanvasWidthChange(Number(event.target.value))}
-                className="w-full p-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                className="app-input text-sm"
               />
             </div>
             <div>
@@ -56,7 +71,7 @@ export function CanvasSizePanel({ t, expanded, onToggle, canvas }: CanvasSizePan
                 max="4000"
                 value={canvas.canvasHeight}
                 onChange={(event) => canvas.onCanvasHeightChange(Number(event.target.value))}
-                className="w-full p-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                className="app-input text-sm"
               />
             </div>
           </div>

@@ -10,15 +10,24 @@ interface ContentPanelProps {
 }
 
 export function ContentPanel({ t, expanded, onToggle, content }: ContentPanelProps) {
+  const trimmedLines = content.text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const summary = trimmedLines.length > 0
+    ? trimmedLines[0].slice(0, 48)
+    : t('enterPoem');
+
   return (
     <ControlSection
       title={t('content')}
       icon={<Type className="w-4 h-4" />}
       expanded={expanded}
       onToggle={onToggle}
+      summary={summary}
     >
       <textarea
-        className="w-full h-32 p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all resize-none text-sm"
+        className="app-textarea h-32 resize-none text-sm"
         value={content.text}
         onChange={(event) => content.onTextChange(event.target.value)}
         placeholder={t('enterPoem')}

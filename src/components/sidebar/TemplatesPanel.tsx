@@ -10,12 +10,16 @@ interface TemplatesPanelProps {
 }
 
 export function TemplatesPanel({ t, expanded, onToggle, templates }: TemplatesPanelProps) {
+  const activeTemplate = templates.templates.find((template) => template.id === templates.activeTemplateId);
+
   return (
     <ControlSection
       title={t('templates')}
       icon={<Sparkles className="w-4 h-4" />}
       expanded={expanded}
       onToggle={onToggle}
+      summary={activeTemplate ? t(activeTemplate.nameKey) : t('templatesHint')}
+      highlighted={!templates.activeTemplateId}
     >
       <div className="space-y-3">
         <p className="text-xs leading-5 text-gray-500">{t('templatesHint')}</p>

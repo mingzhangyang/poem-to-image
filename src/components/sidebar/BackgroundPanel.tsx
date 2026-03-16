@@ -16,6 +16,28 @@ const aiProviders: AiProvider[] = ['gemini', 'openai'];
 
 const CREDIT_COST: Record<'gemini' | 'openai', number> = { gemini: 1, openai: 3 };
 
+const PROVIDER_META: Record<AiProvider, { title: string; tradeoff: string; detail: string }> = {
+  gemini: {
+    title: 'Gemini',
+    tradeoff: 'Faster drafts',
+    detail: 'Lower cost for exploring several looks quickly.',
+  },
+  openai: {
+    title: 'OpenAI',
+    tradeoff: 'Higher fidelity',
+    detail: 'Costs more, but better when the background needs nuance and polish.',
+  },
+};
+
+const PROMPT_SUGGESTIONS = [
+  'misty ink wash',
+  'aged rice paper',
+  'moonlit bamboo shadows',
+  'quiet temple courtyard at dawn',
+  'soft editorial paper texture',
+  'gold-flecked calligraphy backdrop',
+];
+
 interface BackgroundPanelProps {
   t: TranslateFn;
   expanded: ExpandedSections['background'];
@@ -25,12 +47,26 @@ interface BackgroundPanelProps {
 }
 
 export function BackgroundPanel({ t, expanded, onToggle, background, balance }: BackgroundPanelProps) {
+  const summary = (() => {
+    if (background.backgroundType === 'ai') {
+      return `AI · ${background.aiProvider === 'gemini' ? 'Gemini' : 'OpenAI'}`;
+    }
+
+    if (background.backgroundType === 'image') {
+      return t('uploadImage');
+    }
+
+    return t(backgroundTypeLabels[background.backgroundType]);
+  })();
+  const selectedProviderMeta = PROVIDER_META[background.aiProvider];
+
   return (
     <ControlSection
       title={t('background')}
       icon={<Palette className="w-4 h-4" />}
       expanded={expanded}
       onToggle={onToggle}
+      summary={summary}
     >
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-2">
@@ -40,7 +76,7 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
               onClick={() => background.onBackgroundTypeChange(type)}
               className={`px-3 py-2 text-xs font-medium rounded-lg border transition-all ${
                 background.backgroundType === type
-                  ? 'bg-indigo-50 border-indigo-200 text-indigo-700'
+                  ? 'bg-[var(--app-accent-50)] border-[var(--app-accent-200)] text-[var(--app-accent-700)]'
                   : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
               }`}
             >
@@ -80,7 +116,7 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
             <select
               value={background.gradientDirection}
               onChange={(event) => background.onGradientDirectionChange(event.target.value)}
-              className="w-full p-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
+              className="app-select text-sm"
             >
               <option value="to right">{t('gradLTR')}</option>
               <option value="to bottom">{t('gradTTB')}</option>
@@ -101,7 +137,7 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
             />
             <button
               onClick={() => background.fileInputRef.current?.click()}
-              className="w-full py-2 px-4 border border-dashed border-gray-300 rounded-xl text-sm text-gray-600 hover:bg-gray-50 hover:border-indigo-300 transition-all flex items-center justify-center gap-2"
+              className="w-full py-2 px-4 border border-dashed border-[rgba(34,48,52,0.14)] rounded-xl text-sm text-gray-600 hover:bg-[var(--app-accent-50)] hover:border-[var(--app-accent-300)] transition-all flex items-center justify-center gap-2"
             >
               <Upload className="w-4 h-4" /> {t('uploadImage')}
             </button>
@@ -109,47 +145,115 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
         ) : null}
 
         {background.backgroundType === 'ai' ? (
-          <div className="space-y-3 bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
-            <div className="space-y-2">
-              <div className="text-xs font-medium uppercase tracking-wide text-indigo-700">{t('aiProvider')}</div>
+          <div className="space-y-4 rounded-2xl border border-[var(--app-accent-200)] bg-[linear-gradient(180deg,rgba(237,244,243,0.92),rgba(255,253,249,1))] p-4 shadow-[0_16px_40px_var(--app-accent-shadow)]">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-xs font-medium uppercase tracking-wide text-[var(--app-accent-700)]">{t('aiProvider')}</div>
+                  <p className="mt-1 text-xs leading-5 text-[color:rgba(51,88,87,0.82)]">
+                    Pick a model based on speed, cost, and finish level.
+                  </p>
+                </div>
+                {balance !== null && balance !== undefined ? (
+                  <div className="rounded-full border border-[var(--app-accent-200)] bg-white px-3 py-1 text-xs font-medium text-[var(--app-accent-700)]">
+                    {t('creditBalance')}: {balance}
+                  </div>
+                ) : null}
+              </div>
+
               <div className="grid grid-cols-2 gap-2">
                 {aiProviders.map((provider) => (
+                  (() => {
+                    const meta = PROVIDER_META[provider];
+                    const isActive = background.aiProvider === provider;
+
+                    return (
                   <button
                     key={provider}
                     onClick={() => background.onAiProviderChange(provider)}
-                    className={`px-3 py-2 text-xs font-medium rounded-lg border transition-all ${
-                      background.aiProvider === provider
-                        ? 'bg-indigo-600 border-indigo-600 text-white'
-                        : 'bg-white border-indigo-200 text-indigo-700 hover:bg-indigo-50'
+                    className={`rounded-2xl border p-3 text-left transition-all ${
+                      isActive
+                        ? 'border-[var(--app-accent-500)] bg-[var(--app-accent-700)] text-white shadow-[0_14px_30px_var(--app-accent-shadow)]'
+                        : 'border-[var(--app-accent-200)] bg-white text-[var(--app-accent-900)] hover:border-[var(--app-accent-300)] hover:bg-[var(--app-accent-50)]'
                     }`}
                   >
-                    {provider === 'gemini' ? 'Gemini' : 'OpenAI'}
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="text-sm font-semibold">{meta.title}</div>
+                        <div className={`mt-1 text-[11px] font-medium ${isActive ? 'text-[rgba(237,244,243,0.92)]' : 'text-[var(--app-accent-600)]'}`}>
+                          {meta.tradeoff}
+                        </div>
+                      </div>
+                      <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold ${isActive ? 'bg-white/15 text-white' : 'bg-[var(--app-accent-100)] text-[var(--app-accent-700)]'}`}>
+                        {CREDIT_COST[provider]} {CREDIT_COST[provider] === 1 ? t('creditsPerGen') : t('creditsPerGenMultiple')}
+                      </span>
+                    </div>
+                    <p className={`mt-2 text-[11px] leading-5 ${isActive ? 'text-[rgba(255,250,242,0.92)]' : 'text-gray-600'}`}>
+                      {meta.detail}
+                    </p>
                   </button>
+                    );
+                  })()
                 ))}
               </div>
             </div>
+
+            <div className="rounded-2xl border border-[var(--app-accent-200)] bg-white/85 p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold text-gray-900">{selectedProviderMeta.title}</div>
+                  <p className="mt-1 text-xs leading-5 text-gray-600">{selectedProviderMeta.tradeoff}. {selectedProviderMeta.detail}</p>
+                </div>
+                <div className="rounded-full bg-[var(--app-accent-50)] px-2.5 py-1 text-[11px] font-semibold text-[var(--app-accent-700)]">
+                  {CREDIT_COST[background.aiProvider]} {CREDIT_COST[background.aiProvider] === 1 ? t('creditsPerGen') : t('creditsPerGenMultiple')}
+                </div>
+              </div>
+            </div>
+
             <textarea
-              className="w-full h-20 p-2 text-sm border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 resize-none bg-white"
+              className="app-textarea h-20 text-sm resize-none"
               value={background.aiPrompt}
               onChange={(event) => background.onAiPromptChange(event.target.value)}
               maxLength={MAX_AI_PROMPT_LENGTH}
               placeholder={t('aiPromptPlaceholder')}
             />
-            <div className="text-right text-xs text-indigo-700/80">
+            <div className="space-y-2">
+              <div className="text-xs font-medium uppercase tracking-wide text-[color:rgba(51,88,87,0.82)]">Prompt suggestions</div>
+              <div className="flex flex-wrap gap-2">
+                {PROMPT_SUGGESTIONS.map((suggestion) => {
+                  const isSelected = background.aiPrompt.trim() === suggestion;
+
+                  return (
+                    <button
+                      key={suggestion}
+                      type="button"
+                      onClick={() => background.onAiPromptChange(suggestion)}
+                      className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                        isSelected
+                          ? 'border-[var(--app-accent-500)] bg-[var(--app-accent-700)] text-white'
+                          : 'border-[var(--app-accent-200)] bg-white text-[var(--app-accent-700)] hover:border-[var(--app-accent-300)] hover:bg-[var(--app-accent-50)]'
+                      }`}
+                    >
+                      {suggestion}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="text-right text-xs text-[color:rgba(51,88,87,0.82)]">
               {background.aiPrompt.length}/{MAX_AI_PROMPT_LENGTH}
             </div>
-            <div className="flex items-center justify-between text-xs text-indigo-700/70 mb-1">
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-[var(--app-accent-200)] bg-white/85 px-3 py-2 text-xs text-[color:rgba(51,88,87,0.82)]">
               <span>
-                {CREDIT_COST[background.aiProvider]} {CREDIT_COST[background.aiProvider] === 1 ? t('creditsPerGen') : t('creditsPerGenMultiple')}
+                {background.aiProvider === 'gemini'
+                  ? 'Best when you want a quick direction before refining.'
+                  : 'Best when you already know the mood and want a more polished result.'}
               </span>
-              {balance !== null && balance !== undefined && (
-                <span>{t('creditBalance')}: {balance}</span>
-              )}
             </div>
             <button
               onClick={background.onGenerateAiBackground}
               disabled={background.isGeneratingAI}
-              className="w-full py-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed shadow-sm"
+              className="app-button-primary w-full py-2 px-4 text-white rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {background.isGeneratingAI ? (
                 <>
@@ -178,7 +282,7 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
                 max="200"
                 value={background.bgBrightness}
                 onChange={(event) => background.onBgBrightnessChange(Number(event.target.value))}
-                className="w-full accent-indigo-600"
+                className="app-range"
               />
             </div>
             <div>
@@ -192,7 +296,7 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
                 max="20"
                 value={background.bgBlur}
                 onChange={(event) => background.onBgBlurChange(Number(event.target.value))}
-                className="w-full accent-indigo-600"
+                className="app-range"
               />
             </div>
           </div>

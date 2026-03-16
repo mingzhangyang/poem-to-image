@@ -209,21 +209,21 @@ export function CanvasPreview({
   return (
     <section
       ref={containerRef}
-      className="order-1 flex items-center justify-center bg-gray-200/50 overflow-hidden relative h-dvh min-h-105 p-4 pt-6 pb-24 sm:p-6 md:order-2 md:flex-1 md:h-screen md:min-h-screen md:max-h-screen md:px-8 md:pb-8 md:pt-24"
+      className="order-1 flex items-center justify-center bg-[radial-gradient(circle_at_top,rgba(191,214,213,0.34),transparent_34%),linear-gradient(180deg,rgba(255,250,242,0.6),rgba(246,243,236,0.92))] overflow-hidden relative h-dvh min-h-105 p-4 pt-6 pb-24 sm:p-6 md:order-2 md:flex-1 md:h-screen md:min-h-screen md:max-h-screen md:px-8 md:pb-8 md:pt-24"
     >
       <TransparentGrid visible={backgroundType === 'transparent'} />
 
-      <div className="flex absolute right-4 top-4 z-20 items-center gap-1 rounded-full border border-white/60 bg-white/68 px-2.5 py-1.5 text-xs text-gray-600 shadow-[0_10px_24px_rgba(15,23,42,0.08)] backdrop-blur-sm opacity-55 transition-opacity duration-200 hover:opacity-100 focus-within:opacity-100 md:right-6 md:top-6">
+      <div className="flex absolute right-4 top-4 z-20 items-center gap-1 rounded-full border border-[rgba(84,127,125,0.16)] bg-[rgba(255,253,249,0.72)] px-2.5 py-1.5 text-xs text-(--app-accent-700) shadow-[0_10px_24px_var(--app-accent-shadow)] backdrop-blur-sm opacity-70 transition-opacity duration-200 hover:opacity-100 focus-within:opacity-100 md:right-6 md:top-6">
         <button
           type="button"
           onClick={() => onPreviewZoomChange(clamp(previewZoom - ZOOM_STEP, ZOOM_MIN, ZOOM_MAX))}
-          className="flex items-center justify-center w-5 h-5 rounded-full text-gray-600 hover:bg-white/80 hover:text-gray-950 transition-colors"
+          className="flex items-center justify-center w-5 h-5 rounded-full text-(--app-accent-700) hover:bg-(--app-accent-50) hover:text-(--app-accent-900) transition-colors"
           aria-label="Zoom out"
         >
           <Minus size={11} />
         </button>
 
-        <span className="min-w-8 text-center font-medium text-gray-800 tabular-nums">{previewScalePercent}%</span>
+        <span className="min-w-8 text-center font-medium text-(--app-accent-900) tabular-nums">{previewScalePercent}%</span>
 
         <input
           type="range"
@@ -232,7 +232,7 @@ export function CanvasPreview({
           step="1"
           value={Math.round(previewZoom * 100)}
           onChange={(event) => onPreviewZoomChange(Number(event.target.value) / 100)}
-          className="hidden md:block h-1.5 w-20 cursor-pointer accent-gray-800"
+          className="hidden md:block h-1.5 w-20 cursor-pointer accent-(--app-accent-700)"
           aria-label={t('previewZoom')}
           title={t('previewZoom')}
         />
@@ -240,18 +240,18 @@ export function CanvasPreview({
         <button
           type="button"
           onClick={() => onPreviewZoomChange(clamp(previewZoom + ZOOM_STEP, ZOOM_MIN, ZOOM_MAX))}
-          className="flex items-center justify-center w-5 h-5 rounded-full text-gray-600 hover:bg-white/80 hover:text-gray-950 transition-colors"
+          className="flex items-center justify-center w-5 h-5 rounded-full text-(--app-accent-700) hover:bg-(--app-accent-50) hover:text-(--app-accent-900) transition-colors"
           aria-label="Zoom in"
         >
           <Plus size={11} />
         </button>
 
-        <div className="w-px h-3 bg-gray-300/60 mx-0.5" />
+        <div className="w-px h-3 bg-[rgba(84,127,125,0.22)] mx-0.5" />
 
         <button
           type="button"
           onClick={handleFitViewport}
-          className="flex items-center justify-center w-5 h-5 rounded-full text-gray-600 hover:bg-white/80 hover:text-gray-950 transition-colors"
+          className="flex items-center justify-center w-5 h-5 rounded-full text-(--app-accent-700) hover:bg-(--app-accent-50) hover:text-(--app-accent-900) transition-colors"
           aria-label={t('fitToViewport')}
           title={t('fitToViewport')}
         >

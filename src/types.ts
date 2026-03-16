@@ -275,6 +275,8 @@ export interface ControlSectionProps {
   icon: ReactNode;
   expanded: boolean;
   onToggle: () => void;
+  summary?: string;
+  highlighted?: boolean;
   action?: ReactNode;
   children: ReactNode;
 }

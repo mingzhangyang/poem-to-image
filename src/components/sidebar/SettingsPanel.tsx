@@ -27,7 +27,7 @@ interface SettingsPanelProps {
 
 function SectionTitle({ icon, label }: { icon: import('react').ReactNode; label: string }) {
   return (
-    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">
+    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[var(--app-accent-500)] mb-3">
       {icon}
       <span>{label}</span>
     </div>
@@ -52,8 +52,8 @@ export function SettingsPanel({ t, language, onLanguageChange, billing }: Settin
               onClick={() => onLanguageChange(lang.value)}
               className={`text-left px-3 py-2 rounded-lg text-sm transition-colors ${
                 language === lang.value
-                  ? 'bg-indigo-50 text-indigo-700 font-medium ring-1 ring-indigo-200'
-                  : 'text-gray-700 hover:bg-gray-50'
+                  ? 'bg-[var(--app-accent-50)] text-[var(--app-accent-700)] font-medium ring-1 ring-[var(--app-accent-200)]'
+                  : 'text-gray-700 hover:bg-[rgba(237,244,243,0.6)]'
               }`}
             >
               {lang.label}
@@ -66,13 +66,13 @@ export function SettingsPanel({ t, language, onLanguageChange, billing }: Settin
       <section>
         <SectionTitle icon={<CreditCard className="w-3.5 h-3.5" />} label={t('account')} />
         {!isSignedIn ? (
-          <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 text-center space-y-3">
+          <div className="app-soft-surface rounded-xl p-4 text-center space-y-3">
             <p className="text-sm text-gray-500">{t('errSignInRequired')}</p>
             {CLERK_CONFIGURED ? (
               <SignInButton mode="modal">
                 <button
                   type="button"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors"
+                  className="app-button-primary inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium"
                 >
                   <LogIn className="w-4 h-4" /> {t('signIn')}
                 </button>
@@ -84,13 +84,13 @@ export function SettingsPanel({ t, language, onLanguageChange, billing }: Settin
         ) : (
           <Link
             to="/account"
-            className="flex items-center justify-between gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100 hover:border-indigo-200 hover:bg-indigo-50/40 transition-colors"
+            className="app-soft-surface flex items-center justify-between gap-3 p-3 rounded-xl hover:border-[var(--app-accent-200)] hover:bg-[rgba(237,244,243,0.6)] transition-colors"
           >
             <div className="flex items-center gap-2 min-w-0">
               {CLERK_CONFIGURED && <UserButton afterSignOutUrl={window.location.href} />}
               {email && <span className="text-sm text-gray-700 truncate">{email}</span>}
             </div>
-            <div className="shrink-0 flex items-center gap-2 text-sm font-semibold text-indigo-700">
+            <div className="shrink-0 flex items-center gap-2 text-sm font-semibold text-[var(--app-accent-700)]">
               {billing.isLoadingBalance ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
               ) : (
@@ -106,16 +106,16 @@ export function SettingsPanel({ t, language, onLanguageChange, billing }: Settin
       <section className="space-y-1">
         <Link
           to="/privacy"
-          className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 transition-colors text-sm text-gray-700"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[rgba(237,244,243,0.6)] transition-colors text-sm text-gray-700"
         >
-          <Shield className="w-4 h-4 text-gray-400 shrink-0" />
+          <Shield className="w-4 h-4 text-[var(--app-accent-500)] shrink-0" />
           <span>{t('privacyPolicy')}</span>
         </Link>
         <Link
           to="/about"
-          className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 transition-colors text-sm text-gray-700"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[rgba(237,244,243,0.6)] transition-colors text-sm text-gray-700"
         >
-          <Info className="w-4 h-4 text-gray-400 shrink-0" />
+          <Info className="w-4 h-4 text-[var(--app-accent-500)] shrink-0" />
           <span>{t('about')}</span>
         </Link>
       </section>

@@ -10,16 +10,24 @@ interface DecorationsPanelProps {
 }
 
 export function DecorationsPanel({ t, expanded, onToggle, decorations }: DecorationsPanelProps) {
+  const summaryParts = [
+    decorations.showBorder ? t(`border${decorations.borderStyle.charAt(0).toUpperCase()}${decorations.borderStyle.slice(1)}` as const) : null,
+    decorations.showStamp ? t('showStamp') : null,
+    `${decorations.customTexts.length} ${t('customTexts')}`,
+  ].filter(Boolean);
+
   return (
     <ControlSection
       title={t('decorations')}
       icon={<Stamp className="w-4 h-4" />}
       expanded={expanded}
       onToggle={onToggle}
+      summary={summaryParts.join(' · ')}
       action={
         <button
           onClick={decorations.onAddCustomText}
-          className="p-1 text-indigo-600 hover:bg-indigo-50 rounded transition-colors flex items-center gap-1 text-xs font-medium"
+          className="p-1 rounded transition-colors flex items-center gap-1 text-xs font-medium"
+          style={{ color: 'var(--app-accent-600)' }}
           title={t('addTextBox')}
         >
           <Plus className="w-3 h-3" /> {t('addTextBox')}
@@ -27,14 +35,14 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
       }
     >
       <div className="space-y-4">
-        <div className="p-3 bg-gray-50 rounded-lg border border-gray-100 space-y-3">
+        <div className="app-soft-surface p-3 rounded-lg space-y-3">
           <div className="flex items-center justify-between">
             <label className="text-xs text-gray-600 flex items-center gap-2">
               <input
                 type="checkbox"
                 checked={decorations.showBorder}
                 onChange={(event) => decorations.onShowBorderChange(event.target.checked)}
-                className="rounded text-indigo-600 focus:ring-indigo-500"
+                className="app-checkbox rounded"
               />
               {t('showBorder')}
             </label>
@@ -42,7 +50,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
               <select
                 value={decorations.borderStyle}
                 onChange={(event) => decorations.onBorderStyleChange(event.target.value as BorderStyle)}
-                className="p-1 text-xs border border-gray-200 rounded focus:ring-2 focus:ring-indigo-500"
+                className="app-select p-1 text-xs"
               >
                 <option value="solid">{t('borderSolid')}</option>
                 <option value="dashed">{t('borderDashed')}</option>
@@ -57,23 +65,24 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                 type="checkbox"
                 checked={decorations.showStamp}
                 onChange={(event) => decorations.onShowStampChange(event.target.checked)}
-                className="rounded text-indigo-600 focus:ring-indigo-500"
+                className="app-checkbox rounded"
               />
               {t('showStamp')}
             </label>
             {decorations.showStamp ? (
-              <span className="text-[11px] font-medium rounded-full bg-red-50 px-2 py-1 text-red-700">{t('dragStampHint')}</span>
+              <span className="text-[11px] font-medium rounded-full bg-[rgba(155,95,67,0.12)] px-2 py-1 text-[#8a523b]">{t('dragStampHint')}</span>
             ) : null}
           </div>
 
           {decorations.showStamp ? (
-            <div className="rounded-xl bg-white border border-gray-200 p-3 space-y-3">
+            <div className="rounded-xl bg-white border border-[rgba(34,48,52,0.08)] p-3 space-y-3">
               <div className="grid grid-cols-[1fr_auto] gap-2 items-center">
                 <label className="text-xs text-gray-500">{t('stampText')}</label>
                 <button
                   type="button"
                   onClick={decorations.onResetStampPosition}
-                  className="text-[11px] font-medium text-indigo-600 hover:text-indigo-700"
+                  className="text-[11px] font-medium"
+                  style={{ color: 'var(--app-accent-600)' }}
                 >
                   {t('resetStampPosition')}
                 </button>
@@ -82,7 +91,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                   value={decorations.stamp.text}
                   onChange={(event) => decorations.onStampChange({ text: event.target.value.slice(0, 4) })}
                   maxLength={4}
-                  className="col-span-2 w-full p-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 text-center"
+                  className="app-input col-span-2 text-sm text-center"
                   placeholder={t('stampText')}
                 />
               </div>
@@ -92,7 +101,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                 <select
                   value={decorations.stamp.style}
                   onChange={(event) => decorations.onStampChange({ style: event.target.value as StampStyle })}
-                  className="w-full p-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  className="app-select text-sm"
                 >
                   <option value="square">{t('stampStyleSquare')}</option>
                   <option value="round">{t('stampStyleRound')}</option>
@@ -111,7 +120,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                   max="180"
                   value={decorations.stamp.size}
                   onChange={(event) => decorations.onStampChange({ size: Number(event.target.value) })}
-                  className="w-full accent-red-600"
+                  className="app-range app-range-warm"
                 />
               </div>
 
@@ -126,7 +135,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                   max="45"
                   value={decorations.stamp.rotation}
                   onChange={(event) => decorations.onStampChange({ rotation: Number(event.target.value) })}
-                  className="w-full accent-red-600"
+                  className="app-range app-range-warm"
                 />
               </div>
 
@@ -141,7 +150,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                   max="100"
                   value={Math.round(decorations.stamp.opacity * 100)}
                   onChange={(event) => decorations.onStampChange({ opacity: Number(event.target.value) / 100 })}
-                  className="w-full accent-red-600"
+                  className="app-range app-range-warm"
                 />
               </div>
             </div>
@@ -152,18 +161,18 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
           <div className="space-y-3">
             <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">{t('customTexts')}</div>
             {decorations.customTexts.map((customText) => (
-              <div key={customText.id} className="p-3 bg-gray-50 rounded-lg border border-gray-100 space-y-2">
+              <div key={customText.id} className="app-soft-surface p-3 rounded-lg space-y-2">
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
                     value={customText.text}
                     onChange={(event) => decorations.onCustomTextChange(customText.id, { text: event.target.value })}
-                    className="flex-1 p-1.5 text-sm border border-gray-200 rounded focus:ring-2 focus:ring-indigo-500"
+                    className="app-input flex-1 p-1.5 text-sm"
                     placeholder={t('textContent')}
                   />
                   <button
                     onClick={() => decorations.onCustomTextRemove(customText.id)}
-                    className="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors"
+                    className="p-1.5 text-[#8a523b] hover:bg-[rgba(155,95,67,0.12)] rounded transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -181,15 +190,15 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                     max="120"
                     value={customText.fontSize}
                     onChange={(event) => decorations.onCustomTextChange(customText.id, { fontSize: Number(event.target.value) })}
-                    className="flex-1 accent-indigo-600"
+                    className="app-range flex-1"
                   />
                   <span className="text-xs text-gray-500 w-8">{customText.fontSize}px</span>
                 </div>
-                <div className="flex gap-1 bg-white p-1 rounded border border-gray-200">
+                <div className="app-segment flex gap-1 p-1 rounded">
                   <button
                     onClick={() => decorations.onCustomTextChange(customText.id, { writingMode: 'horizontal-tb' })}
                     className={`flex-1 py-1 text-xs rounded transition-colors ${
-                      customText.writingMode === 'horizontal-tb' ? 'bg-indigo-50 text-indigo-600' : 'text-gray-500 hover:bg-gray-50'
+                      customText.writingMode === 'horizontal-tb' ? 'app-segment-button-active' : 'text-gray-500 hover:bg-gray-50'
                     }`}
                   >
                     {t('horiz')}
@@ -197,7 +206,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                   <button
                     onClick={() => decorations.onCustomTextChange(customText.id, { writingMode: 'vertical-rl' })}
                     className={`flex-1 py-1 text-xs rounded transition-colors ${
-                      customText.writingMode === 'vertical-rl' ? 'bg-indigo-50 text-indigo-600' : 'text-gray-500 hover:bg-gray-50'
+                      customText.writingMode === 'vertical-rl' ? 'app-segment-button-active' : 'text-gray-500 hover:bg-gray-50'
                     }`}
                   >
                     {t('vert')}
@@ -211,7 +220,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                     max="180"
                     value={customText.rotation}
                     onChange={(event) => decorations.onCustomTextChange(customText.id, { rotation: Number(event.target.value) })}
-                    className="flex-1 accent-indigo-600"
+                    className="app-range flex-1"
                   />
                   <span className="text-xs text-gray-500 w-8 text-right">{customText.rotation}°</span>
                 </div>
