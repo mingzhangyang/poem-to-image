@@ -320,7 +320,7 @@ export function Sidebar({
         ) : null}
       </AnimatePresence>
 
-      <aside className="hidden md:flex md:order-1 md:w-80 md:border-r md:border-gray-200 md:h-dvh md:overflow-y-auto shrink-0 bg-white shadow-sm z-10 flex-col">
+      <aside className="hidden md:flex md:order-1 md:w-80 md:border-r md:border-gray-200 md:h-screen md:overflow-y-auto shrink-0 bg-white shadow-sm z-10 flex-col">
         <SidebarHeader language={language} onLanguageChange={onLanguageChange} t={t} />
         {sections()}
         <SidebarFooter
