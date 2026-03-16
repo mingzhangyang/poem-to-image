@@ -130,7 +130,7 @@ export default function App() {
   });
 
   const scale = useCanvasScale(containerRef, canvasWidth, canvasHeight);
-  const handleDownload = useImageExporter(previewRef, canvasWidth, canvasHeight, exportScale);
+  const { exportImage: handleDownload, isExporting } = useImageExporter(previewRef, canvasWidth, canvasHeight, exportScale);
   const handlePreviewZoomReset = () => setPreviewZoom(1);
   const previousLanguageRef = useRef(language);
 
@@ -368,6 +368,7 @@ export default function App() {
     exportScale,
     onExportScaleChange: setExportScale,
     onDownload: handleDownload,
+    isExporting,
     containerRef,
     previewRef,
     text,

@@ -1,5 +1,5 @@
-import { useCallback } from 'react';
-import { toPng } from 'html-to-image';
+import { useCallback, useState } from 'react';
+import { toBlob } from 'html-to-image';
 import type { RefObject } from 'react';
 import type { ExportScale } from '../types';
 
@@ -9,12 +9,16 @@ export function useImageExporter(
   canvasHeight: number,
   exportScale: ExportScale,
 ) {
-  return useCallback(() => {
-    if (previewRef.current === null) {
+  const [isExporting, setIsExporting] = useState(false);
+
+  const exportImage = useCallback(() => {
+    if (previewRef.current === null || isExporting) {
       return;
     }
 
-    toPng(previewRef.current, {
+    setIsExporting(true);
+
+    toBlob(previewRef.current, {
       cacheBust: true,
       pixelRatio: exportScale,
       canvasWidth,
@@ -24,14 +28,22 @@ export function useImageExporter(
         transformOrigin: 'top left',
       },
     })
-      .then((dataUrl) => {
+      .then((blob) => {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.download = 'poem-image.png';
-        link.href = dataUrl;
+        link.href = url;
         link.click();
+        URL.revokeObjectURL(url);
       })
       .catch((error) => {
         console.error('Failed to generate image', error);
+      })
+      .finally(() => {
+        setIsExporting(false);
       });
-  }, [previewRef, canvasWidth, canvasHeight, exportScale]);
+  }, [previewRef, canvasWidth, canvasHeight, exportScale, isExporting]);
+
+  return { exportImage, isExporting };
 }

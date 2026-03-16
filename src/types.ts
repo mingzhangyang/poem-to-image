@@ -201,6 +201,7 @@ export interface SidebarProps {
   exportScale: ExportScale;
   onExportScaleChange: (value: ExportScale) => void;
   onDownload: () => void;
+  isExporting: boolean;
 }
 
 export interface CanvasPreviewProps {

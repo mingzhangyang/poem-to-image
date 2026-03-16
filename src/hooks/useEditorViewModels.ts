@@ -31,6 +31,7 @@ interface UseEditorViewModelsParams {
   exportScale: SidebarProps['exportScale'];
   onExportScaleChange: SidebarProps['onExportScaleChange'];
   onDownload: () => void;
+  isExporting: boolean;
   containerRef: CanvasPreviewProps['containerRef'];
   previewRef: CanvasPreviewProps['previewRef'];
   text: string;
@@ -69,6 +70,7 @@ export function useEditorViewModels({
   exportScale,
   onExportScaleChange,
   onDownload,
+  isExporting,
   containerRef,
   previewRef,
   text,
@@ -106,6 +108,7 @@ export function useEditorViewModels({
     exportScale,
     onExportScaleChange,
     onDownload,
+    isExporting,
   };
 
   const canvasPreviewProps: CanvasPreviewProps = {

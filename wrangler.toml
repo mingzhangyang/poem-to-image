@@ -2,6 +2,7 @@ name = "poem-to-image"
 main = "worker/index.ts"
 compatibility_date = "2026-03-15"
 compatibility_flags = ["nodejs_compat"]
+workers_dev = false
 
 [assets]
 directory = "./dist"

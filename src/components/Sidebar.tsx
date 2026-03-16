@@ -31,6 +31,7 @@ export function Sidebar({
   exportScale,
   onExportScaleChange,
   onDownload,
+  isExporting,
 }: SidebarProps) {
   const [activeMobilePanel, setActiveMobilePanel] = useState<MobilePanel | null>(null);
   const isMobileControlsOpen = activeMobilePanel !== null;
@@ -240,6 +241,7 @@ export function Sidebar({
           exportScale={exportScale}
           onExportScaleChange={onExportScaleChange}
           onDownload={onDownload}
+          isExporting={isExporting}
         />
       );
     }
@@ -347,6 +349,7 @@ export function Sidebar({
           exportScale={exportScale}
           onExportScaleChange={onExportScaleChange}
           onDownload={onDownload}
+          isExporting={isExporting}
         />
       </aside>
     </>
