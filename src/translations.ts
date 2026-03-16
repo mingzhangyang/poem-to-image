@@ -1,7 +1,7 @@
 export const translations = {
   en: {
-    appTitle: "Poem to Image",
-    subtitle: "Turn your words into art",
+    appTitle: "InkPoem",
+    subtitle: "Poetic moods · Leaping off the page",
     templates: "Templates",
     templatesHint: "Apply a ready-made visual direction for users who do not want to tune every parameter manually.",
     applyTemplate: "Apply",
@@ -133,8 +133,8 @@ export const translations = {
     aboutDescription: "Turn your poems into beautiful art with AI.",
   },
   'zh-CN': {
-    appTitle: "诗词生成图片",
-    subtitle: "将文字转化为艺术",
+    appTitle: "InkPoem",
+    subtitle: "诗情画意 · 跃然纸上",
     templates: "模板主题",
     templatesHint: "为不想手动调参数的用户准备了几套现成风格，一键即可套用整套视觉搭配。",
     applyTemplate: "一键套用",
@@ -266,8 +266,8 @@ export const translations = {
     aboutDescription: "用 AI 将你的诗词转化为美丽的艺术图片。",
   },
   'zh-TW': {
-    appTitle: "詩詞生成圖片",
-    subtitle: "將文字轉化為藝術",
+    appTitle: "InkPoem",
+    subtitle: "詩情畫意 · 躍然紙上",
     templates: "模板主題",
     templatesHint: "為不想手動調參數的使用者準備了幾套現成風格，一鍵即可套用整套視覺搭配。",
     applyTemplate: "一鍵套用",
@@ -399,8 +399,8 @@ export const translations = {
     aboutDescription: "用 AI 將你的詩詞轉化為美麗的藝術圖片。",
   },
   ja: {
-    appTitle: "詩から画像へ",
-    subtitle: "言葉をアートに",
+    appTitle: "InkPoem",
+    subtitle: "詩情画意 · 紙上に躍る",
     templates: "テンプレート",
     templatesHint: "細かなパラメーター調整をしなくても、完成済みのスタイルをワンクリックで適用できます。",
     applyTemplate: "適用",
@@ -532,8 +532,8 @@ export const translations = {
     aboutDescription: "AIであなたの詩を美しいアートに変えます。",
   },
   ko: {
-    appTitle: "시를 이미지로",
-    subtitle: "당신의 글을 예술로",
+    appTitle: "InkPoem",
+    subtitle: "시정화의 · 지면에 약동하다",
     templates: "템플릿",
     templatesHint: "세부 옵션을 하나씩 조정하지 않아도 완성된 스타일을 한 번에 적용할 수 있습니다.",
     applyTemplate: "적용",
@@ -665,8 +665,8 @@ export const translations = {
     aboutDescription: "AI로 시를 아름다운 예술로 변환하세요.",
   },
   es: {
-    appTitle: "Poema a Imagen",
-    subtitle: "Convierte tus palabras en arte",
+    appTitle: "InkPoem",
+    subtitle: "Emoción poética · Que cobra vida en el papel",
     templates: "Plantillas",
     templatesHint: "Aplica una dirección visual ya preparada sin ajustar manualmente cada parámetro.",
     applyTemplate: "Aplicar",
@@ -798,8 +798,8 @@ export const translations = {
     aboutDescription: "Convierte tus poemas en hermoso arte con IA.",
   },
   fr: {
-    appTitle: "Poème en Image",
-    subtitle: "Transformez vos mots en art",
+    appTitle: "InkPoem",
+    subtitle: "Émotions poétiques · Jaillissant du papier",
     templates: "Modèles",
     templatesHint: "Appliquez un style prêt à l'emploi sans régler chaque paramètre manuellement.",
     applyTemplate: "Appliquer",
@@ -931,8 +931,8 @@ export const translations = {
     aboutDescription: "Transformez vos poèmes en art avec l'IA.",
   },
   de: {
-    appTitle: "Gedicht zu Bild",
-    subtitle: "Verwandle deine Worte in Kunst",
+    appTitle: "InkPoem",
+    subtitle: "Dichterische Bilder · Springen vom Papier",
     templates: "Vorlagen",
     templatesHint: "Wende einen fertigen Stil an, ohne jeden Parameter manuell abstimmen zu müssen.",
     applyTemplate: "Anwenden",
