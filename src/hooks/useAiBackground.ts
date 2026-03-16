@@ -1,8 +1,5 @@
-import { GoogleGenAI } from '@google/genai';
 import { useCallback } from 'react';
 import type { BackgroundType, TranslateFn } from '../types';
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 interface UseAiBackgroundParams {
   text: string;
@@ -63,36 +60,30 @@ export function useAiBackground({
         aiPrompt ||
         `A beautiful, atmospheric, and minimalist background image suitable for a poem. The poem is: "${text}". The image should have plenty of empty space for text, and match the mood of the poem. No text in the image.`;
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.1-flash-image-preview',
-        contents: {
-          parts: [{ text: prompt }],
+      const response = await fetch('/api/ai-background', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-        config: {
-          imageConfig: {
-            aspectRatio: resolveAspectRatio(canvasWidth, canvasHeight),
-            imageSize: '1K',
-          },
-        },
+        body: JSON.stringify({
+          prompt,
+          aspectRatio: resolveAspectRatio(canvasWidth, canvasHeight),
+        }),
       });
 
-      let foundImage = false;
+      const payload = (await response.json()) as { error?: string; imageDataUrl?: string };
 
-      for (const part of response.candidates?.[0]?.content?.parts || []) {
-        if (!part.inlineData) {
-          continue;
-        }
-
-        const imageUrl = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-        setBackgroundImage(imageUrl);
-        setBackgroundType('ai');
-        foundImage = true;
-        break;
+      if (!response.ok) {
+        throw new Error(payload.error || t('errGenFailed'));
       }
 
-      if (!foundImage) {
+      if (!payload.imageDataUrl) {
         setAiError(t('errNoImage'));
+        return;
       }
+
+      setBackgroundImage(payload.imageDataUrl);
+      setBackgroundType('ai');
     } catch (error: any) {
       console.error('AI Generation Error:', error);
       setAiError(error.message || t('errGenFailed'));
