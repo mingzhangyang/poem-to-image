@@ -12,6 +12,7 @@ export function BackgroundLayer({ backgroundType, backgroundStyle, bgBrightness,
   return (
     <>
       <div
+        data-export-layer="background"
         className="absolute inset-0 z-0"
         style={{
           ...backgroundStyle,
@@ -21,7 +22,7 @@ export function BackgroundLayer({ backgroundType, backgroundStyle, bgBrightness,
       />
 
       {backgroundType === 'image' || backgroundType === 'ai' ? (
-        <div className="absolute inset-0 bg-black/10 pointer-events-none z-0" />
+        <div data-export-layer="background" className="absolute inset-0 bg-black/10 pointer-events-none z-0" />
       ) : null}
     </>
   );

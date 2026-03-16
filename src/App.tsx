@@ -116,7 +116,14 @@ export default function App() {
   });
 
   const scale = useCanvasScale(containerRef, canvasWidth, canvasHeight);
-  const { exportImage: handleDownload, isExporting } = useImageExporter(previewRef, canvasWidth, canvasHeight, exportScale);
+  const { exportImage: handleDownload, isExporting } = useImageExporter(previewRef, exportScale, {
+    backgroundType: background.backgroundType,
+    backgroundStyle: background.backgroundStyle,
+    bgBrightness: background.bgBrightness,
+    bgBlur: background.bgBlur,
+    canvasWidth,
+    canvasHeight,
+  });
   const handlePreviewZoomReset = () => setPreviewZoom(1);
   const previousLanguageRef = useRef(language);
 

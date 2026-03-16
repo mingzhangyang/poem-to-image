@@ -6,7 +6,10 @@
       "Bash(npm install:*)",
       "Bash(npm run:*)",
       "Bash(ls:*)",
-      "Bash(which convert:*)"
+      "Bash(which convert:*)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)"
     ]
   }
 }

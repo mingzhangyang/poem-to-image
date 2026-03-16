@@ -1,7 +1,27 @@
-import { useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, CSSProperties } from 'react';
 import type { AiProvider, BackgroundType, TemplateBackgroundConfig, TranslateFn } from '../types';
 import { useAiBackground } from './useAiBackground';
+
+const MAX_EXPORT_SCALE = 3;
+const MAX_BACKGROUND_EDGE = 4096;
+const LARGE_BACKGROUND_BLOB_BYTES = 1_500_000;
+
+function revokeObjectUrl(url: string | null) {
+  if (url?.startsWith('blob:')) {
+    URL.revokeObjectURL(url);
+  }
+}
+
+function loadImageElement(src: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image();
+    image.decoding = 'async';
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error('Failed to decode image'));
+    image.src = src;
+  });
+}
 
 interface UseBackgroundConfigParams {
   text: string;
@@ -26,25 +46,106 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getTok
   const [aiError, setAiError] = useState('');
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const backgroundUrlRef = useRef<string | null>(null);
+  const imageRequestIdRef = useRef(0);
+
+  const maxImageWidth = Math.min(Math.round(canvasWidth * MAX_EXPORT_SCALE * 1.1), MAX_BACKGROUND_EDGE);
+  const maxImageHeight = Math.min(Math.round(canvasHeight * MAX_EXPORT_SCALE * 1.1), MAX_BACKGROUND_EDGE);
+
+  const updateBackgroundImage = useCallback((nextUrl: string | null) => {
+    const previousUrl = backgroundUrlRef.current;
+    backgroundUrlRef.current = nextUrl;
+    setBackgroundImage(nextUrl);
+
+    if (previousUrl && previousUrl !== nextUrl) {
+      revokeObjectUrl(previousUrl);
+    }
+  }, []);
+
+  const applyBackgroundImage = useCallback(async (source: Blob | string) => {
+    const requestId = ++imageRequestIdRef.current;
+    const sourceBlob = source instanceof Blob ? source : await fetch(source).then((response) => response.blob());
+    const sourceUrl = URL.createObjectURL(sourceBlob);
+
+    try {
+      const image = await loadImageElement(sourceUrl);
+      const widthScale = maxImageWidth / image.naturalWidth;
+      const heightScale = maxImageHeight / image.naturalHeight;
+      const scale = Math.min(1, widthScale, heightScale);
+      const targetWidth = Math.max(1, Math.round(image.naturalWidth * scale));
+      const targetHeight = Math.max(1, Math.round(image.naturalHeight * scale));
+      const needsResize = targetWidth !== image.naturalWidth || targetHeight !== image.naturalHeight;
+      const shouldTranscode = needsResize || sourceBlob.size > LARGE_BACKGROUND_BLOB_BYTES || typeof source === 'string';
+
+      let nextUrl = sourceUrl;
+
+      if (shouldTranscode) {
+        const canvas = document.createElement('canvas');
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+
+        const context = canvas.getContext('2d');
+
+        if (!context) {
+          throw new Error('Failed to prepare image canvas');
+        }
+
+        context.drawImage(image, 0, 0, targetWidth, targetHeight);
+
+        const optimizedBlob = await new Promise<Blob | null>((resolve) => {
+          canvas.toBlob(resolve, 'image/webp', 0.9);
+        });
+
+        if (optimizedBlob) {
+          nextUrl = URL.createObjectURL(optimizedBlob);
+        }
+      }
+
+      if (imageRequestIdRef.current === requestId) {
+        updateBackgroundImage(nextUrl);
+
+        if (nextUrl !== sourceUrl) {
+          revokeObjectUrl(sourceUrl);
+        }
+
+        return;
+      }
+
+      if (nextUrl !== sourceUrl) {
+        revokeObjectUrl(nextUrl);
+      }
+
+      revokeObjectUrl(sourceUrl);
+    } catch (error) {
+      revokeObjectUrl(sourceUrl);
+      throw error;
+    }
+  }, [maxImageHeight, maxImageWidth, updateBackgroundImage]);
+
+  useEffect(() => () => revokeObjectUrl(backgroundUrlRef.current), []);
 
   const onAiProviderChange = (value: AiProvider) => {
     setAiProvider(value);
     setAiError('');
   };
 
-  const onImageUpload = (event: ChangeEvent<HTMLInputElement>) => {
+  const onImageUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
 
     if (!file) {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (loadEvent) => {
-      setBackgroundImage(loadEvent.target?.result as string);
+    try {
+      await applyBackgroundImage(file);
       setBackgroundType('image');
-    };
-    reader.readAsDataURL(file);
+      setAiError('');
+    } catch (error) {
+      console.error('Failed to process background image', error);
+      setAiError(t('errGenFailed'));
+    } finally {
+      event.target.value = '';
+    }
   };
 
   const onGenerateAiBackground = useAiBackground({
@@ -57,7 +158,7 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getTok
     getToken,
     setAiError,
     setIsGeneratingAI,
-    setBackgroundImage,
+    applyBackgroundImage,
     setBackgroundType,
     onBalanceChange,
   });
@@ -70,7 +171,7 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getTok
     setGradientDirection(template.gradientDirection);
     setBgBrightness(template.bgBrightness);
     setBgBlur(template.bgBlur);
-    setBackgroundImage(null);
+    updateBackgroundImage(null);
     setAiPrompt('');
     setAiError('');
     setIsGeneratingAI(false);
