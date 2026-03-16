@@ -23,18 +23,24 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
       expanded={expanded}
       onToggle={onToggle}
       summary={summaryParts.join(' · ')}
-      action={
-        <button
-          onClick={decorations.onAddCustomText}
-          className="p-1 rounded transition-colors flex items-center gap-1 text-xs font-medium"
-          style={{ color: 'var(--app-accent-600)' }}
-          title={t('addTextBox')}
-        >
-          <Plus className="w-3 h-3" /> {t('addTextBox')}
-        </button>
-      }
     >
       <div className="space-y-4">
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={decorations.onAddCustomText}
+            className="inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-white"
+            style={{
+              color: 'var(--app-accent-700)',
+              borderColor: 'var(--app-accent-200)',
+              backgroundColor: 'var(--app-accent-50)',
+            }}
+            title={t('addTextBox')}
+          >
+            <Plus className="w-3 h-3" /> {t('addTextBox')}
+          </button>
+        </div>
+
         <div className="app-soft-surface p-3 rounded-lg space-y-3">
           <div className="flex items-center justify-between">
             <label className="text-xs text-gray-600 flex items-center gap-2">
