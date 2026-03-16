@@ -11,6 +11,8 @@ import { SidebarHeader } from './sidebar/SidebarHeader';
 import { TemplatesPanel } from './sidebar/TemplatesPanel';
 import { TypographyPanel } from './sidebar/TypographyPanel';
 
+type MobilePanel = 'templates' | 'content' | 'style' | 'export';
+
 export function Sidebar({
   language,
   onLanguageChange,
@@ -28,21 +30,21 @@ export function Sidebar({
   onExportScaleChange,
   onDownload,
 }: SidebarProps) {
-  const [isMobileControlsOpen, setIsMobileControlsOpen] = useState(false);
-  const [pendingMobileSection, setPendingMobileSection] = useState<keyof typeof expandedSections | null>(null);
+  const [activeMobilePanel, setActiveMobilePanel] = useState<MobilePanel | null>(null);
+  const isMobileControlsOpen = activeMobilePanel !== null;
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(min-width: 768px)');
     const handleChange = (event: MediaQueryListEvent) => {
       if (event.matches) {
-        setIsMobileControlsOpen(false);
+        setActiveMobilePanel(null);
       }
     };
 
     mediaQuery.addEventListener('change', handleChange);
 
     if (mediaQuery.matches) {
-      setIsMobileControlsOpen(false);
+      setActiveMobilePanel(null);
     }
 
     return () => mediaQuery.removeEventListener('change', handleChange);
@@ -56,7 +58,7 @@ export function Sidebar({
     const previousOverflow = document.body.style.overflow;
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        setIsMobileControlsOpen(false);
+        setActiveMobilePanel(null);
       }
     };
 
@@ -69,33 +71,34 @@ export function Sidebar({
     };
   }, [isMobileControlsOpen]);
 
-  useEffect(() => {
-    if (!isMobileControlsOpen || !pendingMobileSection) {
-      return;
+  const openMobilePanel = (panel: MobilePanel) => {
+    if (panel === 'templates') {
+      onExpandSection('templates');
     }
 
-    const frameId = window.requestAnimationFrame(() => {
-      const sectionElement = document.querySelector<HTMLElement>(`[data-mobile-section="${pendingMobileSection}"]`);
-
-      sectionElement?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      setPendingMobileSection(null);
-    });
-
-    return () => window.cancelAnimationFrame(frameId);
-  }, [isMobileControlsOpen, pendingMobileSection]);
-
-  const openMobileControls = (section?: keyof typeof expandedSections) => {
-    if (section) {
-      onExpandSection(section);
-      setPendingMobileSection(section);
+    if (panel === 'content') {
+      onExpandSection('canvasSize');
+      onExpandSection('content');
     }
 
-    setIsMobileControlsOpen(true);
+    if (panel === 'style') {
+      onExpandSection('background');
+      onExpandSection('typography');
+      onExpandSection('decorations');
+    }
+
+    setActiveMobilePanel(panel);
   };
 
-  const sections = (isMobile = false) => (
+  const mobileButtonClassName = (panel: MobilePanel) => {
+    const isActive = activeMobilePanel === panel;
+
+    return `flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2.5 text-[11px] font-medium transition-colors ${isActive ? 'bg-gray-950 text-white shadow-sm' : 'text-gray-700'}`;
+  };
+
+  const sections = () => (
     <div className="p-4 sm:p-6 space-y-6 sm:space-y-8 flex-1 overflow-y-auto">
-      <div {...(isMobile ? { 'data-mobile-section': 'templates' } : {})}>
+      <div>
         <TemplatesPanel
           t={t}
           expanded={expandedSections.templates}
@@ -104,7 +107,7 @@ export function Sidebar({
         />
       </div>
 
-      <div {...(isMobile ? { 'data-mobile-section': 'canvasSize' } : {})}>
+      <div>
         <CanvasSizePanel
           t={t}
           expanded={expandedSections.canvasSize}
@@ -113,7 +116,7 @@ export function Sidebar({
         />
       </div>
 
-      <div {...(isMobile ? { 'data-mobile-section': 'content' } : {})}>
+      <div>
         <ContentPanel
           t={t}
           expanded={expandedSections.content}
@@ -122,7 +125,7 @@ export function Sidebar({
         />
       </div>
 
-      <div {...(isMobile ? { 'data-mobile-section': 'background' } : {})}>
+      <div>
         <BackgroundPanel
           t={t}
           expanded={expandedSections.background}
@@ -131,7 +134,7 @@ export function Sidebar({
         />
       </div>
 
-      <div {...(isMobile ? { 'data-mobile-section': 'typography' } : {})}>
+      <div>
         <TypographyPanel
           t={t}
           expanded={expandedSections.typography}
@@ -140,7 +143,7 @@ export function Sidebar({
         />
       </div>
 
-      <div {...(isMobile ? { 'data-mobile-section': 'decorations' } : {})}>
+      <div>
         <DecorationsPanel
           t={t}
           expanded={expandedSections.decorations}
@@ -151,45 +154,121 @@ export function Sidebar({
     </div>
   );
 
+  const mobileSections = () => {
+    if (activeMobilePanel === 'templates') {
+      return (
+        <div className="p-4 sm:p-6 space-y-6 flex-1 overflow-y-auto">
+          <TemplatesPanel
+            t={t}
+            expanded={expandedSections.templates}
+            onToggle={() => onToggleSection('templates')}
+            templates={templates}
+          />
+        </div>
+      );
+    }
+
+    if (activeMobilePanel === 'content') {
+      return (
+        <div className="p-4 sm:p-6 space-y-6 flex-1 overflow-y-auto">
+          <CanvasSizePanel
+            t={t}
+            expanded={expandedSections.canvasSize}
+            onToggle={() => onToggleSection('canvasSize')}
+            canvas={canvas}
+          />
+          <ContentPanel
+            t={t}
+            expanded={expandedSections.content}
+            onToggle={() => onToggleSection('content')}
+            content={content}
+          />
+        </div>
+      );
+    }
+
+    if (activeMobilePanel === 'style') {
+      return (
+        <div className="p-4 sm:p-6 space-y-6 flex-1 overflow-y-auto">
+          <BackgroundPanel
+            t={t}
+            expanded={expandedSections.background}
+            onToggle={() => onToggleSection('background')}
+            background={background}
+          />
+          <TypographyPanel
+            t={t}
+            expanded={expandedSections.typography}
+            onToggle={() => onToggleSection('typography')}
+            typography={typography}
+          />
+          <DecorationsPanel
+            t={t}
+            expanded={expandedSections.decorations}
+            onToggle={() => onToggleSection('decorations')}
+            decorations={decorations}
+          />
+        </div>
+      );
+    }
+
+    if (activeMobilePanel === 'export') {
+      return (
+        <SidebarFooter
+          t={t}
+          exportScale={exportScale}
+          onExportScaleChange={onExportScaleChange}
+          onDownload={onDownload}
+        />
+      );
+    }
+
+    return null;
+  };
+
   return (
     <>
       <div className="md:hidden fixed inset-x-0 bottom-0 z-20 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pointer-events-none">
         <div className="pointer-events-auto mx-auto flex max-w-md items-stretch gap-2 rounded-[1.75rem] border border-white/70 bg-white/92 p-2 shadow-[0_18px_50px_rgba(15,23,42,0.18)] backdrop-blur">
           <button
             type="button"
-            onClick={() => openMobileControls('templates')}
-            className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2.5 text-[11px] font-medium text-gray-700"
+            onClick={() => openMobilePanel('templates')}
+            className={mobileButtonClassName('templates')}
+            aria-expanded={activeMobilePanel === 'templates'}
             aria-controls="mobile-controls-drawer"
           >
-            <Sparkles className="h-4 w-4 text-indigo-600" />
+            <Sparkles className={`h-4 w-4 ${activeMobilePanel === 'templates' ? 'text-white' : 'text-indigo-600'}`} />
             <span className="truncate">{t('templates')}</span>
           </button>
           <button
             type="button"
-            onClick={() => openMobileControls('background')}
-            className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2.5 text-[11px] font-medium text-gray-700"
+            onClick={() => openMobilePanel('content')}
+            className={mobileButtonClassName('content')}
+            aria-expanded={activeMobilePanel === 'content'}
             aria-controls="mobile-controls-drawer"
           >
-            <Palette className="h-4 w-4 text-amber-600" />
+            <Settings2 className={`h-4 w-4 ${activeMobilePanel === 'content' ? 'text-white' : 'text-sky-700'}`} />
+            <span className="truncate">{t('content')}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => openMobilePanel('style')}
+            className={mobileButtonClassName('style')}
+            aria-expanded={activeMobilePanel === 'style'}
+            aria-controls="mobile-controls-drawer"
+          >
+            <Palette className={`h-4 w-4 ${activeMobilePanel === 'style' ? 'text-white' : 'text-amber-600'}`} />
             <span className="truncate">{t('background')}</span>
           </button>
           <button
             type="button"
-            onClick={onDownload}
-            className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-2xl bg-gray-950 px-2 py-2.5 text-[11px] font-medium text-white shadow-sm"
-          >
-            <Download className="h-4 w-4" />
-            <span className="truncate">{t('quickExport')}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => openMobileControls()}
-            className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2.5 text-[11px] font-medium text-gray-700"
-            aria-expanded={isMobileControlsOpen}
+            onClick={() => openMobilePanel('export')}
+            className={mobileButtonClassName('export')}
+            aria-expanded={activeMobilePanel === 'export'}
             aria-controls="mobile-controls-drawer"
           >
-            <Settings2 className="h-4 w-4 text-gray-700" />
-            <span className="truncate">{t('quickMore')}</span>
+            <Download className={`h-4 w-4 ${activeMobilePanel === 'export' ? 'text-white' : 'text-gray-700'}`} />
+            <span className="truncate">{t('quickExport')}</span>
           </button>
         </div>
       </div>
@@ -200,7 +279,7 @@ export function Sidebar({
             <motion.button
               type="button"
               className="md:hidden fixed inset-0 z-30 bg-gray-950/35 backdrop-blur-[2px]"
-              onClick={() => setIsMobileControlsOpen(false)}
+              onClick={() => setActiveMobilePanel(null)}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -223,7 +302,7 @@ export function Sidebar({
                 <div className="flex items-center justify-end">
                   <button
                     type="button"
-                    onClick={() => setIsMobileControlsOpen(false)}
+                    onClick={() => setActiveMobilePanel(null)}
                     className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-gray-600"
                     aria-label={t('closeControls')}
                   >
@@ -233,13 +312,7 @@ export function Sidebar({
               </div>
 
               <SidebarHeader language={language} onLanguageChange={onLanguageChange} t={t} isSheet />
-              {sections(true)}
-              <SidebarFooter
-                t={t}
-                exportScale={exportScale}
-                onExportScaleChange={onExportScaleChange}
-                onDownload={onDownload}
-              />
+              {mobileSections()}
             </motion.aside>
           </>
         ) : null}
