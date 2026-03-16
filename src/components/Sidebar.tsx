@@ -113,7 +113,7 @@ export function Sidebar({
 
   const mobileButtonClassName = (panel: MobilePanel) => {
     const isActive = activeMobilePanel === panel;
-    return `flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2.5 text-[11px] font-medium transition-colors ${isActive ? 'bg-[var(--app-accent-700)] text-white shadow-[0_10px_22px_var(--app-accent-shadow)]' : 'text-[var(--app-accent-800)] hover:bg-[rgba(237,244,243,0.8)]'}`;
+    return `flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2.5 text-[11px] font-medium transition-colors ${isActive ? 'bg-(--app-accent-700) text-white shadow-[0_10px_22px_var(--app-accent-shadow)]' : 'text-(--app-accent-800) hover:bg-[rgba(237,244,243,0.8)]'}`;
   };
 
   const dismissOnboarding = () => {
@@ -122,10 +122,10 @@ export function Sidebar({
   };
 
   const onboardingCard = (compact = false) => (
-    <div className={`overflow-hidden rounded-[1.75rem] border border-[var(--app-accent-200)] bg-[linear-gradient(145deg,rgba(237,244,243,0.96),rgba(255,250,242,0.98))] shadow-[0_24px_60px_var(--app-accent-shadow)] ${compact ? 'p-4' : 'p-5 sm:p-6'}`}>
+    <div className={`overflow-hidden rounded-[1.75rem] border border-(--app-accent-200) bg-[linear-gradient(145deg,rgba(237,244,243,0.96),rgba(255,250,242,0.98))] shadow-[0_24px_60px_var(--app-accent-shadow)] ${compact ? 'p-4' : 'p-5 sm:p-6'}`}>
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--app-accent-500)]">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-(--app-accent-500)">
             {t('appTitle')}
           </div>
           <p className="mt-2 text-sm leading-6 text-gray-600">
@@ -135,7 +135,7 @@ export function Sidebar({
         <button
           type="button"
           onClick={dismissOnboarding}
-          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/80 bg-white/80 text-[var(--app-accent-600)] transition-colors hover:text-[var(--app-accent-900)]"
+          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/80 bg-white/80 text-(--app-accent-600) transition-colors hover:text-(--app-accent-900)"
           aria-label={t('closeControls')}
         >
           <X className="h-4 w-4" />
@@ -145,10 +145,10 @@ export function Sidebar({
       <div className="mt-4 grid gap-2 sm:grid-cols-3">
         {onboardingSteps.map((step, index) => (
           <div key={step} className="rounded-2xl border border-white/80 bg-white/80 px-3 py-3 shadow-sm">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--app-accent-500)]">{index + 1}</div>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-(--app-accent-500)">{index + 1}</div>
             <div className="mt-1 flex items-center justify-between gap-2 text-sm font-medium text-gray-800">
               <span>{step}</span>
-              <ArrowRight className="h-3.5 w-3.5 text-[var(--app-accent-500)]" />
+              <ArrowRight className="h-3.5 w-3.5 text-(--app-accent-500)" />
             </div>
           </div>
         ))}
@@ -160,7 +160,7 @@ export function Sidebar({
             key={template.id}
             type="button"
             onClick={() => templates.onApplyTemplate(template.id)}
-            className="inline-flex items-center gap-2 rounded-full border border-[var(--app-accent-200)] bg-white px-3 py-2 text-sm font-medium text-[var(--app-accent-700)] transition-colors hover:border-[var(--app-accent-300)] hover:bg-[var(--app-accent-50)]"
+            className="inline-flex items-center gap-2 rounded-full border border-(--app-accent-200) bg-white px-3 py-2 text-sm font-medium text-(--app-accent-700) transition-colors hover:border-(--app-accent-300) hover:bg-(--app-accent-50)"
           >
             <Check className="h-3.5 w-3.5" />
             <span>{t(template.nameKey)}</span>
@@ -333,7 +333,7 @@ export function Sidebar({
             aria-expanded={activeMobilePanel === 'templates'}
             aria-controls="mobile-controls-drawer"
           >
-            <Sparkles className={`h-4 w-4 ${activeMobilePanel === 'templates' ? 'text-white' : 'text-[var(--app-accent-600)]'}`} />
+            <Sparkles className={`h-4 w-4 ${activeMobilePanel === 'templates' ? 'text-white' : 'text-(--app-accent-600)'}`} />
             <span className="truncate">{t('templates')}</span>
           </button>
           <button
@@ -343,7 +343,7 @@ export function Sidebar({
             aria-expanded={activeMobilePanel === 'content'}
             aria-controls="mobile-controls-drawer"
           >
-            <Settings2 className={`h-4 w-4 ${activeMobilePanel === 'content' ? 'text-white' : 'text-[var(--app-accent-600)]'}`} />
+            <Settings2 className={`h-4 w-4 ${activeMobilePanel === 'content' ? 'text-white' : 'text-(--app-accent-600)'}`} />
             <span className="truncate">{t('content')}</span>
           </button>
           <button
@@ -353,7 +353,7 @@ export function Sidebar({
             aria-expanded={activeMobilePanel === 'style'}
             aria-controls="mobile-controls-drawer"
           >
-            <Palette className={`h-4 w-4 ${activeMobilePanel === 'style' ? 'text-white' : 'text-[var(--app-accent-600)]'}`} />
+            <Palette className={`h-4 w-4 ${activeMobilePanel === 'style' ? 'text-white' : 'text-(--app-accent-600)'}`} />
             <span className="truncate">{t('background')}</span>
           </button>
           <button
@@ -363,7 +363,7 @@ export function Sidebar({
             aria-expanded={activeMobilePanel === 'export'}
             aria-controls="mobile-controls-drawer"
           >
-            <Download className={`h-4 w-4 ${activeMobilePanel === 'export' ? 'text-white' : 'text-[var(--app-accent-700)]'}`} />
+            <Download className={`h-4 w-4 ${activeMobilePanel === 'export' ? 'text-white' : 'text-(--app-accent-700)'}`} />
             <span className="truncate">{t('quickExport')}</span>
           </button>
           <button
@@ -373,7 +373,7 @@ export function Sidebar({
             aria-expanded={activeMobilePanel === 'settings'}
             aria-controls="mobile-controls-drawer"
           >
-            <Settings className={`h-4 w-4 ${activeMobilePanel === 'settings' ? 'text-white' : 'text-[var(--app-accent-600)]'}`} />
+            <Settings className={`h-4 w-4 ${activeMobilePanel === 'settings' ? 'text-white' : 'text-(--app-accent-600)'}`} />
             <span className="truncate">{t('settings')}</span>
           </button>
         </div>
@@ -395,7 +395,7 @@ export function Sidebar({
 
             <motion.aside
               id="mobile-controls-drawer"
-              className="md:hidden fixed inset-x-0 bottom-0 z-40 max-h-[82dvh] overflow-hidden rounded-t-4xl bg-[var(--app-surface)] shadow-2xl flex flex-col"
+              className="md:hidden fixed inset-x-0 bottom-0 z-40 max-h-[82dvh] overflow-hidden rounded-t-4xl bg-(--app-surface) shadow-2xl flex flex-col"
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
@@ -410,7 +410,7 @@ export function Sidebar({
                   <button
                     type="button"
                     onClick={() => setActiveMobilePanel(null)}
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[rgba(34,48,52,0.08)] text-[var(--app-accent-700)]"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[rgba(34,48,52,0.08)] text-(--app-accent-700)"
                     aria-label={t('closeControls')}
                   >
                     <X className="h-4 w-4" />
