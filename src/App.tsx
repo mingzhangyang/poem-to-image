@@ -392,6 +392,9 @@ export default function App() {
 
   return (
     <div className="min-h-dvh bg-gray-50 flex flex-col md:flex-row font-sans text-gray-800">
+      <title>InkPoem – Turn Poems into Beautiful Art with AI</title>
+      <meta name="description" content="Turn your poems into stunning visual art with AI. Customize typography, backgrounds, and styles. Export in high resolution. Free to start." />
+      <link rel="canonical" href="https://inkpoem.com/" />
       <Sidebar {...sidebarProps} />
 
       <CanvasPreview {...canvasPreviewProps} />

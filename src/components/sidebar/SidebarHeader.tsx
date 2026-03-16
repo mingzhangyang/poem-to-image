@@ -1,17 +1,17 @@
-import type { Language } from '../../translations';
+import { Settings } from 'lucide-react';
 import type { TranslateFn } from '../../types';
 import { useAppAuth } from '../../context/auth';
 import { Logo } from '../logo';
 
 interface SidebarHeaderProps {
-  language: Language;
-  onLanguageChange: (value: Language) => void;
   t: TranslateFn;
   isSheet?: boolean;
+  isSettingsOpen?: boolean;
+  onSettingsToggle?: () => void;
   balance?: number | null;
 }
 
-export function SidebarHeader({ language, onLanguageChange, t, isSheet = false, balance }: SidebarHeaderProps) {
+export function SidebarHeader({ t, isSheet = false, isSettingsOpen = false, onSettingsToggle, balance }: SidebarHeaderProps) {
   const { isSignedIn } = useAppAuth();
 
   return (
@@ -28,20 +28,22 @@ export function SidebarHeader({ language, onLanguageChange, t, isSheet = false, 
           </p>
         )}
       </div>
-      <select
-        value={language}
-        onChange={(event) => onLanguageChange(event.target.value as Language)}
-        className="shrink-0 text-xs border border-gray-200 rounded-md text-gray-600 p-1 focus:ring-indigo-500 focus:border-indigo-500 bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer"
-      >
-        <option value="en">EN</option>
-        <option value="zh-CN">简</option>
-        <option value="zh-TW">繁</option>
-        <option value="ja">日本語</option>
-        <option value="ko">한국어</option>
-        <option value="es">ES</option>
-        <option value="fr">FR</option>
-        <option value="de">DE</option>
-      </select>
+
+      {/* Gear icon — desktop sidebar only (not in mobile drawer) */}
+      {!isSheet && onSettingsToggle && (
+        <button
+          type="button"
+          onClick={onSettingsToggle}
+          aria-label={t('settings')}
+          className={`shrink-0 mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-full border transition-colors ${
+            isSettingsOpen
+              ? 'border-indigo-200 bg-indigo-50 text-indigo-600'
+              : 'border-gray-200 bg-gray-50 text-gray-500 hover:bg-gray-100'
+          }`}
+        >
+          <Settings className="w-4 h-4" />
+        </button>
+      )}
     </div>
   );
 }

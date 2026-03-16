@@ -1,18 +1,18 @@
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Download, Palette, Settings2, Sparkles, X } from 'lucide-react';
+import { Download, Palette, Settings, Sparkles, Settings2, X } from 'lucide-react';
 import type { SidebarProps } from '../types';
 import { BackgroundPanel } from './sidebar/BackgroundPanel';
-import { BillingPanel } from './sidebar/BillingPanel';
 import { CanvasSizePanel } from './sidebar/CanvasSizePanel';
 import { ContentPanel } from './sidebar/ContentPanel';
 import { DecorationsPanel } from './sidebar/DecorationsPanel';
+import { SettingsPanel } from './sidebar/SettingsPanel';
 import { SidebarFooter } from './sidebar/SidebarFooter';
 import { SidebarHeader } from './sidebar/SidebarHeader';
 import { TemplatesPanel } from './sidebar/TemplatesPanel';
 import { TypographyPanel } from './sidebar/TypographyPanel';
 
-type MobilePanel = 'templates' | 'content' | 'style' | 'export';
+type MobilePanel = 'templates' | 'content' | 'style' | 'export' | 'settings';
 
 export function Sidebar({
   language,
@@ -34,6 +34,7 @@ export function Sidebar({
   isExporting,
 }: SidebarProps) {
   const [activeMobilePanel, setActiveMobilePanel] = useState<MobilePanel | null>(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const isMobileControlsOpen = activeMobilePanel !== null;
 
   useEffect(() => {
@@ -45,24 +46,16 @@ export function Sidebar({
     };
 
     mediaQuery.addEventListener('change', handleChange);
-
-    if (mediaQuery.matches) {
-      setActiveMobilePanel(null);
-    }
-
+    if (mediaQuery.matches) setActiveMobilePanel(null);
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
 
   useEffect(() => {
-    if (!isMobileControlsOpen) {
-      return;
-    }
+    if (!isMobileControlsOpen) return;
 
     const previousOverflow = document.body.style.overflow;
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setActiveMobilePanel(null);
-      }
+      if (event.key === 'Escape') setActiveMobilePanel(null);
     };
 
     document.body.style.overflow = 'hidden';
@@ -75,27 +68,21 @@ export function Sidebar({
   }, [isMobileControlsOpen]);
 
   const openMobilePanel = (panel: MobilePanel) => {
-    if (panel === 'templates') {
-      onExpandSection('templates');
-    }
-
+    if (panel === 'templates') onExpandSection('templates');
     if (panel === 'content') {
       onExpandSection('canvasSize');
       onExpandSection('content');
     }
-
     if (panel === 'style') {
       onExpandSection('background');
       onExpandSection('typography');
       onExpandSection('decorations');
     }
-
     setActiveMobilePanel(panel);
   };
 
   const mobileButtonClassName = (panel: MobilePanel) => {
     const isActive = activeMobilePanel === panel;
-
     return `flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2.5 text-[11px] font-medium transition-colors ${isActive ? 'bg-gray-950 text-white shadow-sm' : 'text-gray-700'}`;
   };
 
@@ -109,7 +96,6 @@ export function Sidebar({
           templates={templates}
         />
       </div>
-
       <div>
         <CanvasSizePanel
           t={t}
@@ -118,7 +104,6 @@ export function Sidebar({
           canvas={canvas}
         />
       </div>
-
       <div>
         <ContentPanel
           t={t}
@@ -127,7 +112,6 @@ export function Sidebar({
           content={content}
         />
       </div>
-
       <div>
         <BackgroundPanel
           t={t}
@@ -137,7 +121,6 @@ export function Sidebar({
           balance={billing.balance}
         />
       </div>
-
       <div>
         <TypographyPanel
           language={language}
@@ -147,7 +130,6 @@ export function Sidebar({
           typography={typography}
         />
       </div>
-
       <div>
         <DecorationsPanel
           t={t}
@@ -156,19 +138,21 @@ export function Sidebar({
           decorations={decorations}
         />
       </div>
-
-      <div>
-        <BillingPanel
-          t={t}
-          expanded={expandedSections.billing}
-          onToggle={() => onToggleSection('billing')}
-          billing={billing}
-        />
-      </div>
     </div>
   );
 
   const mobileSections = () => {
+    if (activeMobilePanel === 'settings') {
+      return (
+        <SettingsPanel
+          t={t}
+          language={language}
+          onLanguageChange={onLanguageChange}
+          billing={billing}
+        />
+      );
+    }
+
     if (activeMobilePanel === 'templates') {
       return (
         <div className="p-4 sm:p-6 space-y-6 flex-1 overflow-y-auto">
@@ -224,12 +208,6 @@ export function Sidebar({
             onToggle={() => onToggleSection('decorations')}
             decorations={decorations}
           />
-          <BillingPanel
-            t={t}
-            expanded={expandedSections.billing}
-            onToggle={() => onToggleSection('billing')}
-            billing={billing}
-          />
         </div>
       );
     }
@@ -251,6 +229,7 @@ export function Sidebar({
 
   return (
     <>
+      {/* Mobile bottom bar */}
       <div className="md:hidden fixed inset-x-0 bottom-0 z-20 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pointer-events-none">
         <div className="pointer-events-auto mx-auto flex max-w-md items-stretch gap-2 rounded-[1.75rem] border border-white/70 bg-white/92 p-2 shadow-[0_18px_50px_rgba(15,23,42,0.18)] backdrop-blur">
           <button
@@ -293,9 +272,20 @@ export function Sidebar({
             <Download className={`h-4 w-4 ${activeMobilePanel === 'export' ? 'text-white' : 'text-gray-700'}`} />
             <span className="truncate">{t('quickExport')}</span>
           </button>
+          <button
+            type="button"
+            onClick={() => openMobilePanel('settings')}
+            className={mobileButtonClassName('settings')}
+            aria-expanded={activeMobilePanel === 'settings'}
+            aria-controls="mobile-controls-drawer"
+          >
+            <Settings className={`h-4 w-4 ${activeMobilePanel === 'settings' ? 'text-white' : 'text-gray-500'}`} />
+            <span className="truncate">{t('settings')}</span>
+          </button>
         </div>
       </div>
 
+      {/* Mobile drawer */}
       <AnimatePresence>
         {isMobileControlsOpen ? (
           <>
@@ -334,23 +324,40 @@ export function Sidebar({
                 </div>
               </div>
 
-              <SidebarHeader language={language} onLanguageChange={onLanguageChange} t={t} isSheet balance={billing.balance} />
+              <SidebarHeader t={t} isSheet balance={billing.balance} />
               {mobileSections()}
             </motion.aside>
           </>
         ) : null}
       </AnimatePresence>
 
+      {/* Desktop sidebar */}
       <aside className="hidden md:flex md:order-1 md:w-80 md:border-r md:border-gray-200 md:h-screen md:overflow-y-auto shrink-0 bg-white shadow-sm z-10 flex-col">
-        <SidebarHeader language={language} onLanguageChange={onLanguageChange} t={t} balance={billing.balance} />
-        {sections()}
-        <SidebarFooter
+        <SidebarHeader
           t={t}
-          exportScale={exportScale}
-          onExportScaleChange={onExportScaleChange}
-          onDownload={onDownload}
-          isExporting={isExporting}
+          balance={billing.balance}
+          isSettingsOpen={isSettingsOpen}
+          onSettingsToggle={() => setIsSettingsOpen((prev) => !prev)}
         />
+        {isSettingsOpen ? (
+          <SettingsPanel
+            t={t}
+            language={language}
+            onLanguageChange={onLanguageChange}
+            billing={billing}
+          />
+        ) : (
+          <>
+            {sections()}
+            <SidebarFooter
+              t={t}
+              exportScale={exportScale}
+              onExportScaleChange={onExportScaleChange}
+              onDownload={onDownload}
+              isExporting={isExporting}
+            />
+          </>
+        )}
       </aside>
     </>
   );
