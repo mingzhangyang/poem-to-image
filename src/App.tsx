@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { translations, Language, TranslationKey } from './translations';
 import { CanvasPreview } from './components/CanvasPreview';
 import { Sidebar } from './components/Sidebar';
@@ -8,7 +8,10 @@ import { useDecorationsConfig } from './hooks/useDecorationsConfig';
 import { useEditorViewModels } from './hooks/useEditorViewModels';
 import { useImageExporter } from './hooks/useImageExporter';
 import { useTypographyConfig } from './hooks/useTypographyConfig';
-import type { ExpandedSections } from './types';
+import { editorTemplates } from './templates';
+import type { EditorTemplateId, ExpandedSections } from './types';
+
+const ACTIVE_TEMPLATE_STORAGE_KEY = 'poem-to-image.active-template';
 
 export default function App() {
   const [language, setLanguage] = useState<Language>('zh-CN');
@@ -19,8 +22,10 @@ export default function App() {
   const [canvasWidth, setCanvasWidth] = useState(1080);
   const [canvasHeight, setCanvasHeight] = useState(1440);
   const [presetSize, setPresetSize] = useState('1080x1440');
+  const [activeTemplateId, setActiveTemplateId] = useState<EditorTemplateId | null>(null);
 
   const [expandedSections, setExpandedSections] = useState<ExpandedSections>({
+    templates: true,
     canvasSize: true,
     content: true,
     background: true,
@@ -62,12 +67,66 @@ export default function App() {
   const scale = useCanvasScale(containerRef, canvasWidth, canvasHeight);
   const handleDownload = useImageExporter(previewRef, canvasWidth, canvasHeight);
 
+  const applyTemplateById = (templateId: EditorTemplateId) => {
+    const template = editorTemplates.find((item) => item.id === templateId);
+
+    if (!template) {
+      return false;
+    }
+
+    background.applyBackgroundTemplate(template.background);
+    typography.applyTypographyTemplate(template.typography);
+    decorations.applyDecorationsTemplate(template.decorations);
+    setActiveTemplateId(templateId);
+    setExpandedSections((prev) => ({
+      ...prev,
+      templates: true,
+      background: true,
+      typography: true,
+      decorations: true,
+    }));
+
+    return true;
+  };
+
+  const handleApplyTemplate = (templateId: EditorTemplateId) => {
+    applyTemplateById(templateId);
+  };
+
+  useEffect(() => {
+    const storedTemplateId = window.localStorage.getItem(ACTIVE_TEMPLATE_STORAGE_KEY) as EditorTemplateId | null;
+
+    if (!storedTemplateId) {
+      return;
+    }
+
+    const didApply = applyTemplateById(storedTemplateId);
+
+    if (!didApply) {
+      window.localStorage.removeItem(ACTIVE_TEMPLATE_STORAGE_KEY);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!activeTemplateId) {
+      window.localStorage.removeItem(ACTIVE_TEMPLATE_STORAGE_KEY);
+      return;
+    }
+
+    window.localStorage.setItem(ACTIVE_TEMPLATE_STORAGE_KEY, activeTemplateId);
+  }, [activeTemplateId]);
+
   const { sidebarProps, canvasPreviewProps } = useEditorViewModels({
     language,
     onLanguageChange: setLanguage,
     t,
     expandedSections,
     onToggleSection: toggleSection,
+    templates: {
+      templates: editorTemplates,
+      activeTemplateId,
+      onApplyTemplate: handleApplyTemplate,
+    },
     canvas: {
       presetSize,
       canvasWidth,

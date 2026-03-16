@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { BorderStyle, CustomText, TranslateFn, WritingMode } from '../types';
+import type { BorderStyle, CustomText, TemplateDecorationsConfig, TranslateFn, WritingMode } from '../types';
 
 interface UseDecorationsConfigParams {
   t: TranslateFn;
@@ -46,6 +46,14 @@ export function useDecorationsConfig({
     setCustomTexts((prev) => prev.filter((customText) => customText.id !== id));
   };
 
+  const applyDecorationsTemplate = (template: TemplateDecorationsConfig) => {
+    setShowBorder(template.showBorder);
+    setBorderStyle(template.borderStyle);
+    setShowStamp(template.showStamp);
+    setStampText(template.stampText);
+    setCustomTexts(template.customTexts);
+  };
+
   return {
     showBorder,
     borderStyle,
@@ -59,5 +67,6 @@ export function useDecorationsConfig({
     addCustomText,
     updateCustomText,
     removeCustomText,
+    applyDecorationsTemplate,
   };
 }

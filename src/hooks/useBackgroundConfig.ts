@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import type { ChangeEvent, CSSProperties } from 'react';
-import type { BackgroundType, TranslateFn } from '../types';
+import type { BackgroundType, TemplateBackgroundConfig, TranslateFn } from '../types';
 import { useAiBackground } from './useAiBackground';
 
 interface UseBackgroundConfigParams {
@@ -51,6 +51,20 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t }: UseB
     setBackgroundType,
   });
 
+  const applyBackgroundTemplate = (template: TemplateBackgroundConfig) => {
+    setBackgroundType(template.backgroundType);
+    setBackgroundColor(template.backgroundColor);
+    setGradientColor1(template.gradientColor1);
+    setGradientColor2(template.gradientColor2);
+    setGradientDirection(template.gradientDirection);
+    setBgBrightness(template.bgBrightness);
+    setBgBlur(template.bgBlur);
+    setBackgroundImage(null);
+    setAiPrompt('');
+    setAiError('');
+    setIsGeneratingAI(false);
+  };
+
   const backgroundStyle: CSSProperties = (() => {
     switch (backgroundType) {
       case 'solid':
@@ -95,6 +109,7 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t }: UseB
     setBgBrightness,
     setBgBlur,
     setAiPrompt,
+    applyBackgroundTemplate,
     onImageUpload,
     onGenerateAiBackground,
   };

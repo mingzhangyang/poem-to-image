@@ -1,7 +1,11 @@
 import { useState } from 'react';
-import type { TypographySectionProps } from '../types';
+import type { TemplateTypographyConfig, TypographySectionProps } from '../types';
 
-export function useTypographyConfig(): TypographySectionProps {
+type TypographyConfigResult = TypographySectionProps & {
+  applyTypographyTemplate: (template: TemplateTypographyConfig) => void;
+};
+
+export function useTypographyConfig(): TypographyConfigResult {
   const [fontFamily, setFontFamily] = useState('"Noto Serif SC", serif');
   const [fontSize, setFontSize] = useState(32);
   const [textColor, setTextColor] = useState('#1e293b');
@@ -17,6 +21,24 @@ export function useTypographyConfig(): TypographySectionProps {
   const [textShadowBlur, setTextShadowBlur] = useState(10);
   const [textShadowOffsetY, setTextShadowOffsetY] = useState(2);
   const [textShadowOffsetX, setTextShadowOffsetX] = useState(0);
+
+  const applyTypographyTemplate = (template: TemplateTypographyConfig) => {
+    setFontFamily(template.fontFamily);
+    setFontSize(template.fontSize);
+    setTextColor(template.textColor);
+    setTextAlign(template.textAlign);
+    setWritingMode(template.writingMode);
+    setPadding(template.padding);
+    setLineHeight(template.lineHeight);
+    setLetterSpacing(template.letterSpacing);
+    setColumns(template.columns);
+    setColumnGap(template.columnGap);
+    setTextShadowEnabled(template.textShadowEnabled);
+    setTextShadowColor(template.textShadowColor);
+    setTextShadowBlur(template.textShadowBlur);
+    setTextShadowOffsetY(template.textShadowOffsetY);
+    setTextShadowOffsetX(template.textShadowOffsetX);
+  };
 
   return {
     fontFamily,
@@ -49,5 +71,6 @@ export function useTypographyConfig(): TypographySectionProps {
     onTextShadowBlurChange: setTextShadowBlur,
     onTextShadowOffsetYChange: setTextShadowOffsetY,
     onTextShadowOffsetXChange: setTextShadowOffsetX,
+    applyTypographyTemplate,
   };
 }

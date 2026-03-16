@@ -5,6 +5,7 @@ import { ContentPanel } from './sidebar/ContentPanel';
 import { DecorationsPanel } from './sidebar/DecorationsPanel';
 import { SidebarFooter } from './sidebar/SidebarFooter';
 import { SidebarHeader } from './sidebar/SidebarHeader';
+import { TemplatesPanel } from './sidebar/TemplatesPanel';
 import { TypographyPanel } from './sidebar/TypographyPanel';
 
 export function Sidebar({
@@ -13,6 +14,7 @@ export function Sidebar({
   t,
   expandedSections,
   onToggleSection,
+  templates,
   canvas,
   content,
   background,
@@ -25,6 +27,13 @@ export function Sidebar({
       <SidebarHeader language={language} onLanguageChange={onLanguageChange} t={t} />
 
       <div className="p-6 space-y-8 flex-1">
+        <TemplatesPanel
+          t={t}
+          expanded={expandedSections.templates}
+          onToggle={() => onToggleSection('templates')}
+          templates={templates}
+        />
+
         <CanvasSizePanel
           t={t}
           expanded={expandedSections.canvasSize}

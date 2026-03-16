@@ -5,6 +5,7 @@ export type BackgroundType = 'solid' | 'gradient' | 'transparent' | 'image' | 'a
 export type WritingMode = 'horizontal-tb' | 'vertical-rl';
 export type TextAlign = 'left' | 'center' | 'right';
 export type BorderStyle = 'solid' | 'dashed' | 'double';
+export type EditorTemplateId = 'ink-wash' | 'modern-minimal' | 'cyberpunk' | 'japanese-magazine';
 
 export interface CustomText {
   id: string;
@@ -17,10 +18,64 @@ export interface CustomText {
 
 export interface ExpandedSections {
   canvasSize: boolean;
+  templates: boolean;
   content: boolean;
   background: boolean;
   typography: boolean;
   decorations: boolean;
+}
+
+export interface TemplateBackgroundConfig {
+  backgroundType: Exclude<BackgroundType, 'image' | 'ai'>;
+  backgroundColor: string;
+  gradientColor1: string;
+  gradientColor2: string;
+  gradientDirection: string;
+  bgBrightness: number;
+  bgBlur: number;
+}
+
+export interface TemplateTypographyConfig {
+  fontFamily: string;
+  fontSize: number;
+  textColor: string;
+  textAlign: TextAlign;
+  writingMode: WritingMode;
+  padding: number;
+  lineHeight: number;
+  letterSpacing: number;
+  columns: number;
+  columnGap: number;
+  textShadowEnabled: boolean;
+  textShadowColor: string;
+  textShadowBlur: number;
+  textShadowOffsetY: number;
+  textShadowOffsetX: number;
+}
+
+export interface TemplateDecorationsConfig {
+  showBorder: boolean;
+  borderStyle: BorderStyle;
+  showStamp: boolean;
+  stampText: string;
+  customTexts: CustomText[];
+}
+
+export interface EditorTemplateDefinition {
+  id: EditorTemplateId;
+  nameKey: TranslationKey;
+  descriptionKey: TranslationKey;
+  accentFrom: string;
+  accentTo: string;
+  background: TemplateBackgroundConfig;
+  typography: TemplateTypographyConfig;
+  decorations: TemplateDecorationsConfig;
+}
+
+export interface TemplateSectionProps {
+  templates: EditorTemplateDefinition[];
+  activeTemplateId: EditorTemplateId | null;
+  onApplyTemplate: (id: EditorTemplateId) => void;
 }
 
 export interface CanvasSizeSectionProps {
@@ -118,6 +173,7 @@ export interface SidebarProps {
   t: TranslateFn;
   expandedSections: ExpandedSections;
   onToggleSection: (section: keyof ExpandedSections) => void;
+  templates: TemplateSectionProps;
   canvas: CanvasSizeSectionProps;
   content: ContentSectionProps;
   background: BackgroundSectionProps;

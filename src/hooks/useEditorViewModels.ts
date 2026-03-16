@@ -6,6 +6,7 @@ import type {
   ContentSectionProps,
   CustomText,
   DecorationsSectionProps,
+  TemplateSectionProps,
   ExpandedSections,
   SidebarProps,
   TranslateFn,
@@ -18,6 +19,7 @@ interface UseEditorViewModelsParams {
   t: TranslateFn;
   expandedSections: ExpandedSections;
   onToggleSection: (section: keyof ExpandedSections) => void;
+  templates: TemplateSectionProps;
   canvas: CanvasSizeSectionProps;
   content: ContentSectionProps;
   background: BackgroundSectionProps;
@@ -47,6 +49,7 @@ export function useEditorViewModels({
   t,
   expandedSections,
   onToggleSection,
+  templates,
   canvas,
   content,
   background,
@@ -75,6 +78,7 @@ export function useEditorViewModels({
     t,
     expandedSections,
     onToggleSection,
+    templates,
     canvas,
     content,
     background,
