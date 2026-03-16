@@ -20,13 +20,13 @@ export default function App() {
   const [text, setText] = useState('床前明月光，\n疑是地上霜。\n举头望明月，\n低头思故乡。');
 
   const [canvasWidth, setCanvasWidth] = useState(1080);
-  const [canvasHeight, setCanvasHeight] = useState(1440);
-  const [presetSize, setPresetSize] = useState('1080x1440');
+  const [canvasHeight, setCanvasHeight] = useState(1350);
+  const [presetSize, setPresetSize] = useState('1080x1350');
   const [exportScale, setExportScale] = useState<ExportScale>(2);
   const [activeTemplateId, setActiveTemplateId] = useState<EditorTemplateId | null>(null);
 
   const [expandedSections, setExpandedSections] = useState<ExpandedSections>({
-    templates: true,
+    templates: false,
     canvasSize: true,
     content: true,
     background: true,
@@ -72,7 +72,7 @@ export default function App() {
   const scale = useCanvasScale(containerRef, canvasWidth, canvasHeight);
   const handleDownload = useImageExporter(previewRef, canvasWidth, canvasHeight, exportScale);
 
-  const applyTemplateById = (templateId: EditorTemplateId) => {
+  const applyTemplateById = (templateId: EditorTemplateId, options?: { expandSections?: boolean }) => {
     const template = editorTemplates.find((item) => item.id === templateId);
 
     if (!template) {
@@ -83,13 +83,16 @@ export default function App() {
     typography.applyTypographyTemplate(template.typography);
     decorations.applyDecorationsTemplate(template.decorations);
     setActiveTemplateId(templateId);
-    setExpandedSections((prev) => ({
-      ...prev,
-      templates: true,
-      background: true,
-      typography: true,
-      decorations: true,
-    }));
+
+    if (options?.expandSections ?? true) {
+      setExpandedSections((prev) => ({
+        ...prev,
+        templates: true,
+        background: true,
+        typography: true,
+        decorations: true,
+      }));
+    }
 
     return true;
   };
@@ -105,7 +108,7 @@ export default function App() {
       return;
     }
 
-    const didApply = applyTemplateById(storedTemplateId);
+    const didApply = applyTemplateById(storedTemplateId, { expandSections: false });
 
     if (!didApply) {
       window.localStorage.removeItem(ACTIVE_TEMPLATE_STORAGE_KEY);

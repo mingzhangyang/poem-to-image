@@ -26,7 +26,7 @@ export function CanvasSizePanel({ t, expanded, onToggle, canvas }: CanvasSizePan
             className="w-full p-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
           >
             <option value="1080x1080">1:1 (1080x1080)</option>
-            <option value="1080x1440">3:4 (1080x1440)</option>
+            <option value="1080x1350">4:5 (1080x1350)</option>
             <option value="1440x1080">4:3 (1440x1080)</option>
             <option value="1080x1920">9:16 (1080x1920)</option>
             <option value="1920x1080">16:9 (1920x1080)</option>
