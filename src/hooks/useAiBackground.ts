@@ -1,8 +1,11 @@
 import { useCallback } from 'react';
-import type { BackgroundType, TranslateFn } from '../types';
+import type { AiProvider, BackgroundType, TranslateFn } from '../types';
+
+export const MAX_AI_PROMPT_LENGTH = 500;
 
 interface UseAiBackgroundParams {
   text: string;
+  aiProvider: AiProvider;
   aiPrompt: string;
   canvasWidth: number;
   canvasHeight: number;
@@ -35,8 +38,13 @@ function resolveAspectRatio(canvasWidth: number, canvasHeight: number) {
   return '1:1';
 }
 
+function clampPrompt(value: string) {
+  return value.trim().slice(0, MAX_AI_PROMPT_LENGTH);
+}
+
 export function useAiBackground({
   text,
+  aiProvider,
   aiPrompt,
   canvasWidth,
   canvasHeight,
@@ -56,9 +64,10 @@ export function useAiBackground({
     setAiError('');
 
     try {
-      const prompt =
+      const prompt = clampPrompt(
         aiPrompt ||
-        `A beautiful, atmospheric, and minimalist background image suitable for a poem. The poem is: "${text}". The image should have plenty of empty space for text, and match the mood of the poem. No text in the image.`;
+          `A beautiful, atmospheric, and minimalist background image suitable for a poem. The poem is: "${text}". The image should have plenty of empty space for text, and match the mood of the poem. No text in the image.`,
+      );
 
       const response = await fetch('/api/ai-background', {
         method: 'POST',
@@ -66,6 +75,7 @@ export function useAiBackground({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          provider: aiProvider,
           prompt,
           aspectRatio: resolveAspectRatio(canvasWidth, canvasHeight),
         }),
@@ -91,6 +101,7 @@ export function useAiBackground({
       setIsGeneratingAI(false);
     }
   }, [
+    aiProvider,
     aiPrompt,
     canvasHeight,
     canvasWidth,

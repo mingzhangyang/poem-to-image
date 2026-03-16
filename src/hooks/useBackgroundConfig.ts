@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import type { ChangeEvent, CSSProperties } from 'react';
-import type { BackgroundType, TemplateBackgroundConfig, TranslateFn } from '../types';
+import type { AiProvider, BackgroundType, TemplateBackgroundConfig, TranslateFn } from '../types';
 import { useAiBackground } from './useAiBackground';
 
 interface UseBackgroundConfigParams {
@@ -19,10 +19,16 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t }: UseB
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
   const [bgBrightness, setBgBrightness] = useState(100);
   const [bgBlur, setBgBlur] = useState(0);
+  const [aiProvider, setAiProvider] = useState<AiProvider>('gemini');
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiError, setAiError] = useState('');
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const onAiProviderChange = (value: AiProvider) => {
+    setAiProvider(value);
+    setAiError('');
+  };
 
   const onImageUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -41,6 +47,7 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t }: UseB
 
   const onGenerateAiBackground = useAiBackground({
     text,
+    aiProvider,
     aiPrompt,
     canvasWidth,
     canvasHeight,
@@ -96,6 +103,7 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t }: UseB
     backgroundImage,
     bgBrightness,
     bgBlur,
+    aiProvider,
     aiPrompt,
     aiError,
     isGeneratingAI,
@@ -108,6 +116,7 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t }: UseB
     setGradientDirection,
     setBgBrightness,
     setBgBlur,
+    onAiProviderChange,
     setAiPrompt,
     applyBackgroundTemplate,
     onImageUpload,

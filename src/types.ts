@@ -1,6 +1,7 @@
 import type { CSSProperties, ChangeEvent, ReactNode, RefObject } from 'react';
 import type { Language, TranslationKey } from './translations';
 
+export type AiProvider = 'gemini' | 'openai';
 export type BackgroundType = 'solid' | 'gradient' | 'transparent' | 'image' | 'ai';
 export type WritingMode = 'horizontal-tb' | 'vertical-rl';
 export type TextAlign = 'left' | 'center' | 'right';
@@ -113,6 +114,7 @@ export interface BackgroundSectionProps {
   backgroundImage: string | null;
   bgBrightness: number;
   bgBlur: number;
+  aiProvider: AiProvider;
   aiPrompt: string;
   aiError: string;
   isGeneratingAI: boolean;
@@ -123,6 +125,7 @@ export interface BackgroundSectionProps {
   onGradientColor2Change: (value: string) => void;
   onGradientDirectionChange: (value: string) => void;
   onImageUpload: (event: ChangeEvent<HTMLInputElement>) => void;
+  onAiProviderChange: (value: AiProvider) => void;
   onAiPromptChange: (value: string) => void;
   onGenerateAiBackground: () => void;
   onBgBrightnessChange: (value: number) => void;

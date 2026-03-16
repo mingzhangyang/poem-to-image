@@ -19,8 +19,9 @@ View your app in AI Studio: https://ai.studio/apps/402ae06f-03f6-4751-bd05-b7bac
    `npx wrangler login`
 3. Create a local Worker env file from the example:
    `.dev.vars`
-4. Add your Gemini key to `.dev.vars`:
+4. Add the AI keys you want to use to `.dev.vars`:
    `GEMINI_API_KEY=your_key_here`
+   `OPENAI_API_KEY=your_key_here`
 5. Run the Worker API in one terminal:
    `npm run dev:worker`
 6. Run the Vite frontend in another terminal:
@@ -30,8 +31,9 @@ The Vite dev server proxies `/api/*` requests to the local Worker on port `8787`
 
 ## Deploy
 
-1. Set the production secret:
+1. Set the production secrets you need:
    `npx wrangler secret put GEMINI_API_KEY`
+   `npx wrangler secret put OPENAI_API_KEY`
 2. Deploy the Worker and static assets:
    `npm run deploy`
 
@@ -39,4 +41,4 @@ The Vite dev server proxies `/api/*` requests to the local Worker on port `8787`
 
 - The React app is built with Vite into `dist`.
 - A Cloudflare Worker serves the static assets and exposes `/api/ai-background`.
-- Gemini image generation now runs only inside the Worker, so the API key is no longer shipped to the browser.
+- Gemini and OpenAI image generation both run only inside the Worker, so API keys are no longer shipped to the browser.

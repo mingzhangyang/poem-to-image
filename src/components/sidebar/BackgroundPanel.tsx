@@ -1,7 +1,8 @@
 import { Loader2, Palette, Sparkles, Upload } from 'lucide-react';
 import type { TranslationKey } from '../../translations';
-import type { BackgroundType, BackgroundSectionProps, ExpandedSections, TranslateFn } from '../../types';
+import type { AiProvider, BackgroundType, BackgroundSectionProps, ExpandedSections, TranslateFn } from '../../types';
 import { ControlSection } from '../ControlSection';
+import { MAX_AI_PROMPT_LENGTH } from '../../hooks/useAiBackground';
 
 const backgroundTypeLabels: Record<BackgroundType, TranslationKey> = {
   solid: 'bgSolid',
@@ -10,6 +11,8 @@ const backgroundTypeLabels: Record<BackgroundType, TranslationKey> = {
   image: 'bgImage',
   ai: 'bgAI',
 };
+
+const aiProviders: AiProvider[] = ['gemini', 'openai'];
 
 interface BackgroundPanelProps {
   t: TranslateFn;
@@ -104,12 +107,34 @@ export function BackgroundPanel({ t, expanded, onToggle, background }: Backgroun
 
         {background.backgroundType === 'ai' ? (
           <div className="space-y-3 bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
+            <div className="space-y-2">
+              <div className="text-xs font-medium uppercase tracking-wide text-indigo-700">{t('aiProvider')}</div>
+              <div className="grid grid-cols-2 gap-2">
+                {aiProviders.map((provider) => (
+                  <button
+                    key={provider}
+                    onClick={() => background.onAiProviderChange(provider)}
+                    className={`px-3 py-2 text-xs font-medium rounded-lg border transition-all ${
+                      background.aiProvider === provider
+                        ? 'bg-indigo-600 border-indigo-600 text-white'
+                        : 'bg-white border-indigo-200 text-indigo-700 hover:bg-indigo-50'
+                    }`}
+                  >
+                    {provider === 'gemini' ? 'Gemini' : 'OpenAI'}
+                  </button>
+                ))}
+              </div>
+            </div>
             <textarea
               className="w-full h-20 p-2 text-sm border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 resize-none bg-white"
               value={background.aiPrompt}
               onChange={(event) => background.onAiPromptChange(event.target.value)}
+              maxLength={MAX_AI_PROMPT_LENGTH}
               placeholder={t('aiPromptPlaceholder')}
             />
+            <div className="text-right text-xs text-indigo-700/80">
+              {background.aiPrompt.length}/{MAX_AI_PROMPT_LENGTH}
+            </div>
             <button
               onClick={background.onGenerateAiBackground}
               disabled={background.isGeneratingAI}
