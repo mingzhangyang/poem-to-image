@@ -14,18 +14,18 @@ const backgroundTypeLabels: Record<BackgroundType, TranslationKey> = {
 
 const aiProviders: AiProvider[] = ['gemini', 'openai'];
 
-const CREDIT_COST: Record<'gemini' | 'openai', number> = { gemini: 1, openai: 3 };
+const CREDIT_COST: Record<'gemini' | 'openai', number> = { gemini: 2, openai: 1 };
 
-const PROVIDER_META: Record<AiProvider, { title: string; tradeoff: string; detail: string }> = {
+const PROVIDER_META: Record<AiProvider, { title: string; tradeoffKey: TranslationKey; detailKey: TranslationKey }> = {
   gemini: {
     title: 'Gemini',
-    tradeoff: 'Faster drafts',
-    detail: 'Lower cost for exploring several looks quickly.',
+    tradeoffKey: 'geminiTradeoff',
+    detailKey: 'geminiDetail',
   },
   openai: {
     title: 'OpenAI',
-    tradeoff: 'Higher fidelity',
-    detail: 'Costs more, but better when the background needs nuance and polish.',
+    tradeoffKey: 'openaiTradeoff',
+    detailKey: 'openaiDetail',
   },
 };
 
@@ -151,7 +151,7 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
                 <div>
                   <div className="text-xs font-medium uppercase tracking-wide text-(--app-accent-700)">{t('aiProvider')}</div>
                   <p className="mt-1 text-xs leading-5 text-[rgba(51,88,87,0.82)]">
-                    Pick a model based on speed, cost, and finish level.
+                    {t('aiModelHint')}
                   </p>
                 </div>
                 {balance !== null && balance !== undefined ? (
@@ -181,7 +181,7 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
                       <div>
                         <div className="text-sm font-semibold">{meta.title}</div>
                         <div className={`mt-1 text-[11px] font-medium ${isActive ? 'text-[rgba(237,244,243,0.92)]' : 'text-(--app-accent-600)'}`}>
-                          {meta.tradeoff}
+                          {t(meta.tradeoffKey)}
                         </div>
                       </div>
                       <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold ${isActive ? 'bg-white/15 text-white' : 'bg-(--app-accent-100) text-(--app-accent-700)'}`}>
@@ -189,7 +189,7 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
                       </span>
                     </div>
                     <p className={`mt-2 text-[11px] leading-5 ${isActive ? 'text-[rgba(255,250,242,0.92)]' : 'text-gray-600'}`}>
-                      {meta.detail}
+                      {t(meta.detailKey)}
                     </p>
                   </button>
                     );
@@ -202,7 +202,7 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="text-sm font-semibold text-gray-900">{selectedProviderMeta.title}</div>
-                  <p className="mt-1 text-xs leading-5 text-gray-600">{selectedProviderMeta.tradeoff}. {selectedProviderMeta.detail}</p>
+                  <p className="mt-1 text-xs leading-5 text-gray-600">{t(selectedProviderMeta.tradeoffKey)}. {t(selectedProviderMeta.detailKey)}</p>
                 </div>
                 <div className="rounded-full bg-(--app-accent-50) px-2.5 py-1 text-[11px] font-semibold text-(--app-accent-700)">
                   {CREDIT_COST[background.aiProvider]} {CREDIT_COST[background.aiProvider] === 1 ? t('creditsPerGen') : t('creditsPerGenMultiple')}
@@ -218,7 +218,7 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
               placeholder={t('aiPromptPlaceholder')}
             />
             <div className="space-y-2">
-              <div className="text-xs font-medium uppercase tracking-wide text-[rgba(51,88,87,0.82)]">Prompt suggestions</div>
+              <div className="text-xs font-medium uppercase tracking-wide text-[rgba(51,88,87,0.82)]">{t('promptSuggestions')}</div>
               <div className="flex flex-wrap gap-2">
                 {PROMPT_SUGGESTIONS.map((suggestion) => {
                   const isSelected = background.aiPrompt.trim() === suggestion;
@@ -245,9 +245,7 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
             </div>
             <div className="flex items-center justify-between gap-3 rounded-xl border border-(--app-accent-200) bg-white/85 px-3 py-2 text-xs text-[rgba(51,88,87,0.82)]">
               <span>
-                {background.aiProvider === 'gemini'
-                  ? 'Best when you want a quick direction before refining.'
-                  : 'Best when you already know the mood and want a more polished result.'}
+                {t(background.aiProvider === 'gemini' ? 'geminiTip' : 'openaiTip')}
               </span>
             </div>
             <button

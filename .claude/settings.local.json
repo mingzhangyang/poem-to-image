@@ -10,7 +10,8 @@
       "WebSearch",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:raw.githubusercontent.com)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(find /mnt/c/Users/mingz/Codes/poem-to-image/src -type f \\\\\\(-name *.tsx -o -name *.ts -o -name *.json \\\\\\))"
     ]
   }
 }
