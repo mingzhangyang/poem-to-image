@@ -1,6 +1,6 @@
 # InkPoem
 
-Turn Chinese poems into AI-generated images. Built with React + Vite, deployed on Cloudflare Workers with a D1-backed credit billing system.
+Turn poems into AI-generated images. Built with React + Vite, deployed on Cloudflare Workers with a D1-backed credit billing system.
 
 ## Features
 
