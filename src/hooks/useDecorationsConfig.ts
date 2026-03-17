@@ -29,6 +29,7 @@ export function useDecorationsConfig({
   const createDefaultStamp = (): StampConfig => ({
     text: getDefaultStampTextForLanguage(language),
     style: 'square',
+    colorScheme: 'filled',
     positionX: 80,
     positionY: 80,
     size: Math.round(fontSize * 2.5),

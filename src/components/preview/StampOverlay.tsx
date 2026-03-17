@@ -16,15 +16,33 @@ function clamp(value: number, min: number, max: number) {
 
 function getFrameStyle(stamp: StampConfig): CSSProperties {
   const borderWidth = Math.max(3, Math.round(stamp.size * 0.06));
+  const isFilled = stamp.colorScheme === 'filled';
   const shared: CSSProperties = {
     width: `${stamp.size}px`,
     height: `${stamp.size}px`,
     opacity: stamp.opacity,
-    color: '#b91c1c',
+    color: isFilled ? '#ffffff' : '#b91c1c',
     borderWidth: `${borderWidth}px`,
     borderColor: 'rgba(185, 28, 28, 0.92)',
-    boxShadow: '0 10px 24px rgba(127, 29, 29, 0.18), inset 0 0 0 1.5px rgba(127, 29, 29, 0.38), inset 0 0 18px rgba(185, 28, 28, 0.16)',
+    boxShadow: isFilled
+      ? '0 10px 24px rgba(127, 29, 29, 0.3), inset 0 0 0 1.5px rgba(255,255,255,0.25)'
+      : '0 10px 24px rgba(127, 29, 29, 0.18), inset 0 0 0 1.5px rgba(127, 29, 29, 0.38), inset 0 0 18px rgba(185, 28, 28, 0.16)',
   };
+
+  if (isFilled) {
+    if (stamp.style === 'round') {
+      return { ...shared, borderRadius: '999px', background: 'rgb(185, 28, 28)' };
+    }
+    if (stamp.style === 'brush') {
+      return {
+        ...shared,
+        borderRadius: '32% 26% 34% 28% / 26% 34% 28% 36%',
+        background: 'rgb(185, 28, 28)',
+        transform: `rotate(${stamp.rotation}deg) skew(-2deg, 1deg)`,
+      };
+    }
+    return { ...shared, borderRadius: `${Math.round(stamp.size * 0.18)}px`, background: 'rgb(185, 28, 28)' };
+  }
 
   if (stamp.style === 'round') {
     return {
@@ -145,8 +163,8 @@ export function StampOverlay({ frameRef, stamp, onStampChange, onInteractionStar
           rotate: stamp.style === 'brush' ? undefined : `${stamp.rotation}deg`,
         }}
       >
-        <div className="absolute inset-[10%] rounded-[inherit] border border-red-800/45" />
-        <div className="absolute inset-[18%] rounded-[inherit] bg-[radial-gradient(circle_at_50%_45%,rgba(220,38,38,0.14),transparent_65%)]" />
+        <div className={`absolute inset-[10%] rounded-[inherit] border ${stamp.colorScheme === 'filled' ? 'border-white/25' : 'border-red-800/45'}`} />
+        <div className={`absolute inset-[18%] rounded-[inherit] ${stamp.colorScheme === 'filled' ? 'bg-[radial-gradient(circle_at_50%_45%,rgba(255,255,255,0.1),transparent_65%)]' : 'bg-[radial-gradient(circle_at_50%_45%,rgba(220,38,38,0.14),transparent_65%)]'}`} />
         <div
           className="relative h-[66%] w-[66%] items-center justify-center gap-1 text-center font-bold"
           style={{
@@ -155,7 +173,7 @@ export function StampOverlay({ frameRef, stamp, onStampChange, onInteractionStar
             fontSize: `${Math.max(18, stamp.size * (characters.length > 2 ? 0.23 : 0.28))}px`,
             lineHeight: 1,
             letterSpacing: `${Math.max(0, stamp.size * 0.01)}px`,
-            textShadow: '0 0 2px rgba(127, 29, 29, 0.28)',
+            textShadow: stamp.colorScheme === 'filled' ? '0 0 2px rgba(0,0,0,0.25)' : '0 0 2px rgba(127, 29, 29, 0.28)',
           }}
         >
           {characters.map((character, index) => (

@@ -332,6 +332,7 @@ export const editorTemplates: EditorTemplateDefinition[] = [
         size: 108,
         rotation: -8,
         opacity: 0.84,
+        colorScheme: 'filled' as const,
         fontFamily: DEFAULT_STAMP_FONT,
       },
       poemPosition: {
@@ -385,6 +386,7 @@ export const editorTemplates: EditorTemplateDefinition[] = [
         size: 96,
         rotation: -4,
         opacity: 0.72,
+        colorScheme: 'filled' as const,
         fontFamily: DEFAULT_STAMP_FONT,
       },
       poemPosition: {
@@ -438,6 +440,7 @@ export const editorTemplates: EditorTemplateDefinition[] = [
         size: 102,
         rotation: -6,
         opacity: 0.78,
+        colorScheme: 'filled' as const,
         fontFamily: DEFAULT_STAMP_FONT,
       },
       poemPosition: {
@@ -491,6 +494,7 @@ export const editorTemplates: EditorTemplateDefinition[] = [
         size: 92,
         rotation: -3,
         opacity: 0.76,
+        colorScheme: 'filled' as const,
         fontFamily: DEFAULT_STAMP_FONT,
       },
       poemPosition: {

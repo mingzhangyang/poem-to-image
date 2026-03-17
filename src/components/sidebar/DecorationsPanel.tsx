@@ -146,6 +146,30 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
               </div>
 
               <div>
+                <label className="block text-xs text-gray-500 mb-1">{t('stampColorScheme')}</label>
+                <div className="app-segment flex gap-1 p-1 rounded">
+                  <button
+                    type="button"
+                    onClick={() => decorations.onStampChange({ colorScheme: 'outline' })}
+                    className={`flex-1 py-1 text-xs rounded transition-colors ${
+                      (decorations.stamp.colorScheme ?? 'filled') === 'outline' ? 'app-segment-button-active' : 'text-gray-500 hover:bg-gray-50'
+                    }`}
+                  >
+                    {t('stampColorOutline')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => decorations.onStampChange({ colorScheme: 'filled' })}
+                    className={`flex-1 py-1 text-xs rounded transition-colors ${
+                      decorations.stamp.colorScheme === 'filled' ? 'app-segment-button-active' : 'text-gray-500 hover:bg-gray-50'
+                    }`}
+                  >
+                    {t('stampColorFilled')}
+                  </button>
+                </div>
+              </div>
+
+              <div>
                 <label className="block text-xs text-gray-500 mb-1">{t('stampFont')}</label>
                 <select
                   value={decorations.stamp.fontFamily}

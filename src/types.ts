@@ -45,6 +45,7 @@ export interface ExpandedSections {
 export interface StampConfig {
   text: string;
   style: StampStyle;
+  colorScheme?: 'outline' | 'filled';
   positionX: number;
   positionY: number;
   size: number;

@@ -753,11 +753,11 @@ function drawStampText(ctx: CanvasRenderingContext2D, stamp: StampConfig) {
         ];
 
   ctx.save();
-  ctx.fillStyle = '#b91c1c';
+  ctx.fillStyle = stamp.colorScheme === 'filled' ? '#ffffff' : '#b91c1c';
   ctx.font = `700 ${fontSize}px ${stamp.fontFamily}`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.shadowColor = 'rgba(127, 29, 29, 0.28)';
+  ctx.shadowColor = stamp.colorScheme === 'filled' ? 'rgba(0, 0, 0, 0.25)' : 'rgba(127, 29, 29, 0.28)';
   ctx.shadowBlur = 2;
   characters.forEach((character, index) => {
     const offset = offsets[index] ?? { x: 0, y: 0 };
@@ -766,8 +766,20 @@ function drawStampText(ctx: CanvasRenderingContext2D, stamp: StampConfig) {
   ctx.restore();
 }
 
+function drawStampFilled(ctx: CanvasRenderingContext2D, stamp: StampConfig) {
+  const half = stamp.size / 2;
+
+  ctx.save();
+  drawStampShape(ctx, stamp);
+  ctx.clip();
+  ctx.fillStyle = 'rgb(185, 28, 28)';
+  ctx.fillRect(-half, -half, stamp.size, stamp.size);
+  ctx.restore();
+}
+
 function drawStamp(ctx: CanvasRenderingContext2D, scene: CanvasExportScene, frameRect: Rect) {
   const { stamp } = scene.decorations;
+  const isFilled = stamp.colorScheme === 'filled';
   const centerX = frameRect.x + (frameRect.width * stamp.positionX) / 100;
   const centerY = frameRect.y + (frameRect.height * stamp.positionY) / 100;
   const borderWidth = Math.max(3, Math.round(stamp.size * 0.06));
@@ -783,26 +795,30 @@ function drawStamp(ctx: CanvasRenderingContext2D, scene: CanvasExportScene, fram
   ctx.globalAlpha = stamp.opacity;
 
   ctx.save();
-  ctx.shadowColor = 'rgba(127, 29, 29, 0.18)';
+  ctx.shadowColor = isFilled ? 'rgba(127, 29, 29, 0.3)' : 'rgba(127, 29, 29, 0.18)';
   ctx.shadowBlur = 24;
   ctx.shadowOffsetY = 10;
   drawStampShape(ctx, stamp);
-  ctx.fillStyle = stamp.style === 'brush' ? 'rgba(254, 242, 242, 0.1)' : 'rgba(254, 242, 242, 0.16)';
+  ctx.fillStyle = isFilled ? 'rgba(185, 28, 28, 0.5)' : (stamp.style === 'brush' ? 'rgba(254, 242, 242, 0.1)' : 'rgba(254, 242, 242, 0.16)');
   ctx.fill();
   ctx.restore();
 
-  drawStampShape(ctx, stamp);
-  ctx.fillStyle = stamp.style === 'brush' ? 'rgba(254, 242, 242, 0.1)' : 'rgba(254, 242, 242, 0.12)';
-  ctx.fill();
-
-  drawStampSurfaceDetails(ctx, stamp);
+  if (isFilled) {
+    drawStampFilled(ctx, stamp);
+  } else {
+    drawStampShape(ctx, stamp);
+    ctx.fillStyle = stamp.style === 'brush' ? 'rgba(254, 242, 242, 0.1)' : 'rgba(254, 242, 242, 0.12)';
+    ctx.fill();
+    drawStampSurfaceDetails(ctx, stamp);
+  }
 
   ctx.lineWidth = borderWidth;
   ctx.strokeStyle = 'rgba(185, 28, 28, 0.92)';
+  drawStampShape(ctx, stamp);
   ctx.stroke();
 
-  drawStampInnerBorder(ctx, stamp, stamp.size * 0.1, 'rgba(127, 29, 29, 0.45)', 1.5);
-  drawStampInnerBorder(ctx, stamp, stamp.size * 0.18, 'rgba(127, 29, 29, 0.28)', 1);
+  drawStampInnerBorder(ctx, stamp, stamp.size * 0.1, isFilled ? 'rgba(255, 255, 255, 0.25)' : 'rgba(127, 29, 29, 0.45)', 1.5);
+  drawStampInnerBorder(ctx, stamp, stamp.size * 0.18, isFilled ? 'rgba(255, 255, 255, 0.15)' : 'rgba(127, 29, 29, 0.28)', 1);
 
   drawStampText(ctx, stamp);
   ctx.restore();
