@@ -754,7 +754,7 @@ function drawStampText(ctx: CanvasRenderingContext2D, stamp: StampConfig) {
 
   ctx.save();
   ctx.fillStyle = '#b91c1c';
-  ctx.font = `700 ${fontSize}px "Ma Shan Zheng", cursive`;
+  ctx.font = `700 ${fontSize}px ${stamp.fontFamily}`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.shadowColor = 'rgba(127, 29, 29, 0.28)';

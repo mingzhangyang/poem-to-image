@@ -1,4 +1,4 @@
-import { getTemplateFontForLanguage } from './fontOptions';
+import { DEFAULT_STAMP_FONT, getTemplateFontForLanguage } from './fontOptions';
 import type { Language } from './translations';
 import type { EditorTemplateDefinition, EditorTemplateId, StampConfig, TemplateDecorationsConfig, TemplateTypographyConfig } from './types';
 
@@ -332,6 +332,7 @@ export const editorTemplates: EditorTemplateDefinition[] = [
         size: 108,
         rotation: -8,
         opacity: 0.84,
+        fontFamily: DEFAULT_STAMP_FONT,
       },
       poemPosition: {
         positionX: 50,
@@ -384,6 +385,7 @@ export const editorTemplates: EditorTemplateDefinition[] = [
         size: 96,
         rotation: -4,
         opacity: 0.72,
+        fontFamily: DEFAULT_STAMP_FONT,
       },
       poemPosition: {
         positionX: 50,
@@ -436,6 +438,7 @@ export const editorTemplates: EditorTemplateDefinition[] = [
         size: 102,
         rotation: -6,
         opacity: 0.78,
+        fontFamily: DEFAULT_STAMP_FONT,
       },
       poemPosition: {
         positionX: 50,
@@ -488,6 +491,7 @@ export const editorTemplates: EditorTemplateDefinition[] = [
         size: 92,
         rotation: -3,
         opacity: 0.76,
+        fontFamily: DEFAULT_STAMP_FONT,
       },
       poemPosition: {
         positionX: 50,

@@ -143,6 +143,22 @@ const TEMPLATE_FONTS: Record<EditorTemplateId, Record<Language, string>> = {
   },
 };
 
+export interface StampFontOption {
+  value: string;
+  label: string;
+  cjkOnly: boolean;
+}
+
+export const STAMP_FONT_OPTIONS: StampFontOption[] = [
+  { value: '"Ma Shan Zheng", cursive', label: 'Ma Shan Zheng (楷书)', cjkOnly: true },
+  { value: '"ZCOOL XiaoWei", serif', label: 'ZCOOL XiaoWei (魏碑)', cjkOnly: true },
+  { value: '"Zhi Mang Xing", cursive', label: 'Zhi Mang Xing (行书)', cjkOnly: true },
+  { value: '"Liu Jian Mao Cao", cursive', label: 'Liu Jian Mao Cao (草书)', cjkOnly: true },
+  { value: '"Long Cang", cursive', label: 'Long Cang (行草)', cjkOnly: true },
+];
+
+export const DEFAULT_STAMP_FONT = '"Ma Shan Zheng", cursive';
+
 export function getDefaultFontForLanguage(language: Language) {
   return LANGUAGE_DEFAULT_FONTS[language];
 }

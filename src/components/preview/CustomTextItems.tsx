@@ -132,7 +132,7 @@ const DraggableCustomTextItem: FC<DraggableCustomTextItemProps> = ({
           lineHeight,
           letterSpacing: `${letterSpacing}px`,
           textShadow: sharedTextShadow,
-          rotate: customText.rotation,
+          rotate: `${customText.rotation}deg`,
         }}
       >
         {customText.text}

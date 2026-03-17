@@ -50,6 +50,7 @@ export interface StampConfig {
   size: number;
   rotation: number;
   opacity: number;
+  fontFamily: string;
 }
 
 export interface TemplateBackgroundConfig {

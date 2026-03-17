@@ -151,7 +151,7 @@ export function StampOverlay({ frameRef, stamp, onStampChange, onInteractionStar
           className="relative h-[66%] w-[66%] items-center justify-center gap-1 text-center font-bold"
           style={{
             ...getTextLayout(stamp),
-            fontFamily: '"Ma Shan Zheng", cursive',
+            fontFamily: stamp.fontFamily,
             fontSize: `${Math.max(18, stamp.size * (characters.length > 2 ? 0.23 : 0.28))}px`,
             lineHeight: 1,
             letterSpacing: `${Math.max(0, stamp.size * 0.01)}px`,

@@ -1,4 +1,6 @@
 import { Plus, Stamp, Trash2 } from 'lucide-react';
+import { useRef } from 'react';
+import { STAMP_FONT_OPTIONS } from '../../fontOptions';
 import type { BorderStyle, DecorationsSectionProps, ExpandedSections, StampStyle, TranslateFn } from '../../types';
 import { ControlSection } from '../ControlSection';
 
@@ -16,6 +18,8 @@ interface DecorationsPanelProps {
 }
 
 export function DecorationsPanel({ t, expanded, onToggle, decorations }: DecorationsPanelProps) {
+  const isComposingRef = useRef(false);
+
   const summaryParts = [
     decorations.showBorder ? t(BORDER_STYLE_LABELS[decorations.borderStyle]) : null,
     decorations.showStamp ? t('showStamp') : null,
@@ -101,7 +105,16 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                 <input
                   type="text"
                   value={decorations.stamp.text}
-                  onChange={(event) => decorations.onStampChange({ text: event.target.value.slice(0, 4) })}
+                  onChange={(event) => {
+                    if (!isComposingRef.current) {
+                      decorations.onStampChange({ text: event.target.value.slice(0, 4) });
+                    }
+                  }}
+                  onCompositionStart={() => { isComposingRef.current = true; }}
+                  onCompositionEnd={(event) => {
+                    isComposingRef.current = false;
+                    decorations.onStampChange({ text: (event.target as HTMLInputElement).value.slice(0, 4) });
+                  }}
                   maxLength={4}
                   className="app-input col-span-2 text-sm text-center"
                   placeholder={t('stampText')}
@@ -119,6 +132,25 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                   <option value="round">{t('stampStyleRound')}</option>
                   <option value="brush">{t('stampStyleBrush')}</option>
                 </select>
+              </div>
+
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">{t('stampFont')}</label>
+                <select
+                  value={decorations.stamp.fontFamily}
+                  onChange={(event) => decorations.onStampChange({ fontFamily: event.target.value })}
+                  className="app-select text-sm"
+                >
+                  {STAMP_FONT_OPTIONS.map((font) => (
+                    <option key={font.value} value={font.value} style={{ fontFamily: font.value }}>
+                      {font.label}
+                    </option>
+                  ))}
+                </select>
+                {STAMP_FONT_OPTIONS.find((f) => f.value === decorations.stamp.fontFamily)?.cjkOnly &&
+                  /[a-zA-Z]/.test(decorations.stamp.text) && (
+                  <p className="mt-1 text-xs text-amber-600">{t('stampFontCjkWarning')}</p>
+                )}
               </div>
 
               <div className="space-y-2">

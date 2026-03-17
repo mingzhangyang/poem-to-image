@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { DEFAULT_STAMP_FONT } from '../fontOptions';
 import { getDefaultStampTextForLanguage } from '../stampDefaults';
 import type { Language } from '../translations';
 import type { BorderStyle, CustomText, PositionedElement, StampConfig, TemplateDecorationsConfig, TranslateFn, WritingMode } from '../types';
@@ -33,6 +34,7 @@ export function useDecorationsConfig({
     size: Math.round(fontSize * 2.5),
     rotation: -8,
     opacity: 0.82,
+    fontFamily: DEFAULT_STAMP_FONT,
   });
 
   const [showBorder, setShowBorder] = useState(false);
