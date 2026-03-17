@@ -7,6 +7,7 @@ import { useBalance } from '../hooks/useBalance';
 import { useBillingPackages } from '../hooks/useBillingPackages';
 import { useBillingHistory, type TransactionItem } from '../hooks/useBillingHistory';
 import { useCheckoutReturn } from '../hooks/useCheckoutReturn';
+import { useLang } from '../hooks/useLang';
 import { Logo } from '../components/logo';
 
 const CLERK_CONFIGURED = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
@@ -19,13 +20,6 @@ function formatDate(dateStr: string) {
   }
 }
 
-function typeLabel(type: TransactionItem['type']) {
-  if (type === 'topup') return 'Top Up';
-  if (type === 'generate_debit') return 'AI Generation';
-  if (type === 'refund') return 'Refund';
-  return 'Adjustment';
-}
-
 export function AccountPage() {
   const { isSignedIn, getToken } = useAppAuth();
   const { balance, isLoading: isLoadingBalance, refetch: refetchBalance } = useBalance();
@@ -33,8 +27,16 @@ export function AccountPage() {
   const { items: history, isLoading: isLoadingHistory, refetch: refetchHistory } = useBillingHistory();
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [purchaseError, setPurchaseError] = useState<string | null>(null);
+  const { t } = useLang();
 
   useCheckoutReturn({ getToken, refetchBalance, refetchHistory });
+
+  function typeLabel(type: TransactionItem['type']) {
+    if (type === 'topup') return t('topup');
+    if (type === 'generate_debit') return t('generateDebit');
+    if (type === 'refund') return t('refund');
+    return t('adminAdjust');
+  }
 
   const handlePurchase = useCallback(async (packageId: string) => {
     setIsPurchasing(true);
@@ -53,14 +55,14 @@ export function AccountPage() {
       if (data.checkoutUrl) {
         window.location.href = data.checkoutUrl;
       } else {
-        setPurchaseError(data.error ?? 'Failed to start checkout. Please try again.');
+        setPurchaseError(data.error ?? t('checkoutFailed'));
         setIsPurchasing(false);
       }
     } catch {
-      setPurchaseError('Network error. Please try again.');
+      setPurchaseError(t('networkError'));
       setIsPurchasing(false);
     }
-  }, [getToken]);
+  }, [getToken, t]);
 
   return (
     <div className="min-h-screen bg-transparent">
@@ -76,13 +78,13 @@ export function AccountPage() {
           </Link>
           <Link to="/" className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-(--app-accent-800) transition-colors">
             <ArrowLeft className="w-4 h-4" />
-            Back to Editor
+            {t('backToEditor')}
           </Link>
         </div>
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-8 space-y-8">
-        <h1 className="text-2xl font-bold text-gray-900">Account</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{t('account')}</h1>
 
         {!isSignedIn ? (
           <div className="app-panel-surface rounded-2xl p-8 text-center space-y-4">
@@ -90,8 +92,8 @@ export function AccountPage() {
               <LogIn className="w-6 h-6 text-(--app-accent-600)" />
             </div>
             <div>
-              <p className="font-semibold text-gray-900">Sign in to manage your account</p>
-              <p className="text-sm text-gray-500 mt-1">Access credits, purchase history, and more.</p>
+              <p className="font-semibold text-gray-900">{t('signInToManage')}</p>
+              <p className="text-sm text-gray-500 mt-1">{t('signInForCredits')}</p>
             </div>
             {CLERK_CONFIGURED ? (
               <SignInButton mode="modal">
@@ -99,44 +101,44 @@ export function AccountPage() {
                   type="button"
                   className="app-button-primary inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium"
                 >
-                  <LogIn className="w-4 h-4" /> Sign In
+                  <LogIn className="w-4 h-4" /> {t('signIn')}
                 </button>
               </SignInButton>
             ) : (
-              <p className="text-xs text-gray-400">Auth not configured.</p>
+              <p className="text-xs text-gray-400">{t('authNotConfigured')}</p>
             )}
           </div>
         ) : (
           <>
             {/* Profile */}
             <section className="app-panel-surface rounded-2xl p-6">
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 mb-4">Profile</h2>
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 mb-4">{t('profile')}</h2>
               <div className="flex items-center gap-4">
                 {CLERK_CONFIGURED && <UserButton afterSignOutUrl="/account" />}
                 <div>
-                  <p className="text-sm text-gray-500">Manage your profile, security settings, and connected accounts via the avatar menu.</p>
+                  <p className="text-sm text-gray-500">{t('manageProfileDesc')}</p>
                 </div>
               </div>
             </section>
 
             {/* Credits */}
             <section className="app-panel-surface rounded-2xl p-6">
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 mb-4">Credits</h2>
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 mb-4">{t('credits')}</h2>
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-12 h-12 bg-(--app-accent-50) rounded-xl flex items-center justify-center">
                   <CreditCard className="w-5 h-5 text-(--app-accent-600)" />
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500">Available balance</p>
+                  <p className="text-xs text-gray-500">{t('availableBalance')}</p>
                   {isLoadingBalance ? (
                     <Loader2 className="w-4 h-4 animate-spin text-gray-400 mt-0.5" />
                   ) : (
-                    <p className="text-2xl font-bold text-(--app-accent-700)">{balance ?? '—'} <span className="text-base font-medium">credits</span></p>
+                    <p className="text-2xl font-bold text-(--app-accent-700)">{balance ?? '—'} <span className="text-base font-medium">{t('creditPackageDesc')}</span></p>
                   )}
                 </div>
               </div>
 
-              <p className="text-xs font-medium text-gray-500 mb-3">Purchase Credits</p>
+              <p className="text-xs font-medium text-gray-500 mb-3">{t('purchaseCredits')}</p>
               {isLoadingPackages ? (
                 <div className="flex justify-center py-4"><Loader2 className="w-5 h-5 animate-spin text-gray-400" /></div>
               ) : (
@@ -145,7 +147,7 @@ export function AccountPage() {
                     <div key={pkg.id} className="app-soft-surface flex flex-col gap-3 p-4 rounded-xl hover:border-(--app-accent-200) hover:bg-[rgba(237,244,243,0.5)] transition-colors">
                       <div>
                         <p className="font-semibold text-gray-900">{pkg.name}</p>
-                        <p className="text-sm text-gray-500 mt-0.5">{pkg.credits} credits</p>
+                        <p className="text-sm text-gray-500 mt-0.5">{pkg.credits} {t('creditPackageDesc')}</p>
                       </div>
                       <button
                         type="button"
@@ -163,17 +165,17 @@ export function AccountPage() {
                 <p className="app-status-warning inline-flex rounded-full px-3 py-1 text-xs mt-3">{purchaseError}</p>
               )}
               <p className="text-xs text-gray-400 mt-3">
-                Gemini (NanoBanana 2) costs 2 credits · OpenAI costs 1 credit per generation
+                {t('creditCostInfo')}
               </p>
             </section>
 
             {/* Transaction history */}
             <section className="app-panel-surface rounded-2xl p-6">
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 mb-4">Transaction History</h2>
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 mb-4">{t('transactionHistory')}</h2>
               {isLoadingHistory ? (
                 <div className="flex justify-center py-4"><Loader2 className="w-5 h-5 animate-spin text-gray-400" /></div>
               ) : history.length === 0 ? (
-                <p className="text-sm text-gray-400 text-center py-4">No transactions yet.</p>
+                <p className="text-sm text-gray-400 text-center py-4">{t('noTransactions')}</p>
               ) : (
                 <div className="divide-y divide-gray-50">
                   {history.map((item) => (

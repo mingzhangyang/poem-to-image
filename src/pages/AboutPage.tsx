@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Cpu, Globe, ImageIcon, Layers, Sparkles, Zap } from 'lucide-react';
 import { Logo } from '../components/logo';
+import { useLang } from '../hooks/useLang';
 
 function FeatureCard({ icon, title, description }: { icon: import('react').ReactNode; title: string; description: string }) {
   return (
@@ -26,6 +27,8 @@ function PoweredByBadge({ name, description }: { name: string; description: stri
 }
 
 export function AboutPage() {
+  const { t } = useLang();
+
   return (
     <div className="min-h-screen bg-transparent">
       <title>About InkPoem – AI Poetry Art Generator</title>
@@ -44,7 +47,7 @@ export function AboutPage() {
           </Link>
           <Link to="/" className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-[var(--app-accent-800)] transition-colors">
             <ArrowLeft className="w-4 h-4" />
-            Back to Editor
+            {t('backToEditor')}
           </Link>
         </div>
       </header>
@@ -56,73 +59,73 @@ export function AboutPage() {
           <Logo className="w-20 h-20 mx-auto" />
           <div>
             <h1 className="text-3xl font-bold text-gray-900">InkPoem</h1>
-            <p className="text-gray-500 mt-2 text-lg">Turn your poems into beautiful art with AI.</p>
+            <p className="text-gray-500 mt-2 text-lg">{t('aboutDescription')}</p>
           </div>
           <Link
             to="/"
             className="app-button-primary inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium"
           >
             <Sparkles className="w-4 h-4" />
-            Open Editor
+            {t('openEditor')}
           </Link>
         </div>
 
         {/* Features */}
         <section>
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 mb-4">Features</h2>
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 mb-4">{t('features')}</h2>
           <div className="space-y-3">
             <FeatureCard
               icon={<ImageIcon className="w-5 h-5 text-[var(--app-accent-600)]" />}
-              title="AI Image Generation"
-              description="Generate stunning visual art from your poem text using Google Gemini or OpenAI."
+              title={t('featureAiImageGen')}
+              description={t('featureAiImageGenDesc')}
             />
             <FeatureCard
               icon={<Layers className="w-5 h-5 text-[var(--app-accent-600)]" />}
-              title="Rich Customization"
-              description="Choose templates, adjust typography, backgrounds, canvas size, borders, stamps, and more."
+              title={t('featureCustomization')}
+              description={t('featureCustomizationDesc')}
             />
             <FeatureCard
               icon={<Globe className="w-5 h-5 text-[var(--app-accent-600)]" />}
-              title="Multilingual"
-              description="Full interface support for English, 简体中文, 繁體中文, 日本語, 한국어, Español, Français, and Deutsch."
+              title={t('featureMultilingual')}
+              description={t('featureMultilingualDesc')}
             />
             <FeatureCard
               icon={<Zap className="w-5 h-5 text-[var(--app-accent-600)]" />}
-              title="High-Quality Export"
-              description="Export your artwork at Standard (1×), HD (2×), or Ultra HD (3×) resolution."
+              title={t('featureExport')}
+              description={t('featureExportDesc')}
             />
             <FeatureCard
               icon={<Cpu className="w-5 h-5 text-[var(--app-accent-600)]" />}
-              title="Edge-Native"
-              description="Runs entirely on Cloudflare Workers — fast, global, and serverless."
+              title={t('featureEdgeNative')}
+              description={t('featureEdgeNativeDesc')}
             />
           </div>
         </section>
 
         {/* Powered by */}
         <section>
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 mb-4">Powered By</h2>
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 mb-4">{t('poweredBy')}</h2>
           <div className="grid sm:grid-cols-2 gap-3">
-            <PoweredByBadge name="Google Gemini" description="AI image generation (2 credits/gen)" />
-            <PoweredByBadge name="OpenAI" description="AI image generation (1 credit/gen)" />
-            <PoweredByBadge name="Cloudflare Workers" description="Edge hosting & D1 database" />
-            <PoweredByBadge name="Clerk" description="Authentication & user management" />
-            <PoweredByBadge name="Stripe" description="Payment processing" />
-            <PoweredByBadge name="React + Vite" description="Frontend framework" />
+            <PoweredByBadge name="Google Gemini" description={t('poweredByGeminiDesc')} />
+            <PoweredByBadge name="OpenAI" description={t('poweredByOpenAIDesc')} />
+            <PoweredByBadge name="Cloudflare Workers" description={t('poweredByCloudflareDesc')} />
+            <PoweredByBadge name="Clerk" description={t('poweredByClerkDesc')} />
+            <PoweredByBadge name="Stripe" description={t('poweredByStripeDesc')} />
+            <PoweredByBadge name="React + Vite" description={t('poweredByReactDesc')} />
           </div>
         </section>
 
         {/* Links */}
         <section className="flex flex-wrap gap-3 text-sm">
-          <Link to="/privacy" className="app-accent-link hover:underline">Privacy Policy</Link>
-          <Link to="/account" className="app-accent-link hover:underline">Account</Link>
-          <a href="mailto:contact@inkpoem.com" className="app-accent-link hover:underline">Contact</a>
+          <Link to="/privacy" className="app-accent-link hover:underline">{t('privacyPolicy')}</Link>
+          <Link to="/account" className="app-accent-link hover:underline">{t('account')}</Link>
+          <a href="mailto:contact@inkpoem.com" className="app-accent-link hover:underline">{t('contact')}</a>
         </section>
 
       </main>
 
       <footer className="max-w-2xl mx-auto px-4 py-8 border-t border-[rgba(34,48,52,0.08)] mt-4">
-        <p className="text-xs text-gray-400 text-center">© {new Date().getFullYear()} InkPoem. All rights reserved.</p>
+        <p className="text-xs text-gray-400 text-center">© {new Date().getFullYear()} InkPoem. {t('allRightsReserved')}</p>
       </footer>
     </div>
   );

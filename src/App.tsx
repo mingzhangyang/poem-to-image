@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAppAuth } from './context/auth';
 import { translations, Language, TranslationKey } from './translations';
+import { LANGUAGE_STORAGE_KEY } from './hooks/useLang';
 import { CanvasPreview } from './components/CanvasPreview';
 import { Sidebar } from './components/Sidebar';
 import { useBackgroundConfig } from './hooks/useBackgroundConfig';
@@ -18,6 +19,15 @@ import type { EditorTemplateId, ExpandedSections, ExportFormat, ExportScale } fr
 
 const ACTIVE_TEMPLATE_STORAGE_KEY = 'poem-to-image.active-template';
 
+function readStoredLanguage(): Language {
+  try {
+    const stored = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
+    const valid = new Set(['en', 'zh-CN', 'zh-TW', 'ja', 'ko', 'es', 'fr', 'de']);
+    if (stored && valid.has(stored)) return stored as Language;
+  } catch { /* ignore */ }
+  return 'zh-CN';
+}
+
 const DEFAULT_POEMS: Record<Language, string> = {
   'zh-CN': '床前明月光，\n疑是地上霜。\n举头望明月，\n低头思故乡。',
   'zh-TW': '床前明月光，\n疑是地上霜。\n舉頭望明月，\n低頭思故鄉。',
@@ -32,7 +42,7 @@ const DEFAULT_POEMS: Record<Language, string> = {
 export default function App() {
   const { getToken } = useAppAuth();
   const [previewZoom, setPreviewZoom] = useState(1);
-  const [language, setLanguage] = useState<Language>('zh-CN');
+  const [language, setLanguage] = useState<Language>(readStoredLanguage);
   const t = (key: TranslationKey) => translations[language][key];
 
   const handleLanguageChange = useCallback((newLang: Language) => {
@@ -40,6 +50,7 @@ export default function App() {
       const isDefault = Object.values(DEFAULT_POEMS).some(poem => poem === prev);
       return isDefault ? DEFAULT_POEMS[newLang] : prev;
     });
+    try { window.localStorage.setItem(LANGUAGE_STORAGE_KEY, newLang); } catch { /* ignore */ }
     setLanguage(newLang);
   }, []);
 
