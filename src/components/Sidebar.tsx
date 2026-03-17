@@ -418,7 +418,7 @@ export function Sidebar({
                 </div>
               </div>
 
-              {activeMobilePanel === 'export' ? null : <SidebarHeader t={t} isSheet balance={billing.balance} />}
+              {activeMobilePanel === 'settings' ? <SidebarHeader t={t} isSheet balance={billing.balance} /> : null}
               {mobileSections()}
             </motion.aside>
           </>
