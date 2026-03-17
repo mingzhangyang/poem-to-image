@@ -76,6 +76,7 @@ export function PoemContent({
     }
 
     event.preventDefault();
+    event.stopPropagation();
     const startPosition = livePosition;
     const startX = event.clientX;
     const startY = event.clientY;
@@ -147,7 +148,7 @@ export function PoemContent({
       >
         <div
           onPointerDown={handlePointerDown}
-          className="pointer-events-auto flex cursor-move flex-col items-center justify-center"
+          className="pointer-events-auto flex cursor-move touch-none select-none flex-col items-center justify-center"
         >
           <div
             ref={poemTextRef}

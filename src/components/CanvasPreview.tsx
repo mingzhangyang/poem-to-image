@@ -249,6 +249,10 @@ export function CanvasPreview({
   const modalDescription = activeOutputModal === 'save' ? t('saveImageModalDescription') : t('shareImageModalDescription');
 
   const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.defaultPrevented) {
+      return;
+    }
+
     activePointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
 
     // Two+ pointers → pinch-to-zoom mode

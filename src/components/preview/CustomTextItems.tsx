@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { PointerEvent as ReactPointerEvent, RefObject } from 'react';
+import type { FC, PointerEvent as ReactPointerEvent, RefObject } from 'react';
 import type { CustomText } from '../../types';
 
 interface CustomTextItemsProps {
@@ -30,7 +30,7 @@ interface DraggableCustomTextItemProps {
   onInteractionEnd: () => void;
 }
 
-function DraggableCustomTextItem({
+const DraggableCustomTextItem: FC<DraggableCustomTextItemProps> = ({
   frameRef,
   customText,
   fontFamily,
@@ -40,7 +40,7 @@ function DraggableCustomTextItem({
   onCustomTextChange,
   onInteractionStart,
   onInteractionEnd,
-}: DraggableCustomTextItemProps) {
+}) => {
   const textBoxRef = useRef<HTMLDivElement>(null);
   const [livePosition, setLivePosition] = useState({ positionX: customText.positionX, positionY: customText.positionY });
   const isDraggingRef = useRef(false);
@@ -59,6 +59,7 @@ function DraggableCustomTextItem({
     }
 
     event.preventDefault();
+    event.stopPropagation();
     const startPosition = livePosition;
     const startX = event.clientX;
     const startY = event.clientY;
@@ -122,7 +123,7 @@ function DraggableCustomTextItem({
     >
       <div
         onPointerDown={handlePointerDown}
-        className="pointer-events-auto cursor-move whitespace-pre-wrap wrap-break-word"
+        className="pointer-events-auto cursor-move touch-none select-none whitespace-pre-wrap wrap-break-word"
         style={{
           fontFamily,
           fontSize: `${customText.fontSize}px`,

@@ -83,6 +83,7 @@ export function StampOverlay({ frameRef, stamp, onStampChange, onInteractionStar
     }
 
     event.preventDefault();
+    event.stopPropagation();
     const startPosition = livePosition;
     const startX = event.clientX;
     const startY = event.clientY;
@@ -138,7 +139,7 @@ export function StampOverlay({ frameRef, stamp, onStampChange, onInteractionStar
     >
       <div
         onPointerDown={handlePointerDown}
-        className="pointer-events-auto relative flex cursor-grab touch-none select-none items-center justify-center active:cursor-grabbing"
+        className="pointer-events-auto relative flex cursor-move touch-none select-none items-center justify-center"
         style={{
           ...getFrameStyle(stamp),
           rotate: stamp.style === 'brush' ? undefined : `${stamp.rotation}deg`,
