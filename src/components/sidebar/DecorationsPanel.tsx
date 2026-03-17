@@ -1,5 +1,5 @@
 import { Plus, Stamp, Trash2 } from 'lucide-react';
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { STAMP_FONT_OPTIONS } from '../../fontOptions';
 import type { BorderStyle, DecorationsSectionProps, ExpandedSections, StampStyle, TranslateFn } from '../../types';
 import { ControlSection } from '../ControlSection';
@@ -19,6 +19,13 @@ interface DecorationsPanelProps {
 
 export function DecorationsPanel({ t, expanded, onToggle, decorations }: DecorationsPanelProps) {
   const isComposingRef = useRef(false);
+  const [stampInputText, setStampInputText] = useState(decorations.stamp.text);
+
+  useEffect(() => {
+    if (!isComposingRef.current) {
+      setStampInputText(decorations.stamp.text);
+    }
+  }, [decorations.stamp.text]);
 
   const summaryParts = [
     decorations.showBorder ? t(BORDER_STYLE_LABELS[decorations.borderStyle]) : null,
@@ -104,16 +111,20 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                 </button>
                 <input
                   type="text"
-                  value={decorations.stamp.text}
+                  value={stampInputText}
                   onChange={(event) => {
+                    const newValue = event.target.value;
+                    setStampInputText(newValue);
                     if (!isComposingRef.current) {
-                      decorations.onStampChange({ text: event.target.value.slice(0, 4) });
+                      decorations.onStampChange({ text: newValue.slice(0, 4) });
                     }
                   }}
                   onCompositionStart={() => { isComposingRef.current = true; }}
                   onCompositionEnd={(event) => {
                     isComposingRef.current = false;
-                    decorations.onStampChange({ text: (event.target as HTMLInputElement).value.slice(0, 4) });
+                    const finalValue = (event.target as HTMLInputElement).value.slice(0, 4);
+                    setStampInputText(finalValue);
+                    decorations.onStampChange({ text: finalValue });
                   }}
                   maxLength={4}
                   className="app-input col-span-2 text-sm text-center"
