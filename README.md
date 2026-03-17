@@ -21,7 +21,7 @@ Turn poems into AI-generated images. Built with React + Vite, deployed on Cloudf
 
 | Package | Credits | Price |
 |---|---|---|
-| Starter | 24 | $1.99 |
+| Starter | 20 | $1.99 |
 | Pro | 54 | $4.99 |
 | Plus | 112 | $9.99 |
 
