@@ -7,6 +7,7 @@ import type {
   ContentSectionProps,
   CustomText,
   DecorationsSectionProps,
+  SocialPlatform,
   TemplateSectionProps,
   ExpandedSections,
   SidebarProps,
@@ -34,6 +35,7 @@ interface UseEditorViewModelsParams {
   onExportScaleChange: SidebarProps['onExportScaleChange'];
   onDownload: () => void;
   onShare: () => void;
+  onShareToSocial: (platform: SocialPlatform) => Promise<'clipboard' | 'downloaded'>;
   isExporting: boolean;
   isSharing: boolean;
   canShare: boolean;
@@ -85,6 +87,7 @@ export function useEditorViewModels({
   onExportScaleChange,
   onDownload,
   onShare,
+  onShareToSocial,
   isExporting,
   isSharing,
   canShare,
@@ -185,6 +188,7 @@ export function useEditorViewModels({
     onExportScaleChange,
     onDownload,
     onShare,
+    onShareToSocial,
     isExporting,
     isSharing,
     canShare,

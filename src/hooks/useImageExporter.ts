@@ -1,7 +1,34 @@
 import { useCallback, useMemo, useState } from 'react';
 import type { RefObject } from 'react';
 import { getCanvasContentRect, renderCanvasExport } from '../export/renderCanvasExport';
-import type { BorderStyle, CustomText, ExportFormat, ExportScale, PositionedElement, StampConfig, TextAlign, WritingMode } from '../types';
+import type { BorderStyle, CustomText, ExportFormat, ExportScale, PositionedElement, SocialPlatform, StampConfig, TextAlign, WritingMode } from '../types';
+
+interface SocialPlatformConfig {
+  format: ExportFormat;
+  scale: ExportScale;
+  url: string | null;
+}
+
+const SOCIAL_PLATFORM_CONFIG: Record<SocialPlatform, SocialPlatformConfig> = {
+  wechat:       { format: 'jpg', scale: 2, url: null },
+  weibo:        { format: 'jpg', scale: 2, url: 'https://weibo.com/' },
+  xiaohongshu:  { format: 'jpg', scale: 2, url: 'https://creator.xiaohongshu.com/publish/publish' },
+  twitter:      { format: 'jpg', scale: 2, url: 'https://x.com/intent/tweet' },
+  instagram:    { format: 'jpg', scale: 2, url: 'https://www.instagram.com/' },
+  facebook:     { format: 'jpg', scale: 2, url: 'https://www.facebook.com/' },
+};
+
+async function copyImageToClipboard(blob: Blob): Promise<boolean> {
+  if (typeof navigator === 'undefined' || !navigator.clipboard?.write) {
+    return false;
+  }
+  try {
+    await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 interface UseImageExporterBackgroundOptions {
   backgroundType: 'solid' | 'gradient' | 'transparent' | 'image' | 'ai';
@@ -436,13 +463,14 @@ export function useImageExporter(
   const [isSharing, setIsSharing] = useState(false);
   const canShare = useMemo(() => supportsFileShare(), []);
 
-  const renderOutputCanvas = useCallback(async () => {
+  const renderOutputCanvas = useCallback(async (overrideScale?: ExportScale) => {
     await waitForSceneSettled();
 
+    const effectiveScale = overrideScale ?? exportScale;
     const exportScene = {
       canvasWidth: scene.canvasWidth,
       canvasHeight: scene.canvasHeight,
-      exportScale,
+      exportScale: effectiveScale,
       background: scene.background,
       typography: scene.typography,
       decorations: scene.decorations,
@@ -455,7 +483,7 @@ export function useImageExporter(
         const didDrawSnapshot = await drawPoemSnapshot(
           canvas,
           { ...scene, canvasWidth: scene.canvasWidth, canvasHeight: scene.canvasHeight },
-          exportScale,
+          effectiveScale,
           domRefs,
         );
 
@@ -471,9 +499,9 @@ export function useImageExporter(
     return canvas;
   }, [domRefs, exportScale, scene, waitForSceneSettled]);
 
-  const createOutputBlob = useCallback(async () => {
-    const canvas = await renderOutputCanvas();
-    return exportCanvasToBlob(canvas, exportFormat);
+  const createOutputBlob = useCallback(async (overrideFormat?: ExportFormat, overrideScale?: ExportScale) => {
+    const canvas = await renderOutputCanvas(overrideScale);
+    return exportCanvasToBlob(canvas, overrideFormat ?? exportFormat);
   }, [exportFormat, renderOutputCanvas]);
 
   const exportImage = useCallback(async () => {
@@ -528,5 +556,41 @@ export function useImageExporter(
     }
   }, [canShare, createOutputBlob, exportFormat, isExporting, isSharing]);
 
-  return { exportImage, shareImage, isExporting, isSharing, canShare };
+  const shareToSocialPlatform = useCallback(async (platform: SocialPlatform): Promise<'clipboard' | 'downloaded'> => {
+    if (isExporting || isSharing) {
+      return 'downloaded';
+    }
+
+    setIsSharing(true);
+
+    try {
+      const { format, scale, url } = SOCIAL_PLATFORM_CONFIG[platform];
+      const blob = await createOutputBlob(format, scale);
+
+      if (!blob) {
+        return 'downloaded';
+      }
+
+      const copied = await copyImageToClipboard(blob);
+
+      if (!copied) {
+        downloadBlob(blob, format);
+      }
+
+      if (url) {
+        setTimeout(() => {
+          window.open(url, '_blank', 'noopener,noreferrer');
+        }, 400);
+      }
+
+      return copied ? 'clipboard' : 'downloaded';
+    } catch (error) {
+      console.error('Failed to share to social platform', error);
+      return 'downloaded';
+    } finally {
+      setIsSharing(false);
+    }
+  }, [createOutputBlob, isExporting, isSharing]);
+
+  return { exportImage, shareImage, shareToSocialPlatform, isExporting, isSharing, canShare };
 }

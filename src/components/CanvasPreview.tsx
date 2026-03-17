@@ -1,12 +1,27 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Download, Maximize2, Minus, Plus, Share2, X } from 'lucide-react';
-import type { CanvasPreviewProps } from '../types';
+import { CheckCircle2, Download, Maximize2, Minus, Plus, Share2, X } from 'lucide-react';
+import type { CanvasPreviewProps, SocialPlatform } from '../types';
 import { SidebarFooter } from './sidebar/SidebarFooter';
 import { BackgroundLayer } from './preview/BackgroundLayer';
 import { CustomTextItems } from './preview/CustomTextItems';
 import { PoemContent } from './preview/PoemContent';
 import { TransparentGrid } from './preview/TransparentGrid';
+
+const SOCIAL_PLATFORMS: Array<{
+  id: SocialPlatform;
+  label: string;
+  color: string;
+  bg: string;
+  symbol: string;
+}> = [
+  { id: 'wechat',      label: 'WeChat',      color: '#fff', bg: '#07C160', symbol: '微' },
+  { id: 'weibo',       label: '微博',         color: '#fff', bg: '#E6162D', symbol: '博' },
+  { id: 'xiaohongshu', label: '小红书',       color: '#fff', bg: '#FF2442', symbol: '红' },
+  { id: 'twitter',     label: 'X',           color: '#fff', bg: '#000000', symbol: '𝕏' },
+  { id: 'instagram',   label: 'Instagram',   color: '#fff', bg: '#C13584', symbol: 'In' },
+  { id: 'facebook',    label: 'Facebook',    color: '#fff', bg: '#1877F2', symbol: 'f' },
+];
 
 const ZOOM_MIN = 0.7;
 const ZOOM_MAX = 2.0;
@@ -67,6 +82,7 @@ export function CanvasPreview({
   onExportScaleChange,
   onDownload,
   onShare,
+  onShareToSocial,
   isExporting,
   isSharing,
   canShare,
@@ -84,6 +100,9 @@ export function CanvasPreview({
   const [isDraggingPreview, setIsDraggingPreview] = useState(false);
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
   const [activeOutputModal, setActiveOutputModal] = useState<OutputModalMode | null>(null);
+  const [socialFeedback, setSocialFeedback] = useState<{ result: 'clipboard' | 'downloaded'; platform: SocialPlatform } | null>(null);
+  const [activeSocialPlatform, setActiveSocialPlatform] = useState<SocialPlatform | null>(null);
+  const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Refs for pinch-to-zoom
   const activePointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
@@ -201,6 +220,7 @@ export function CanvasPreview({
       return;
     }
 
+    setSocialFeedback(null);
     setActiveOutputModal('share');
   };
 
@@ -212,6 +232,17 @@ export function CanvasPreview({
   const handleShareFromModal = () => {
     onShare();
     setActiveOutputModal(null);
+  };
+
+  const handleShareToSocial = async (platform: SocialPlatform) => {
+    if (isOutputBusy) return;
+    setActiveSocialPlatform(platform);
+    setSocialFeedback(null);
+    if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
+    const result = await onShareToSocial(platform);
+    setActiveSocialPlatform(null);
+    setSocialFeedback({ result, platform });
+    feedbackTimeoutRef.current = setTimeout(() => setSocialFeedback(null), 5000);
   };
 
   const modalTitle = activeOutputModal === 'save' ? t('saveImageModalTitle') : t('shareImageModalTitle');
@@ -398,6 +429,59 @@ export function CanvasPreview({
                 </div>
 
                 <div className="px-6 py-6">
+                  {activeOutputModal === 'share' ? (
+                    <div className="mb-5">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-(--app-accent-500) mb-3">{t('shareToSocialTitle')}</p>
+                      <div className="grid grid-cols-3 gap-2">
+                        {SOCIAL_PLATFORMS.map((platform) => {
+                          const isActive = activeSocialPlatform === platform.id;
+                          return (
+                            <button
+                              key={platform.id}
+                              type="button"
+                              onClick={() => handleShareToSocial(platform.id)}
+                              disabled={isOutputBusy}
+                              className="flex flex-col items-center gap-2 rounded-2xl border border-[rgba(34,48,52,0.08)] bg-white/70 px-2 py-3 text-center transition-all hover:bg-white hover:shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                            >
+                              <span
+                                className="flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold"
+                                style={{ backgroundColor: platform.bg, color: platform.color }}
+                              >
+                                {isActive ? (
+                                  <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                                  </svg>
+                                ) : platform.symbol}
+                              </span>
+                              <span className="text-[11px] font-medium text-gray-700 leading-tight">{platform.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <AnimatePresence>
+                        {socialFeedback ? (
+                          <motion.div
+                            className="mt-3 flex items-center gap-2 rounded-xl bg-(--app-accent-50) px-3 py-2.5 text-xs text-(--app-accent-800)"
+                            initial={{ opacity: 0, y: -6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0 }}
+                          >
+                            <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-(--app-accent-600)" />
+                            <span>{socialFeedback.result === 'clipboard' ? t('shareImageCopiedHint') : t('shareImageDownloadedHint')}</span>
+                          </motion.div>
+                        ) : null}
+                      </AnimatePresence>
+
+                      <div className="mt-5 flex items-center gap-3">
+                        <div className="h-px flex-1 bg-[rgba(34,48,52,0.08)]" />
+                        <span className="text-[11px] text-gray-400">{t('shareSystemDivider')}</span>
+                        <div className="h-px flex-1 bg-[rgba(34,48,52,0.08)]" />
+                      </div>
+                    </div>
+                  ) : null}
+
                   <SidebarFooter
                     t={t}
                     canvasWidth={canvasWidth}

@@ -175,7 +175,7 @@ export default function App() {
   }, []);
 
   const scale = useCanvasScale(containerRef, canvasWidth, canvasHeight);
-  const { exportImage: handleDownload, shareImage: handleShare, isExporting, isSharing, canShare } = useImageExporter(
+  const { exportImage: handleDownload, shareImage: handleShare, shareToSocialPlatform: handleShareToSocial, isExporting, isSharing, canShare } = useImageExporter(
     exportFormat,
     exportScale,
     {
@@ -470,6 +470,7 @@ export default function App() {
     onExportScaleChange: setExportScale,
     onDownload: handleDownload,
     onShare: handleShare,
+    onShareToSocial: handleShareToSocial,
     isExporting,
     isSharing,
     canShare,

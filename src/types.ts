@@ -10,6 +10,7 @@ export type StampStyle = 'square' | 'round' | 'brush';
 export type EditorTemplateId = 'ink-wash' | 'modern-minimal' | 'cyberpunk' | 'japanese-magazine';
 export type ExportScale = 1 | 2 | 3;
 export type ExportFormat = 'png' | 'jpg' | 'webp';
+export type SocialPlatform = 'wechat' | 'weibo' | 'xiaohongshu' | 'twitter' | 'instagram' | 'facebook';
 
 export interface CustomText {
   id: string;
@@ -269,6 +270,7 @@ export interface CanvasPreviewProps {
   onExportScaleChange: (value: ExportScale) => void;
   onDownload: () => void;
   onShare: () => void;
+  onShareToSocial: (platform: SocialPlatform) => Promise<'clipboard' | 'downloaded'>;
   isExporting: boolean;
   isSharing: boolean;
   canShare: boolean;
