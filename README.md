@@ -1,6 +1,10 @@
 # InkPoem
 
-Turn poems into AI-generated images. Built with React + Vite, deployed on Cloudflare Workers with a D1-backed credit billing system.
+**解决AI生成图片的文字难题：精美图像，精准文字控制**
+
+AI生成的图片虽然精美，但文字经常出错？InkPoem让您从诗歌创建美丽图像，同时提供完全可定制的背景、排版和AI艺术，确保文字完美无误。
+
+Turn poems into AI-generated images with precise text control. Built with React + Vite, deployed on Cloudflare Workers with a D1-backed credit billing system.
 
 ## Features
 

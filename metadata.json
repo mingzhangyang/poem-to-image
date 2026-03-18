@@ -1,5 +1,5 @@
 {
   "name": "Poem to Image",
-  "description": "Create beautiful images from poems with customizable backgrounds, typography, and AI-generated art.",
+  "description": "AI生成的图片精美但文字出错？从诗歌创建美丽图像，提供精准文字控制、可定制背景和排版。解决AI图像生成中的文字难题。",
   "requestFramePermissions": []
 }
