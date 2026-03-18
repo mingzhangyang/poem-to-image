@@ -121,29 +121,19 @@ export function createOrganicBorderStrokes(width: number, height: number, border
   if (borderStyle === 'ink') {
     return [
       {
-        path: buildHandDrawnPath(safeWidth, safeHeight, safeBorderWidth * 1.08, Math.max(0.55, safeBorderWidth * 0.18), 0.35, 28),
-        opacity: 0.38,
-        width: Math.max(1.15, safeBorderWidth * 0.28),
-      },
-      {
-        path: buildHandDrawnPath(safeWidth, safeHeight, safeBorderWidth * 1.55, Math.max(0.18, safeBorderWidth * 0.05), 2.1, 20),
-        opacity: 0.09,
-        width: Math.max(0.7, safeBorderWidth * 0.09),
+        path: buildHandDrawnPath(safeWidth, safeHeight, safeBorderWidth * 1.2, Math.max(0.5, safeBorderWidth * 0.15), 1.5, 36),
+        opacity: 0.9,
+        width: safeBorderWidth,
       },
     ];
   }
 
-  // handwritten: 1 main + 1 faint ink layer
+  // brush (handwritten japanese-magazine style)
   return [
     {
-      path: buildHandDrawnPath(safeWidth, safeHeight, safeBorderWidth * 1.02, Math.max(0.45, safeBorderWidth * 0.13), 0.8, 26),
-      opacity: 0.32,
-      width: Math.max(1.05, safeBorderWidth * 0.22),
-    },
-    {
-      path: buildHandDrawnPath(safeWidth, safeHeight, safeBorderWidth * 1.45, Math.max(0.13, safeBorderWidth * 0.04), 2.1, 18),
-      opacity: 0.07,
-      width: Math.max(0.6, safeBorderWidth * 0.07),
+      path: buildHandDrawnPath(safeWidth, safeHeight, safeBorderWidth * 1.2, Math.max(0.7, safeBorderWidth * 0.25), 2.8, 48),
+      opacity: 0.95,
+      width: Math.max(2, safeBorderWidth * 0.9),
     },
   ];
 }
