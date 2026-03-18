@@ -374,17 +374,7 @@ export function Sidebar({
                   <h3 className="text-sm font-bold text-(--app-accent-900)">
                     {activeMobilePanel ? t(MOBILE_PANEL_TITLE_KEYS[activeMobilePanel]) : t('controlsPanelTitle')}
                   </h3>
-                  <div className="flex items-center gap-2">
-                    {activeMobilePanel !== 'settings' ? (
-                      <button
-                        type="button"
-                        onClick={() => setActiveMobilePanel('settings')}
-                        className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-gray-100/50 text-(--app-accent-700) active:scale-90 transition-transform"
-                        aria-label={t('settings')}
-                      >
-                        <Settings className="h-4 w-4" />
-                      </button>
-                    ) : null}
+                  <div className="flex items-center">
                     <button
                       type="button"
                       onClick={() => setActiveMobilePanel(null)}
