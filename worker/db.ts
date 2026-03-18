@@ -261,6 +261,66 @@ export async function fulfillStripeOrder(
   return true;
 }
 
+const MAX_CUSTOM_TEMPLATES = 50;
+
+export interface CloudTemplateRow {
+  id: string;
+  user_id: string;
+  name: string;
+  data: string; // JSON
+  created_at: string;
+}
+
+export async function listUserTemplates(db: D1Database, userId: string): Promise<CloudTemplateRow[]> {
+  const result = await db
+    .prepare('SELECT id, user_id, name, data, created_at FROM custom_templates WHERE user_id = ? ORDER BY created_at DESC LIMIT ?')
+    .bind(userId, MAX_CUSTOM_TEMPLATES)
+    .all<CloudTemplateRow>();
+  return result.results;
+}
+
+export async function createUserTemplate(
+  db: D1Database,
+  userId: string,
+  name: string,
+  data: string,
+): Promise<CloudTemplateRow> {
+  const count = await db
+    .prepare('SELECT COUNT(*) as n FROM custom_templates WHERE user_id = ?')
+    .bind(userId)
+    .first<{ n: number }>();
+
+  if ((count?.n ?? 0) >= MAX_CUSTOM_TEMPLATES) {
+    throw new Error('Template limit reached.');
+  }
+
+  const id = newId();
+  await db
+    .prepare('INSERT INTO custom_templates (id, user_id, name, data) VALUES (?, ?, ?, ?)')
+    .bind(id, userId, name, data)
+    .run();
+
+  const row = await db
+    .prepare('SELECT id, user_id, name, data, created_at FROM custom_templates WHERE id = ?')
+    .bind(id)
+    .first<CloudTemplateRow>();
+
+  if (!row) throw new Error('Failed to retrieve created template.');
+  return row;
+}
+
+export async function deleteUserTemplate(
+  db: D1Database,
+  userId: string,
+  templateId: string,
+): Promise<boolean> {
+  const result = await db
+    .prepare('DELETE FROM custom_templates WHERE id = ? AND user_id = ?')
+    .bind(templateId, userId)
+    .run();
+  return result.meta.changes > 0;
+}
+
 export interface TransactionHistoryItem {
   id: string;
   type: string;

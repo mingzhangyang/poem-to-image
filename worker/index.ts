@@ -1,6 +1,6 @@
 import { getAuthenticatedUser } from './auth';
 import type { D1Database } from './db';
-import { ensureUser, getBalance, reserveGeneration, finalizeGenerationSuccess, finalizeGenerationFailure } from './db';
+import { ensureUser, getBalance, reserveGeneration, finalizeGenerationSuccess, finalizeGenerationFailure, listUserTemplates, createUserTemplate, deleteUserTemplate } from './db';
 import {
   handleGetBalance,
   handleGetPackages,
@@ -159,6 +159,61 @@ async function handleGenerateAiBackground(request: Request, env: Env): Promise<R
   }
 }
 
+const MAX_TEMPLATE_NAME_LENGTH = 100;
+const MAX_TEMPLATE_DATA_BYTES = 32_000; // ~32 KB per template
+
+async function handleGetTemplates(request: Request, env: Env): Promise<Response> {
+  if (!env.CLERK_SECRET_KEY || !env.DB) return json({ error: 'Not configured.' }, 503);
+  const user = await getAuthenticatedUser(request, env.CLERK_SECRET_KEY);
+  if (!user) return unauthorized();
+  await ensureUser(env.DB, user.userId, user.email);
+  const rows = await listUserTemplates(env.DB, user.userId);
+  const templates = rows.map((r) => ({ id: r.id, name: r.name, createdAt: new Date(r.created_at).getTime(), ...JSON.parse(r.data) }));
+  return json({ templates });
+}
+
+async function handleCreateTemplate(request: Request, env: Env): Promise<Response> {
+  if (!env.CLERK_SECRET_KEY || !env.DB) return json({ error: 'Not configured.' }, 503);
+  const user = await getAuthenticatedUser(request, env.CLERK_SECRET_KEY);
+  if (!user) return unauthorized();
+
+  let payload: { name?: string; [key: string]: unknown };
+  try {
+    payload = (await request.json()) as { name?: string; [key: string]: unknown };
+  } catch {
+    return badRequest('Request body must be valid JSON.');
+  }
+
+  const name = (payload.name ?? '').toString().trim().slice(0, MAX_TEMPLATE_NAME_LENGTH) || 'Custom Template';
+  const { name: _n, ...rest } = payload;
+  const dataStr = JSON.stringify(rest);
+
+  if (dataStr.length > MAX_TEMPLATE_DATA_BYTES) {
+    return badRequest('Template data too large.');
+  }
+
+  try {
+    await ensureUser(env.DB, user.userId, user.email);
+    const row = await createUserTemplate(env.DB, user.userId, name, dataStr);
+    return json({ id: row.id, name: row.name, createdAt: new Date(row.created_at).getTime(), ...rest }, 201);
+  } catch (err) {
+    if (err instanceof Error && err.message === 'Template limit reached.') {
+      return badRequest('Template limit reached.', 400);
+    }
+    return badRequest('Failed to save template.', 502);
+  }
+}
+
+async function handleDeleteTemplate(templateId: string, request: Request, env: Env): Promise<Response> {
+  if (!env.CLERK_SECRET_KEY || !env.DB) return json({ error: 'Not configured.' }, 503);
+  const user = await getAuthenticatedUser(request, env.CLERK_SECRET_KEY);
+  if (!user) return unauthorized();
+  await ensureUser(env.DB, user.userId, user.email);
+  const deleted = await deleteUserTemplate(env.DB, user.userId, templateId);
+  if (!deleted) return json({ error: 'Not found.' }, 404);
+  return json({ success: true });
+}
+
 async function handleMe(request: Request, env: Env): Promise<Response> {
   if (!env.CLERK_SECRET_KEY || !env.DB) {
     return json({ error: 'Auth not configured.' }, 503);
@@ -182,6 +237,20 @@ export default {
     if (pathname === '/api/ai-background') {
       if (request.method !== 'POST') return badRequest('Method not allowed.', 405);
       return handleGenerateAiBackground(request, env);
+    }
+
+    // ── Custom templates ─────────────────────────────────────────────────
+    if (pathname === '/api/templates') {
+      if (request.method === 'GET') return handleGetTemplates(request, env);
+      if (request.method === 'POST') return handleCreateTemplate(request, env);
+      return badRequest('Method not allowed.', 405);
+    }
+
+    if (pathname.startsWith('/api/templates/')) {
+      const templateId = pathname.slice('/api/templates/'.length);
+      if (!templateId) return badRequest('Template ID required.', 400);
+      if (request.method === 'DELETE') return handleDeleteTemplate(templateId, request, env);
+      return badRequest('Method not allowed.', 405);
     }
 
     // ── Auth ────────────────────────────────────────────────────────────

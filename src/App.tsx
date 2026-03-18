@@ -14,6 +14,7 @@ import { useDecorationsConfig } from './hooks/useDecorationsConfig';
 import { useEditorViewModels } from './hooks/useEditorViewModels';
 import { useImageExporter } from './hooks/useImageExporter';
 import { useTypographyConfig } from './hooks/useTypographyConfig';
+import { useCustomTemplates } from './hooks/useCustomTemplates';
 import { editorTemplates, resolveTemplateForLanguage } from './templates';
 import type { EditorTemplateId, ExpandedSections, ExportFormat, ExportScale } from './types';
 
@@ -40,7 +41,7 @@ const DEFAULT_POEMS: Record<Language, string> = {
 };
 
 export default function App() {
-  const { getToken } = useAppAuth();
+  const { getToken, isSignedIn } = useAppAuth();
   const [previewZoom, setPreviewZoom] = useState(1);
   const [language, setLanguage] = useState<Language>(readStoredLanguage);
   const t = (key: TranslationKey) => translations[language][key];
@@ -149,6 +150,7 @@ export default function App() {
     writingMode: typography.writingMode,
     onCustomTextAdded: () => setExpandedSections((prev) => ({ ...prev, decorations: true })),
   });
+  const customTemplates = useCustomTemplates({ isSignedIn, getToken });
 
   const onInteractionStart = useCallback(() => {
     activeInteractionCountRef.current += 1;
@@ -319,6 +321,65 @@ export default function App() {
 
   const handleApplyTemplate = (templateId: EditorTemplateId) => {
     applyTemplateById(templateId);
+    customTemplates.clearActiveCustomTemplate();
+  };
+
+  const handleApplyCustomTemplate = (id: string) => {
+    const template = customTemplates.customTemplates.find((t) => t.id === id);
+    if (!template) return;
+    background.applyBackgroundTemplate(template.background);
+    typography.applyTypographyTemplate(template.typography);
+    decorations.applyDecorationsTemplate(template.decorations);
+    customTemplates.applyCustomTemplate(id);
+    setActiveTemplateId(null);
+    setExpandedSections((prev) => ({
+      ...prev,
+      templates: true,
+      background: true,
+      typography: true,
+      decorations: true,
+    }));
+  };
+
+  const handleSaveCustomTemplate = (name: string) => {
+    const bgConfig = {
+      backgroundType: (background.backgroundType === 'image' || background.backgroundType === 'ai')
+        ? 'solid' as const
+        : background.backgroundType,
+      backgroundColor: background.backgroundColor,
+      gradientColor1: background.gradientColor1,
+      gradientColor2: background.gradientColor2,
+      gradientDirection: background.gradientDirection,
+      bgBrightness: background.bgBrightness,
+      bgBlur: background.bgBlur,
+    };
+    const decConfig = {
+      showBorder: decorations.showBorder,
+      borderStyle: decorations.borderStyle,
+      showStamp: decorations.showStamp,
+      stamp: decorations.stamp,
+      poemPosition: decorations.poemPosition,
+      customTexts: decorations.customTexts,
+    };
+    const typConfig = {
+      fontFamily: typography.fontFamily,
+      fontSize: typography.fontSize,
+      textColor: typography.textColor,
+      textAlign: typography.textAlign,
+      writingMode: typography.writingMode,
+      padding: typography.padding,
+      lineHeight: typography.lineHeight,
+      letterSpacing: typography.letterSpacing,
+      columns: typography.columns,
+      columnGap: typography.columnGap,
+      textShadowEnabled: typography.textShadowEnabled,
+      textShadowColor: typography.textShadowColor,
+      textShadowBlur: typography.textShadowBlur,
+      textShadowOffsetY: typography.textShadowOffsetY,
+      textShadowOffsetX: typography.textShadowOffsetX,
+    };
+    void customTemplates.saveCustomTemplate(name, bgConfig, typConfig, decConfig);
+    setActiveTemplateId(null);
   };
 
   useEffect(() => {
@@ -408,6 +469,11 @@ export default function App() {
       templates: editorTemplates,
       activeTemplateId,
       onApplyTemplate: handleApplyTemplate,
+      customTemplates: customTemplates.customTemplates,
+      activeCustomTemplateId: customTemplates.activeCustomTemplateId,
+      onApplyCustomTemplate: handleApplyCustomTemplate,
+      onSaveCustomTemplate: handleSaveCustomTemplate,
+      onDeleteCustomTemplate: customTemplates.deleteCustomTemplate,
     },
     canvas: {
       presetSize,

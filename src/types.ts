@@ -102,10 +102,26 @@ export interface EditorTemplateDefinition {
   decorations: TemplateDecorationsConfig;
 }
 
+export interface UserCustomTemplate {
+  id: string;
+  name: string;
+  createdAt: number;
+  accentFrom: string;
+  accentTo: string;
+  background: TemplateBackgroundConfig;
+  typography: TemplateTypographyConfig;
+  decorations: TemplateDecorationsConfig;
+}
+
 export interface TemplateSectionProps {
   templates: EditorTemplateDefinition[];
   activeTemplateId: EditorTemplateId | null;
   onApplyTemplate: (id: EditorTemplateId) => void;
+  customTemplates: UserCustomTemplate[];
+  activeCustomTemplateId: string | null;
+  onApplyCustomTemplate: (id: string) => void;
+  onSaveCustomTemplate: (name: string) => void;
+  onDeleteCustomTemplate: (id: string) => Promise<void>;
 }
 
 export interface CanvasSizeSectionProps {

@@ -179,6 +179,7 @@ export function Sidebar({
           expanded={expandedSections.templates}
           onToggle={() => onToggleSection('templates')}
           templates={templates}
+          currentBackgroundType={background.backgroundType}
         />
       </div>
       <div>
@@ -247,6 +248,7 @@ export function Sidebar({
             expanded={expandedSections.templates}
             onToggle={() => onToggleSection('templates')}
             templates={templates}
+            currentBackgroundType={background.backgroundType}
           />
         </div>
       );
