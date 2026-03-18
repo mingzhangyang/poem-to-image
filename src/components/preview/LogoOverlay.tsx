@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties, PointerEvent as ReactPointerEvent, RefObject, FC } from 'react';
+import { getPreviewDragBounds, getPreviewPositioningRect } from '../../positioningRect';
 import type { LogoConfig } from '../../types';
 
 interface LogoOverlayProps {
@@ -25,14 +26,19 @@ export const LogoOverlay: FC<LogoOverlayProps> = ({ frameRef, logo, onLogoChange
   }, [logo.positionX, logo.positionY]);
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const frameRect = frameRef.current?.getBoundingClientRect();
+    const frameRect = frameRef.current ? getPreviewPositioningRect(frameRef.current) : null;
+    const boxRect = event.currentTarget.getBoundingClientRect();
 
     if (!frameRect || (event.pointerType === 'mouse' && event.button !== 0)) {
       return;
     }
 
+    event.preventDefault();
+    event.stopPropagation();
     onInteractionStart();
     isDraggingRef.current = true;
+    const bounds = getPreviewDragBounds(frameRect, boxRect);
+    const pointerId = event.pointerId;
 
     const startX = event.clientX;
     const startY = event.clientY;
@@ -41,27 +47,45 @@ export const LogoOverlay: FC<LogoOverlayProps> = ({ frameRef, logo, onLogoChange
     const livePositionRef = { current: { positionX: startPositionX, positionY: startPositionY } };
 
     const handlePointerMove = (moveEvent: PointerEvent) => {
+      if (moveEvent.pointerId !== pointerId) {
+        return;
+      }
+
       const deltaX = moveEvent.clientX - startX;
       const deltaY = moveEvent.clientY - startY;
 
-      const newPositionX = clamp(startPositionX + (deltaX / frameRect.width) * 100, 0, 100);
-      const newPositionY = clamp(startPositionY + (deltaY / frameRect.height) * 100, 0, 100);
+      const newPositionX = clamp(
+        startPositionX + (deltaX / frameRect.width) * 100,
+        bounds.minPositionX,
+        bounds.maxPositionX,
+      );
+      const newPositionY = clamp(
+        startPositionY + (deltaY / frameRect.height) * 100,
+        bounds.minPositionY,
+        bounds.maxPositionY,
+      );
 
       livePositionRef.current = { positionX: newPositionX, positionY: newPositionY };
       setLivePosition(livePositionRef.current);
     };
 
-    const handlePointerUp = () => {
-      document.removeEventListener('pointermove', handlePointerMove);
-      document.removeEventListener('pointerup', handlePointerUp);
+    const handlePointerUp = (upEvent: PointerEvent) => {
+      if (upEvent.pointerId !== pointerId) {
+        return;
+      }
+
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointercancel', handlePointerUp);
 
       onLogoChange(livePositionRef.current);
       isDraggingRef.current = false;
       onInteractionEnd();
     };
 
-    document.addEventListener('pointermove', handlePointerMove);
-    document.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointercancel', handlePointerUp);
   };
 
   const style: CSSProperties = {

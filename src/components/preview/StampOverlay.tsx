@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties, PointerEvent as ReactPointerEvent, RefObject } from 'react';
+import { getPreviewDragBounds, getPreviewPositioningRect } from '../../positioningRect';
 import type { StampConfig } from '../../types';
 
 interface StampOverlayProps {
@@ -94,7 +95,8 @@ export function StampOverlay({ frameRef, stamp, onStampChange, onInteractionStar
   }, [stamp.positionX, stamp.positionY]);
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const frameRect = frameRef.current?.getBoundingClientRect();
+    const frameRect = frameRef.current ? getPreviewPositioningRect(frameRef.current) : null;
+    const boxRect = event.currentTarget.getBoundingClientRect();
 
     if (!frameRect || (event.pointerType === 'mouse' && event.button !== 0)) {
       return;
@@ -108,6 +110,7 @@ export function StampOverlay({ frameRef, stamp, onStampChange, onInteractionStar
     const livePositionRef = { current: startPosition };
     const pointerId = event.pointerId;
     isDraggingRef.current = true;
+    const bounds = getPreviewDragBounds(frameRect, boxRect);
     onInteractionStart();
 
     const finishInteraction = () => {
@@ -125,8 +128,16 @@ export function StampOverlay({ frameRef, stamp, onStampChange, onInteractionStar
       }
 
       const nextPosition = {
-        positionX: clamp(startPosition.positionX + ((moveEvent.clientX - startX) / frameRect.width) * 100, 6, 94),
-        positionY: clamp(startPosition.positionY + ((moveEvent.clientY - startY) / frameRect.height) * 100, 6, 94),
+        positionX: clamp(
+          startPosition.positionX + ((moveEvent.clientX - startX) / frameRect.width) * 100,
+          bounds.minPositionX,
+          bounds.maxPositionX,
+        ),
+        positionY: clamp(
+          startPosition.positionY + ((moveEvent.clientY - startY) / frameRect.height) * 100,
+          bounds.minPositionY,
+          bounds.maxPositionY,
+        ),
       };
 
       livePositionRef.current = nextPosition;

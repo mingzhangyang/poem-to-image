@@ -1,4 +1,5 @@
 import { createOrganicBorderStrokes, getDoubleBorderMetrics, isOrganicBorderStyle } from '../borderUtils';
+import { getCanvasPositioningRect } from '../positioningRect';
 import type { BorderStyle, CustomText, ExportScale, LogoConfig, PositionedElement, StampConfig, TextAlign, WritingMode } from '../types';
 
 interface CanvasExportBackground {
@@ -506,10 +507,9 @@ function measureHorizontalColumns(
     : frameRect.width;
   const targetColumnWidth = Math.max(1, (availableWidth - Math.max(0, actualColumns - 1) * columnGap) / actualColumns);
   const paragraphs = splitLines(typography.text || ' ');
-  const wrappedLines = paragraphs.flatMap((paragraph, index) => {
-    const nextLines = wrapHorizontalParagraph(ctx, paragraph, targetColumnWidth, typography.letterSpacing);
-    return index === paragraphs.length - 1 ? nextLines : [...nextLines, ''];
-  });
+  const wrappedLines = paragraphs.flatMap((paragraph) => (
+    wrapHorizontalParagraph(ctx, paragraph, targetColumnWidth, typography.letterSpacing)
+  ));
   const columnsData = distributeEvenly(wrappedLines, actualColumns);
   const lineAdvance = fontSize * lineHeight;
   const columnWidths = columnsData.map((columnLines) => Math.max(0, ...columnLines.map((line) => measureTextWidth(ctx, line || ' ', typography.letterSpacing))));
@@ -729,14 +729,14 @@ function drawCustomText(ctx: CanvasRenderingContext2D, customText: CustomText, s
   const lines = splitLines(customText.text || ' ');
   const lineAdvance = customText.fontSize * lineHeight;
   const wrappedLines = customText.boxWidth !== undefined
-    ? lines.flatMap((line, index) => {
+    ? lines.flatMap((line) => {
         const nextLines = wrapHorizontalParagraph(
           ctx,
           line,
           Math.max(1, (frameRect.width * customText.boxWidth) / 100),
           letterSpacing,
         );
-        return index === lines.length - 1 ? nextLines : [...nextLines, ''];
+        return nextLines;
       })
     : lines;
   const maxLineWidth = customText.boxWidth !== undefined
@@ -924,6 +924,12 @@ export async function renderCanvasExport(scene: CanvasExportScene, options: Rend
   await drawBackground(ctx, scene);
 
   const contentRect = getCanvasContentRect(scene);
+  const positioningRect = getCanvasPositioningRect(
+    contentRect,
+    scene.decorations.showBorder,
+    scene.decorations.borderStyle,
+    scene.decorations.borderWidth,
+  );
 
   if (scene.decorations.showBorder) {
     drawBorder(
@@ -936,20 +942,20 @@ export async function renderCanvasExport(scene: CanvasExportScene, options: Rend
   }
 
   if (!options.skipPoem) {
-    drawPoem(ctx, scene, contentRect);
+    drawPoem(ctx, scene, positioningRect);
   }
 
   if (scene.decorations.showStamp) {
-    drawStamp(ctx, scene, contentRect);
+    drawStamp(ctx, scene, positioningRect);
   }
 
   for (const layer of getOrderedDecorationLayers(scene)) {
     if (layer.kind === 'customText') {
-      drawCustomText(ctx, layer.item, scene, contentRect);
+      drawCustomText(ctx, layer.item, scene, positioningRect);
       continue;
     }
 
-    await drawLogo(ctx, layer.item, contentRect);
+    await drawLogo(ctx, layer.item, positioningRect);
   }
 
   return canvas;

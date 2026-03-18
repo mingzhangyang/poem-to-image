@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { FC, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, RefObject } from 'react';
+import { getPreviewDragBounds, getPreviewPositioningRect, type PreviewPositioningRect } from '../../positioningRect';
 import type { CustomText } from '../../types';
 
 interface CustomTextItemsProps {
@@ -20,7 +21,7 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
-function measureCustomTextGeometry(frameRect: DOMRect, boxRect: DOMRect): Pick<CustomText, 'positionX' | 'positionY' | 'exportLeft' | 'exportTop'> {
+function measureCustomTextGeometry(frameRect: PreviewPositioningRect, boxRect: DOMRect): Pick<CustomText, 'positionX' | 'positionY' | 'exportLeft' | 'exportTop'> {
   return {
     positionX: clamp((((boxRect.left + boxRect.right) / 2 - frameRect.left) / frameRect.width) * 100, 0, 100),
     positionY: clamp((((boxRect.top + boxRect.bottom) / 2 - frameRect.top) / frameRect.height) * 100, 0, 100),
@@ -77,9 +78,10 @@ const DraggableCustomTextItem: FC<DraggableCustomTextItemProps> = ({
   }, [customText.boxWidth]);
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const frameRect = frameRef.current?.getBoundingClientRect();
+    const frameRect = frameRef.current ? getPreviewPositioningRect(frameRef.current) : null;
+    const boxRect = textBoxRef.current?.getBoundingClientRect();
 
-    if (!frameRect || (event.pointerType === 'mouse' && event.button !== 0)) {
+    if (!frameRect || !boxRect || (event.pointerType === 'mouse' && event.button !== 0)) {
       return;
     }
 
@@ -92,6 +94,7 @@ const DraggableCustomTextItem: FC<DraggableCustomTextItemProps> = ({
     const livePositionRef = { current: startPosition };
     isDraggingRef.current = true;
     setIsDragging(true);
+    const bounds = getPreviewDragBounds(frameRect, boxRect);
     const pointerId = event.pointerId;
     onInteractionStart();
 
@@ -101,8 +104,16 @@ const DraggableCustomTextItem: FC<DraggableCustomTextItemProps> = ({
       }
 
       const nextPosition = {
-        positionX: clamp(startPosition.positionX + ((moveEvent.clientX - startX) / frameRect.width) * 100, 4, 96),
-        positionY: clamp(startPosition.positionY + ((moveEvent.clientY - startY) / frameRect.height) * 100, 4, 96),
+        positionX: clamp(
+          startPosition.positionX + ((moveEvent.clientX - startX) / frameRect.width) * 100,
+          bounds.minPositionX,
+          bounds.maxPositionX,
+        ),
+        positionY: clamp(
+          startPosition.positionY + ((moveEvent.clientY - startY) / frameRect.height) * 100,
+          bounds.minPositionY,
+          bounds.maxPositionY,
+        ),
       };
 
       livePositionRef.current = nextPosition;
@@ -138,7 +149,7 @@ const DraggableCustomTextItem: FC<DraggableCustomTextItemProps> = ({
   };
 
   const handleResizePointerDown = (side: 'left' | 'right', event: ReactPointerEvent<HTMLDivElement>) => {
-    const frameRect = frameRef.current?.getBoundingClientRect();
+    const frameRect = frameRef.current ? getPreviewPositioningRect(frameRef.current) : null;
     const boxRect = textBoxRef.current?.getBoundingClientRect();
 
     if (!frameRect || !boxRect || (event.pointerType === 'mouse' && event.button !== 0)) {
@@ -227,15 +238,16 @@ const DraggableCustomTextItem: FC<DraggableCustomTextItemProps> = ({
 
     window.requestAnimationFrame(() => {
       const frameRect = frameRef.current?.getBoundingClientRect();
+      const positioningRect = frameRef.current ? getPreviewPositioningRect(frameRef.current) : null;
       const textRect = textBoxRef.current?.getBoundingClientRect();
 
-      if (!frameRect || !textRect) {
+      if (!positioningRect || !textRect) {
         onCustomTextChange(customText.id, { boxWidth: undefined });
         return;
       }
 
       onCustomTextChange(customText.id, {
-        ...measureCustomTextGeometry(frameRect, textRect),
+        ...measureCustomTextGeometry(positioningRect, textRect),
         boxWidth: undefined,
       });
     });

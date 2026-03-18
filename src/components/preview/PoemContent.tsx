@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, RefObject } from 'react';
 import { createOrganicBorderStrokes, getBorderPadding, isOrganicBorderStyle } from '../../borderUtils';
+import { getPreviewDragBounds, getPreviewPositioningRect, type PreviewPositioningRect } from '../../positioningRect';
 import type { BorderStyle, CustomText, LogoConfig, PositionedElement, StampConfig, TextAlign, TranslateFn, WritingMode } from '../../types';
 import { CustomTextItems } from './CustomTextItems';
 import { LogoOverlay } from './LogoOverlay';
@@ -42,7 +43,7 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
-function measurePositionedElement(frameRect: DOMRect, boxRect: DOMRect): PositionedElement {
+function measurePositionedElement(frameRect: PreviewPositioningRect, boxRect: DOMRect): PositionedElement {
   return {
     positionX: clamp((((boxRect.left + boxRect.right) / 2 - frameRect.left) / frameRect.width) * 100, 0, 100),
     positionY: clamp((((boxRect.top + boxRect.bottom) / 2 - frameRect.top) / frameRect.height) * 100, 0, 100),
@@ -126,9 +127,10 @@ export function PoemContent({
   }, [customTexts]);
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const frameRect = poemFrameRef.current?.getBoundingClientRect();
+    const frameRect = poemFrameRef.current ? getPreviewPositioningRect(poemFrameRef.current) : null;
+    const boxRect = poemBoxRef.current?.getBoundingClientRect();
 
-    if (!frameRect || (event.pointerType === 'mouse' && event.button !== 0)) {
+    if (!frameRect || !boxRect || (event.pointerType === 'mouse' && event.button !== 0)) {
       return;
     }
 
@@ -140,6 +142,7 @@ export function PoemContent({
     const startY = event.clientY;
     isDraggingRef.current = true;
     setIsDragging(true);
+    const bounds = getPreviewDragBounds(frameRect, boxRect);
 
     const pointerId = event.pointerId;
     onInteractionStart();
@@ -173,8 +176,16 @@ export function PoemContent({
       }
 
       const nextPosition = {
-        positionX: clamp(startPosition.positionX + ((moveEvent.clientX - startX) / frameRect.width) * 100, 8, 92),
-        positionY: clamp(startPosition.positionY + ((moveEvent.clientY - startY) / frameRect.height) * 100, 8, 92),
+        positionX: clamp(
+          startPosition.positionX + ((moveEvent.clientX - startX) / frameRect.width) * 100,
+          bounds.minPositionX,
+          bounds.maxPositionX,
+        ),
+        positionY: clamp(
+          startPosition.positionY + ((moveEvent.clientY - startY) / frameRect.height) * 100,
+          bounds.minPositionY,
+          bounds.maxPositionY,
+        ),
       };
 
       livePositionRef.current = nextPosition;
@@ -187,7 +198,7 @@ export function PoemContent({
   };
 
   const handleResizePointerDown = (side: 'left' | 'right', event: ReactPointerEvent<HTMLDivElement>) => {
-    const frameRect = poemFrameRef.current?.getBoundingClientRect();
+    const frameRect = poemFrameRef.current ? getPreviewPositioningRect(poemFrameRef.current) : null;
     const boxRect = poemBoxRef.current?.getBoundingClientRect();
 
     if (!frameRect || !boxRect || (event.pointerType === 'mouse' && event.button !== 0)) {
@@ -274,15 +285,16 @@ export function PoemContent({
     setLiveBoxWidth(undefined);
     window.requestAnimationFrame(() => {
       const frameRect = poemFrameRef.current?.getBoundingClientRect();
+      const positioningRect = poemFrameRef.current ? getPreviewPositioningRect(poemFrameRef.current) : null;
       const poemRect = poemBoxRef.current?.getBoundingClientRect();
 
-      if (!frameRect || !poemRect) {
+      if (!positioningRect || !poemRect) {
         onPoemPositionChange({ boxWidth: undefined });
         return;
       }
 
       onPoemPositionChange({
-        ...measurePositionedElement(frameRect, poemRect),
+        ...measurePositionedElement(positioningRect, poemRect),
         boxWidth: undefined,
       });
     });
@@ -298,6 +310,7 @@ export function PoemContent({
       }}
       className="relative z-10 flex h-full w-full flex-col items-center justify-center"
       style={{
+        boxSizing: 'border-box',
         borderColor,
         borderStyle: showBorder && !organicBorder ? borderStyle : 'none',
         borderWidth: showBorder && !organicBorder ? `${safeBorderWidth}px` : '0',

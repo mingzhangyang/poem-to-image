@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import type { RefObject } from 'react';
 import { getCanvasContentRect, renderCanvasExport } from '../export/renderCanvasExport';
+import { getCanvasPositioningRect, getPreviewPositioningRect, type PreviewPositioningRect } from '../positioningRect';
 import type { BorderStyle, CustomText, ExportFormat, ExportScale, LogoConfig, PositionedElement, SocialPlatform, StampConfig, TextAlign, WritingMode } from '../types';
 
 interface SocialPlatformConfig {
@@ -251,7 +252,7 @@ function getRotatedRunDrawOffset(ctx: CanvasRenderingContext2D, text: string, le
   return { startX, baselineY };
 }
 
-function collectPoemGlyphs(poemTextElement: HTMLDivElement, frameRect: DOMRect) {
+function collectPoemGlyphs(poemTextElement: HTMLDivElement, frameRect: PreviewPositioningRect) {
   const glyphs: PoemGlyph[] = [];
   const walker = document.createTreeWalker(poemTextElement, NodeFilter.SHOW_TEXT);
   const computedStyle = window.getComputedStyle(poemTextElement);
@@ -355,7 +356,7 @@ async function drawPoemSnapshot(
     return false;
   }
 
-  const frameRect = poemFrameElement.getBoundingClientRect();
+  const frameRect = getPreviewPositioningRect(poemFrameElement);
   const poemRect = poemTextElement.getBoundingClientRect();
 
   if (frameRect.width <= 0 || frameRect.height <= 0 || poemRect.width <= 0 || poemRect.height <= 0) {
@@ -373,8 +374,22 @@ async function drawPoemSnapshot(
     return false;
   }
 
-  const scaleX = scene.canvasWidth / frameRect.width;
-  const scaleY = scene.canvasHeight / frameRect.height;
+  const contentRect = getCanvasContentRect({
+    canvasWidth: scene.canvasWidth,
+    canvasHeight: scene.canvasHeight,
+    exportScale,
+    background: scene.background,
+    typography: scene.typography,
+    decorations: scene.decorations,
+  });
+  const positioningRect = getCanvasPositioningRect(
+    contentRect,
+    scene.decorations.showBorder,
+    scene.decorations.borderStyle,
+    scene.decorations.borderWidth,
+  );
+  const scaleX = positioningRect.width / frameRect.width;
+  const scaleY = positioningRect.height / frameRect.height;
   const computedStyle = window.getComputedStyle(poemTextElement);
   const letterSpacing = Number.parseFloat(computedStyle.letterSpacing || '0');
   const drawGroups: PoemGlyphGroup[] = computedStyle.writingMode.startsWith('vertical')
@@ -401,12 +416,12 @@ async function drawPoemSnapshot(
     const top = Math.min(...group.glyphs.map((glyph) => glyph.top));
     const right = Math.max(...group.glyphs.map((glyph) => glyph.left + glyph.width));
     const bottom = Math.max(...group.glyphs.map((glyph) => glyph.top + glyph.height));
-    const drawX = left * scaleX;
-    const drawY = top * scaleY;
+    const drawX = positioningRect.x + left * scaleX;
+    const drawY = positioningRect.y + top * scaleY;
 
     if (firstGlyph.sideways && group.glyphs.length > 0) {
-      const centerX = ((left + right) / 2) * scaleX;
-      const centerY = ((top + bottom) / 2) * scaleY;
+      const centerX = positioningRect.x + ((left + right) / 2) * scaleX;
+      const centerY = positioningRect.y + ((top + bottom) / 2) * scaleY;
       const safeLetterSpacing = Number.isFinite(letterSpacing) ? letterSpacing : 0;
       const { startX, baselineY } = getRotatedRunDrawOffset(ctx, group.text, safeLetterSpacing);
 
