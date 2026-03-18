@@ -144,12 +144,10 @@ export function Sidebar({
 
       <div className="mt-4 grid gap-2 grid-rows-3">
         {onboardingSteps.map((step, index) => (
-          <div key={step} className="min-w-0 rounded-2xl border border-white/80 bg-white/80 px-3 py-3 shadow-sm">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-(--app-accent-500)">{index + 1}</div>
-            <div className="mt-1 flex items-start gap-2 text-sm font-medium text-gray-800">
-              <span className="min-w-0 flex-1 text-pretty wrap-break-word leading-5 whitespace-normal">{step}</span>
-              <ArrowRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-(--app-accent-500)" />
-            </div>
+          <div key={step} className="flex items-center gap-3 min-w-0 rounded-2xl border border-white/80 bg-white/80 px-4 py-3.5 shadow-sm">
+            <div className="text-[12px] shrink-0 font-semibold text-(--app-accent-500)">{index + 1}</div>
+            <span className="min-w-0 flex-1 text-sm font-medium text-gray-800 truncate">{step}</span>
+            <ArrowRight className="h-4 w-4 shrink-0 text-(--app-accent-500)" />
           </div>
         ))}
       </div>
