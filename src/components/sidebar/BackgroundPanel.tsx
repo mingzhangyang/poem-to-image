@@ -161,54 +161,41 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
                 ) : null}
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                {aiProviders.map((provider) => (
-                  (() => {
-                    const meta = PROVIDER_META[provider];
-                    const isActive = background.aiProvider === provider;
-
-                    return (
-                  <button
-                    key={provider}
-                    onClick={() => background.onAiProviderChange(provider)}
-                    className={`rounded-2xl border p-3 text-left transition-all ${
-                      isActive
-                        ? 'border-(--app-accent-500) bg-(--app-accent-700) text-white shadow-[0_14px_30px_var(--app-accent-shadow)]'
-                        : 'border-(--app-accent-200) bg-white text-(--app-accent-900) hover:border-(--app-accent-300) hover:bg-(--app-accent-50)'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <div className="text-sm font-semibold">{meta.title}</div>
-                        <div className={`mt-1 text-[11px] font-medium ${isActive ? 'text-[rgba(237,244,243,0.92)]' : 'text-(--app-accent-600)'}`}>
-                          {t(meta.tradeoffKey)}
+              <div className="grid grid-rows-2 gap-2">
+                {aiProviders.map((provider) => {
+                  const meta = PROVIDER_META[provider];
+                  const isActive = background.aiProvider === provider;
+                  return (
+                    <button
+                      key={provider}
+                      onClick={() => background.onAiProviderChange(provider)}
+                      className={`rounded-2xl border p-3 text-left transition-all ${
+                        isActive
+                          ? 'border-(--app-accent-500) bg-(--app-accent-700) text-white shadow-[0_14px_30px_var(--app-accent-shadow)]'
+                          : 'border-(--app-accent-200) bg-white text-(--app-accent-900) hover:border-(--app-accent-300) hover:bg-(--app-accent-50)'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="text-sm font-semibold">{meta.title}</div>
+                          <div className={`mt-1 text-[11px] font-medium ${isActive ? 'text-[rgba(237,244,243,0.92)]' : 'text-(--app-accent-600)'}`}> 
+                            {t(meta.tradeoffKey)}
+                          </div>
                         </div>
+                        <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold ${isActive ? 'bg-white/15 text-white' : 'bg-(--app-accent-100) text-(--app-accent-700)'}`}>
+                          {CREDIT_COST[provider]} {CREDIT_COST[provider] === 1 ? t('creditsPerGen') : t('creditsPerGenMultiple')}
+                        </span>
                       </div>
-                      <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold ${isActive ? 'bg-white/15 text-white' : 'bg-(--app-accent-100) text-(--app-accent-700)'}`}>
-                        {CREDIT_COST[provider]} {CREDIT_COST[provider] === 1 ? t('creditsPerGen') : t('creditsPerGenMultiple')}
-                      </span>
-                    </div>
-                    <p className={`mt-2 text-[11px] leading-5 ${isActive ? 'text-[rgba(255,250,242,0.92)]' : 'text-gray-600'}`}>
-                      {t(meta.detailKey)}
-                    </p>
-                  </button>
-                    );
-                  })()
-                ))}
+                      <p className={`mt-2 text-[11px] leading-5 ${isActive ? 'text-[rgba(255,250,242,0.92)]' : 'text-gray-600'}`}>
+                        {t(meta.detailKey)}
+                      </p>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            <div className="rounded-2xl border border-(--app-accent-200) bg-white/85 p-3">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="text-sm font-semibold text-gray-900">{selectedProviderMeta.title}</div>
-                  <p className="mt-1 text-xs leading-5 text-gray-600">{t(selectedProviderMeta.tradeoffKey)}. {t(selectedProviderMeta.detailKey)}</p>
-                </div>
-                <div className="rounded-full bg-(--app-accent-50) px-2.5 py-1 text-[11px] font-semibold text-(--app-accent-700)">
-                  {CREDIT_COST[background.aiProvider]} {CREDIT_COST[background.aiProvider] === 1 ? t('creditsPerGen') : t('creditsPerGenMultiple')}
-                </div>
-              </div>
-            </div>
+            {/* 移除当前选中provider详细信息的那一块 */}
 
             <textarea
               className="app-textarea h-20 text-sm resize-none"
@@ -248,7 +235,7 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
                 {t(background.aiProvider === 'gemini' ? 'geminiTip' : 'openaiTip')}
               </span>
             </div>
-            <button
+          </div>
               onClick={background.onGenerateAiBackground}
               disabled={background.isGeneratingAI}
               className="app-button-primary w-full py-2 px-4 text-white rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
