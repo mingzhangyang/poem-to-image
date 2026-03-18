@@ -699,12 +699,8 @@ function drawPoem(ctx: CanvasRenderingContext2D, scene: CanvasExportScene, frame
 function drawCustomText(ctx: CanvasRenderingContext2D, customText: CustomText, scene: CanvasExportScene, frameRect: Rect) {
   const lineHeight = scene.typography.lineHeight;
   const letterSpacing = scene.typography.letterSpacing;
-  const translateX = customText.exportLeft !== undefined
-    ? frameRect.x + (frameRect.width * customText.exportLeft) / 100
-    : frameRect.x + (frameRect.width * customText.positionX) / 100;
-  const translateY = customText.exportTop !== undefined
-    ? frameRect.y + (frameRect.height * customText.exportTop) / 100
-    : frameRect.y + (frameRect.height * customText.positionY) / 100;
+  const translateX = frameRect.x + (frameRect.width * customText.positionX) / 100;
+  const translateY = frameRect.y + (frameRect.height * customText.positionY) / 100;
 
   ctx.save();
   ctx.translate(translateX, translateY);
@@ -732,17 +728,29 @@ function drawCustomText(ctx: CanvasRenderingContext2D, customText: CustomText, s
 
   const lines = splitLines(customText.text || ' ');
   const lineAdvance = customText.fontSize * lineHeight;
-  const maxLineWidth = Math.max(0, ...lines.map((line) => measureTextWidth(ctx, line || ' ', letterSpacing)));
-  const blockHeight = Math.max(lineAdvance, lines.length * lineAdvance);
+  const wrappedLines = customText.boxWidth !== undefined
+    ? lines.flatMap((line, index) => {
+        const nextLines = wrapHorizontalParagraph(
+          ctx,
+          line,
+          Math.max(1, (frameRect.width * customText.boxWidth) / 100),
+          letterSpacing,
+        );
+        return index === lines.length - 1 ? nextLines : [...nextLines, ''];
+      })
+    : lines;
+  const maxLineWidth = customText.boxWidth !== undefined
+    ? Math.max(1, (frameRect.width * customText.boxWidth) / 100)
+    : Math.max(0, ...wrappedLines.map((line) => measureTextWidth(ctx, line || ' ', letterSpacing)));
+  const blockHeight = Math.max(lineAdvance, wrappedLines.length * lineAdvance);
   const blockTop = -blockHeight / 2;
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
-  lines.forEach((line, lineIndex) => {
-    const lineWidth = measureTextWidth(ctx, line || ' ', letterSpacing);
+  wrappedLines.forEach((line, lineIndex) => {
     drawHorizontalLine(
       ctx,
       line || ' ',
-      -maxLineWidth / 2 + (maxLineWidth - lineWidth) / 2,
+      -maxLineWidth / 2,
       blockTop + lineIndex * lineAdvance,
       letterSpacing,
     );

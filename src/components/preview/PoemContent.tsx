@@ -42,6 +42,15 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
+function measurePositionedElement(frameRect: DOMRect, boxRect: DOMRect): PositionedElement {
+  return {
+    positionX: clamp((((boxRect.left + boxRect.right) / 2 - frameRect.left) / frameRect.width) * 100, 0, 100),
+    positionY: clamp((((boxRect.top + boxRect.bottom) / 2 - frameRect.top) / frameRect.height) * 100, 0, 100),
+    exportLeft: clamp(((boxRect.left - frameRect.left) / frameRect.width) * 100, 0, 100),
+    exportTop: clamp(((boxRect.top - frameRect.top) / frameRect.height) * 100, 0, 100),
+  };
+}
+
 export function PoemContent({
   poemFrameRef,
   poemTextRef,
@@ -74,10 +83,11 @@ export function PoemContent({
   onInteractionEnd,
 }: PoemContentProps) {
   const poemBoxRef = useRef<HTMLDivElement>(null);
+  const previousCustomTextIdsRef = useRef<string[]>(customTexts.map((customText) => customText.id));
   const [livePosition, setLivePosition] = useState(poemPosition);
+  const [activeTextSelection, setActiveTextSelection] = useState<{ kind: 'poem' } | { kind: 'customText'; id: string } | null>(null);
   const isDraggingRef = useRef(false);
   const isResizingRef = useRef(false);
-  const [isHovered, setIsHovered] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [liveBoxWidth, setLiveBoxWidth] = useState<number | undefined>(poemPosition.boxWidth);
@@ -97,6 +107,24 @@ export function PoemContent({
     }
   }, [poemPosition]);
 
+  useEffect(() => {
+    if (activeTextSelection?.kind === 'customText' && !customTexts.some((customText) => customText.id === activeTextSelection.id)) {
+      setActiveTextSelection(null);
+    }
+  }, [activeTextSelection, customTexts]);
+
+  useEffect(() => {
+    const previousIds = previousCustomTextIdsRef.current;
+    const nextIds = customTexts.map((customText) => customText.id);
+    const addedId = nextIds.find((id) => !previousIds.includes(id));
+
+    if (addedId) {
+      setActiveTextSelection({ kind: 'customText', id: addedId });
+    }
+
+    previousCustomTextIdsRef.current = nextIds;
+  }, [customTexts]);
+
   const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     const frameRect = poemFrameRef.current?.getBoundingClientRect();
 
@@ -106,6 +134,7 @@ export function PoemContent({
 
     event.preventDefault();
     event.stopPropagation();
+    setActiveTextSelection({ kind: 'poem' });
     const startPosition = livePosition;
     const startX = event.clientX;
     const startY = event.clientY;
@@ -126,9 +155,8 @@ export function PoemContent({
       onPoemPositionChange(
         poemRect
           ? {
-              ...livePositionRef.current,
-              exportLeft: clamp(((poemRect.left - frameRect.left) / frameRect.width) * 100, 0, 100),
-              exportTop: clamp(((poemRect.top - frameRect.top) / frameRect.height) * 100, 0, 100),
+              ...measurePositionedElement(frameRect, poemRect),
+              boxWidth: liveBoxWidth,
             }
           : livePositionRef.current,
       );
@@ -168,15 +196,24 @@ export function PoemContent({
 
     event.preventDefault();
     event.stopPropagation();
+    setActiveTextSelection({ kind: 'poem' });
 
     const startX = event.clientX;
-    const startWidth = boxRect.width;
+    const startLeft = boxRect.left - frameRect.left;
+    const startRight = boxRect.right - frameRect.left;
     const pointerId = event.pointerId;
     isResizingRef.current = true;
     setIsResizing(true);
     onInteractionStart();
 
-    const liveBoxWidthRef = { current: liveBoxWidth };
+    const liveStateRef = {
+      current: {
+        positionX: livePosition.positionX,
+        positionY: livePosition.positionY,
+        boxWidth: liveBoxWidth,
+      },
+    };
+    const minWidthPx = 60;
 
     const handlePointerMove = (moveEvent: PointerEvent) => {
       if (moveEvent.pointerId !== pointerId) {
@@ -184,13 +221,23 @@ export function PoemContent({
       }
 
       const delta = moveEvent.clientX - startX;
-      // Dragging right handle → width increases; dragging left handle → width increases when moving left
-      const pixelDelta = side === 'right' ? delta : -delta;
-      // Since the box is centered (translate -50%), both edges move symmetrically, so multiply by 2
-      const newWidthPx = Math.max(60, startWidth + pixelDelta * 2);
-      const newBoxWidth = clamp((newWidthPx / frameRect.width) * 100, 5, 95);
-      liveBoxWidthRef.current = newBoxWidth;
-      setLiveBoxWidth(newBoxWidth);
+      const nextLeft = side === 'left'
+        ? clamp(startLeft + delta, 0, startRight - minWidthPx)
+        : startLeft;
+      const nextRight = side === 'right'
+        ? clamp(startRight + delta, startLeft + minWidthPx, frameRect.width)
+        : startRight;
+      const nextWidthPx = nextRight - nextLeft;
+      const nextBoxWidth = clamp((nextWidthPx / frameRect.width) * 100, 5, 100);
+      const nextPositionX = clamp((((nextLeft + nextRight) / 2) / frameRect.width) * 100, 0, 100);
+
+      liveStateRef.current = {
+        positionX: nextPositionX,
+        positionY: livePosition.positionY,
+        boxWidth: nextBoxWidth,
+      };
+      setLivePosition((current) => ({ ...current, positionX: nextPositionX }));
+      setLiveBoxWidth(nextBoxWidth);
     };
 
     const handlePointerUp = (upEvent: PointerEvent) => {
@@ -200,7 +247,15 @@ export function PoemContent({
 
       isResizingRef.current = false;
       setIsResizing(false);
-      onPoemPositionChange({ boxWidth: liveBoxWidthRef.current });
+      const poemRect = poemBoxRef.current?.getBoundingClientRect();
+      onPoemPositionChange(
+        poemRect
+          ? {
+              ...measurePositionedElement(frameRect, poemRect),
+              boxWidth: liveStateRef.current.boxWidth,
+            }
+          : liveStateRef.current,
+      );
       onInteractionEnd();
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
@@ -215,13 +270,32 @@ export function PoemContent({
   const handleResizeDoubleClick = (event: ReactMouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
+    setActiveTextSelection({ kind: 'poem' });
     setLiveBoxWidth(undefined);
-    onPoemPositionChange({ boxWidth: undefined });
+    window.requestAnimationFrame(() => {
+      const frameRect = poemFrameRef.current?.getBoundingClientRect();
+      const poemRect = poemBoxRef.current?.getBoundingClientRect();
+
+      if (!frameRect || !poemRect) {
+        onPoemPositionChange({ boxWidth: undefined });
+        return;
+      }
+
+      onPoemPositionChange({
+        ...measurePositionedElement(frameRect, poemRect),
+        boxWidth: undefined,
+      });
+    });
   };
 
   return (
     <div
       ref={poemFrameRef}
+      onPointerDown={(event) => {
+        if (event.target === event.currentTarget) {
+          setActiveTextSelection(null);
+        }
+      }}
       className="relative z-10 flex h-full w-full flex-col items-center justify-center"
       style={{
         borderColor,
@@ -265,12 +339,10 @@ export function PoemContent({
       >
         <div
           onPointerDown={handlePointerDown}
-          onPointerEnter={() => setIsHovered(true)}
-          onPointerLeave={() => setIsHovered(false)}
           className="pointer-events-auto relative flex cursor-move touch-none select-none flex-col items-center justify-center"
         >
           {/* Hover/drag/resize border indicator — absolutely positioned, no effect on text layout */}
-          {(isHovered || isDragging || isResizing) && (
+          {(activeTextSelection?.kind === 'poem' || isDragging || isResizing) && (
             <div
               aria-hidden="true"
               className="pointer-events-none absolute"
@@ -379,10 +451,12 @@ export function PoemContent({
       <CustomTextItems
         frameRef={poemFrameRef}
         customTexts={customTexts}
+        activeCustomTextId={activeTextSelection?.kind === 'customText' ? activeTextSelection.id : null}
         fontFamily={fontFamily}
         lineHeight={lineHeight}
         letterSpacing={letterSpacing}
         sharedTextShadow={sharedTextShadow}
+        onCustomTextSelect={(id) => setActiveTextSelection(id ? { kind: 'customText', id } : null)}
         onCustomTextChange={onCustomTextChange}
         onInteractionStart={onInteractionStart}
         onInteractionEnd={onInteractionEnd}
