@@ -421,6 +421,9 @@ function drawVerticalText(ctx: CanvasRenderingContext2D, scene: CanvasExportScen
       columns: typography.columns,
       columnGap: typography.columnGap,
       textAlign: typography.textAlign,
+      wrapWidth: typography.poemPosition.boxWidth !== undefined
+        ? Math.max(1, (frameRect.width * typography.poemPosition.boxWidth) / 100)
+        : undefined,
     },
     createCanvasTextMeasurer(typography.fontFamily, typography.fontSize, ctx),
   );
@@ -466,7 +469,7 @@ function drawCustomText(ctx: CanvasRenderingContext2D, customText: CustomText, s
       columns: 1,
       columnGap: 0,
       textAlign: 'left',
-      wrapWidth: customText.writingMode === 'horizontal-tb' && customText.boxWidth !== undefined
+      wrapWidth: customText.boxWidth !== undefined
         ? Math.max(1, (frameRect.width * customText.boxWidth) / 100)
         : undefined,
     },

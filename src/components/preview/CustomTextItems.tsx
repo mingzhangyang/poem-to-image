@@ -80,7 +80,7 @@ const DraggableCustomTextItem: FC<DraggableCustomTextItemProps> = ({
       columns: 1,
       columnGap: 0,
       textAlign: 'left',
-      wrapWidth: customText.writingMode === 'horizontal-tb' && liveBoxWidth !== undefined
+      wrapWidth: liveBoxWidth !== undefined
         ? Math.max(1, (frameWidth * liveBoxWidth) / 100)
         : undefined,
     },

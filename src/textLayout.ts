@@ -273,7 +273,11 @@ function createHorizontalTextLayout(input: TextLayoutInput, measurer: TextLayout
 function createVerticalTextLayout(input: TextLayoutInput, measurer: TextLayoutMeasurer): TextLayoutResult {
   const actualColumns = Math.max(1, input.columns ?? 1);
   const columnGap = input.columnGap ?? 0;
-  const normalizedLines = normalizeVerticalLines(input.text || ' ', actualColumns);
+  const wrapWidth = input.wrapWidth !== undefined ? Math.max(1, input.wrapWidth) : undefined;
+  const maxVisibleLines = wrapWidth !== undefined
+    ? Math.max(1, Math.floor((wrapWidth + columnGap) / (input.fontSize + columnGap)))
+    : actualColumns;
+  const normalizedLines = normalizeVerticalLines(input.text || ' ', maxVisibleLines);
   const columnGroups = distributeEvenly(normalizedLines, actualColumns).filter((group) => group.length > 0);
   const items: VerticalTextLayoutItem[] = [];
 

@@ -115,7 +115,9 @@ export function PoemContent({
       textAlign,
       wrapWidth: writingMode === 'horizontal-tb'
         ? Math.max(1, liveBoxWidth !== undefined ? (frameSize.width * liveBoxWidth) / 100 : frameSize.width || 1)
-        : undefined,
+        : liveBoxWidth !== undefined
+          ? Math.max(1, (frameSize.width * liveBoxWidth) / 100)
+          : undefined,
     },
     createCanvasTextMeasurer(fontFamily, fontSize),
   );
