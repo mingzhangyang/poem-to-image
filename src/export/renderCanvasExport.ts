@@ -1,3 +1,4 @@
+import { createOrganicBorderStrokes } from '../borderUtils';
 import type { BorderStyle, CustomText, ExportScale, PositionedElement, StampConfig, TextAlign, WritingMode } from '../types';
 
 interface CanvasExportBackground {
@@ -34,6 +35,8 @@ interface CanvasExportTypography {
 interface CanvasExportDecorations {
   showBorder: boolean;
   borderStyle: BorderStyle;
+  borderColor: string;
+  borderWidth: number;
   showStamp: boolean;
   stamp: StampConfig;
   customTexts: CustomText[];
@@ -171,30 +174,56 @@ async function drawBackground(ctx: CanvasRenderingContext2D, scene: CanvasExport
   ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 }
 
-function drawBorder(ctx: CanvasRenderingContext2D, rect: Rect, borderStyle: BorderStyle, color: string) {
-  const borderWidth = 4;
+function drawBorder(ctx: CanvasRenderingContext2D, rect: Rect, borderStyle: BorderStyle, color: string, borderWidth: number) {
+  const safeBorderWidth = Math.max(2, borderWidth);
 
   ctx.save();
   ctx.strokeStyle = color;
   ctx.lineJoin = 'miter';
   ctx.lineCap = 'butt';
 
+  if (borderStyle === 'brush' || borderStyle === 'ink') {
+    const strokes = createOrganicBorderStrokes(rect.width, rect.height, safeBorderWidth, borderStyle);
+    const baseStrokeWidth = Math.max(1, safeBorderWidth * (borderStyle === 'ink' ? 0.22 : 0.16));
+
+    ctx.translate(rect.x, rect.y);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    ctx.save();
+    ctx.globalAlpha = borderStyle === 'ink' ? 0.28 : 0.18;
+    ctx.lineWidth = baseStrokeWidth;
+    ctx.strokeRect(1, 1, rect.width - 2, rect.height - 2);
+    ctx.restore();
+
+    strokes.forEach((stroke) => {
+      ctx.save();
+      ctx.globalAlpha = stroke.opacity;
+      ctx.lineWidth = stroke.width;
+      ctx.stroke(new Path2D(stroke.path));
+      ctx.restore();
+    });
+
+    ctx.restore();
+    return;
+  }
+
   if (borderStyle === 'dashed') {
-    ctx.lineWidth = borderWidth;
-    ctx.setLineDash([borderWidth * 4, borderWidth * 3]);
+    ctx.lineWidth = safeBorderWidth;
+    ctx.setLineDash([safeBorderWidth * 4, safeBorderWidth * 3]);
     ctx.strokeRect(
-      rect.x + borderWidth / 2,
-      rect.y + borderWidth / 2,
-      rect.width - borderWidth,
-      rect.height - borderWidth,
+      rect.x + safeBorderWidth / 2,
+      rect.y + safeBorderWidth / 2,
+      rect.width - safeBorderWidth,
+      rect.height - safeBorderWidth,
     );
     ctx.restore();
     return;
   }
 
   if (borderStyle === 'double') {
-    const doubleLineWidth = borderWidth / 3;
-    const innerInset = borderWidth - doubleLineWidth / 2;
+    const doubleLineWidth = Math.max(1.25, safeBorderWidth / 3);
+    const innerInset = safeBorderWidth - doubleLineWidth / 2;
 
     ctx.lineWidth = doubleLineWidth;
     ctx.strokeRect(
@@ -213,12 +242,12 @@ function drawBorder(ctx: CanvasRenderingContext2D, rect: Rect, borderStyle: Bord
     return;
   }
 
-  ctx.lineWidth = borderWidth;
+  ctx.lineWidth = safeBorderWidth;
   ctx.strokeRect(
-    rect.x + borderWidth / 2,
-    rect.y + borderWidth / 2,
-    rect.width - borderWidth,
-    rect.height - borderWidth,
+    rect.x + safeBorderWidth / 2,
+    rect.y + safeBorderWidth / 2,
+    rect.width - safeBorderWidth,
+    rect.height - safeBorderWidth,
   );
   ctx.restore();
 }
@@ -854,7 +883,13 @@ export async function renderCanvasExport(scene: CanvasExportScene, options: Rend
   const contentRect = getCanvasContentRect(scene);
 
   if (scene.decorations.showBorder) {
-    drawBorder(ctx, contentRect, scene.decorations.borderStyle, scene.typography.textColor);
+    drawBorder(
+      ctx,
+      contentRect,
+      scene.decorations.borderStyle,
+      scene.decorations.borderColor,
+      scene.decorations.borderWidth,
+    );
   }
 
   if (!options.skipPoem) {

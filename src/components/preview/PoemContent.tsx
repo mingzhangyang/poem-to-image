@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent, RefObject } from 'react';
+import { createOrganicBorderStrokes, getBorderPadding } from '../../borderUtils';
 import type { BorderStyle, LogoConfig, PositionedElement, StampConfig, TextAlign, TranslateFn, WritingMode } from '../../types';
 import { LogoOverlay } from './LogoOverlay';
 import { StampOverlay } from './StampOverlay';
@@ -21,6 +22,8 @@ interface PoemContentProps {
   sharedTextShadow: string;
   showBorder: boolean;
   borderStyle: BorderStyle;
+  borderColor: string;
+  borderWidth: number;
   showStamp: boolean;
   stamp: StampConfig;
   logos: LogoConfig[];
@@ -53,6 +56,8 @@ export function PoemContent({
   sharedTextShadow,
   showBorder,
   borderStyle,
+  borderColor,
+  borderWidth,
   showStamp,
   stamp,
   logos,
@@ -66,6 +71,12 @@ export function PoemContent({
   const poemBoxRef = useRef<HTMLDivElement>(null);
   const [livePosition, setLivePosition] = useState(poemPosition);
   const isDraggingRef = useRef(false);
+  const safeBorderWidth = Number.isFinite(borderWidth) ? Math.max(2, borderWidth) : 4;
+  const organicBaseStrokeWidth = Math.max(1, safeBorderWidth * (borderStyle === 'ink' ? 0.22 : 0.16));
+  const borderPadding = showBorder ? `${getBorderPadding(safeBorderWidth, borderStyle)}px` : '0';
+  const organicBorderStrokes = showBorder && (borderStyle === 'brush' || borderStyle === 'ink')
+    ? createOrganicBorderStrokes(100, 100, safeBorderWidth, borderStyle)
+    : [];
 
   useEffect(() => {
     if (!isDraggingRef.current) {
@@ -134,16 +145,51 @@ export function PoemContent({
   return (
     <div
       ref={poemFrameRef}
-      className={`relative z-10 flex flex-col items-center justify-center w-full h-full ${showBorder ? 'border-4' : ''}`}
+      className="relative z-10 flex h-full w-full flex-col items-center justify-center"
       style={{
-        borderColor: textColor,
-        borderStyle: showBorder ? borderStyle : 'none',
-        padding: showBorder ? '2rem' : '0',
+        borderColor,
+        borderStyle: showBorder && borderStyle !== 'brush' && borderStyle !== 'ink' ? borderStyle : 'none',
+        borderWidth: showBorder && borderStyle !== 'brush' && borderStyle !== 'ink' ? `${safeBorderWidth}px` : '0',
+        padding: borderPadding,
       }}
     >
+      {showBorder && (borderStyle === 'brush' || borderStyle === 'ink') ? (
+        <svg
+          className="pointer-events-none absolute inset-0 z-0 h-full w-full overflow-visible"
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+        >
+          <rect
+            x="1"
+            y="1"
+            width="98"
+            height="98"
+            fill="none"
+            stroke={borderColor}
+            strokeWidth={organicBaseStrokeWidth}
+            opacity={borderStyle === 'ink' ? 0.28 : 0.18}
+            vectorEffect="non-scaling-stroke"
+          />
+          {organicBorderStrokes.map((stroke, index) => (
+            <path
+              key={`${stroke.path}-${index}`}
+              d={stroke.path}
+              fill="none"
+              stroke={borderColor}
+              strokeWidth={stroke.width}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              opacity={stroke.opacity}
+              vectorEffect="non-scaling-stroke"
+            />
+          ))}
+        </svg>
+      ) : null}
+
       <div
         ref={poemBoxRef}
-        className="absolute pointer-events-none"
+        className="absolute z-10 pointer-events-none"
         style={{
           left: `${livePosition.positionX}%`,
           top: `${livePosition.positionY}%`,

@@ -40,6 +40,8 @@ export function useDecorationsConfig({
 
   const [showBorder, setShowBorder] = useState(false);
   const [borderStyle, setBorderStyle] = useState<BorderStyle>('solid');
+  const [borderColor, setBorderColor] = useState(textColor);
+  const [borderWidth, setBorderWidth] = useState(4);
   const [showStamp, setShowStamp] = useState(false);
   const [stamp, setStamp] = useState<StampConfig>(() => createDefaultStamp());
   const [poemPosition, setPoemPosition] = useState<PositionedElement>(() => createDefaultPoemPosition());
@@ -124,6 +126,8 @@ export function useDecorationsConfig({
   const applyDecorationsTemplate = (template: TemplateDecorationsConfig) => {
     setShowBorder(template.showBorder);
     setBorderStyle(template.borderStyle);
+    setBorderColor(template.borderColor ?? textColor);
+    setBorderWidth(template.borderWidth ?? 4);
     setShowStamp(template.showStamp);
     setStamp(template.stamp);
     setPoemPosition(template.poemPosition);
@@ -134,6 +138,8 @@ export function useDecorationsConfig({
   return {
     showBorder,
     borderStyle,
+    borderColor,
+    borderWidth,
     showStamp,
     stamp,
     poemPosition,
@@ -141,6 +147,8 @@ export function useDecorationsConfig({
     logos,
     setShowBorder,
     setBorderStyle,
+    setBorderColor,
+    setBorderWidth,
     setShowStamp,
     setStamp: updateStamp,
     setPoemPosition: updatePoemPosition,

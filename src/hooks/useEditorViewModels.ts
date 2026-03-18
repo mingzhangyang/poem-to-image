@@ -50,6 +50,8 @@ interface UseEditorViewModelsParams {
   bgBlur: number;
   showBorder: boolean;
   borderStyle: CanvasPreviewProps['borderStyle'];
+  borderColor: CanvasPreviewProps['borderColor'];
+  borderWidth: CanvasPreviewProps['borderWidth'];
   showStamp: boolean;
   stamp: CanvasPreviewProps['stamp'];
   poemPosition: CanvasPreviewProps['poemPosition'];
@@ -104,6 +106,8 @@ export function useEditorViewModels({
   bgBlur,
   showBorder,
   borderStyle,
+  borderColor,
+  borderWidth,
   showStamp,
   stamp,
   poemPosition,
@@ -177,6 +181,8 @@ export function useEditorViewModels({
     textShadowOffsetX: typography.textShadowOffsetX,
     showBorder,
     borderStyle,
+    borderColor,
+    borderWidth,
     showStamp,
     stamp,
     poemPosition,

@@ -68,6 +68,8 @@ export function CanvasPreview({
   textShadowOffsetX,
   showBorder,
   borderStyle,
+  borderColor,
+  borderWidth,
   showStamp,
   stamp,
   poemPosition,
@@ -595,6 +597,8 @@ export function CanvasPreview({
                   sharedTextShadow={sharedTextShadow}
                   showBorder={showBorder}
                   borderStyle={borderStyle}
+                  borderColor={borderColor}
+                  borderWidth={borderWidth}
                   showStamp={showStamp}
                   stamp={stamp}
                   logos={logos}

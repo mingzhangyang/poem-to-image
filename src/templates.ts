@@ -322,7 +322,9 @@ export const editorTemplates: EditorTemplateDefinition[] = [
     },
     decorations: {
       showBorder: true,
-      borderStyle: 'double',
+      borderStyle: 'ink',
+      borderColor: '#7d4d32',
+      borderWidth: 8,
       showStamp: true,
       stamp: {
         text: '雅印',
@@ -378,6 +380,8 @@ export const editorTemplates: EditorTemplateDefinition[] = [
     decorations: {
       showBorder: true,
       borderStyle: 'solid',
+      borderColor: '#0f172a',
+      borderWidth: 4,
       showStamp: false,
       stamp: {
         text: '印记',
@@ -433,6 +437,8 @@ export const editorTemplates: EditorTemplateDefinition[] = [
     decorations: {
       showBorder: true,
       borderStyle: 'dashed',
+      borderColor: '#67e8f9',
+      borderWidth: 4,
       showStamp: false,
       stamp: {
         text: 'XP',
@@ -487,7 +493,9 @@ export const editorTemplates: EditorTemplateDefinition[] = [
     },
     decorations: {
       showBorder: true,
-      borderStyle: 'solid',
+      borderStyle: 'brush',
+      borderColor: '#111827',
+      borderWidth: 6,
       showStamp: false,
       stamp: {
         text: '雑誌',

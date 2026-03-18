@@ -234,6 +234,8 @@ export default function App() {
       decorations: {
         showBorder: decorations.showBorder,
         borderStyle: decorations.borderStyle,
+        borderColor: decorations.borderColor,
+        borderWidth: decorations.borderWidth,
         showStamp: decorations.showStamp,
         stamp: decorations.stamp,
         customTexts: decorations.customTexts,
@@ -288,6 +290,8 @@ export default function App() {
     return (
       decorations.showBorder === templateDecorations.showBorder &&
       decorations.borderStyle === templateDecorations.borderStyle &&
+      decorations.borderColor === (templateDecorations.borderColor ?? resolvedTemplate.typography.textColor) &&
+      decorations.borderWidth === (templateDecorations.borderWidth ?? 4) &&
       decorations.showStamp === templateDecorations.showStamp &&
       decorations.poemPosition.positionX === templateDecorations.poemPosition.positionX &&
       decorations.poemPosition.positionY === templateDecorations.poemPosition.positionY &&
@@ -364,6 +368,8 @@ export default function App() {
     const decConfig = {
       showBorder: decorations.showBorder,
       borderStyle: decorations.borderStyle,
+      borderColor: decorations.borderColor,
+      borderWidth: decorations.borderWidth,
       showStamp: decorations.showStamp,
       stamp: decorations.stamp,
       poemPosition: decorations.poemPosition,
@@ -525,6 +531,8 @@ export default function App() {
     decorations: {
       showBorder: decorations.showBorder,
       borderStyle: decorations.borderStyle,
+      borderColor: decorations.borderColor,
+      borderWidth: decorations.borderWidth,
       showStamp: decorations.showStamp,
       stamp: decorations.stamp,
       poemPosition: decorations.poemPosition,
@@ -533,6 +541,8 @@ export default function App() {
       onAddCustomText: decorations.addCustomText,
       onShowBorderChange: decorations.setShowBorder,
       onBorderStyleChange: decorations.setBorderStyle,
+      onBorderColorChange: decorations.setBorderColor,
+      onBorderWidthChange: decorations.setBorderWidth,
       onShowStampChange: decorations.setShowStamp,
       onStampChange: decorations.setStamp,
       onPoemPositionChange: decorations.setPoemPosition,
@@ -574,6 +584,8 @@ export default function App() {
     bgBlur: background.bgBlur,
     showBorder: decorations.showBorder,
     borderStyle: decorations.borderStyle,
+    borderColor: decorations.borderColor,
+    borderWidth: decorations.borderWidth,
     showStamp: decorations.showStamp,
     stamp: decorations.stamp,
     poemPosition: decorations.poemPosition,

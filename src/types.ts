@@ -5,7 +5,7 @@ export type AiProvider = 'gemini' | 'openai';
 export type BackgroundType = 'solid' | 'gradient' | 'transparent' | 'image' | 'ai';
 export type WritingMode = 'horizontal-tb' | 'vertical-rl';
 export type TextAlign = 'left' | 'center' | 'right';
-export type BorderStyle = 'solid' | 'dashed' | 'double';
+export type BorderStyle = 'solid' | 'dashed' | 'double' | 'brush' | 'ink';
 export type StampStyle = 'square' | 'round' | 'brush';
 export type EditorTemplateId = 'ink-wash' | 'modern-minimal' | 'cyberpunk' | 'japanese-magazine';
 export type ExportScale = 1 | 2 | 3;
@@ -97,6 +97,8 @@ export interface TemplateTypographyConfig {
 export interface TemplateDecorationsConfig {
   showBorder: boolean;
   borderStyle: BorderStyle;
+  borderColor?: string;
+  borderWidth?: number;
   showStamp: boolean;
   stamp: StampConfig;
   poemPosition: PositionedElement;
@@ -214,6 +216,8 @@ export interface TypographySectionProps {
 export interface DecorationsSectionProps {
   showBorder: boolean;
   borderStyle: BorderStyle;
+  borderColor: string;
+  borderWidth: number;
   showStamp: boolean;
   stamp: StampConfig;
   poemPosition: PositionedElement;
@@ -222,6 +226,8 @@ export interface DecorationsSectionProps {
   onAddCustomText: () => void;
   onShowBorderChange: (value: boolean) => void;
   onBorderStyleChange: (value: BorderStyle) => void;
+  onBorderColorChange: (value: string) => void;
+  onBorderWidthChange: (value: number) => void;
   onShowStampChange: (value: boolean) => void;
   onStampChange: (updates: Partial<StampConfig>) => void;
   onPoemPositionChange: (updates: Partial<PositionedElement>) => void;
@@ -290,6 +296,8 @@ export interface CanvasPreviewProps {
   textShadowOffsetX: number;
   showBorder: boolean;
   borderStyle: BorderStyle;
+  borderColor: string;
+  borderWidth: number;
   showStamp: boolean;
   stamp: StampConfig;
   poemPosition: PositionedElement;

@@ -137,6 +137,38 @@ body {
 	border-color: var(--app-accent-300);
 }
 
+.app-action-button {
+	display: inline-flex;
+	min-width: 0;
+	align-items: center;
+	justify-content: center;
+	gap: 0.45rem;
+	border-radius: 9999px;
+	border: 1px solid var(--app-accent-200);
+	background: rgba(255, 253, 249, 0.96);
+	padding: 0.7rem 0.95rem;
+	font-size: 0.75rem;
+	font-weight: 600;
+	line-height: 1;
+	color: var(--app-accent-700);
+	box-shadow: 0 8px 18px rgba(31, 52, 54, 0.06);
+	transition: transform 160ms ease, border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease, color 160ms ease;
+	text-decoration: none;
+	outline: none;
+}
+
+.app-action-button:hover {
+	border-color: var(--app-accent-300);
+	background: var(--app-accent-50);
+	box-shadow: 0 12px 24px rgba(31, 52, 54, 0.1);
+	transform: translateY(-1px);
+}
+
+.app-action-button:focus-visible {
+	border-color: var(--app-accent-300);
+	box-shadow: 0 0 0 3px rgba(84, 127, 125, 0.14);
+}
+
 .app-accent-link {
 	color: var(--app-accent-600);
 	transition: color 160ms ease;

@@ -4,11 +4,15 @@ import { STAMP_FONT_OPTIONS } from '../../fontOptions';
 import type { BorderStyle, DecorationsSectionProps, ExpandedSections, StampStyle, TranslateFn } from '../../types';
 import { ControlSection } from '../ControlSection';
 
-const BORDER_STYLE_LABELS: Record<BorderStyle, 'borderSolid' | 'borderDashed' | 'borderDouble'> = {
+const BORDER_STYLE_LABELS: Record<BorderStyle, 'borderSolid' | 'borderDashed' | 'borderDouble' | 'borderBrush' | 'borderInk'> = {
   solid: 'borderSolid',
   dashed: 'borderDashed',
   double: 'borderDouble',
+  brush: 'borderBrush',
+  ink: 'borderInk',
 };
+
+const BORDER_COLOR_PRESETS = ['#223034', '#406967', '#7d4d32', '#111827', '#5b4636', '#8b1e3f', '#7c2d12', '#1d4ed8'];
 
 interface DecorationsPanelProps {
   t: TranslateFn;
@@ -43,33 +47,23 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
       summary={summaryParts.join(' · ')}
     >
       <div className="space-y-4">
-        <div className="flex justify-end">
+        <div className="grid grid-cols-2 gap-2 rounded-2xl border border-[rgba(34,48,52,0.06)] bg-[linear-gradient(180deg,rgba(237,244,243,0.42),rgba(255,253,249,0.82))] p-2">
           <button
             type="button"
             onClick={decorations.onAddCustomText}
-            className="inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-white"
-            style={{
-              color: 'var(--app-accent-700)',
-              borderColor: 'var(--app-accent-200)',
-              backgroundColor: 'var(--app-accent-50)',
-            }}
+            className="app-action-button"
             title={t('addTextBox')}
           >
-            <Plus className="w-3 h-3" /> {t('addTextBox')}
+            <Plus className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">{t('addTextShort')}</span>
           </button>
-        </div>
 
-        <div className="flex justify-end">
           <label
-            className="inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-white cursor-pointer"
-            style={{
-              color: 'var(--app-accent-700)',
-              borderColor: 'var(--app-accent-200)',
-              backgroundColor: 'var(--app-accent-50)',
-            }}
+            className="app-action-button cursor-pointer"
             title={t('uploadLogo')}
           >
-            <Upload className="w-3 h-3" /> {t('uploadLogo')}
+            <Upload className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">{t('imageShort')}</span>
             <input
               type="file"
               accept="image/*"
@@ -80,7 +74,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
         </div>
 
         <div className="app-soft-surface p-3 rounded-lg space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-start gap-3">
             <label className="text-xs text-gray-600 flex items-center gap-2">
               <input
                 type="checkbox"
@@ -90,18 +84,75 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
               />
               {t('showBorder')}
             </label>
-            {decorations.showBorder ? (
-              <select
-                value={decorations.borderStyle}
-                onChange={(event) => decorations.onBorderStyleChange(event.target.value as BorderStyle)}
-                className="app-select p-1 text-xs"
-              >
-                <option value="solid">{t('borderSolid')}</option>
-                <option value="dashed">{t('borderDashed')}</option>
-                <option value="double">{t('borderDouble')}</option>
-              </select>
-            ) : null}
           </div>
+
+          {decorations.showBorder ? (
+            <div className="rounded-xl border border-[rgba(34,48,52,0.08)] bg-white p-3 space-y-3">
+              <div>
+                <label className="mb-1 block text-xs text-gray-500">{t('borderStyle')}</label>
+                <select
+                  value={decorations.borderStyle}
+                  onChange={(event) => decorations.onBorderStyleChange(event.target.value as BorderStyle)}
+                  className="app-select text-sm"
+                >
+                  <option value="solid">{t('borderSolid')}</option>
+                  <option value="dashed">{t('borderDashed')}</option>
+                  <option value="double">{t('borderDouble')}</option>
+                  <option value="brush">{t('borderBrush')}</option>
+                  <option value="ink">{t('borderInk')}</option>
+                </select>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="mb-1 block text-xs text-gray-500">{t('borderColor')}</label>
+                  <div className="flex w-full items-center gap-3 rounded-xl border border-[rgba(34,48,52,0.08)] bg-[rgba(255,253,249,0.96)] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.82)]">
+                    <input
+                      type="color"
+                      value={decorations.borderColor}
+                      onChange={(event) => decorations.onBorderColorChange(event.target.value)}
+                      className="h-9 w-9 shrink-0 cursor-pointer rounded-lg border-0 bg-transparent p-0"
+                    />
+                    <span className="min-w-0 flex-1 truncate text-xs font-medium uppercase tracking-[0.08em] text-[rgba(51,88,87,0.82)]">
+                      {decorations.borderColor}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {BORDER_COLOR_PRESETS.map((color) => {
+                      const isActive = decorations.borderColor.toLowerCase() === color.toLowerCase();
+
+                      return (
+                        <button
+                          key={color}
+                          type="button"
+                          onClick={() => decorations.onBorderColorChange(color)}
+                          className={`h-6 w-6 rounded-full border transition-transform ${isActive ? 'scale-110 border-[rgba(34,48,52,0.36)] ring-2 ring-[rgba(84,127,125,0.18)]' : 'border-white/80 hover:scale-105'}`}
+                          style={{ backgroundColor: color }}
+                          aria-label={`${t('borderColor')} ${color}`}
+                          title={color}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs text-gray-500">
+                    <span>{t('borderWidth')}</span>
+                    <span>{decorations.borderWidth}px</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="2"
+                    max="16"
+                    value={decorations.borderWidth}
+                    onChange={(event) => decorations.onBorderWidthChange(Number(event.target.value))}
+                    className="app-range"
+                  />
+                </div>
+              </div>
+            </div>
+          ) : null}
 
           <div className="flex items-center justify-between">
             <label className="text-xs text-gray-600 flex items-center gap-2">
