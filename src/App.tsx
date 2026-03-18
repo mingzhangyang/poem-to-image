@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { useAppAuth } from './context/auth';
 import { useToast } from './components/ToastProvider';
 import { translations, Language, TranslationKey } from './translations';
@@ -181,7 +181,7 @@ export default function App() {
     });
   }, []);
 
-  const handleLogoUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoUpload = useCallback((event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 

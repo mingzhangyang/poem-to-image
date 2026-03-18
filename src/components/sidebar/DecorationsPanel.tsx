@@ -1,4 +1,4 @@
-import { Plus, Stamp, Trash2, Upload } from 'lucide-react';
+import { Plus, Stamp, Trash2, Upload, Text, TextCursorInput } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { STAMP_FONT_OPTIONS } from '../../fontOptions';
 import type { BorderStyle, DecorationsSectionProps, ExpandedSections, StampStyle, TranslateFn } from '../../types';

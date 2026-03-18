@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { CSSProperties, PointerEvent as ReactPointerEvent, RefObject } from 'react';
+import type { CSSProperties, PointerEvent as ReactPointerEvent, RefObject, FC } from 'react';
 import type { LogoConfig } from '../../types';
 
 interface LogoOverlayProps {
@@ -14,7 +14,7 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
-export function LogoOverlay({ frameRef, logo, onLogoChange, onInteractionStart, onInteractionEnd }: LogoOverlayProps) {
+export const LogoOverlay: FC<LogoOverlayProps> = ({ frameRef, logo, onLogoChange, onInteractionStart, onInteractionEnd }) => {
   const [livePosition, setLivePosition] = useState({ positionX: logo.positionX, positionY: logo.positionY });
   const isDraggingRef = useRef(false);
 

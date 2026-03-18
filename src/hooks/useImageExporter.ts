@@ -67,6 +67,8 @@ interface UseImageExporterDecorationsOptions {
   showStamp: boolean;
   stamp: StampConfig;
   customTexts: CustomText[];
+  borderColor: string;
+  borderWidth: number;
 }
 
 interface UseImageExporterSceneOptions {
