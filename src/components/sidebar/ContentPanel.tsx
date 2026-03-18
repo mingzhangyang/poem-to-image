@@ -32,9 +32,6 @@ export function ContentPanel({ t, expanded, onToggle, content }: ContentPanelPro
         onChange={(event) => content.onTextChange(event.target.value)}
         placeholder={t('enterPoem')}
       />
-      <p className="text-xs text-gray-500 mt-2">
-        {t('textControlHint')}
-      </p>
     </ControlSection>
   );
 }

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles, ArrowRight, Check, X, ChevronLeft, ChevronRight } from 'lucide-react';
-import type { Language, TranslationKey } from '../translations';
+import type { Language } from '../translations';
 import type { TemplateSectionProps, TranslateFn } from '../types';
 
 interface OnboardingModalProps {
@@ -35,7 +35,6 @@ export function OnboardingModal({ isOpen, onClose, t, language, templates }: Onb
   return (
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
-        {/* Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -44,14 +43,12 @@ export function OnboardingModal({ isOpen, onClose, t, language, templates }: Onb
           className="fixed inset-0 bg-black/40 backdrop-blur-[2px]"
         />
 
-        {/* Modal Content */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="relative w-full max-w-4xl overflow-hidden rounded-[2rem] bg-white shadow-2xl flex flex-col md:flex-row min-h-[500px] md:min-h-[600px]"
+          className="relative flex min-h-[500px] w-full max-w-4xl flex-col overflow-hidden rounded-[2rem] bg-white shadow-2xl md:min-h-[600px] md:flex-row"
         >
-          {/* Close button - absolute for both mobile/desktop */}
           <button
             onClick={onClose}
             className="absolute right-4 top-4 z-10 rounded-full bg-white/20 p-2 text-white/80 transition-colors hover:bg-white/30 hover:text-white md:bg-gray-100 md:text-gray-500 md:hover:bg-gray-200 md:hover:text-gray-700"
@@ -60,10 +57,9 @@ export function OnboardingModal({ isOpen, onClose, t, language, templates }: Onb
             <X className="h-5 w-5" />
           </button>
 
-          {/* Left Panel (Desktop) / Page 1 (Mobile) */}
-          <div 
+          <div
             className={`
-              relative flex-1 md:flex-[0.618] bg-[#0d9488] p-8 md:p-12 flex flex-col justify-center text-white
+              relative flex-1 flex-col justify-center bg-[#0d9488] p-8 text-white md:flex md:flex-[0.618] md:p-12
               ${isMobile && mobilePage !== 1 ? 'hidden' : 'flex'}
             `}
             style={{ background: 'linear-gradient(135deg, #0d9488 0%, #115e59 100%)' }}
@@ -75,19 +71,19 @@ export function OnboardingModal({ isOpen, onClose, t, language, templates }: Onb
               {t('onboardingWelcome')}
             </h2>
             <div className="space-y-6">
-              <p className="text-lg font-medium text-white/90 leading-relaxed">
+              <p className="text-lg leading-relaxed font-medium text-white/90">
                 {t('onboardingTitle')}
               </p>
-              <div className="h-1 w-12 bg-white/40 rounded-full" />
-              <p className="text-base text-white/80 leading-relaxed">
+              <div className="h-1 w-12 rounded-full bg-white/40" />
+              <p className="text-base leading-relaxed text-white/80">
                 {t('onboardingSubtitle')}
               </p>
-              <p className="text-sm text-white/70 leading-relaxed italic">
+              <p className="text-sm leading-relaxed text-white/70 italic">
                 {t('onboardingDescription')}
               </p>
             </div>
 
-            {isMobile && (
+            {isMobile ? (
               <div className="mt-12 flex items-center justify-between">
                 <div className="flex gap-2">
                   <div className="h-1.5 w-6 rounded-full bg-white" />
@@ -101,13 +97,12 @@ export function OnboardingModal({ isOpen, onClose, t, language, templates }: Onb
                   <ChevronRight className="h-4 w-4" />
                 </button>
               </div>
-            )}
+            ) : null}
           </div>
 
-          {/* Right Panel (Desktop) / Page 2 (Mobile) */}
-          <div 
+          <div
             className={`
-              flex-1 md:flex-[0.382] bg-white p-8 md:p-10 flex flex-col
+              flex-1 flex-col bg-white p-8 md:flex md:flex-[0.382] md:p-10
               ${isMobile && mobilePage !== 2 ? 'hidden' : 'flex'}
             `}
           >
@@ -123,8 +118,8 @@ export function OnboardingModal({ isOpen, onClose, t, language, templates }: Onb
 
               <div className="space-y-3">
                 {steps.map((step, index) => (
-                  <div 
-                    key={step} 
+                  <div
+                    key={step}
                     className="flex items-center gap-4 rounded-2xl border border-gray-100 bg-gray-50/50 p-4 transition-colors hover:border-[#2dd4bf]/30 hover:bg-[#2dd4bf]/5"
                   >
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#2dd4bf]/10 text-xs font-bold text-[#0d9488]">
@@ -145,16 +140,16 @@ export function OnboardingModal({ isOpen, onClose, t, language, templates }: Onb
                     <button
                       key={template.id}
                       onClick={() => handleApplyTemplate(template.id)}
-                      className="group flex items-center gap-3 rounded-2xl border border-gray-100 p-3 transition-all hover:border-[#2dd4bf] hover:shadow-md hover:translate-y-[-1px]"
+                      className="group flex items-center gap-3 rounded-2xl border border-gray-100 p-3 transition-all hover:translate-y-[-1px] hover:border-[#2dd4bf] hover:shadow-md"
                     >
-                      <div 
+                      <div
                         className="h-10 w-10 rounded-xl shadow-sm"
                         style={{ background: `linear-gradient(135deg, ${template.accentFrom}, ${template.accentTo})` }}
                       />
                       <span className="flex-1 text-left text-sm font-medium text-gray-700 group-hover:text-gray-900">
                         {t(template.nameKey)}
                       </span>
-                      <Check className="h-4 w-4 opacity-0 transition-opacity group-hover:opacity-100 text-[#0d9488]" />
+                      <Check className="h-4 w-4 text-[#0d9488] opacity-0 transition-opacity group-hover:opacity-100" />
                     </button>
                   ))}
                 </div>

@@ -261,6 +261,8 @@ export interface SidebarProps {
   typography: TypographySectionProps;
   decorations: DecorationsSectionProps;
   billing: BillingSectionProps;
+  presetSize: string;
+  onCanvasPresetChange: (value: string) => void;
   canvasWidth: number;
   canvasHeight: number;
   exportFormat: ExportFormat;
@@ -269,6 +271,7 @@ export interface SidebarProps {
   onExportScaleChange: (value: ExportScale) => void;
   onDownload: () => void;
   onShare: () => void;
+  onShareToSocial: (platform: SocialPlatform) => Promise<'clipboard' | 'downloaded' | 'cancelled'>;
   isExporting: boolean;
   isSharing: boolean;
   canShare: boolean;
@@ -315,6 +318,8 @@ export interface CanvasPreviewProps {
   onCustomTextChange: (id: string, updates: Partial<CustomText>) => void;
   logos: LogoConfig[];
   onLogoChange: (id: string, updates: Partial<LogoConfig>) => void;
+  presetSize: string;
+  onCanvasPresetChange: (value: string) => void;
   exportFormat: ExportFormat;
   onExportFormatChange: (value: ExportFormat) => void;
   exportScale: ExportScale;

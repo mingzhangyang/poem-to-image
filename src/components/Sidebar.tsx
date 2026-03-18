@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Download, Palette, Settings, Sparkles, Settings2, X } from 'lucide-react';
-import type { SidebarProps } from '../types';
+import { Download, Palette, Settings, Sparkles, Type, X } from 'lucide-react';
+import type { SidebarProps, SocialPlatform } from '../types';
 import { BackgroundPanel } from './sidebar/BackgroundPanel';
 import { CanvasSizePanel } from './sidebar/CanvasSizePanel';
 import { ContentPanel } from './sidebar/ContentPanel';
@@ -44,12 +44,15 @@ export function Sidebar({
   onExportScaleChange,
   onDownload,
   onShare,
+  onShareToSocial,
   isExporting,
   isSharing,
   canShare,
 }: SidebarProps) {
   const [activeMobilePanel, setActiveMobilePanel] = useState<MobilePanel | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [socialFeedback, setSocialFeedback] = useState<'clipboard' | 'downloaded' | null>(null);
+  const [activeSocialPlatform, setActiveSocialPlatform] = useState<SocialPlatform | null>(null);
   const isMobileControlsOpen = activeMobilePanel !== null;
 
   useEffect(() => {
@@ -83,17 +86,35 @@ export function Sidebar({
   }, [isMobileControlsOpen]);
 
   const openMobilePanel = (panel: MobilePanel) => {
-    if (panel === 'templates') onExpandSection('templates');
-    if (panel === 'content') {
+    if (panel === 'templates') {
+      onExpandSection('templates');
       onExpandSection('canvasSize');
+    }
+    if (panel === 'content') {
       onExpandSection('content');
+      onExpandSection('typography');
     }
     if (panel === 'style') {
       onExpandSection('background');
-      onExpandSection('typography');
       onExpandSection('decorations');
     }
     setActiveMobilePanel(panel);
+  };
+
+  const handleShareToSocial = async (platform: SocialPlatform) => {
+    if (isExporting || isSharing) {
+      return;
+    }
+
+    setActiveSocialPlatform(platform);
+    setSocialFeedback(null);
+    const result = await onShareToSocial(platform);
+    setActiveSocialPlatform(null);
+
+    if (result !== 'cancelled') {
+      setSocialFeedback(result);
+      window.setTimeout(() => setSocialFeedback(null), 5000);
+    }
   };
 
   const mobileButtonClassName = (panel: MobilePanel) => {
@@ -172,6 +193,12 @@ export function Sidebar({
     if (activeMobilePanel === 'templates') {
       return (
         <div className="p-4 sm:p-6 space-y-6 flex-1 overflow-y-auto">
+          <CanvasSizePanel
+            t={t}
+            expanded={expandedSections.canvasSize}
+            onToggle={() => onToggleSection('canvasSize')}
+            canvas={canvas}
+          />
           <TemplatesPanel
             t={t}
             expanded={expandedSections.templates}
@@ -186,17 +213,18 @@ export function Sidebar({
     if (activeMobilePanel === 'content') {
       return (
         <div className="p-4 sm:p-6 space-y-6 flex-1 overflow-y-auto">
-          <CanvasSizePanel
-            t={t}
-            expanded={expandedSections.canvasSize}
-            onToggle={() => onToggleSection('canvasSize')}
-            canvas={canvas}
-          />
           <ContentPanel
             t={t}
             expanded={expandedSections.content}
             onToggle={() => onToggleSection('content')}
             content={content}
+          />
+          <TypographyPanel
+            language={language}
+            t={t}
+            expanded={expandedSections.typography}
+            onToggle={() => onToggleSection('typography')}
+            typography={typography}
           />
         </div>
       );
@@ -212,13 +240,6 @@ export function Sidebar({
             background={background}
             balance={billing.balance}
           />
-          <TypographyPanel
-            language={language}
-            t={t}
-            expanded={expandedSections.typography}
-            onToggle={() => onToggleSection('typography')}
-            typography={typography}
-          />
           <DecorationsPanel
             t={t}
             expanded={expandedSections.decorations}
@@ -233,6 +254,8 @@ export function Sidebar({
       return (
         <SidebarFooter
           t={t}
+          presetSize={canvas.presetSize}
+          onCanvasPresetChange={canvas.onPresetChange}
           canvasWidth={canvasWidth}
           canvasHeight={canvasHeight}
           exportFormat={exportFormat}
@@ -245,6 +268,10 @@ export function Sidebar({
           isSharing={isSharing}
           canShare={canShare}
           title={t('exportAndShare')}
+          showSocialActions
+          onShareToSocial={handleShareToSocial}
+          activeSocialPlatform={activeSocialPlatform}
+          socialFeedback={socialFeedback}
         />
       );
     }
@@ -274,7 +301,7 @@ export function Sidebar({
             aria-expanded={activeMobilePanel === 'content'}
             aria-controls="mobile-controls-drawer"
           >
-            <Settings2 className={`h-4 w-4 ${activeMobilePanel === 'content' ? 'text-white' : 'text-(--app-accent-600)'}`} />
+            <Type className={`h-4 w-4 ${activeMobilePanel === 'content' ? 'text-white' : 'text-(--app-accent-600)'}`} />
             <span className="truncate">{t('content')}</span>
           </button>
           <button
@@ -285,7 +312,7 @@ export function Sidebar({
             aria-controls="mobile-controls-drawer"
           >
             <Palette className={`h-4 w-4 ${activeMobilePanel === 'style' ? 'text-white' : 'text-(--app-accent-600)'}`} />
-            <span className="truncate">{t('background')}</span>
+            <span className="truncate">{t('stylePanelTitle')}</span>
           </button>
           <button
             type="button"

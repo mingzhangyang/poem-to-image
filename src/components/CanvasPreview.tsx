@@ -1,38 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { CheckCircle2, Download, Maximize2, Minus, Plus, Share2, X } from 'lucide-react';
+import { Download, Maximize2, Minus, Plus, X } from 'lucide-react';
 import type { CanvasPreviewProps, SocialPlatform } from '../types';
 import { SidebarFooter } from './sidebar/SidebarFooter';
 import { BackgroundLayer } from './preview/BackgroundLayer';
 import { PoemContent } from './preview/PoemContent';
 import { TransparentGrid } from './preview/TransparentGrid';
 
-const SOCIAL_PLATFORMS: Array<{
-  id: SocialPlatform;
-  label: string;
-  color: string;
-  bg: string;
-  symbol: string;
-}> = [
-  { id: 'wechat',      label: 'WeChat',      color: '#fff', bg: '#07C160', symbol: '微' },
-  { id: 'weibo',       label: '微博',         color: '#fff', bg: '#E6162D', symbol: '博' },
-  { id: 'xiaohongshu', label: '小红书',       color: '#fff', bg: '#FF2442', symbol: '红' },
-  { id: 'twitter',     label: 'X',           color: '#fff', bg: '#000000', symbol: '𝕏' },
-  { id: 'instagram',   label: 'Instagram',   color: '#fff', bg: '#C13584', symbol: 'In' },
-  { id: 'facebook',    label: 'Facebook',    color: '#fff', bg: '#1877F2', symbol: 'f' },
-];
-
 const ZOOM_MIN = 0.7;
 const ZOOM_MAX = 2.0;
 const ZOOM_STEP = 0.1;
-
-const exportFormatLabelKeys = {
-  png: 'exportFormatPng',
-  jpg: 'exportFormatJpg',
-  webp: 'exportFormatWebp',
-} as const;
-
-type OutputModalMode = 'save' | 'share';
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -79,6 +56,8 @@ export function CanvasPreview({
   onCustomTextChange,
   logos,
   onLogoChange,
+  presetSize,
+  onCanvasPresetChange,
   exportFormat,
   onExportFormatChange,
   exportScale,
@@ -102,8 +81,8 @@ export function CanvasPreview({
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDraggingPreview, setIsDraggingPreview] = useState(false);
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
-  const [activeOutputModal, setActiveOutputModal] = useState<OutputModalMode | null>(null);
-  const [socialFeedback, setSocialFeedback] = useState<{ result: 'clipboard' | 'downloaded'; platform: SocialPlatform } | null>(null);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [socialFeedback, setSocialFeedback] = useState<'clipboard' | 'downloaded' | null>(null);
   const [activeSocialPlatform, setActiveSocialPlatform] = useState<SocialPlatform | null>(null);
   const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -124,7 +103,6 @@ export function CanvasPreview({
   const previewScalePercent = Math.round(effectiveScale * 100);
   const scaledWidth = canvasWidth * effectiveScale;
   const scaledHeight = canvasHeight * effectiveScale;
-  const exportSummary = `${t(exportFormatLabelKeys[exportFormat])} · ${canvasWidth * exportScale} x ${canvasHeight * exportScale} px`;
   const isOutputBusy = isExporting || isSharing;
   const maxPanX = Math.max((scaledWidth - viewportSize.width) / 2, 0);
   const maxPanY = Math.max((scaledHeight - viewportSize.height) / 2, 0);
@@ -167,14 +145,14 @@ export function CanvasPreview({
   }, [maxPanX, maxPanY]);
 
   useEffect(() => {
-    if (!activeOutputModal) {
+    if (!isExportModalOpen) {
       return;
     }
 
     const previousOverflow = document.body.style.overflow;
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        setActiveOutputModal(null);
+        setIsExportModalOpen(false);
       }
     };
 
@@ -185,7 +163,7 @@ export function CanvasPreview({
       document.body.style.overflow = previousOverflow;
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [activeOutputModal]);
+  }, [isExportModalOpen]);
 
   // Ctrl+scroll (or Cmd+scroll on Mac) wheel zoom — non-passive so we can preventDefault
   useEffect(() => {
@@ -210,31 +188,23 @@ export function CanvasPreview({
     onPreviewZoomReset();
   };
 
-  const handleOpenSaveModal = () => {
-    if (isOutputBusy) {
-      return;
-    }
-
-    setActiveOutputModal('save');
-  };
-
-  const handleOpenShareModal = () => {
+  const handleOpenExportModal = () => {
     if (isOutputBusy) {
       return;
     }
 
     setSocialFeedback(null);
-    setActiveOutputModal('share');
+    setIsExportModalOpen(true);
   };
 
   const handleSaveFromModal = () => {
     onDownload();
-    setActiveOutputModal(null);
+    setIsExportModalOpen(false);
   };
 
   const handleShareFromModal = () => {
     onShare();
-    setActiveOutputModal(null);
+    setIsExportModalOpen(false);
   };
 
   const handleShareToSocial = async (platform: SocialPlatform) => {
@@ -245,13 +215,10 @@ export function CanvasPreview({
     const result = await onShareToSocial(platform);
     setActiveSocialPlatform(null);
     if (result !== 'cancelled') {
-      setSocialFeedback({ result, platform });
+      setSocialFeedback(result);
       feedbackTimeoutRef.current = setTimeout(() => setSocialFeedback(null), 5000);
     }
   };
-
-  const modalTitle = activeOutputModal === 'save' ? t('saveImageModalTitle') : t('shareImageModalTitle');
-  const modalDescription = activeOutputModal === 'save' ? t('saveImageModalDescription') : t('shareImageModalDescription');
 
   const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     if (event.defaultPrevented) {
@@ -381,27 +348,17 @@ export function CanvasPreview({
       <div className="hidden md:flex absolute bottom-6 right-6 z-20 items-center gap-3 rounded-[1.6rem] border border-white/70 bg-[rgba(255,253,249,0.86)] p-3 shadow-[0_22px_56px_var(--app-accent-shadow)] backdrop-blur-md">
         <button
           type="button"
-          onClick={handleOpenSaveModal}
+          onClick={handleOpenExportModal}
           disabled={isOutputBusy}
           className="app-button-primary rounded-2xl px-4 py-3 text-sm font-medium disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           <Download className="h-4 w-4" />
-          {t('saveImage')}
-        </button>
-
-        <button
-          type="button"
-          onClick={handleOpenShareModal}
-          disabled={isOutputBusy}
-          className="app-button-secondary rounded-2xl px-4 py-3 text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-        >
-          <Share2 className="h-4 w-4" />
-          {t('shareImage')}
+          {t('exportAndShare')}
         </button>
       </div>
 
       <AnimatePresence>
-        {activeOutputModal ? (
+        {isExportModalOpen ? (
           <>
             <motion.button
               type="button"
@@ -409,7 +366,7 @@ export function CanvasPreview({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setActiveOutputModal(null)}
+              onClick={() => setIsExportModalOpen(false)}
               aria-label={t('closeControls')}
             />
 
@@ -422,15 +379,14 @@ export function CanvasPreview({
               <div className="w-full max-w-md overflow-hidden rounded-[2rem] border border-white/75 bg-[linear-gradient(180deg,rgba(255,253,249,0.98),rgba(255,250,242,0.96))] shadow-[0_28px_80px_var(--app-accent-shadow)]">
                 <div className="flex items-start justify-between gap-4 border-b border-[rgba(34,48,52,0.06)] px-6 py-5">
                   <div className="min-w-0">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-(--app-accent-500)">{modalTitle}</p>
-                    <p className="mt-2 text-sm text-gray-600">{modalDescription}</p>
-                    <p className="mt-2 text-sm font-medium text-(--app-accent-900)">{exportSummary}</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-(--app-accent-500)">{t('exportAndShare')}</p>
+                    <p className="mt-2 text-sm text-gray-600">{t('exportTargetHint')}</p>
                   </div>
 
                   <button
                     type="button"
-                    onClick={() => setActiveOutputModal(null)}
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[rgba(34,48,52,0.08)] bg-white/80 text-(--app-accent-700) transition-colors hover:bg-(--app-accent-50)"
+                    onClick={() => setIsExportModalOpen(false)}
+                    className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[rgba(34,48,52,0.08)] bg-white/80 p-0 text-(--app-accent-700) transition-colors hover:bg-(--app-accent-50)"
                     aria-label={t('closeControls')}
                   >
                     <X className="h-4 w-4" />
@@ -438,61 +394,10 @@ export function CanvasPreview({
                 </div>
 
                 <div className="px-6 py-6">
-                  {activeOutputModal === 'share' ? (
-                    <div className="mb-5">
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-(--app-accent-500) mb-3">{t('shareToSocialTitle')}</p>
-                      <div className="grid grid-cols-3 gap-2">
-                        {SOCIAL_PLATFORMS.map((platform) => {
-                          const isActive = activeSocialPlatform === platform.id;
-                          return (
-                            <button
-                              key={platform.id}
-                              type="button"
-                              onClick={() => handleShareToSocial(platform.id)}
-                              disabled={isOutputBusy}
-                              className="flex flex-col items-center gap-2 rounded-2xl border border-[rgba(34,48,52,0.08)] bg-white/70 px-2 py-3 text-center transition-all hover:bg-white hover:shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
-                            >
-                              <span
-                                className="flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold"
-                                style={{ backgroundColor: platform.bg, color: platform.color }}
-                              >
-                                {isActive ? (
-                                  <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-                                  </svg>
-                                ) : platform.symbol}
-                              </span>
-                              <span className="text-[11px] font-medium text-gray-700 leading-tight">{platform.label}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      <AnimatePresence>
-                        {socialFeedback ? (
-                          <motion.div
-                            className="mt-3 flex items-center gap-2 rounded-xl bg-(--app-accent-50) px-3 py-2.5 text-xs text-(--app-accent-800)"
-                            initial={{ opacity: 0, y: -6 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0 }}
-                          >
-                            <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-(--app-accent-600)" />
-                            <span>{socialFeedback.result === 'clipboard' ? t('shareImageCopiedHint') : t('shareImageDownloadedHint')}</span>
-                          </motion.div>
-                        ) : null}
-                      </AnimatePresence>
-
-                      <div className="mt-5 flex items-center gap-3">
-                        <div className="h-px flex-1 bg-[rgba(34,48,52,0.08)]" />
-                        <span className="text-[11px] text-gray-400">{t('shareSystemDivider')}</span>
-                        <div className="h-px flex-1 bg-[rgba(34,48,52,0.08)]" />
-                      </div>
-                    </div>
-                  ) : null}
-
                   <SidebarFooter
                     t={t}
+                    presetSize={presetSize}
+                    onCanvasPresetChange={onCanvasPresetChange}
                     canvasWidth={canvasWidth}
                     canvasHeight={canvasHeight}
                     exportFormat={exportFormat}
@@ -504,7 +409,11 @@ export function CanvasPreview({
                     isExporting={isExporting}
                     isSharing={isSharing}
                     canShare={canShare}
-                    actionMode={activeOutputModal}
+                    showExportTargets={false}
+                    showSocialActions
+                    onShareToSocial={handleShareToSocial}
+                    activeSocialPlatform={activeSocialPlatform}
+                    socialFeedback={socialFeedback}
                     surface="modal"
                   />
                 </div>

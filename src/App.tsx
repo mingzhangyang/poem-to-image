@@ -40,7 +40,7 @@ export default function App() {
   const [previewZoom, setPreviewZoom] = useState(1);
   const initialLanguageRef = useRef<Language>(readPreferredLanguage());
   const [language, setLanguage] = useState<Language>(initialLanguageRef.current);
-  const t = (key: TranslationKey) => translations[language][key];
+  const t = (key: TranslationKey) => translations[language][key] ?? translations.en[key];
 
   const handleLanguageChange = useCallback((newLang: Language) => {
     setText(prev => {

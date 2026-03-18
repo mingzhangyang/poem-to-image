@@ -1,5 +1,5 @@
-import { Download, Loader2, Share2 } from 'lucide-react';
-import type { ExportFormat, ExportScale, TranslateFn } from '../../types';
+import { CheckCircle2, Download, Loader2, Share2 } from 'lucide-react';
+import type { ExportFormat, ExportScale, SocialPlatform, TranslateFn } from '../../types';
 
 const exportFormatLabelKeys = {
   png: 'exportFormatPng',
@@ -9,6 +9,8 @@ const exportFormatLabelKeys = {
 
 interface SidebarFooterProps {
   t: TranslateFn;
+  presetSize: string;
+  onCanvasPresetChange: (value: string) => void;
   canvasWidth: number;
   canvasHeight: number;
   exportFormat: ExportFormat;
@@ -24,6 +26,11 @@ interface SidebarFooterProps {
   title?: string;
   actionMode?: 'both' | 'save' | 'share';
   surface?: 'sidebar' | 'modal';
+  showExportTargets?: boolean;
+  showSocialActions?: boolean;
+  onShareToSocial?: (platform: SocialPlatform) => void | Promise<void>;
+  activeSocialPlatform?: SocialPlatform | null;
+  socialFeedback?: 'clipboard' | 'downloaded' | null;
 }
 
 const exportFormatOptions: Array<{ value: ExportFormat; labelKey: 'exportFormatPng' | 'exportFormatJpg' | 'exportFormatWebp' }> = [
@@ -38,6 +45,35 @@ const exportScaleOptions: Array<{ value: ExportScale; labelKey: 'exportQualitySt
   { value: 3, labelKey: 'exportQualityUltraHd' },
 ];
 
+const exportTargetPresets: Array<{
+  id: 'square-post' | 'portrait-post' | 'story' | 'landscape' | 'print';
+  labelKey: 'exportTargetSquare' | 'exportTargetPortrait' | 'exportTargetStory' | 'exportTargetLandscape' | 'exportTargetPrint';
+  presetSize: string;
+  format: ExportFormat;
+  scale: ExportScale;
+}> = [
+  { id: 'square-post', labelKey: 'exportTargetSquare', presetSize: '1080x1080', format: 'jpg', scale: 2 },
+  { id: 'portrait-post', labelKey: 'exportTargetPortrait', presetSize: '1080x1350', format: 'jpg', scale: 2 },
+  { id: 'story', labelKey: 'exportTargetStory', presetSize: '1080x1920', format: 'jpg', scale: 2 },
+  { id: 'landscape', labelKey: 'exportTargetLandscape', presetSize: '1920x1080', format: 'jpg', scale: 2 },
+  { id: 'print', labelKey: 'exportTargetPrint', presetSize: '1240x1754', format: 'png', scale: 3 },
+];
+
+const socialPlatforms: Array<{
+  id: SocialPlatform;
+  label: string;
+  color: string;
+  bg: string;
+  symbol: string;
+}> = [
+  { id: 'wechat', label: 'WeChat', color: '#fff', bg: '#07C160', symbol: '微' },
+  { id: 'weibo', label: '微博', color: '#fff', bg: '#E6162D', symbol: '博' },
+  { id: 'xiaohongshu', label: '小红书', color: '#fff', bg: '#FF2442', symbol: '红' },
+  { id: 'twitter', label: 'X', color: '#fff', bg: '#000000', symbol: 'X' },
+  { id: 'instagram', label: 'Instagram', color: '#fff', bg: '#C13584', symbol: 'In' },
+  { id: 'facebook', label: 'Facebook', color: '#fff', bg: '#1877F2', symbol: 'f' },
+];
+
 function getExportDimensionsLabel(canvasWidth: number, canvasHeight: number, scale: ExportScale) {
   return `${canvasWidth * scale} x ${canvasHeight * scale} px`;
 }
@@ -48,6 +84,8 @@ function getExportSummaryLabel(t: TranslateFn, canvasWidth: number, canvasHeight
 
 export function SidebarFooter({
   t,
+  presetSize,
+  onCanvasPresetChange,
   canvasWidth,
   canvasHeight,
   exportFormat,
@@ -63,6 +101,11 @@ export function SidebarFooter({
   title,
   actionMode = 'both',
   surface = 'sidebar',
+  showExportTargets = true,
+  showSocialActions = false,
+  onShareToSocial,
+  activeSocialPlatform = null,
+  socialFeedback = null,
 }: SidebarFooterProps) {
   const isBusy = isExporting || isSharing;
   const shouldShowSaveAction = actionMode === 'both' || actionMode === 'save';
@@ -71,6 +114,22 @@ export function SidebarFooter({
     ? 'p-0'
     : 'px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-6 border-t border-[rgba(34,48,52,0.06)] bg-[linear-gradient(180deg,rgba(255,253,249,0.86),rgba(255,250,242,0.96))] md:sticky md:bottom-0';
   const actionGridClassName = shouldShowSaveAction && shouldShowShareAction ? 'grid grid-cols-2 gap-3' : 'grid grid-cols-1 gap-3';
+  const selectedTargetId = exportTargetPresets.find((preset) => (
+    preset.presetSize === presetSize &&
+    preset.format === exportFormat &&
+    preset.scale === exportScale
+  ))?.id ?? null;
+
+  const handleExportTargetSelect = (targetId: (typeof exportTargetPresets)[number]['id']) => {
+    const target = exportTargetPresets.find((preset) => preset.id === targetId);
+    if (!target || isBusy) {
+      return;
+    }
+
+    onCanvasPresetChange(target.presetSize);
+    onExportFormatChange(target.format);
+    onExportScaleChange(target.scale);
+  };
 
   return (
     <div className={containerClassName}>
@@ -78,6 +137,84 @@ export function SidebarFooter({
         <div className="mb-4">
           <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-(--app-accent-500)">{title}</p>
           <p className="mt-2 text-sm text-gray-600">{getExportSummaryLabel(t, canvasWidth, canvasHeight, exportFormat, exportScale)}</p>
+        </div>
+      ) : null}
+
+      {showExportTargets ? (
+        <div className="mb-4">
+          <span className="mb-2 block text-sm font-medium text-gray-700">{t('exportTarget')}</span>
+          <p className="mb-3 text-xs leading-5 text-gray-500">{t('exportTargetHint')}</p>
+          <div className="grid grid-cols-2 gap-2">
+            {exportTargetPresets.map((target) => {
+              const isActive = selectedTargetId === target.id;
+
+              return (
+                <button
+                  key={target.id}
+                  type="button"
+                  onClick={() => handleExportTargetSelect(target.id)}
+                  disabled={isBusy}
+                  className={`rounded-2xl border px-3 py-3 text-left transition-all disabled:cursor-not-allowed disabled:opacity-60 ${
+                    isActive
+                      ? 'border-(--app-accent-300) bg-(--app-accent-50) text-(--app-accent-800) shadow-[0_10px_24px_var(--app-accent-shadow)]'
+                      : 'border-[rgba(34,48,52,0.08)] bg-white/75 text-gray-700 hover:border-(--app-accent-200) hover:bg-white'
+                  }`}
+                >
+                  <div className="text-sm font-semibold">{t(target.labelKey)}</div>
+                  <div className="mt-1 text-[11px] text-gray-500">
+                    {target.presetSize} · {target.format.toUpperCase()} · {target.scale}x
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+
+      {showSocialActions && onShareToSocial ? (
+        <div className="mb-5">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-(--app-accent-500)">{t('shareToSocialTitle')}</p>
+          <div className="grid grid-cols-3 gap-2">
+            {socialPlatforms.map((platform) => {
+              const isActive = activeSocialPlatform === platform.id;
+
+              return (
+                <button
+                  key={platform.id}
+                  type="button"
+                  onClick={() => void onShareToSocial(platform.id)}
+                  disabled={isBusy}
+                  className="flex flex-col items-center gap-2 rounded-2xl border border-[rgba(34,48,52,0.08)] bg-white/70 px-2 py-3 text-center transition-all hover:bg-white hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <span
+                    className="flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold"
+                    style={{ backgroundColor: platform.bg, color: platform.color }}
+                  >
+                    {isActive ? (
+                      <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                      </svg>
+                    ) : platform.symbol}
+                  </span>
+                  <span className="text-[11px] font-medium leading-tight text-gray-700">{platform.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {socialFeedback ? (
+            <div className="mt-3 flex items-center gap-2 rounded-xl bg-(--app-accent-50) px-3 py-2.5 text-xs text-(--app-accent-800)">
+              <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-(--app-accent-600)" />
+              <span>{socialFeedback === 'clipboard' ? t('shareImageCopiedHint') : t('shareImageDownloadedHint')}</span>
+            </div>
+          ) : null}
+
+          <div className="mt-5 flex items-center gap-3">
+            <div className="h-px flex-1 bg-[rgba(34,48,52,0.08)]" />
+            <span className="text-[11px] text-gray-400">{t('shareSystemDivider')}</span>
+            <div className="h-px flex-1 bg-[rgba(34,48,52,0.08)]" />
+          </div>
         </div>
       ) : null}
 
@@ -114,7 +251,8 @@ export function SidebarFooter({
       </label>
 
       {showActionButtons ? (
-        <div className={actionGridClassName}>
+        <div className="space-y-2">
+          <div className={actionGridClassName}>
           {shouldShowSaveAction ? (
             <button
               onClick={onDownload}
@@ -153,6 +291,11 @@ export function SidebarFooter({
                 </>
               )}
             </button>
+          ) : null}
+          </div>
+
+          {!canShare && shouldShowShareAction ? (
+            <p className="text-xs leading-5 text-gray-500">{t('shareUnavailableHint')}</p>
           ) : null}
         </div>
       ) : null}
