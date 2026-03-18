@@ -184,17 +184,10 @@ function drawBorder(ctx: CanvasRenderingContext2D, rect: Rect, borderStyle: Bord
 
   if (borderStyle === 'brush' || borderStyle === 'ink') {
     const strokes = createOrganicBorderStrokes(rect.width, rect.height, safeBorderWidth, borderStyle);
-    const baseStrokeWidth = Math.max(1, safeBorderWidth * (borderStyle === 'ink' ? 0.22 : 0.16));
 
     ctx.translate(rect.x, rect.y);
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-
-    ctx.save();
-    ctx.globalAlpha = borderStyle === 'ink' ? 0.28 : 0.18;
-    ctx.lineWidth = baseStrokeWidth;
-    ctx.strokeRect(1, 1, rect.width - 2, rect.height - 2);
-    ctx.restore();
 
     strokes.forEach((stroke) => {
       ctx.save();

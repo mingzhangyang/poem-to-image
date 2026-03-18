@@ -72,7 +72,6 @@ export function PoemContent({
   const [livePosition, setLivePosition] = useState(poemPosition);
   const isDraggingRef = useRef(false);
   const safeBorderWidth = Number.isFinite(borderWidth) ? Math.max(2, borderWidth) : 4;
-  const organicBaseStrokeWidth = Math.max(1, safeBorderWidth * (borderStyle === 'ink' ? 0.22 : 0.16));
   const borderPadding = showBorder ? `${getBorderPadding(safeBorderWidth, borderStyle)}px` : '0';
   const organicBorderStrokes = showBorder && (borderStyle === 'brush' || borderStyle === 'ink')
     ? createOrganicBorderStrokes(100, 100, safeBorderWidth, borderStyle)
@@ -160,17 +159,6 @@ export function PoemContent({
           preserveAspectRatio="none"
           aria-hidden="true"
         >
-          <rect
-            x="1"
-            y="1"
-            width="98"
-            height="98"
-            fill="none"
-            stroke={borderColor}
-            strokeWidth={organicBaseStrokeWidth}
-            opacity={borderStyle === 'ink' ? 0.28 : 0.18}
-            vectorEffect="non-scaling-stroke"
-          />
           {organicBorderStrokes.map((stroke, index) => (
             <path
               key={`${stroke.path}-${index}`}

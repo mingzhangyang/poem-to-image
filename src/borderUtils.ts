@@ -6,6 +6,11 @@ interface OrganicBorderStroke {
   width: number;
 }
 
+interface Point {
+  x: number;
+  y: number;
+}
+
 function toFiniteNumber(value: number, fallback: number) {
   return Number.isFinite(value) ? value : fallback;
 }
@@ -19,7 +24,60 @@ function normalizeDimension(value: number, fallback: number) {
 }
 
 function wave(t: number, roughness: number, seed: number) {
-  return Math.sin(t * Math.PI * 2 + seed) * roughness + Math.sin(t * Math.PI * 5 + seed * 1.37) * roughness * 0.45;
+  return Math.sin(t * Math.PI * 2 + seed) * roughness * 0.64
+    + Math.sin(t * Math.PI * 4 + seed * 1.21) * roughness * 0.18
+    + Math.cos(t * Math.PI * 6 + seed * 0.73) * roughness * 0.08;
+}
+
+function appendHandDrawnEdgePoints(
+  points: Point[],
+  startX: number,
+  startY: number,
+  endX: number,
+  endY: number,
+  roughness: number,
+  seed: number,
+  segments: number,
+  offsetAxis: 'x' | 'y',
+) {
+  const startIndex = points.length === 0 ? 0 : 1;
+
+  for (let index = startIndex; index <= segments; index += 1) {
+    const t = index / segments;
+    const x = startX + (endX - startX) * t;
+    const y = startY + (endY - startY) * t;
+    const offset = wave(t, roughness, seed);
+
+    points.push({
+      x: offsetAxis === 'x' ? x + offset : x,
+      y: offsetAxis === 'y' ? y + offset : y,
+    });
+  }
+}
+
+function toSmoothClosedPath(points: Point[]) {
+  if (points.length < 2) {
+    return '';
+  }
+
+  const lastPoint = points[points.length - 1];
+  const firstPoint = points[0];
+  const startX = (lastPoint.x + firstPoint.x) / 2;
+  const startY = (lastPoint.y + firstPoint.y) / 2;
+  const pathParts = [`M ${startX.toFixed(2)} ${startY.toFixed(2)}`];
+
+  for (let index = 0; index < points.length; index += 1) {
+    const currentPoint = points[index];
+    const nextPoint = points[(index + 1) % points.length];
+    const midpointX = (currentPoint.x + nextPoint.x) / 2;
+    const midpointY = (currentPoint.y + nextPoint.y) / 2;
+    pathParts.push(
+      `Q ${currentPoint.x.toFixed(2)} ${currentPoint.y.toFixed(2)} ${midpointX.toFixed(2)} ${midpointY.toFixed(2)}`,
+    );
+  }
+
+  pathParts.push('Z');
+  return pathParts.join(' ');
 }
 
 function buildHandDrawnPath(width: number, height: number, inset: number, roughness: number, seed: number, segments = 18) {
@@ -28,44 +86,22 @@ function buildHandDrawnPath(width: number, height: number, inset: number, roughn
   const safeInset = Math.max(0, toFiniteNumber(inset, 0));
   const safeRoughness = Math.max(0, toFiniteNumber(roughness, 1));
   const safeSeed = toFiniteNumber(seed, 0);
-  const safeSegments = Math.max(8, Math.round(toFiniteNumber(segments, 18)));
+  const safeSegments = Math.max(10, Math.round(toFiniteNumber(segments, 18)));
   const left = safeInset;
   const top = safeInset;
-  const right = safeWidth - safeInset;
-  const bottom = safeHeight - safeInset;
-  const pathParts: string[] = [];
+  const right = Math.max(left + 1, safeWidth - safeInset);
+  const bottom = Math.max(top + 1, safeHeight - safeInset);
+  const points: Point[] = [];
 
-  for (let index = 0; index <= safeSegments; index += 1) {
-    const t = index / safeSegments;
-    const x = left + (right - left) * t;
-    const y = top + wave(t, safeRoughness, safeSeed + 0.3);
-    pathParts.push(`${index === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`);
-  }
+  appendHandDrawnEdgePoints(points, left, top, right, top, safeRoughness * 0.72, safeSeed + 0.25, safeSegments, 'y');
+  appendHandDrawnEdgePoints(points, right, top, right, bottom, safeRoughness * 0.58, safeSeed + 1.1, safeSegments, 'x');
+  appendHandDrawnEdgePoints(points, right, bottom, left, bottom, safeRoughness * 0.76, safeSeed + 2.05, safeSegments, 'y');
+  appendHandDrawnEdgePoints(points, left, bottom, left, top, safeRoughness * 0.62, safeSeed + 3.15, safeSegments, 'x');
 
-  for (let index = 1; index <= safeSegments; index += 1) {
-    const t = index / safeSegments;
-    const x = right + wave(t, safeRoughness * 0.9, safeSeed + 1.1);
-    const y = top + (bottom - top) * t;
-    pathParts.push(`L ${x.toFixed(2)} ${y.toFixed(2)}`);
-  }
-
-  for (let index = 1; index <= safeSegments; index += 1) {
-    const t = index / safeSegments;
-    const x = right - (right - left) * t;
-    const y = bottom + wave(t, safeRoughness * 1.1, safeSeed + 2.2);
-    pathParts.push(`L ${x.toFixed(2)} ${y.toFixed(2)}`);
-  }
-
-  for (let index = 1; index <= safeSegments; index += 1) {
-    const t = index / safeSegments;
-    const x = left + wave(t, safeRoughness * 0.95, safeSeed + 3.4);
-    const y = bottom - (bottom - top) * t;
-    pathParts.push(`L ${x.toFixed(2)} ${y.toFixed(2)}`);
-  }
-
-  pathParts.push('Z');
-  return pathParts.join(' ');
+  return toSmoothClosedPath(points);
 }
+
+// No longer needed: base rect removed for organic styles
 
 export function getBorderPadding(borderWidth: number, borderStyle: BorderStyle) {
   const safeBorderWidth = normalizeBorderWidth(borderWidth);
@@ -85,33 +121,29 @@ export function createOrganicBorderStrokes(width: number, height: number, border
   if (borderStyle === 'ink') {
     return [
       {
-        path: buildHandDrawnPath(safeWidth, safeHeight, safeBorderWidth * 0.55, Math.max(1.5, safeBorderWidth * 0.62), 0.35, 24),
-        opacity: 0.96,
-        width: Math.max(1.8, safeBorderWidth * 0.55),
+        path: buildHandDrawnPath(safeWidth, safeHeight, safeBorderWidth * 1.08, Math.max(0.55, safeBorderWidth * 0.18), 0.35, 28),
+        opacity: 0.38,
+        width: Math.max(1.15, safeBorderWidth * 0.28),
       },
       {
-        path: buildHandDrawnPath(safeWidth, safeHeight, safeBorderWidth * 1.15, Math.max(1.1, safeBorderWidth * 0.38), 1.4, 22),
-        opacity: 0.72,
-        width: Math.max(1.2, safeBorderWidth * 0.33),
-      },
-      {
-        path: buildHandDrawnPath(safeWidth, safeHeight, safeBorderWidth * 1.9, Math.max(0.8, safeBorderWidth * 0.22), 2.75, 20),
-        opacity: 0.32,
-        width: Math.max(0.9, safeBorderWidth * 0.16),
+        path: buildHandDrawnPath(safeWidth, safeHeight, safeBorderWidth * 1.55, Math.max(0.18, safeBorderWidth * 0.05), 2.1, 20),
+        opacity: 0.09,
+        width: Math.max(0.7, safeBorderWidth * 0.09),
       },
     ];
   }
 
+  // handwritten: 1 main + 1 faint ink layer
   return [
     {
-      path: buildHandDrawnPath(safeWidth, safeHeight, safeBorderWidth * 0.75, Math.max(0.9, safeBorderWidth * 0.42), 0.8),
-      opacity: 0.92,
-      width: Math.max(1.4, safeBorderWidth * 0.42),
+      path: buildHandDrawnPath(safeWidth, safeHeight, safeBorderWidth * 1.02, Math.max(0.45, safeBorderWidth * 0.13), 0.8, 26),
+      opacity: 0.32,
+      width: Math.max(1.05, safeBorderWidth * 0.22),
     },
     {
-      path: buildHandDrawnPath(safeWidth, safeHeight, safeBorderWidth * 1.55, Math.max(0.65, safeBorderWidth * 0.24), 2.1),
-      opacity: 0.58,
-      width: Math.max(1, safeBorderWidth * 0.26),
+      path: buildHandDrawnPath(safeWidth, safeHeight, safeBorderWidth * 1.45, Math.max(0.13, safeBorderWidth * 0.04), 2.1, 18),
+      opacity: 0.07,
+      width: Math.max(0.6, safeBorderWidth * 0.07),
     },
   ];
 }
