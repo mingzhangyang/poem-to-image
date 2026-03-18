@@ -1,5 +1,18 @@
 import { createOrganicBorderStrokes, getDoubleBorderMetrics, isOrganicBorderStyle } from '../borderUtils';
 import { getCanvasPositioningRect } from '../positioningRect';
+import {
+  createCanvasStampGradient,
+  getStampAppearance,
+  getBrushStampSkew,
+  getStampCanvasRadii,
+  getStampCharacters,
+  getStampTextFontSize,
+  getStampTextLetterSpacing,
+  getStampTextPlacements,
+  STAMP_EDGE_WEAR_BLOBS,
+  STAMP_TEXTURE_BLOBS,
+  type StampTextureBlob,
+} from '../stampRendering';
 import type { BorderStyle, CustomText, ExportScale, LogoConfig, PositionedElement, StampConfig, TextAlign, WritingMode } from '../types';
 
 interface CanvasExportBackground {
@@ -383,72 +396,57 @@ function drawHorizontalLine(ctx: CanvasRenderingContext2D, text: string, startX:
   });
 }
 
-function createStampFill(ctx: CanvasRenderingContext2D, stamp: StampConfig) {
-  const half = stamp.size / 2;
+function drawStampBlob(
+  ctx: CanvasRenderingContext2D,
+  stamp: StampConfig,
+  blob: StampTextureBlob,
+  appearance: ReturnType<typeof getStampAppearance>,
+) {
+  const radiusX = stamp.size * blob.radius * blob.scaleX;
+  const radiusY = stamp.size * blob.radius * blob.scaleY;
 
-  if (stamp.style === 'round') {
-    const gradient = ctx.createRadialGradient(-half * 0.22, -half * 0.2, half * 0.12, 0, 0, half);
-    gradient.addColorStop(0, 'rgba(255, 255, 255, 0.48)');
-    gradient.addColorStop(0.32, 'rgba(255, 255, 255, 0.1)');
-    gradient.addColorStop(0.68, 'rgba(185, 28, 28, 0.14)');
-    gradient.addColorStop(1, 'rgba(254, 242, 242, 0.16)');
-    return gradient;
+  ctx.save();
+  ctx.translate((blob.x - 0.5) * stamp.size, (blob.y - 0.5) * stamp.size);
+  ctx.rotate((blob.rotationDeg * Math.PI) / 180);
+  ctx.filter = `blur(${Math.max(0.8, stamp.size * blob.blur)}px)`;
+
+  if (blob.tint === 'void' && appearance.isFilled) {
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.fillStyle = appearance.textureColors[blob.tint];
+    ctx.globalAlpha = Math.min(0.85, blob.opacity * 1.8);
+  } else {
+    ctx.fillStyle = appearance.textureColors[blob.tint];
+    ctx.globalAlpha = blob.opacity * (appearance.isFilled ? 1 : 0.95);
   }
 
-  const gradient = ctx.createLinearGradient(-half, -half, half, half);
-
-  if (stamp.style === 'brush') {
-    gradient.addColorStop(0, 'rgba(185, 28, 28, 0.18)');
-    gradient.addColorStop(1, 'rgba(153, 27, 27, 0.28)');
-    return gradient;
-  }
-
-  gradient.addColorStop(0, 'rgba(185, 28, 28, 0.1)');
-  gradient.addColorStop(1, 'rgba(153, 27, 27, 0.22)');
-  return gradient;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, radiusX, radiusY, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
 }
 
-function drawStampSurfaceDetails(ctx: CanvasRenderingContext2D, stamp: StampConfig) {
-  const half = stamp.size / 2;
+function fillStampShapeWithGradient(ctx: CanvasRenderingContext2D, stamp: StampConfig, spec: ReturnType<typeof getStampAppearance>['baseFill']) {
+  ctx.fillStyle = createCanvasStampGradient(ctx, spec, stamp.size);
+  ctx.fillRect(-stamp.size / 2, -stamp.size / 2, stamp.size, stamp.size);
+}
 
+function drawStampSurfaceLayers(ctx: CanvasRenderingContext2D, stamp: StampConfig, appearance: ReturnType<typeof getStampAppearance>) {
   ctx.save();
   drawStampShape(ctx, stamp);
   ctx.clip();
 
-  ctx.fillStyle = createStampFill(ctx, stamp);
-  ctx.fillRect(-half, -half, stamp.size, stamp.size);
+  appearance.surfaceLayers.forEach((spec) => {
+    fillStampShapeWithGradient(ctx, stamp, spec);
+  });
 
-  const highlight = ctx.createRadialGradient(-half * 0.38, -half * 0.4, half * 0.06, -half * 0.38, -half * 0.4, half * 0.9);
-  highlight.addColorStop(0, stamp.style === 'brush' ? 'rgba(255, 255, 255, 0.4)' : 'rgba(255, 255, 255, 0.52)');
-  highlight.addColorStop(0.3, 'rgba(255, 255, 255, 0.16)');
-  highlight.addColorStop(1, 'rgba(255, 255, 255, 0)');
-  ctx.fillStyle = highlight;
-  ctx.fillRect(-half, -half, stamp.size, stamp.size);
+  STAMP_TEXTURE_BLOBS.forEach((blob) => {
+    drawStampBlob(ctx, stamp, blob, appearance);
+  });
 
-  const innerGlow = ctx.createRadialGradient(0, -half * 0.1, half * 0.06, 0, -half * 0.1, half * 0.78);
-  innerGlow.addColorStop(0, 'rgba(220, 38, 38, 0.14)');
-  innerGlow.addColorStop(1, 'rgba(220, 38, 38, 0)');
-  ctx.fillStyle = innerGlow;
-  ctx.fillRect(-half, -half, stamp.size, stamp.size);
+  STAMP_EDGE_WEAR_BLOBS.forEach((blob) => {
+    drawStampBlob(ctx, stamp, blob, appearance);
+  });
 
-  ctx.restore();
-}
-
-function drawStampInnerBorder(ctx: CanvasRenderingContext2D, stamp: StampConfig, inset: number, strokeStyle: string, lineWidth: number) {
-  const innerStamp = {
-    ...stamp,
-    size: Math.max(1, stamp.size - inset * 2),
-  };
-
-  if (innerStamp.size <= 0) {
-    return;
-  }
-
-  ctx.save();
-  ctx.strokeStyle = strokeStyle;
-  ctx.lineWidth = lineWidth;
-  drawStampShape(ctx, innerStamp);
-  ctx.stroke();
   ctx.restore();
 }
 
@@ -778,63 +776,49 @@ function drawStampShape(ctx: CanvasRenderingContext2D, stamp: StampConfig) {
 
   if (stamp.style === 'round') {
     ctx.arc(0, 0, half, 0, Math.PI * 2);
-  } else if (stamp.style === 'brush') {
-    ctx.roundRect(-half, -half, stamp.size, stamp.size, [stamp.size * 0.28, stamp.size * 0.2, stamp.size * 0.26, stamp.size * 0.18]);
   } else {
-    ctx.roundRect(-half, -half, stamp.size, stamp.size, stamp.size * 0.18);
+    ctx.roundRect(-half, -half, stamp.size, stamp.size, getStampCanvasRadii(stamp.style, stamp.size));
   }
 
   ctx.closePath();
 }
 
 function drawStampText(ctx: CanvasRenderingContext2D, stamp: StampConfig) {
-  const characters = Array.from(stamp.text || '印').slice(0, 4);
-  const fontSize = Math.max(18, stamp.size * (characters.length > 2 ? 0.23 : 0.28));
-  const letterSpacing = Math.max(0, stamp.size * 0.01);
-  const offsets = characters.length <= 1
-    ? [{ x: 0, y: 0 }]
-    : characters.length === 2
-      ? [{ x: 0, y: -fontSize * 0.6 }, { x: 0, y: fontSize * 0.6 }]
-      : [
-          { x: -fontSize * 0.55, y: -fontSize * 0.55 },
-          { x: fontSize * 0.55, y: -fontSize * 0.55 },
-          { x: -fontSize * 0.55, y: fontSize * 0.55 },
-          { x: fontSize * 0.55, y: fontSize * 0.55 },
-        ];
+  const appearance = getStampAppearance(stamp);
+  const characters = getStampCharacters(stamp.text);
+  const fontSize = getStampTextFontSize(stamp.size, characters.length);
+  const letterSpacing = getStampTextLetterSpacing(stamp.size, characters.length);
+  const placements = getStampTextPlacements(stamp.size, characters.length);
 
   ctx.save();
-  ctx.fillStyle = stamp.colorScheme === 'filled' ? '#ffffff' : '#b91c1c';
+  ctx.fillStyle = appearance.textColor;
   ctx.font = `700 ${fontSize}px ${stamp.fontFamily}`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.shadowColor = stamp.colorScheme === 'filled' ? 'rgba(0, 0, 0, 0.25)' : 'rgba(127, 29, 29, 0.28)';
-  ctx.shadowBlur = 2;
+  ctx.shadowColor = appearance.textShadowColor;
+  ctx.shadowBlur = appearance.textShadowBlur;
   characters.forEach((character, index) => {
-    const offset = offsets[index] ?? { x: 0, y: 0 };
-    drawHorizontalLine(ctx, character, offset.x - measureTextWidth(ctx, character, letterSpacing) / 2, offset.y - fontSize / 2, letterSpacing);
+    const placement = placements[index] ?? placements[placements.length - 1];
+
+    ctx.save();
+    ctx.translate(placement.x, placement.y);
+    ctx.rotate((placement.rotateDeg * Math.PI) / 180);
+    ctx.scale(placement.scale, placement.scale);
+    drawHorizontalLine(ctx, character, -measureTextWidth(ctx, character, letterSpacing) / 2, -fontSize / 2, letterSpacing);
+    ctx.restore();
   });
-  ctx.restore();
-}
-
-function drawStampFilled(ctx: CanvasRenderingContext2D, stamp: StampConfig) {
-  const half = stamp.size / 2;
-
-  ctx.save();
-  drawStampShape(ctx, stamp);
-  ctx.clip();
-  ctx.fillStyle = 'rgb(185, 28, 28)';
-  ctx.fillRect(-half, -half, stamp.size, stamp.size);
   ctx.restore();
 }
 
 function drawStamp(ctx: CanvasRenderingContext2D, scene: CanvasExportScene, frameRect: Rect) {
   const { stamp } = scene.decorations;
-  const isFilled = stamp.colorScheme === 'filled';
+  const appearance = getStampAppearance(stamp);
   const centerX = frameRect.x + (frameRect.width * stamp.positionX) / 100;
   const centerY = frameRect.y + (frameRect.height * stamp.positionY) / 100;
-  const borderWidth = Math.max(3, Math.round(stamp.size * 0.06));
-  const brushSkewX = Math.tan((-2 * Math.PI) / 180);
-  const brushSkewY = Math.tan((1 * Math.PI) / 180);
+  const { skewXDeg, skewYDeg } = getBrushStampSkew();
+  const brushSkewX = Math.tan((skewXDeg * Math.PI) / 180);
+  const brushSkewY = Math.tan((skewYDeg * Math.PI) / 180);
+  const half = stamp.size / 2;
 
   ctx.save();
   ctx.translate(centerX, centerY);
@@ -845,29 +829,28 @@ function drawStamp(ctx: CanvasRenderingContext2D, scene: CanvasExportScene, fram
   ctx.globalAlpha = stamp.opacity;
 
   ctx.save();
-  ctx.shadowColor = isFilled ? 'rgba(127, 29, 29, 0.3)' : 'rgba(127, 29, 29, 0.18)';
-  ctx.shadowBlur = 24;
-  ctx.shadowOffsetY = 10;
+  ctx.shadowColor = appearance.shadowColor;
+  ctx.shadowBlur = appearance.shadowBlur;
+  ctx.shadowOffsetY = appearance.shadowOffsetY;
   drawStampShape(ctx, stamp);
-  ctx.fillStyle = isFilled ? 'rgba(185, 28, 28, 0.5)' : (stamp.style === 'brush' ? 'rgba(254, 242, 242, 0.1)' : 'rgba(254, 242, 242, 0.16)');
+  ctx.fillStyle = appearance.shadowFill;
   ctx.fill();
   ctx.restore();
 
-  if (isFilled) {
-    drawStampFilled(ctx, stamp);
-  } else {
-    drawStampShape(ctx, stamp);
-    ctx.fillStyle = stamp.style === 'brush' ? 'rgba(254, 242, 242, 0.1)' : 'rgba(254, 242, 242, 0.12)';
-    ctx.fill();
-    drawStampSurfaceDetails(ctx, stamp);
-  }
-
-  ctx.lineWidth = borderWidth;
-  ctx.strokeStyle = 'rgba(185, 28, 28, 0.92)';
+  ctx.save();
   drawStampShape(ctx, stamp);
-  ctx.stroke();
+  ctx.clip();
+  fillStampShapeWithGradient(ctx, stamp, appearance.baseFill);
+  ctx.restore();
 
-  // 移除内层边框效果，提升简洁性
+  drawStampSurfaceLayers(ctx, stamp, appearance);
+
+  ctx.save();
+  drawStampShape(ctx, stamp);
+  ctx.clip();
+  ctx.fillStyle = createCanvasStampGradient(ctx, appearance.centerGlow, stamp.size);
+  ctx.fillRect(-half, -half, stamp.size, stamp.size);
+  ctx.restore();
 
   drawStampText(ctx, stamp);
   ctx.restore();

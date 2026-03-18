@@ -47,32 +47,6 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
       summary={summaryParts.join(' · ')}
     >
       <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-2 rounded-2xl border border-[rgba(34,48,52,0.06)] bg-[linear-gradient(180deg,rgba(237,244,243,0.42),rgba(255,253,249,0.82))] p-2">
-          <button
-            type="button"
-            onClick={decorations.onAddCustomText}
-            className="app-action-button"
-            title={t('addTextBox')}
-          >
-            <Plus className="h-3.5 w-3.5 shrink-0" />
-            <span className="truncate">{t('addTextShort')}</span>
-          </button>
-
-          <label
-            className="app-action-button cursor-pointer"
-            title={t('uploadLogo')}
-          >
-            <Upload className="h-3.5 w-3.5 shrink-0" />
-            <span className="truncate">{t('imageShort')}</span>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={decorations.onLogoUpload}
-              className="hidden"
-            />
-          </label>
-        </div>
-
         <div className="app-soft-surface p-3 rounded-lg space-y-3">
           <div className="flex items-start gap-3">
             <label className="text-xs text-gray-600 flex items-center gap-2">
@@ -306,6 +280,32 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
               </div>
             </div>
           ) : null}
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 rounded-2xl border border-[rgba(34,48,52,0.06)] bg-[linear-gradient(180deg,rgba(237,244,243,0.42),rgba(255,253,249,0.82))] p-2">
+          <button
+            type="button"
+            onClick={decorations.onAddCustomText}
+            className="app-action-button"
+            title={t('addTextBox')}
+          >
+            <Plus className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">{t('addTextShort')}</span>
+          </button>
+
+          <label
+            className="app-action-button cursor-pointer"
+            title={t('uploadLogo')}
+          >
+            <Upload className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">{t('imageShort')}</span>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={decorations.onLogoUpload}
+              className="hidden"
+            />
+          </label>
         </div>
 
         {decorations.customTexts.length > 0 ? (

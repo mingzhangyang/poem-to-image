@@ -1,6 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties, PointerEvent as ReactPointerEvent, RefObject } from 'react';
 import { getPreviewDragBounds, getPreviewPositioningRect } from '../../positioningRect';
+import {
+  getStampAppearance,
+  getBrushStampSkew,
+  getStampCharacters,
+  getStampCssBackground,
+  getStampCssBorderRadius,
+  getStampTextFontSize,
+  getStampTextLetterSpacing,
+  getStampTextPlacements,
+  STAMP_EDGE_WEAR_BLOBS,
+  STAMP_TEXTURE_BLOBS,
+} from '../../stampRendering';
 import type { StampConfig } from '../../types';
 
 interface StampOverlayProps {
@@ -16,75 +28,30 @@ function clamp(value: number, min: number, max: number) {
 }
 
 function getFrameStyle(stamp: StampConfig): CSSProperties {
-  const borderWidth = Math.max(3, Math.round(stamp.size * 0.06));
-  const isFilled = stamp.colorScheme === 'filled';
-  const shared: CSSProperties = {
+  const { skewXDeg, skewYDeg } = getBrushStampSkew();
+  const appearance = getStampAppearance(stamp);
+  const borderRadius = getStampCssBorderRadius(stamp.style, stamp.size);
+  const transform = `rotate(${stamp.rotation}deg)${stamp.style === 'brush' ? ` skew(${skewXDeg}deg, ${skewYDeg}deg)` : ''}`;
+
+  return {
     width: `${stamp.size}px`,
     height: `${stamp.size}px`,
     opacity: stamp.opacity,
-    color: isFilled ? '#ffffff' : '#b91c1c',
-    borderWidth: `${borderWidth}px`,
-    borderColor: 'rgba(185, 28, 28, 0.92)',
-    boxShadow: isFilled
-      ? '0 10px 24px rgba(127, 29, 29, 0.3), inset 0 0 0 1.5px rgba(255,255,255,0.25)'
-      : '0 10px 24px rgba(127, 29, 29, 0.18), inset 0 0 0 1.5px rgba(127, 29, 29, 0.38), inset 0 0 18px rgba(185, 28, 28, 0.16)',
+    color: appearance.textColor,
+    borderRadius,
+    overflow: 'hidden',
+    background: getStampCssBackground([appearance.baseFill]),
+    boxShadow: appearance.previewBoxShadow,
+    transform,
   };
-
-  if (isFilled) {
-    if (stamp.style === 'round') {
-      return { ...shared, borderRadius: '999px', background: 'rgb(185, 28, 28)' };
-    }
-    if (stamp.style === 'brush') {
-      return {
-        ...shared,
-        borderRadius: '32% 26% 34% 28% / 26% 34% 28% 36%',
-        background: 'rgb(185, 28, 28)',
-        transform: `rotate(${stamp.rotation}deg) skew(-2deg, 1deg)`,
-      };
-    }
-    return { ...shared, borderRadius: `${Math.round(stamp.size * 0.18)}px`, background: 'rgb(185, 28, 28)' };
-  }
-
-  if (stamp.style === 'round') {
-    return {
-      ...shared,
-      borderRadius: '999px',
-      background: 'radial-gradient(circle at 28% 30%, rgba(255,255,255,0.48), transparent 32%), radial-gradient(circle at 64% 62%, rgba(185,28,28,0.14), transparent 42%), rgba(254, 242, 242, 0.16)',
-    };
-  }
-
-  if (stamp.style === 'brush') {
-    return {
-      ...shared,
-      borderRadius: '32% 26% 34% 28% / 26% 34% 28% 36%',
-      background: 'radial-gradient(circle at 34% 26%, rgba(255,255,255,0.4), transparent 28%), linear-gradient(145deg, rgba(185,28,28,0.18), rgba(153,27,27,0.28)), rgba(254, 242, 242, 0.1)',
-      transform: `rotate(${stamp.rotation}deg) skew(-2deg, 1deg)`,
-    };
-  }
-
-  return {
-    ...shared,
-    borderRadius: `${Math.round(stamp.size * 0.18)}px`,
-    background: 'radial-gradient(circle at 26% 24%, rgba(255,255,255,0.52), transparent 30%), linear-gradient(135deg, rgba(185,28,28,0.1), rgba(153,27,27,0.22)), rgba(254, 242, 242, 0.12)',
-  };
-}
-
-function getTextLayout(stamp: StampConfig): CSSProperties {
-  const characters = Array.from(stamp.text || '印').slice(0, 4);
-
-  if (characters.length <= 1) {
-    return { display: 'grid', placeItems: 'center' };
-  }
-
-  if (characters.length === 2) {
-    return { display: 'grid', gridTemplateColumns: '1fr', gridTemplateRows: 'repeat(2, minmax(0, 1fr))' };
-  }
-
-  return { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gridTemplateRows: 'repeat(2, minmax(0, 1fr))' };
 }
 
 export function StampOverlay({ frameRef, stamp, onStampChange, onInteractionStart, onInteractionEnd }: StampOverlayProps) {
-  const characters = Array.from(stamp.text || '印').slice(0, 4);
+  const appearance = getStampAppearance(stamp);
+  const characters = getStampCharacters(stamp.text);
+  const fontSize = getStampTextFontSize(stamp.size, characters.length);
+  const letterSpacing = getStampTextLetterSpacing(stamp.size, characters.length);
+  const placements = getStampTextPlacements(stamp.size, characters.length);
   const [livePosition, setLivePosition] = useState({ positionX: stamp.positionX, positionY: stamp.positionY });
   const isDraggingRef = useRef(false);
 
@@ -171,25 +138,80 @@ export function StampOverlay({ frameRef, stamp, onStampChange, onInteractionStar
         className="pointer-events-auto relative flex cursor-move touch-none select-none items-center justify-center"
         style={{
           ...getFrameStyle(stamp),
-          rotate: stamp.style === 'brush' ? undefined : `${stamp.rotation}deg`,
         }}
       >
-        {/* 去除内层边框效果，提升简洁性 */}
-        <div className={`absolute inset-[18%] rounded-[inherit] ${stamp.colorScheme === 'filled' ? 'bg-[radial-gradient(circle_at_50%_45%,rgba(255,255,255,0.1),transparent_65%)]' : 'bg-[radial-gradient(circle_at_50%_45%,rgba(220,38,38,0.14),transparent_65%)]'}`} />
         <div
-          className="relative h-[66%] w-[66%] items-center justify-center gap-1 text-center font-bold"
+          className="absolute inset-0"
+          style={{ background: getStampCssBackground(appearance.surfaceLayers), borderRadius: 'inherit' }}
+        />
+
+        {STAMP_TEXTURE_BLOBS.map((blob, index) => (
+          <div
+            key={`stamp-texture-${index}`}
+            className="pointer-events-none absolute"
+            style={{
+              left: `${blob.x * 100}%`,
+              top: `${blob.y * 100}%`,
+              width: `${stamp.size * blob.radius * 2 * blob.scaleX}px`,
+              height: `${stamp.size * blob.radius * 2 * blob.scaleY}px`,
+              transform: `translate(-50%, -50%) rotate(${blob.rotationDeg}deg)`,
+              borderRadius: '999px',
+              background: appearance.textureColors[blob.tint],
+              filter: `blur(${Math.max(1.2, stamp.size * blob.blur)}px)`,
+            }}
+          />
+        ))}
+
+        {STAMP_EDGE_WEAR_BLOBS.map((blob, index) => (
+          <div
+            key={`stamp-edge-${index}`}
+            className="pointer-events-none absolute"
+            style={{
+              left: `${blob.x * 100}%`,
+              top: `${blob.y * 100}%`,
+              width: `${stamp.size * blob.radius * 2 * blob.scaleX}px`,
+              height: `${stamp.size * blob.radius * 2 * blob.scaleY}px`,
+              transform: `translate(-50%, -50%) rotate(${blob.rotationDeg}deg)`,
+              borderRadius: '999px',
+              background: appearance.textureColors[blob.tint],
+              filter: `blur(${Math.max(0.8, stamp.size * blob.blur)}px)`,
+            }}
+          />
+        ))}
+
+        <div
+          className="pointer-events-none absolute"
           style={{
-            ...getTextLayout(stamp),
-            fontFamily: stamp.fontFamily,
-            fontSize: `${Math.max(18, stamp.size * (characters.length > 2 ? 0.23 : 0.28))}px`,
-            lineHeight: 1,
-            letterSpacing: `${Math.max(0, stamp.size * 0.01)}px`,
-            textShadow: stamp.colorScheme === 'filled' ? '0 0 2px rgba(0,0,0,0.25)' : '0 0 2px rgba(127, 29, 29, 0.28)',
+            inset: `${Math.max(stamp.size * 0.15, 14)}px`,
+            borderRadius: 'inherit',
+            background: getStampCssBackground([appearance.centerGlow]),
           }}
-        >
-          {characters.map((character, index) => (
-            <span key={`${character}-${index}`}>{character}</span>
-          ))}
+        />
+
+        <div className="pointer-events-none absolute inset-0">
+          {characters.map((character, index) => {
+            const placement = placements[index] ?? placements[placements.length - 1];
+
+            return (
+              <span
+                key={`${character}-${index}`}
+                className="absolute text-center font-bold"
+                style={{
+                  left: `calc(50% + ${placement.x}px)`,
+                  top: `calc(50% + ${placement.y}px)`,
+                  transform: `translate(-50%, -50%) rotate(${placement.rotateDeg}deg) scale(${placement.scale})`,
+                  fontFamily: stamp.fontFamily,
+                  fontSize: `${fontSize}px`,
+                  lineHeight: 1,
+                  letterSpacing: `${letterSpacing}px`,
+                  color: appearance.textColor,
+                  textShadow: `0 0 ${appearance.textShadowBlur}px ${appearance.textShadowColor}`,
+                }}
+              >
+                {character}
+              </span>
+            );
+          })}
         </div>
       </div>
     </div>
