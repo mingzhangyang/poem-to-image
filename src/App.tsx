@@ -252,8 +252,10 @@ export default function App() {
   // 包装导出图片，添加toast提示
   const handleDownload = async () => {
     try {
-      await exportImage();
-      showToast(t('exportSuccess') || '图片导出成功', 'success');
+      const success = await exportImage();
+      if (success) {
+        showToast(t('exportSuccess') || '图片导出成功', 'success');
+      }
     } catch (e) {
       showToast(t('exportFailed') || '图片导出失败', 'error');
     }

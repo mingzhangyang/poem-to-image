@@ -428,7 +428,7 @@ async function drawPoemSnapshot(
   return true;
 }
 
-async function saveBlob(blob: Blob, format: ExportFormat) {
+async function saveBlob(blob: Blob, format: ExportFormat): Promise<boolean> {
   if (typeof window !== 'undefined' && 'showSaveFilePicker' in window) {
     try {
       const handle = await (window as any).showSaveFilePicker({
@@ -445,10 +445,10 @@ async function saveBlob(blob: Blob, format: ExportFormat) {
       const writable = await handle.createWritable();
       await writable.write(blob);
       await writable.close();
-      return;
+      return true;
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
-        return;
+        return false;
       }
       console.error('Failed to save via File System Access API, falling back to download:', error);
     }
@@ -460,6 +460,7 @@ async function saveBlob(blob: Blob, format: ExportFormat) {
   link.href = url;
   link.click();
   URL.revokeObjectURL(url);
+  return true;
 }
 
 function supportsFileShare() {
@@ -531,9 +532,9 @@ export function useImageExporter(
     return exportCanvasToBlob(canvas, overrideFormat ?? exportFormat);
   }, [exportFormat, renderOutputCanvas]);
 
-  const exportImage = useCallback(async () => {
+  const exportImage = useCallback(async (): Promise<boolean> => {
     if (isExporting || isSharing) {
-      return;
+      return false;
     }
 
     setIsExporting(true);
@@ -542,12 +543,13 @@ export function useImageExporter(
       const blob = await createOutputBlob();
 
       if (!blob) {
-        return;
+        return false;
       }
 
-      await saveBlob(blob, exportFormat);
+      return await saveBlob(blob, exportFormat);
     } catch (error) {
       console.error('Failed to generate image', error);
+      throw error;
     } finally {
       setIsExporting(false);
     }
@@ -583,7 +585,7 @@ export function useImageExporter(
     }
   }, [canShare, createOutputBlob, exportFormat, isExporting, isSharing]);
 
-  const shareToSocialPlatform = useCallback(async (platform: SocialPlatform): Promise<'clipboard' | 'downloaded'> => {
+  const shareToSocialPlatform = useCallback(async (platform: SocialPlatform): Promise<'clipboard' | 'downloaded' | 'cancelled'> => {
     if (isExporting || isSharing) {
       return 'downloaded';
     }
@@ -601,7 +603,10 @@ export function useImageExporter(
       const copied = await copyImageToClipboard(blob);
 
       if (!copied) {
-        await saveBlob(blob, format);
+        const saved = await saveBlob(blob, format);
+        if (!saved) {
+          return 'cancelled';
+        }
       }
 
       if (url) {

@@ -317,7 +317,7 @@ export interface CanvasPreviewProps {
   onExportScaleChange: (value: ExportScale) => void;
   onDownload: () => void;
   onShare: () => void;
-  onShareToSocial: (platform: SocialPlatform) => Promise<'clipboard' | 'downloaded'>;
+  onShareToSocial: (platform: SocialPlatform) => Promise<'clipboard' | 'downloaded' | 'cancelled'>;
   isExporting: boolean;
   isSharing: boolean;
   canShare: boolean;

@@ -246,8 +246,10 @@ export function CanvasPreview({
     if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
     const result = await onShareToSocial(platform);
     setActiveSocialPlatform(null);
-    setSocialFeedback({ result, platform });
-    feedbackTimeoutRef.current = setTimeout(() => setSocialFeedback(null), 5000);
+    if (result !== 'cancelled') {
+      setSocialFeedback({ result, platform });
+      feedbackTimeoutRef.current = setTimeout(() => setSocialFeedback(null), 5000);
+    }
   };
 
   const modalTitle = activeOutputModal === 'save' ? t('saveImageModalTitle') : t('shareImageModalTitle');
