@@ -142,7 +142,7 @@ export function Sidebar({
         </button>
       </div>
 
-      <div className="mt-4 grid gap-2 sm:grid-cols-3">
+      <div className="mt-4 grid gap-2 grid-rows-3">
         {onboardingSteps.map((step, index) => (
           <div key={step} className="min-w-0 rounded-2xl border border-white/80 bg-white/80 px-3 py-3 shadow-sm">
             <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-(--app-accent-500)">{index + 1}</div>
