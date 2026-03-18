@@ -340,6 +340,7 @@ export const editorTemplates: EditorTemplateDefinition[] = [
         positionY: 50,
       },
       customTexts: [],
+      logos: [],
     },
   },
   {
@@ -394,6 +395,7 @@ export const editorTemplates: EditorTemplateDefinition[] = [
         positionY: 50,
       },
       customTexts: [],
+      logos: [],
     },
   },
   {
@@ -448,6 +450,7 @@ export const editorTemplates: EditorTemplateDefinition[] = [
         positionY: 50,
       },
       customTexts: [],
+      logos: [],
     },
   },
   {
@@ -502,6 +505,7 @@ export const editorTemplates: EditorTemplateDefinition[] = [
         positionY: 50,
       },
       customTexts: [],
+      logos: [],
     },
   },
 ];

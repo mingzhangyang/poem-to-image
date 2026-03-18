@@ -179,6 +179,22 @@ export default function App() {
     });
   }, []);
 
+  const handleLogoUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const imageUrl = e.target?.result as string;
+      decorations.addLogo(imageUrl);
+      setExpandedSections((prev) => ({ ...prev, decorations: true }));
+    };
+    reader.readAsDataURL(file);
+
+    // Reset the input
+    event.target.value = '';
+  }, [decorations]);
+
   const scale = useCanvasScale(containerRef, canvasWidth, canvasHeight);
   const { exportImage: handleDownload, shareImage: handleShare, shareToSocialPlatform: handleShareToSocial, isExporting, isSharing, canShare } = useImageExporter(
     exportFormat,
@@ -513,6 +529,7 @@ export default function App() {
       stamp: decorations.stamp,
       poemPosition: decorations.poemPosition,
       customTexts: decorations.customTexts,
+      logos: decorations.logos,
       onAddCustomText: decorations.addCustomText,
       onShowBorderChange: decorations.setShowBorder,
       onBorderStyleChange: decorations.setBorderStyle,
@@ -522,6 +539,9 @@ export default function App() {
       onResetStampPosition: decorations.resetStampPosition,
       onCustomTextChange: decorations.updateCustomText,
       onCustomTextRemove: decorations.removeCustomText,
+      onLogoUpload: handleLogoUpload,
+      onLogoChange: decorations.updateLogo,
+      onLogoRemove: decorations.removeLogo,
     },
     billing: {
       balance,
@@ -563,6 +583,8 @@ export default function App() {
     canvasHeight,
     customTexts: decorations.customTexts,
     onCustomTextChange: decorations.updateCustomText,
+    logos: decorations.logos,
+    onLogoChange: decorations.updateLogo,
     onInteractionStart,
     onInteractionEnd,
     previewZoom,

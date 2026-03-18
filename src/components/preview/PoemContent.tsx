@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent, RefObject } from 'react';
-import type { BorderStyle, PositionedElement, StampConfig, TextAlign, TranslateFn, WritingMode } from '../../types';
+import type { BorderStyle, LogoConfig, PositionedElement, StampConfig, TextAlign, TranslateFn, WritingMode } from '../../types';
+import { LogoOverlay } from './LogoOverlay';
 import { StampOverlay } from './StampOverlay';
 
 interface PoemContentProps {
@@ -22,9 +23,11 @@ interface PoemContentProps {
   borderStyle: BorderStyle;
   showStamp: boolean;
   stamp: StampConfig;
+  logos: LogoConfig[];
   poemPosition: PositionedElement;
   onPoemPositionChange: (updates: Partial<PositionedElement>) => void;
   onStampChange: (updates: Partial<StampConfig>) => void;
+  onLogoChange: (id: string, updates: Partial<LogoConfig>) => void;
   onInteractionStart: () => void;
   onInteractionEnd: () => void;
 }
@@ -52,9 +55,11 @@ export function PoemContent({
   borderStyle,
   showStamp,
   stamp,
+  logos,
   poemPosition,
   onPoemPositionChange,
   onStampChange,
+  onLogoChange,
   onInteractionStart,
   onInteractionEnd,
 }: PoemContentProps) {
@@ -180,6 +185,17 @@ export function PoemContent({
           onInteractionEnd={onInteractionEnd}
         />
       ) : null}
+
+      {logos.map((logo) => (
+        <LogoOverlay
+          key={logo.id}
+          frameRef={poemFrameRef}
+          logo={logo}
+          onLogoChange={(updates) => onLogoChange(logo.id, updates)}
+          onInteractionStart={onInteractionStart}
+          onInteractionEnd={onInteractionEnd}
+        />
+      ))}
     </div>
   );
 }

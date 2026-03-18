@@ -55,8 +55,6 @@ Poem to Image was born to solve this exact pain point. It's not just another AI 
 
 Unlike other AI tools, Poem to Image was designed from the ground up with "text accuracy" as a core principle. This means you can focus on creative expression without worrying about technical limitations.
 
-**Free Trial**: New users get 20 credits to experience full functionality.
-
 ## Conclusion
 
 In the age of AI art, technology shouldn't be a barrier to creativity. Poem to Image lets you enjoy the visual miracles brought by AI while ensuring every single character is perfectly presented.

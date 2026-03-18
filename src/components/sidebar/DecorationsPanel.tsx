@@ -1,4 +1,4 @@
-import { Plus, Stamp, Trash2 } from 'lucide-react';
+import { Plus, Stamp, Trash2, Upload } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { STAMP_FONT_OPTIONS } from '../../fontOptions';
 import type { BorderStyle, DecorationsSectionProps, ExpandedSections, StampStyle, TranslateFn } from '../../types';
@@ -31,6 +31,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
     decorations.showBorder ? t(BORDER_STYLE_LABELS[decorations.borderStyle]) : null,
     decorations.showStamp ? t('showStamp') : null,
     `${decorations.customTexts.length} ${t('customTexts')}`,
+    `${decorations.logos.length} ${t('logos')}`,
   ].filter(Boolean);
 
   return (
@@ -56,6 +57,26 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
           >
             <Plus className="w-3 h-3" /> {t('addTextBox')}
           </button>
+        </div>
+
+        <div className="flex justify-end">
+          <label
+            className="inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-white cursor-pointer"
+            style={{
+              color: 'var(--app-accent-700)',
+              borderColor: 'var(--app-accent-200)',
+              backgroundColor: 'var(--app-accent-50)',
+            }}
+            title={t('uploadLogo')}
+          >
+            <Upload className="w-3 h-3" /> {t('uploadLogo')}
+            <input
+              type="file"
+              accept="image/*"
+              onChange={decorations.onLogoUpload}
+              className="hidden"
+            />
+          </label>
         </div>
 
         <div className="app-soft-surface p-3 rounded-lg space-y-3">
@@ -302,6 +323,66 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                     className="app-range flex-1"
                   />
                   <span className="text-xs text-gray-500 w-8 text-right">{customText.rotation}°</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
+        {decorations.logos.length > 0 ? (
+          <div className="space-y-3">
+            <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">{t('logos')}</div>
+            {decorations.logos.map((logo) => (
+              <div key={logo.id} className="app-soft-surface p-3 rounded-lg space-y-2">
+                <div className="flex items-center gap-2">
+                  <img
+                    src={logo.imageUrl}
+                    alt="Logo"
+                    className="w-8 h-8 object-contain rounded"
+                  />
+                  <span className="text-xs text-gray-500 flex-1 truncate">Logo {logo.id.slice(-4)}</span>
+                  <button
+                    onClick={() => decorations.onLogoRemove(logo.id)}
+                    className="p-1.5 text-[#8a523b] hover:bg-[rgba(155,95,67,0.12)] rounded transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500 w-8">{t('size')}</span>
+                  <input
+                    type="range"
+                    min="50"
+                    max="300"
+                    value={logo.size}
+                    onChange={(event) => decorations.onLogoChange(logo.id, { size: Number(event.target.value) })}
+                    className="app-range flex-1"
+                  />
+                  <span className="text-xs text-gray-500 w-8">{logo.size}px</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500 w-8">{t('angle')}</span>
+                  <input
+                    type="range"
+                    min="-180"
+                    max="180"
+                    value={logo.rotation}
+                    onChange={(event) => decorations.onLogoChange(logo.id, { rotation: Number(event.target.value) })}
+                    className="app-range flex-1"
+                  />
+                  <span className="text-xs text-gray-500 w-8 text-right">{logo.rotation}°</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500 w-8">{t('opacity')}</span>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={Math.round(logo.opacity * 100)}
+                    onChange={(event) => decorations.onLogoChange(logo.id, { opacity: Number(event.target.value) / 100 })}
+                    className="app-range flex-1"
+                  />
+                  <span className="text-xs text-gray-500 w-8 text-right">{Math.round(logo.opacity * 100)}%</span>
                 </div>
               </div>
             ))}

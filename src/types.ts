@@ -25,6 +25,18 @@ export interface CustomText {
   exportTop?: number;
 }
 
+export interface LogoConfig {
+  id: string;
+  imageUrl: string;
+  positionX: number;
+  positionY: number;
+  size: number;
+  rotation: number;
+  opacity: number;
+  exportLeft?: number;
+  exportTop?: number;
+}
+
 export interface PositionedElement {
   positionX: number;
   positionY: number;
@@ -89,6 +101,7 @@ export interface TemplateDecorationsConfig {
   stamp: StampConfig;
   poemPosition: PositionedElement;
   customTexts: CustomText[];
+  logos: LogoConfig[];
 }
 
 export interface EditorTemplateDefinition {
@@ -205,6 +218,7 @@ export interface DecorationsSectionProps {
   stamp: StampConfig;
   poemPosition: PositionedElement;
   customTexts: CustomText[];
+  logos: LogoConfig[];
   onAddCustomText: () => void;
   onShowBorderChange: (value: boolean) => void;
   onBorderStyleChange: (value: BorderStyle) => void;
@@ -214,6 +228,9 @@ export interface DecorationsSectionProps {
   onResetStampPosition: () => void;
   onCustomTextChange: (id: string, updates: Partial<CustomText>) => void;
   onCustomTextRemove: (id: string) => void;
+  onLogoUpload: (event: ChangeEvent<HTMLInputElement>) => void;
+  onLogoChange: (id: string, updates: Partial<LogoConfig>) => void;
+  onLogoRemove: (id: string) => void;
 }
 
 export type TranslateFn = (key: TranslationKey) => string;
@@ -282,6 +299,8 @@ export interface CanvasPreviewProps {
   canvasHeight: number;
   customTexts: CustomText[];
   onCustomTextChange: (id: string, updates: Partial<CustomText>) => void;
+  logos: LogoConfig[];
+  onLogoChange: (id: string, updates: Partial<LogoConfig>) => void;
   exportFormat: ExportFormat;
   onExportFormatChange: (value: ExportFormat) => void;
   exportScale: ExportScale;

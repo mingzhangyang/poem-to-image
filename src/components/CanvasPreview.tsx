@@ -5,6 +5,7 @@ import type { CanvasPreviewProps, SocialPlatform } from '../types';
 import { SidebarFooter } from './sidebar/SidebarFooter';
 import { BackgroundLayer } from './preview/BackgroundLayer';
 import { CustomTextItems } from './preview/CustomTextItems';
+import { LogoOverlay } from './preview/LogoOverlay';
 import { PoemContent } from './preview/PoemContent';
 import { TransparentGrid } from './preview/TransparentGrid';
 
@@ -76,6 +77,8 @@ export function CanvasPreview({
   canvasHeight,
   customTexts,
   onCustomTextChange,
+  logos,
+  onLogoChange,
   exportFormat,
   onExportFormatChange,
   exportScale,
@@ -594,9 +597,11 @@ export function CanvasPreview({
                   borderStyle={borderStyle}
                   showStamp={showStamp}
                   stamp={stamp}
+                  logos={logos}
                   poemPosition={poemPosition}
                   onPoemPositionChange={onPoemPositionChange}
                   onStampChange={onStampChange}
+                  onLogoChange={onLogoChange}
                   onInteractionStart={onInteractionStart}
                   onInteractionEnd={onInteractionEnd}
                 />

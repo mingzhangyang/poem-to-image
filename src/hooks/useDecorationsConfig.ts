@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { DEFAULT_STAMP_FONT } from '../fontOptions';
 import { getDefaultStampTextForLanguage } from '../stampDefaults';
 import type { Language } from '../translations';
-import type { BorderStyle, CustomText, PositionedElement, StampConfig, TemplateDecorationsConfig, TranslateFn, WritingMode } from '../types';
+import type { BorderStyle, CustomText, LogoConfig, PositionedElement, StampConfig, TemplateDecorationsConfig, TranslateFn, WritingMode } from '../types';
 
 interface UseDecorationsConfigParams {
   language: Language;
@@ -44,6 +44,7 @@ export function useDecorationsConfig({
   const [stamp, setStamp] = useState<StampConfig>(() => createDefaultStamp());
   const [poemPosition, setPoemPosition] = useState<PositionedElement>(() => createDefaultPoemPosition());
   const [customTexts, setCustomTexts] = useState<CustomText[]>([]);
+  const [logos, setLogos] = useState<LogoConfig[]>([]);
   const previousLanguageRef = useRef(language);
 
   useEffect(() => {
@@ -81,6 +82,29 @@ export function useDecorationsConfig({
     setCustomTexts((prev) => prev.filter((customText) => customText.id !== id));
   };
 
+  const addLogo = (imageUrl: string) => {
+    setLogos((prev) => [
+      ...prev,
+      {
+        id: Date.now().toString(),
+        imageUrl,
+        positionX: 50,
+        positionY: 50,
+        size: 100,
+        rotation: 0,
+        opacity: 1,
+      },
+    ]);
+  };
+
+  const updateLogo = (id: string, updates: Partial<LogoConfig>) => {
+    setLogos((prev) => prev.map((logo) => (logo.id === id ? { ...logo, ...updates } : logo)));
+  };
+
+  const removeLogo = (id: string) => {
+    setLogos((prev) => prev.filter((logo) => logo.id !== id));
+  };
+
   const updateStamp = (updates: Partial<StampConfig>) => {
     setStamp((prev) => ({ ...prev, ...updates }));
   };
@@ -104,6 +128,7 @@ export function useDecorationsConfig({
     setStamp(template.stamp);
     setPoemPosition(template.poemPosition);
     setCustomTexts(template.customTexts);
+    setLogos(template.logos || []);
   };
 
   return {
@@ -113,6 +138,7 @@ export function useDecorationsConfig({
     stamp,
     poemPosition,
     customTexts,
+    logos,
     setShowBorder,
     setBorderStyle,
     setShowStamp,
@@ -122,6 +148,9 @@ export function useDecorationsConfig({
     addCustomText,
     updateCustomText,
     removeCustomText,
+    addLogo,
+    updateLogo,
+    removeLogo,
     applyDecorationsTemplate,
   };
 }
