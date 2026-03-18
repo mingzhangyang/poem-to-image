@@ -5,6 +5,7 @@ import { ClerkProvider } from '@clerk/react';
 import { ClerkAuthBridge } from './components/auth/ClerkAuthBridge';
 import { NoAuthProvider } from './context/auth';
 import App from './App.tsx';
+import { ToastProvider } from './components/ToastProvider';
 import { AccountPage } from './pages/AccountPage.tsx';
 import { PrivacyPage } from './pages/PrivacyPage.tsx';
 import { AboutPage } from './pages/AboutPage.tsx';
@@ -26,17 +27,19 @@ function AppRoutes() {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
-      {clerkPublishableKey ? (
-        <ClerkProvider publishableKey={clerkPublishableKey}>
-          <ClerkAuthBridge>
+      <ToastProvider>
+        {clerkPublishableKey ? (
+          <ClerkProvider publishableKey={clerkPublishableKey}>
+            <ClerkAuthBridge>
+              <AppRoutes />
+            </ClerkAuthBridge>
+          </ClerkProvider>
+        ) : (
+          <NoAuthProvider>
             <AppRoutes />
-          </ClerkAuthBridge>
-        </ClerkProvider>
-      ) : (
-        <NoAuthProvider>
-          <AppRoutes />
-        </NoAuthProvider>
-      )}
+          </NoAuthProvider>
+        )}
+      </ToastProvider>
     </BrowserRouter>
-  </StrictMode>,
+  </StrictMode>
 );

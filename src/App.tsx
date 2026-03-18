@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAppAuth } from './context/auth';
+import { useToast } from './components/ToastProvider';
 import { translations, Language, TranslationKey } from './translations';
 import { LANGUAGE_STORAGE_KEY, readPreferredLanguage } from './hooks/useLang';
 import { CanvasPreview } from './components/CanvasPreview';
@@ -32,6 +33,7 @@ const DEFAULT_POEMS: Record<Language, string> = {
 };
 
 export default function App() {
+    const { showToast } = useToast();
   const { getToken, isSignedIn } = useAppAuth();
   const [previewZoom, setPreviewZoom] = useState(1);
   const initialLanguageRef = useRef<Language>(readPreferredLanguage());
@@ -196,7 +198,7 @@ export default function App() {
   }, [decorations]);
 
   const scale = useCanvasScale(containerRef, canvasWidth, canvasHeight);
-  const { exportImage: handleDownload, shareImage: handleShare, shareToSocialPlatform: handleShareToSocial, isExporting, isSharing, canShare } = useImageExporter(
+  const { exportImage, shareImage: handleShare, shareToSocialPlatform: handleShareToSocial, isExporting, isSharing, canShare } = useImageExporter(
     exportFormat,
     exportScale,
     {
@@ -247,6 +249,15 @@ export default function App() {
     },
     waitForSceneSettled,
   );
+  // 包装导出图片，添加toast提示
+  const handleDownload = async () => {
+    try {
+      await exportImage();
+      showToast(t('exportSuccess') || '图片导出成功', 'success');
+    } catch (e) {
+      showToast(t('exportFailed') || '图片导出失败', 'error');
+    }
+  };
   const handlePreviewZoomReset = () => setPreviewZoom(1);
   const previousLanguageRef = useRef(language);
 

@@ -839,8 +839,7 @@ function drawStamp(ctx: CanvasRenderingContext2D, scene: CanvasExportScene, fram
   drawStampShape(ctx, stamp);
   ctx.stroke();
 
-  drawStampInnerBorder(ctx, stamp, stamp.size * 0.1, isFilled ? 'rgba(255, 255, 255, 0.25)' : 'rgba(127, 29, 29, 0.45)', 1.5);
-  drawStampInnerBorder(ctx, stamp, stamp.size * 0.18, isFilled ? 'rgba(255, 255, 255, 0.15)' : 'rgba(127, 29, 29, 0.28)', 1);
+  // 移除内层边框效果，提升简洁性
 
   drawStampText(ctx, stamp);
   ctx.restore();

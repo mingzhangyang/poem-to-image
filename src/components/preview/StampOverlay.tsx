@@ -163,7 +163,7 @@ export function StampOverlay({ frameRef, stamp, onStampChange, onInteractionStar
           rotate: stamp.style === 'brush' ? undefined : `${stamp.rotation}deg`,
         }}
       >
-        <div className={`absolute inset-[10%] rounded-[inherit] border ${stamp.colorScheme === 'filled' ? 'border-white/25' : 'border-red-800/45'}`} />
+        {/* 去除内层边框效果，提升简洁性 */}
         <div className={`absolute inset-[18%] rounded-[inherit] ${stamp.colorScheme === 'filled' ? 'bg-[radial-gradient(circle_at_50%_45%,rgba(255,255,255,0.1),transparent_65%)]' : 'bg-[radial-gradient(circle_at_50%_45%,rgba(220,38,38,0.14),transparent_65%)]'}`} />
         <div
           className="relative h-[66%] w-[66%] items-center justify-center gap-1 text-center font-bold"
