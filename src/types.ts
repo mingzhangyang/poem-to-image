@@ -42,6 +42,8 @@ export interface PositionedElement {
   positionY: number;
   exportLeft?: number;
   exportTop?: number;
+  /** Text box width as a percentage of the container width. undefined = max-content (auto). */
+  boxWidth?: number;
 }
 
 export interface ExpandedSections {

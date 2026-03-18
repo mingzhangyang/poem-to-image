@@ -372,9 +372,8 @@ async function drawPoemSnapshot(
     return false;
   }
 
-  const contentRect = getCanvasContentRect({ ...scene, exportScale: 1 });
-  const scaleX = contentRect.width / frameRect.width;
-  const scaleY = contentRect.height / frameRect.height;
+  const scaleX = scene.canvasWidth / frameRect.width;
+  const scaleY = scene.canvasHeight / frameRect.height;
   const computedStyle = window.getComputedStyle(poemTextElement);
   const letterSpacing = Number.parseFloat(computedStyle.letterSpacing || '0');
   const drawGroups: PoemGlyphGroup[] = computedStyle.writingMode.startsWith('vertical')
@@ -382,7 +381,8 @@ async function drawPoemSnapshot(
     : glyphs.map((glyph) => ({ text: glyph.text, glyphs: [glyph] }));
 
   ctx.save();
-  ctx.scale(exportScale, exportScale);
+  // IMPORTANT: The context is already scaled by exportScale in renderCanvasExport.
+  // We just need to map browser positions to logical canvas positions using scaleX/Y.
   ctx.fillStyle = computedStyle.color;
   ctx.font = buildCanvasFont(computedStyle);
   ctx.textBaseline = 'top';
@@ -400,12 +400,12 @@ async function drawPoemSnapshot(
     const top = Math.min(...group.glyphs.map((glyph) => glyph.top));
     const right = Math.max(...group.glyphs.map((glyph) => glyph.left + glyph.width));
     const bottom = Math.max(...group.glyphs.map((glyph) => glyph.top + glyph.height));
-    const drawX = contentRect.x + left * scaleX;
-    const drawY = contentRect.y + top * scaleY;
+    const drawX = left * scaleX;
+    const drawY = top * scaleY;
 
     if (firstGlyph.sideways && group.glyphs.length > 0) {
-      const centerX = contentRect.x + ((left + right) / 2) * scaleX;
-      const centerY = contentRect.y + ((top + bottom) / 2) * scaleY;
+      const centerX = ((left + right) / 2) * scaleX;
+      const centerY = ((top + bottom) / 2) * scaleY;
       const safeLetterSpacing = Number.isFinite(letterSpacing) ? letterSpacing : 0;
       const { startX, baselineY } = getRotatedRunDrawOffset(ctx, group.text, safeLetterSpacing);
 
@@ -477,7 +477,7 @@ export function useImageExporter(
       typography: scene.typography,
       decorations: scene.decorations,
     };
-    const shouldSnapshotPoem = scene.typography.columns > 1 && domRefs.poemFrameRef.current && domRefs.poemTextRef.current;
+    const shouldSnapshotPoem = (scene.typography.columns > 1 || scene.typography.poemPosition.boxWidth !== undefined) && domRefs.poemFrameRef.current && domRefs.poemTextRef.current;
     let canvas = await renderCanvasExport(exportScene, { skipPoem: shouldSnapshotPoem });
 
     if (shouldSnapshotPoem) {

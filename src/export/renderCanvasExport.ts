@@ -497,7 +497,10 @@ function measureHorizontalColumns(
 ) {
   const actualColumns = Math.max(1, typography.columns);
   const columnGap = typography.columnGap;
-  const targetColumnWidth = Math.max(1, (frameRect.width - Math.max(0, actualColumns - 1) * columnGap) / actualColumns);
+  const availableWidth = typography.poemPosition.boxWidth !== undefined
+    ? (frameRect.width * typography.poemPosition.boxWidth) / 100
+    : frameRect.width;
+  const targetColumnWidth = Math.max(1, (availableWidth - Math.max(0, actualColumns - 1) * columnGap) / actualColumns);
   const paragraphs = splitLines(typography.text || ' ');
   const wrappedLines = paragraphs.flatMap((paragraph, index) => {
     const nextLines = wrapHorizontalParagraph(ctx, paragraph, targetColumnWidth, typography.letterSpacing);
