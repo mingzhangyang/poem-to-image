@@ -348,19 +348,21 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                 <div className="app-segment flex gap-1 p-1 rounded">
                   <button
                     onClick={() => decorations.onCustomTextChange(customText.id, { writingMode: 'horizontal-tb' })}
-                    className={`flex-1 py-1 text-xs rounded transition-colors ${
+                    className={`flex-1 py-1 flex justify-center items-center rounded transition-colors ${
                       customText.writingMode === 'horizontal-tb' ? 'app-segment-button-active' : 'text-gray-500 hover:bg-gray-50'
                     }`}
+                    aria-label={t('horizontal')}
                   >
-                    {t('horiz')}
+                    <Text className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => decorations.onCustomTextChange(customText.id, { writingMode: 'vertical-rl' })}
-                    className={`flex-1 py-1 text-xs rounded transition-colors ${
+                    className={`flex-1 py-1 flex justify-center items-center rounded transition-colors ${
                       customText.writingMode === 'vertical-rl' ? 'app-segment-button-active' : 'text-gray-500 hover:bg-gray-50'
                     }`}
+                    aria-label={t('vertical')}
                   >
-                    {t('vert')}
+                    <TextCursorInput className="w-4 h-4 rotate-90" />
                   </button>
                 </div>
                 <div className="flex items-center gap-2">

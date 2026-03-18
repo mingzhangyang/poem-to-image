@@ -1,4 +1,4 @@
-import { AlignCenter, AlignLeft, AlignRight, LayoutTemplate } from 'lucide-react';
+import { AlignCenter, AlignLeft, AlignRight, LayoutTemplate, Text, TextCursorInput } from 'lucide-react';
 import { getOtherFontOptions, getRecommendedFontOptions } from '../../fontOptions';
 import type { Language } from '../../translations';
 import type { ExpandedSections, TextAlign, TranslateFn, TypographySectionProps, WritingMode } from '../../types';
@@ -228,11 +228,12 @@ export function TypographyPanel({ language, t, expanded, onToggle, typography }:
               <button
                 key={mode}
                 onClick={() => typography.onWritingModeChange(mode)}
-                className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${
+                className={`flex-1 py-1.5 flex justify-center items-center rounded-md transition-all ${
                   typography.writingMode === mode ? 'app-segment-button-active' : 'text-gray-500 hover:text-gray-700'
                 }`}
+                aria-label={mode === 'horizontal-tb' ? t('horizontal') : t('vertical')}
               >
-                {mode === 'horizontal-tb' ? t('horizontal') : t('vertical')}
+                {mode === 'horizontal-tb' ? <Text className="w-4 h-4" /> : <TextCursorInput className="w-4 h-4 rotate-90" />}
               </button>
             ))}
           </div>
