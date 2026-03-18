@@ -281,9 +281,27 @@ export function Sidebar({
 
   return (
     <>
+      {/* Mobile settings shortcut */}
+      <div className="md:hidden fixed left-4 top-[calc(1rem+env(safe-area-inset-top))] z-20">
+        <button
+          type="button"
+          onClick={() => setActiveMobilePanel('settings')}
+          className={`inline-flex h-11 w-11 items-center justify-center rounded-full border shadow-[0_12px_30px_var(--app-accent-shadow)] backdrop-blur transition-colors ${
+            activeMobilePanel === 'settings'
+              ? 'border-(--app-accent-300) bg-(--app-accent-700) text-white'
+              : 'border-white/75 bg-[rgba(255,253,249,0.86)] text-(--app-accent-700) hover:bg-(--app-accent-50)'
+          }`}
+          aria-label={t('settings')}
+          aria-expanded={activeMobilePanel === 'settings'}
+          aria-controls="mobile-controls-drawer"
+        >
+          <Settings className="h-4 w-4" />
+        </button>
+      </div>
+
       {/* Mobile bottom bar */}
       <div className="md:hidden fixed inset-x-0 bottom-0 z-20 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pointer-events-none">
-        <div className="pointer-events-auto mx-auto flex max-w-md items-stretch gap-2 rounded-[1.75rem] border border-white/70 bg-[rgba(255,253,249,0.92)] p-2 shadow-[0_18px_50px_var(--app-accent-shadow)] backdrop-blur">
+        <div className="pointer-events-auto mx-auto grid max-w-md grid-cols-4 items-stretch gap-2 rounded-[1.75rem] border border-white/70 bg-[rgba(255,253,249,0.92)] p-2 shadow-[0_18px_50px_var(--app-accent-shadow)] backdrop-blur">
           <button
             type="button"
             onClick={() => openMobilePanel('templates')}
@@ -324,16 +342,6 @@ export function Sidebar({
             <Download className={`h-4 w-4 ${activeMobilePanel === 'export' ? 'text-white' : 'text-(--app-accent-700)'}`} />
             <span className="truncate">{t('quickExport')}</span>
           </button>
-          <button
-            type="button"
-            onClick={() => openMobilePanel('settings')}
-            className={mobileButtonClassName('settings')}
-            aria-expanded={activeMobilePanel === 'settings'}
-            aria-controls="mobile-controls-drawer"
-          >
-            <Settings className={`h-4 w-4 ${activeMobilePanel === 'settings' ? 'text-white' : 'text-(--app-accent-600)'}`} />
-            <span className="truncate">{t('settings')}</span>
-          </button>
         </div>
       </div>
 
@@ -368,14 +376,26 @@ export function Sidebar({
                   <h3 className="text-sm font-bold text-(--app-accent-900)">
                     {activeMobilePanel ? t(MOBILE_PANEL_TITLE_KEYS[activeMobilePanel]) : t('controlsPanelTitle')}
                   </h3>
-                  <button
-                    type="button"
-                    onClick={() => setActiveMobilePanel(null)}
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-gray-100/50 text-(--app-accent-700) active:scale-90 transition-transform"
-                    aria-label={t('closeControls')}
-                  >
-                    <X className="h-5 w-5" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {activeMobilePanel !== 'settings' ? (
+                      <button
+                        type="button"
+                        onClick={() => setActiveMobilePanel('settings')}
+                        className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-gray-100/50 text-(--app-accent-700) active:scale-90 transition-transform"
+                        aria-label={t('settings')}
+                      >
+                        <Settings className="h-4 w-4" />
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => setActiveMobilePanel(null)}
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-gray-100/50 text-(--app-accent-700) active:scale-90 transition-transform"
+                      aria-label={t('closeControls')}
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
                 </div>
               </div>
 

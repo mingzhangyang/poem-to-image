@@ -1,4 +1,5 @@
-import { AlignCenter, AlignLeft, AlignRight, LayoutTemplate, Text, TextCursorInput } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { AlignCenter, AlignLeft, AlignRight, ChevronDown, ChevronRight, LayoutTemplate, Text, TextCursorInput } from 'lucide-react';
 import { getOtherFontOptions, getRecommendedFontOptions } from '../../fontOptions';
 import type { Language } from '../../translations';
 import type { ExpandedSections, TextAlign, TranslateFn, TypographySectionProps, WritingMode } from '../../types';
@@ -20,6 +21,20 @@ export function TypographyPanel({ language, t, expanded, onToggle, typography }:
     ?.replaceAll("'", '')
     .trim();
   const summary = `${fontName} · ${typography.fontSize}px · ${typography.writingMode === 'vertical-rl' ? t('vertical') : t('horizontal')}`;
+  const hasAdvancedLayoutAdjustments = (
+    typography.padding !== 64 ||
+    typography.lineHeight !== 1.8 ||
+    typography.letterSpacing !== 4 ||
+    typography.columns !== 1 ||
+    typography.columnGap !== 32
+  );
+  const [isLayoutOpen, setIsLayoutOpen] = useState(hasAdvancedLayoutAdjustments);
+
+  useEffect(() => {
+    if (hasAdvancedLayoutAdjustments) {
+      setIsLayoutOpen(true);
+    }
+  }, [hasAdvancedLayoutAdjustments]);
 
   return (
     <ControlSection
@@ -67,80 +82,135 @@ export function TypographyPanel({ language, t, expanded, onToggle, typography }:
             />
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">{t('padding')} ({typography.padding}px)</label>
-            <input
-              type="range"
-              min="0"
-              max="200"
-              value={typography.padding}
-              onChange={(event) => typography.onPaddingChange(Number(event.target.value))}
-              className="app-range"
-            />
+            <label className="block text-xs text-gray-500 mb-1">{t('textColor')}</label>
+            <div className="flex items-center gap-3 rounded-xl border border-[rgba(34,48,52,0.08)] bg-[rgba(255,253,249,0.94)] px-3 py-2">
+              <input
+                type="color"
+                value={typography.textColor}
+                onChange={(event) => typography.onTextColorChange(event.target.value)}
+                className="h-8 w-8 shrink-0 cursor-pointer rounded border-0 p-0"
+              />
+              <span className="min-w-0 truncate text-sm text-gray-600 uppercase font-mono">{typography.textColor}</span>
+            </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">{t('lineHeight')} ({typography.lineHeight})</label>
-            <input
-              type="range"
-              min="1"
-              max="3"
-              step="0.1"
-              value={typography.lineHeight}
-              onChange={(event) => typography.onLineHeightChange(Number(event.target.value))}
-              className="app-range"
-            />
+        <div className="flex gap-2 pt-2 border-t border-gray-100">
+          <div className="app-segment flex-1 p-1 rounded-lg flex">
+            {(['left', 'center', 'right'] as TextAlign[]).map((align) => (
+              <button
+                key={align}
+                onClick={() => typography.onTextAlignChange(align)}
+                className={`flex-1 py-1.5 flex justify-center items-center rounded-md transition-all ${
+                  typography.textAlign === align ? 'app-segment-button-active' : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                {align === 'left' ? <AlignLeft className="w-4 h-4" /> : null}
+                {align === 'center' ? <AlignCenter className="w-4 h-4" /> : null}
+                {align === 'right' ? <AlignRight className="w-4 h-4" /> : null}
+              </button>
+            ))}
           </div>
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">{t('letterSpacing')} ({typography.letterSpacing}px)</label>
-            <input
-              type="range"
-              min="0"
-              max="20"
-              value={typography.letterSpacing}
-              onChange={(event) => typography.onLetterSpacingChange(Number(event.target.value))}
-              className="app-range"
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">{t('columns')} ({typography.columns})</label>
-            <input
-              type="range"
-              min="1"
-              max="4"
-              value={typography.columns}
-              onChange={(event) => typography.onColumnsChange(Number(event.target.value))}
-              className="app-range"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">{t('columnGap')} ({typography.columnGap}px)</label>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={typography.columnGap}
-              onChange={(event) => typography.onColumnGapChange(Number(event.target.value))}
-              className="app-range"
-            />
+          <div className="app-segment flex-1 p-1 rounded-lg flex">
+            {(['horizontal-tb', 'vertical-rl'] as WritingMode[]).map((mode) => (
+              <button
+                key={mode}
+                onClick={() => typography.onWritingModeChange(mode)}
+                className={`flex-1 py-1.5 flex justify-center items-center rounded-md transition-all ${
+                  typography.writingMode === mode ? 'app-segment-button-active' : 'text-gray-500 hover:text-gray-700'
+                }`}
+                aria-label={mode === 'horizontal-tb' ? t('horizontal') : t('vertical')}
+              >
+                {mode === 'horizontal-tb' ? <Text className="w-4 h-4" /> : <TextCursorInput className="w-4 h-4 rotate-90" />}
+              </button>
+            ))}
           </div>
         </div>
 
-        <div>
-          <label className="block text-xs text-gray-500 mb-1">{t('textColor')}</label>
-          <div className="flex items-center gap-3">
-            <input
-              type="color"
-              value={typography.textColor}
-              onChange={(event) => typography.onTextColorChange(event.target.value)}
-              className="w-8 h-8 rounded cursor-pointer border-0 p-0"
-            />
-            <span className="text-sm text-gray-600 uppercase font-mono">{typography.textColor}</span>
-          </div>
+        <div className="pt-2 border-t border-gray-100">
+          <button
+            type="button"
+            onClick={() => setIsLayoutOpen((current) => !current)}
+            className="flex w-full items-center justify-between gap-3 rounded-xl border border-[rgba(34,48,52,0.08)] bg-[rgba(255,253,249,0.94)] px-3 py-2.5 text-left transition-colors hover:border-(--app-accent-200) hover:bg-(--app-accent-50)"
+            aria-expanded={isLayoutOpen}
+          >
+            <span className="min-w-0">
+              <span className="block text-xs font-semibold uppercase tracking-[0.18em] text-(--app-accent-500)">{t('layout')}</span>
+              <span className="mt-1 block text-xs text-gray-500">
+                {typography.padding}px · {typography.lineHeight} · {typography.columns} {t('columns')}
+              </span>
+            </span>
+            <span className="shrink-0 rounded-full border border-[rgba(34,48,52,0.08)] bg-white p-1 text-(--app-accent-600)">
+              {isLayoutOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            </span>
+          </button>
+
+          {isLayoutOpen ? (
+            <div className="mt-3 space-y-3 rounded-2xl border border-[rgba(34,48,52,0.06)] bg-[rgba(255,250,242,0.6)] p-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">{t('padding')} ({typography.padding}px)</label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="200"
+                    value={typography.padding}
+                    onChange={(event) => typography.onPaddingChange(Number(event.target.value))}
+                    className="app-range"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">{t('lineHeight')} ({typography.lineHeight})</label>
+                  <input
+                    type="range"
+                    min="1"
+                    max="3"
+                    step="0.1"
+                    value={typography.lineHeight}
+                    onChange={(event) => typography.onLineHeightChange(Number(event.target.value))}
+                    className="app-range"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">{t('letterSpacing')} ({typography.letterSpacing}px)</label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="20"
+                    value={typography.letterSpacing}
+                    onChange={(event) => typography.onLetterSpacingChange(Number(event.target.value))}
+                    className="app-range"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">{t('columns')} ({typography.columns})</label>
+                  <input
+                    type="range"
+                    min="1"
+                    max="4"
+                    value={typography.columns}
+                    onChange={(event) => typography.onColumnsChange(Number(event.target.value))}
+                    className="app-range"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">{t('columnGap')} ({typography.columnGap}px)</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={typography.columnGap}
+                  onChange={(event) => typography.onColumnGapChange(Number(event.target.value))}
+                  className="app-range"
+                />
+              </div>
+            </div>
+          ) : null}
         </div>
 
         <div className="pt-2 border-t border-gray-100">
@@ -205,38 +275,6 @@ export function TypographyPanel({ language, t, expanded, onToggle, typography }:
               </div>
             </div>
           ) : null}
-        </div>
-
-        <div className="flex gap-2 pt-2 border-t border-gray-100">
-          <div className="app-segment flex-1 p-1 rounded-lg flex">
-            {(['left', 'center', 'right'] as TextAlign[]).map((align) => (
-              <button
-                key={align}
-                onClick={() => typography.onTextAlignChange(align)}
-                className={`flex-1 py-1.5 flex justify-center items-center rounded-md transition-all ${
-                  typography.textAlign === align ? 'app-segment-button-active' : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                {align === 'left' ? <AlignLeft className="w-4 h-4" /> : null}
-                {align === 'center' ? <AlignCenter className="w-4 h-4" /> : null}
-                {align === 'right' ? <AlignRight className="w-4 h-4" /> : null}
-              </button>
-            ))}
-          </div>
-          <div className="app-segment flex-1 p-1 rounded-lg flex">
-            {(['horizontal-tb', 'vertical-rl'] as WritingMode[]).map((mode) => (
-              <button
-                key={mode}
-                onClick={() => typography.onWritingModeChange(mode)}
-                className={`flex-1 py-1.5 flex justify-center items-center rounded-md transition-all ${
-                  typography.writingMode === mode ? 'app-segment-button-active' : 'text-gray-500 hover:text-gray-700'
-                }`}
-                aria-label={mode === 'horizontal-tb' ? t('horizontal') : t('vertical')}
-              >
-                {mode === 'horizontal-tb' ? <Text className="w-4 h-4" /> : <TextCursorInput className="w-4 h-4 rotate-90" />}
-              </button>
-            ))}
-          </div>
         </div>
       </div>
     </ControlSection>

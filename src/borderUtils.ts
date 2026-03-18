@@ -1,6 +1,8 @@
 import type { BorderStyle } from './types';
 
-interface OrganicBorderStroke {
+export type OrganicBorderStyle = Extract<BorderStyle, 'brush' | 'ink'>;
+
+export interface OrganicBorderStroke {
   path: string;
   opacity: number;
   width: number;
@@ -9,6 +11,31 @@ interface OrganicBorderStroke {
 interface Point {
   x: number;
   y: number;
+}
+
+interface OrganicBorderLayerConfig {
+  insetMultiplier: number;
+  roughnessMultiplier: number;
+  minRoughness: number;
+  opacity: number;
+  widthMultiplier: number;
+  minWidth: number;
+  seed: number;
+  segmentDensity: number;
+  minSegments: number;
+  maxSegments: number;
+}
+
+interface OrganicBorderConfig {
+  basePadding: number;
+  minPadding: number;
+  layers: OrganicBorderLayerConfig[];
+}
+
+interface DoubleBorderMetrics {
+  lineWidth: number;
+  innerInset: number;
+  maxPaintInset: number;
 }
 
 function toFiniteNumber(value: number, fallback: number) {
@@ -21,6 +48,10 @@ function normalizeBorderWidth(borderWidth: number) {
 
 function normalizeDimension(value: number, fallback: number) {
   return Math.max(1, toFiniteNumber(value, fallback));
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
 }
 
 function wave(t: number, roughness: number, seed: number) {
@@ -103,37 +134,174 @@ function buildHandDrawnPath(width: number, height: number, inset: number, roughn
 
 // No longer needed: base rect removed for organic styles
 
-export function getBorderPadding(borderWidth: number, borderStyle: BorderStyle) {
-  const safeBorderWidth = normalizeBorderWidth(borderWidth);
-  const borderAllowance = borderStyle === 'double'
-    ? safeBorderWidth * 2.8
-    : borderStyle === 'ink'
-      ? safeBorderWidth * 2.6
-      : safeBorderWidth * 2;
-  return Math.max(24, Math.round(16 + borderAllowance));
+const ORGANIC_BORDER_CONFIGS: Record<OrganicBorderStyle, OrganicBorderConfig> = {
+  brush: {
+    basePadding: 16,
+    minPadding: 26,
+    layers: [
+      {
+        insetMultiplier: 1.22,
+        roughnessMultiplier: 0.46,
+        minRoughness: 1.05,
+        opacity: 0.22,
+        widthMultiplier: 1.28,
+        minWidth: 2,
+        seed: 2.8,
+        segmentDensity: 17,
+        minSegments: 28,
+        maxSegments: 96,
+      },
+      {
+        insetMultiplier: 1.22,
+        roughnessMultiplier: 0.46,
+        minRoughness: 1.05,
+        opacity: 0.9,
+        widthMultiplier: 0.9,
+        minWidth: 2,
+        seed: 2.8,
+        segmentDensity: 17,
+        minSegments: 28,
+        maxSegments: 108,
+      },
+    ],
+  },
+  ink: {
+    basePadding: 18,
+    minPadding: 28,
+    layers: [
+      {
+        insetMultiplier: 1.12,
+        roughnessMultiplier: 0.12,
+        minRoughness: 0.48,
+        opacity: 0.16,
+        widthMultiplier: 1.32,
+        minWidth: 2.4,
+        seed: 1.72,
+        segmentDensity: 28,
+        minSegments: 14,
+        maxSegments: 72,
+      },
+      {
+        insetMultiplier: 1.12,
+        roughnessMultiplier: 0.12,
+        minRoughness: 0.48,
+        opacity: 0.86,
+        widthMultiplier: 0.95,
+        minWidth: 2,
+        seed: 1.72,
+        segmentDensity: 28,
+        minSegments: 14,
+        maxSegments: 72,
+      },
+    ],
+  },
+};
+
+function getOrganicBorderConfig(borderStyle: OrganicBorderStyle) {
+  return ORGANIC_BORDER_CONFIGS[borderStyle];
 }
 
-export function createOrganicBorderStrokes(width: number, height: number, borderWidth: number, borderStyle: Extract<BorderStyle, 'brush' | 'ink'>): OrganicBorderStroke[] {
+function getOrganicLayerSegments(width: number, height: number, layer: OrganicBorderLayerConfig) {
+  const perimeter = (normalizeDimension(width, 100) + normalizeDimension(height, 100)) * 2;
+  return clamp(Math.round(perimeter / layer.segmentDensity), layer.minSegments, layer.maxSegments);
+}
+
+function getOrganicLayerStrokeWidth(borderWidth: number, layer: OrganicBorderLayerConfig) {
+  return Math.max(layer.minWidth, borderWidth * layer.widthMultiplier);
+}
+
+function getOrganicLayerInset(borderWidth: number, layer: OrganicBorderLayerConfig) {
+  return borderWidth / 2 + layer.insetMultiplier;
+}
+
+function getOrganicLayerRoughness(
+  width: number,
+  height: number,
+  borderWidth: number,
+  layer: OrganicBorderLayerConfig,
+) {
+  const sizeLimit = Math.min(normalizeDimension(width, 100), normalizeDimension(height, 100)) * 0.045;
+  return Math.min(sizeLimit, Math.max(layer.minRoughness, borderWidth * layer.roughnessMultiplier));
+}
+
+function getOrganicPadding(borderWidth: number, borderStyle: OrganicBorderStyle) {
+  const safeBorderWidth = normalizeBorderWidth(borderWidth);
+  const config = getOrganicBorderConfig(borderStyle);
+  const bleed = config.layers.reduce((maxBleed, layer) => Math.max(maxBleed, getOrganicLayerPaintInset(safeBorderWidth, layer)), 0);
+
+  return Math.max(config.minPadding, Math.round(config.basePadding + bleed));
+}
+
+function getOrganicLayerPaintInset(borderWidth: number, layer: OrganicBorderLayerConfig) {
+  const strokeWidth = getOrganicLayerStrokeWidth(borderWidth, layer);
+  return getOrganicLayerInset(borderWidth, layer)
+    + strokeWidth / 2
+    + Math.max(layer.minRoughness, borderWidth * layer.roughnessMultiplier);
+}
+
+export function getDoubleBorderMetrics(borderWidth: number): DoubleBorderMetrics {
+  const safeBorderWidth = normalizeBorderWidth(borderWidth);
+  const lineWidth = Math.max(1.25, safeBorderWidth * 0.32);
+  const gap = Math.max(1.5, safeBorderWidth * 0.36);
+  const innerInset = lineWidth + gap;
+
+  return {
+    lineWidth,
+    innerInset,
+    maxPaintInset: innerInset + lineWidth / 2,
+  };
+}
+
+function getBorderPaintInset(borderWidth: number, borderStyle: BorderStyle) {
+  const safeBorderWidth = normalizeBorderWidth(borderWidth);
+
+  if (isOrganicBorderStyle(borderStyle)) {
+    return getOrganicBorderConfig(borderStyle).layers.reduce(
+      (maxBleed, layer) => Math.max(maxBleed, getOrganicLayerPaintInset(safeBorderWidth, layer)),
+      0,
+    );
+  }
+
+  if (borderStyle === 'double') {
+    return getDoubleBorderMetrics(safeBorderWidth).maxPaintInset;
+  }
+
+  return safeBorderWidth;
+}
+
+export function isOrganicBorderStyle(borderStyle: BorderStyle): borderStyle is OrganicBorderStyle {
+  return borderStyle === 'brush' || borderStyle === 'ink';
+}
+
+export function getBorderPadding(borderWidth: number, borderStyle: BorderStyle) {
+  if (isOrganicBorderStyle(borderStyle)) {
+    return getOrganicPadding(borderWidth, borderStyle);
+  }
+
+  return Math.max(24, Math.round(16 + getBorderPaintInset(borderWidth, borderStyle)));
+}
+
+export function createOrganicBorderStrokes(
+  width: number,
+  height: number,
+  borderWidth: number,
+  borderStyle: OrganicBorderStyle,
+): OrganicBorderStroke[] {
   const safeBorderWidth = normalizeBorderWidth(borderWidth);
   const safeWidth = normalizeDimension(width, 100);
   const safeHeight = normalizeDimension(height, 100);
+  const config = getOrganicBorderConfig(borderStyle);
 
-  if (borderStyle === 'ink') {
-    return [
-      {
-        path: buildHandDrawnPath(safeWidth, safeHeight, safeBorderWidth * 1.2, Math.max(0.5, safeBorderWidth * 0.15), 1.5, 36),
-        opacity: 0.9,
-        width: safeBorderWidth,
-      },
-    ];
-  }
-
-  // brush (handwritten japanese-magazine style)
-  return [
-    {
-      path: buildHandDrawnPath(safeWidth, safeHeight, safeBorderWidth * 1.2, Math.max(0.7, safeBorderWidth * 0.25), 2.8, 48),
-      opacity: 0.95,
-      width: Math.max(2, safeBorderWidth * 0.9),
-    },
-  ];
+  return config.layers.map((layer) => ({
+    path: buildHandDrawnPath(
+      safeWidth,
+      safeHeight,
+      getOrganicLayerInset(safeBorderWidth, layer),
+      getOrganicLayerRoughness(safeWidth, safeHeight, safeBorderWidth, layer),
+      layer.seed,
+      getOrganicLayerSegments(safeWidth, safeHeight, layer),
+    ),
+    opacity: layer.opacity,
+    width: getOrganicLayerStrokeWidth(safeBorderWidth, layer),
+  }));
 }

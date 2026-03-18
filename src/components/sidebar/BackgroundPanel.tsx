@@ -1,4 +1,5 @@
-import { Loader2, Palette, Sparkles, Upload } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { ChevronDown, ChevronRight, Loader2, Palette, Sparkles, Upload } from 'lucide-react';
 import type { TranslationKey } from '../../translations';
 import type { AiProvider, BackgroundType, BackgroundSectionProps, ExpandedSections, TranslateFn } from '../../types';
 import { ControlSection } from '../ControlSection';
@@ -47,6 +48,9 @@ interface BackgroundPanelProps {
 }
 
 export function BackgroundPanel({ t, expanded, onToggle, background, balance }: BackgroundPanelProps) {
+  const [isPromptHelpOpen, setIsPromptHelpOpen] = useState(false);
+  const hasImageAdjustments = background.bgBrightness !== 100 || background.bgBlur !== 0;
+  const [isImageAdjustmentsOpen, setIsImageAdjustmentsOpen] = useState(hasImageAdjustments);
   const summary = (() => {
     if (background.backgroundType === 'ai') {
       return `AI · ${background.aiProvider === 'gemini' ? 'Gemini' : 'OpenAI'}`;
@@ -58,7 +62,12 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
 
     return t(backgroundTypeLabels[background.backgroundType]);
   })();
-  const selectedProviderMeta = PROVIDER_META[background.aiProvider];
+
+  useEffect(() => {
+    if (hasImageAdjustments) {
+      setIsImageAdjustmentsOpen(true);
+    }
+  }, [hasImageAdjustments]);
 
   return (
     <ControlSection
@@ -195,8 +204,6 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
               </div>
             </div>
 
-            {/* 移除当前选中provider详细信息的那一块 */}
-
             <textarea
               className="app-textarea h-20 text-sm resize-none"
               value={background.aiPrompt}
@@ -204,36 +211,54 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
               maxLength={MAX_AI_PROMPT_LENGTH}
               placeholder={t('aiPromptPlaceholder')}
             />
-            <div className="space-y-2">
-              <div className="text-xs font-medium uppercase tracking-wide text-[rgba(51,88,87,0.82)]">{t('promptSuggestions')}</div>
-              <div className="flex flex-wrap gap-2">
-                {PROMPT_SUGGESTIONS.map((suggestion) => {
-                  const isSelected = background.aiPrompt.trim() === suggestion;
-
-                  return (
-                    <button
-                      key={suggestion}
-                      type="button"
-                      onClick={() => background.onAiPromptChange(suggestion)}
-                      className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-                        isSelected
-                          ? 'border-(--app-accent-500) bg-(--app-accent-700) text-white'
-                          : 'border-(--app-accent-200) bg-white text-(--app-accent-700) hover:border-(--app-accent-300) hover:bg-(--app-accent-50)'
-                      }`}
-                    >
-                      {suggestion}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
             <div className="text-right text-xs text-[rgba(51,88,87,0.82)]">
               {background.aiPrompt.length}/{MAX_AI_PROMPT_LENGTH}
             </div>
-            <div className="flex items-center justify-between gap-3 rounded-xl border border-(--app-accent-200) bg-white/85 px-3 py-2 text-xs text-[rgba(51,88,87,0.82)]">
-              <span>
-                {t(background.aiProvider === 'gemini' ? 'geminiTip' : 'openaiTip')}
-              </span>
+            <div className="rounded-2xl border border-[rgba(34,48,52,0.08)] bg-white/80">
+              <button
+                type="button"
+                onClick={() => setIsPromptHelpOpen((current) => !current)}
+                className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors hover:bg-(--app-accent-50)"
+                aria-expanded={isPromptHelpOpen}
+              >
+                <span className="min-w-0">
+                  <span className="block text-xs font-semibold uppercase tracking-[0.18em] text-(--app-accent-500)">{t('promptSuggestions')}</span>
+                  <span className="mt-1 block text-xs text-gray-500">
+                    {t(background.aiProvider === 'gemini' ? 'geminiTip' : 'openaiTip')}
+                  </span>
+                </span>
+                <span className="shrink-0 rounded-full border border-[rgba(34,48,52,0.08)] bg-white p-1 text-(--app-accent-600)">
+                  {isPromptHelpOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                </span>
+              </button>
+
+              {isPromptHelpOpen ? (
+                <div className="space-y-3 border-t border-[rgba(34,48,52,0.06)] px-3 py-3">
+                  <div className="flex flex-wrap gap-2">
+                    {PROMPT_SUGGESTIONS.map((suggestion) => {
+                      const isSelected = background.aiPrompt.trim() === suggestion;
+
+                      return (
+                        <button
+                          key={suggestion}
+                          type="button"
+                          onClick={() => background.onAiPromptChange(suggestion)}
+                          className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                            isSelected
+                              ? 'border-(--app-accent-500) bg-(--app-accent-700) text-white'
+                              : 'border-(--app-accent-200) bg-white text-(--app-accent-700) hover:border-(--app-accent-300) hover:bg-(--app-accent-50)'
+                          }`}
+                        >
+                          {suggestion}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="rounded-xl border border-(--app-accent-200) bg-white/85 px-3 py-2 text-xs text-[rgba(51,88,87,0.82)]">
+                    {t(background.aiProvider === 'gemini' ? 'geminiTip' : 'openaiTip')}
+                  </div>
+                </div>
+              ) : null}
             </div>
             <button
               onClick={background.onGenerateAiBackground}
@@ -255,35 +280,56 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
         ) : null}
 
         {background.backgroundType === 'image' || background.backgroundType === 'ai' ? (
-          <div className="space-y-3 pt-3 border-t border-gray-100">
-            <div>
-              <div className="flex justify-between text-xs text-gray-500 mb-1">
-                <span>{t('brightness')}</span>
-                <span>{background.bgBrightness}%</span>
+          <div className="pt-3 border-t border-gray-100">
+            <button
+              type="button"
+              onClick={() => setIsImageAdjustmentsOpen((current) => !current)}
+              className="flex w-full items-center justify-between gap-3 rounded-xl border border-[rgba(34,48,52,0.08)] bg-[rgba(255,253,249,0.94)] px-3 py-2.5 text-left transition-colors hover:border-(--app-accent-200) hover:bg-(--app-accent-50)"
+              aria-expanded={isImageAdjustmentsOpen}
+            >
+              <span className="min-w-0">
+                <span className="block text-xs font-semibold uppercase tracking-[0.18em] text-(--app-accent-500)">{t('brightness')} / {t('blur')}</span>
+                <span className="mt-1 block text-xs text-gray-500">
+                  {background.bgBrightness}% · {background.bgBlur}px
+                </span>
+              </span>
+              <span className="shrink-0 rounded-full border border-[rgba(34,48,52,0.08)] bg-white p-1 text-(--app-accent-600)">
+                {isImageAdjustmentsOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              </span>
+            </button>
+
+            {isImageAdjustmentsOpen ? (
+              <div className="mt-3 space-y-3 rounded-2xl border border-[rgba(34,48,52,0.06)] bg-[rgba(255,250,242,0.6)] p-3">
+                <div>
+                  <div className="flex justify-between text-xs text-gray-500 mb-1">
+                    <span>{t('brightness')}</span>
+                    <span>{background.bgBrightness}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="200"
+                    value={background.bgBrightness}
+                    onChange={(event) => background.onBgBrightnessChange(Number(event.target.value))}
+                    className="app-range"
+                  />
+                </div>
+                <div>
+                  <div className="flex justify-between text-xs text-gray-500 mb-1">
+                    <span>{t('blur')}</span>
+                    <span>{background.bgBlur}px</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="20"
+                    value={background.bgBlur}
+                    onChange={(event) => background.onBgBlurChange(Number(event.target.value))}
+                    className="app-range"
+                  />
+                </div>
               </div>
-              <input
-                type="range"
-                min="0"
-                max="200"
-                value={background.bgBrightness}
-                onChange={(event) => background.onBgBrightnessChange(Number(event.target.value))}
-                className="app-range"
-              />
-            </div>
-            <div>
-              <div className="flex justify-between text-xs text-gray-500 mb-1">
-                <span>{t('blur')}</span>
-                <span>{background.bgBlur}px</span>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="20"
-                value={background.bgBlur}
-                onChange={(event) => background.onBgBlurChange(Number(event.target.value))}
-                className="app-range"
-              />
-            </div>
+            ) : null}
           </div>
         ) : null}
       </div>

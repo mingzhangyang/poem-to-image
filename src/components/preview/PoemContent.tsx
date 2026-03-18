@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, RefObject } from 'react';
-import { createOrganicBorderStrokes, getBorderPadding } from '../../borderUtils';
+import { createOrganicBorderStrokes, getBorderPadding, isOrganicBorderStyle } from '../../borderUtils';
 import type { BorderStyle, CustomText, LogoConfig, PositionedElement, StampConfig, TextAlign, TranslateFn, WritingMode } from '../../types';
 import { CustomTextItems } from './CustomTextItems';
 import { LogoOverlay } from './LogoOverlay';
@@ -82,8 +82,9 @@ export function PoemContent({
   const [isResizing, setIsResizing] = useState(false);
   const [liveBoxWidth, setLiveBoxWidth] = useState<number | undefined>(poemPosition.boxWidth);
   const safeBorderWidth = Number.isFinite(borderWidth) ? Math.max(2, borderWidth) : 4;
+  const organicBorder = isOrganicBorderStyle(borderStyle);
   const borderPadding = showBorder ? `${getBorderPadding(safeBorderWidth, borderStyle)}px` : '0';
-  const organicBorderStrokes = showBorder && (borderStyle === 'brush' || borderStyle === 'ink')
+  const organicBorderStrokes = showBorder && organicBorder
     ? createOrganicBorderStrokes(100, 100, safeBorderWidth, borderStyle)
     : [];
 
@@ -224,12 +225,12 @@ export function PoemContent({
       className="relative z-10 flex h-full w-full flex-col items-center justify-center"
       style={{
         borderColor,
-        borderStyle: showBorder && borderStyle !== 'brush' && borderStyle !== 'ink' ? borderStyle : 'none',
-        borderWidth: showBorder && borderStyle !== 'brush' && borderStyle !== 'ink' ? `${safeBorderWidth}px` : '0',
+        borderStyle: showBorder && !organicBorder ? borderStyle : 'none',
+        borderWidth: showBorder && !organicBorder ? `${safeBorderWidth}px` : '0',
         padding: borderPadding,
       }}
     >
-      {showBorder && (borderStyle === 'brush' || borderStyle === 'ink') ? (
+      {showBorder && organicBorder ? (
         <svg
           className="pointer-events-none absolute inset-0 z-0 h-full w-full overflow-visible"
           viewBox="0 0 100 100"

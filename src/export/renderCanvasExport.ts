@@ -1,4 +1,4 @@
-import { createOrganicBorderStrokes } from '../borderUtils';
+import { createOrganicBorderStrokes, getDoubleBorderMetrics, isOrganicBorderStyle } from '../borderUtils';
 import type { BorderStyle, CustomText, ExportScale, LogoConfig, PositionedElement, StampConfig, TextAlign, WritingMode } from '../types';
 
 interface CanvasExportBackground {
@@ -187,7 +187,7 @@ function drawBorder(ctx: CanvasRenderingContext2D, rect: Rect, borderStyle: Bord
   ctx.lineJoin = 'miter';
   ctx.lineCap = 'butt';
 
-  if (borderStyle === 'brush' || borderStyle === 'ink') {
+  if (isOrganicBorderStyle(borderStyle)) {
     const strokes = createOrganicBorderStrokes(rect.width, rect.height, safeBorderWidth, borderStyle);
 
     ctx.translate(rect.x, rect.y);
@@ -220,8 +220,7 @@ function drawBorder(ctx: CanvasRenderingContext2D, rect: Rect, borderStyle: Bord
   }
 
   if (borderStyle === 'double') {
-    const doubleLineWidth = Math.max(1.25, safeBorderWidth / 3);
-    const innerInset = safeBorderWidth - doubleLineWidth / 2;
+    const { lineWidth: doubleLineWidth, innerInset } = getDoubleBorderMetrics(safeBorderWidth);
 
     ctx.lineWidth = doubleLineWidth;
     ctx.strokeRect(

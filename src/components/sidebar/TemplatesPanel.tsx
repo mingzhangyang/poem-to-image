@@ -53,7 +53,7 @@ export function TemplatesPanel({ t, expanded, onToggle, templates, currentBackgr
             {!isSaving && (
               <button
                 onClick={() => setIsSaving(true)}
-                className="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-700 font-medium"
+                className="flex items-center gap-1 text-xs font-medium text-(--app-accent-600) hover:text-(--app-accent-800)"
               >
                 <BookmarkPlus className="w-3.5 h-3.5" />
                 {t('saveAsTemplate')}
@@ -74,11 +74,11 @@ export function TemplatesPanel({ t, expanded, onToggle, templates, currentBackgr
                   onChange={(e) => setTemplateName(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder={t('templateNamePlaceholder')}
-                  className="flex-1 text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                  className="app-input flex-1 text-sm"
                 />
                 <button
                   onClick={handleSave}
-                  className="px-3 py-1.5 text-xs font-semibold bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                  className="app-button-primary rounded-lg px-3 py-1.5 text-xs font-semibold"
                 >
                   {t('saveTemplate')}
                 </button>
@@ -105,8 +105,8 @@ export function TemplatesPanel({ t, expanded, onToggle, templates, currentBackgr
                     key={template.id}
                     className={`rounded-xl border p-3 transition-all ${
                       isActive
-                        ? 'border-indigo-300 bg-indigo-50 shadow-sm'
-                        : 'border-gray-200 bg-white'
+                        ? 'border-(--app-accent-300) bg-(--app-accent-50) shadow-[0_10px_24px_var(--app-accent-shadow)]'
+                        : 'border-[rgba(34,48,52,0.08)] bg-white'
                     }`}
                   >
                     <div className="flex items-center gap-3">
@@ -142,7 +142,7 @@ export function TemplatesPanel({ t, expanded, onToggle, templates, currentBackgr
                           <button
                             onClick={() => templates.onApplyCustomTemplate(template.id)}
                             className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                              isActive ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                              isActive ? 'bg-(--app-accent-700) text-white' : 'bg-(--app-accent-50) text-(--app-accent-700) hover:bg-(--app-accent-100)'
                             }`}
                           >
                             {isActive ? t('templateApplied') : t('applyTemplate')}
@@ -178,8 +178,8 @@ export function TemplatesPanel({ t, expanded, onToggle, templates, currentBackgr
                   onClick={() => templates.onApplyTemplate(template.id)}
                   className={`text-left rounded-2xl border p-4 transition-all ${
                     isActive
-                      ? 'border-indigo-300 bg-indigo-50 shadow-sm'
-                      : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
+                      ? 'border-(--app-accent-300) bg-(--app-accent-50) shadow-[0_10px_24px_var(--app-accent-shadow)]'
+                      : 'border-[rgba(34,48,52,0.08)] bg-white hover:border-(--app-accent-200) hover:bg-(--app-accent-50)'
                   }`}
                 >
                   <div
@@ -195,7 +195,7 @@ export function TemplatesPanel({ t, expanded, onToggle, templates, currentBackgr
                     </div>
                     <span
                       className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                        isActive ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600'
+                        isActive ? 'bg-(--app-accent-700) text-white' : 'bg-(--app-accent-50) text-(--app-accent-700)'
                       }`}
                     >
                       {isActive ? t('templateApplied') : t('applyTemplate')}
