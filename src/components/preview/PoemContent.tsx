@@ -71,6 +71,8 @@ export function PoemContent({
   const poemBoxRef = useRef<HTMLDivElement>(null);
   const [livePosition, setLivePosition] = useState(poemPosition);
   const isDraggingRef = useRef(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const safeBorderWidth = Number.isFinite(borderWidth) ? Math.max(2, borderWidth) : 4;
   const borderPadding = showBorder ? `${getBorderPadding(safeBorderWidth, borderStyle)}px` : '0';
   const organicBorderStrokes = showBorder && (borderStyle === 'brush' || borderStyle === 'ink')
@@ -96,6 +98,7 @@ export function PoemContent({
     const startX = event.clientX;
     const startY = event.clientY;
     isDraggingRef.current = true;
+    setIsDragging(true);
     const pointerId = event.pointerId;
     onInteractionStart();
 
@@ -105,6 +108,7 @@ export function PoemContent({
       }
 
       isDraggingRef.current = false;
+      setIsDragging(false);
       const poemRect = poemBoxRef.current?.getBoundingClientRect();
       onPoemPositionChange(
         poemRect
@@ -187,8 +191,31 @@ export function PoemContent({
       >
         <div
           onPointerDown={handlePointerDown}
-          className="pointer-events-auto flex cursor-move touch-none select-none flex-col items-center justify-center"
+          onPointerEnter={() => setIsHovered(true)}
+          onPointerLeave={() => setIsHovered(false)}
+          className="pointer-events-auto relative flex cursor-move touch-none select-none flex-col items-center justify-center"
         >
+          {/* Hover/drag border indicator — absolutely positioned, no effect on text layout */}
+          {(isHovered || isDragging) && (
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute"
+              style={{
+                top: '-8px',
+                left: '-8px',
+                right: '-8px',
+                bottom: '-8px',
+                border: isDragging
+                  ? '1.5px solid rgba(255,255,255,0.95)'
+                  : '1.5px dashed rgba(255,255,255,0.75)',
+                borderRadius: '3px',
+                boxShadow: isDragging
+                  ? '0 0 0 1.5px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(0,0,0,0.25)'
+                  : '0 0 0 1.5px rgba(0,0,0,0.4)',
+                transition: 'border 0.12s ease, box-shadow 0.12s ease',
+              }}
+            />
+          )}
           <div
             ref={poemTextRef}
             className="whitespace-pre-wrap wrap-break-word max-w-full"
