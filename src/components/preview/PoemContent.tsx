@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, RefObject } from 'react';
 import { createOrganicBorderStrokes, getBorderPadding, isOrganicBorderStyle } from '../../borderUtils';
+import { useElementSize } from '../../hooks/useElementSize';
 import { getPreviewDragBounds, getPreviewPositioningRect, type PreviewPositioningRect } from '../../positioningRect';
+import { createCanvasTextMeasurer, createTextLayout } from '../../textLayout';
 import type { BorderStyle, CustomText, LogoConfig, PositionedElement, StampConfig, TextAlign, TranslateFn, WritingMode } from '../../types';
 import { CustomTextItems } from './CustomTextItems';
 import { LogoOverlay } from './LogoOverlay';
 import { StampOverlay } from './StampOverlay';
+import { TextLayoutBlock } from './TextLayoutBlock';
 
 interface PoemContentProps {
   poemFrameRef: RefObject<HTMLDivElement | null>;
@@ -95,9 +98,27 @@ export function PoemContent({
   const safeBorderWidth = Number.isFinite(borderWidth) ? Math.max(2, borderWidth) : 4;
   const organicBorder = isOrganicBorderStyle(borderStyle);
   const borderPadding = showBorder ? `${getBorderPadding(safeBorderWidth, borderStyle)}px` : '0';
+  const frameSize = useElementSize(poemFrameRef);
   const organicBorderStrokes = showBorder && organicBorder
     ? createOrganicBorderStrokes(100, 100, safeBorderWidth, borderStyle)
     : [];
+  const previewText = text || t('poemPlaceholder');
+  const textLayout = createTextLayout(
+    {
+      text: previewText,
+      writingMode,
+      fontSize,
+      lineHeight,
+      letterSpacing,
+      columns: columnCount,
+      columnGap,
+      textAlign,
+      wrapWidth: writingMode === 'horizontal-tb'
+        ? Math.max(1, liveBoxWidth !== undefined ? (frameSize.width * liveBoxWidth) / 100 : frameSize.width || 1)
+        : undefined,
+    },
+    createCanvasTextMeasurer(fontFamily, fontSize),
+  );
 
   useEffect(() => {
     if (!isDraggingRef.current) {
@@ -347,7 +368,8 @@ export function PoemContent({
           left: `${livePosition.positionX}%`,
           top: `${livePosition.positionY}%`,
           transform: 'translate(-50%, -50%)',
-          width: liveBoxWidth !== undefined ? `${liveBoxWidth}%` : 'max-content',
+          width: `${textLayout.width}px`,
+          height: `${textLayout.height}px`,
         }}
       >
         <div
@@ -431,22 +453,18 @@ export function PoemContent({
             </div>
           )}
           <div
-            ref={poemTextRef}
-            className="whitespace-pre-wrap wrap-break-word max-w-full"
-            style={{
-              fontFamily,
-              fontSize: `${fontSize}px`,
-              color: textColor,
-              textAlign,
-              writingMode,
-              lineHeight,
-              letterSpacing: `${letterSpacing}px`,
-              textShadow: sharedTextShadow,
-              columnCount,
-              columnGap: `${columnGap}px`,
-            }}
+            className="max-w-full"
           >
-            {text || t('poemPlaceholder')}
+            <TextLayoutBlock
+              ref={poemTextRef}
+              layout={textLayout}
+              fontFamily={fontFamily}
+              fontSize={fontSize}
+              color={textColor}
+              letterSpacing={letterSpacing}
+              lineHeight={lineHeight}
+              textShadow={sharedTextShadow}
+            />
           </div>
         </div>
       </div>
@@ -463,6 +481,7 @@ export function PoemContent({
 
       <CustomTextItems
         frameRef={poemFrameRef}
+        frameWidth={frameSize.width}
         customTexts={customTexts}
         activeCustomTextId={activeTextSelection?.kind === 'customText' ? activeTextSelection.id : null}
         fontFamily={fontFamily}

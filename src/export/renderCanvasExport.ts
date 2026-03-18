@@ -13,6 +13,7 @@ import {
   STAMP_TEXTURE_BLOBS,
   type StampTextureBlob,
 } from '../stampRendering';
+import { createCanvasTextMeasurer, createTextLayout } from '../textLayout';
 import type { BorderStyle, CustomText, ExportScale, LogoConfig, PositionedElement, StampConfig, TextAlign, WritingMode } from '../types';
 
 interface CanvasExportBackground {
@@ -263,10 +264,6 @@ function drawBorder(ctx: CanvasRenderingContext2D, rect: Rect, borderStyle: Bord
   ctx.restore();
 }
 
-function splitLines(text: string) {
-  return text.split('\n').map((line) => line.trimEnd());
-}
-
 function measureTextWidth(ctx: CanvasRenderingContext2D, text: string, letterSpacing: number) {
   const characters = Array.from(text || ' ');
 
@@ -280,109 +277,6 @@ function measureTextWidth(ctx: CanvasRenderingContext2D, text: string, letterSpa
   }, 0);
 }
 
-function isHorizontalRunGlyph(text: string) {
-  return /[\p{Script=Latin}\p{Number}\s.,!?;:'"()\[\]{}\-–—/&]/u.test(text);
-}
-
-interface VerticalLineSegment {
-  text: string;
-  sideways: boolean;
-}
-
-interface VerticalLineLayout {
-  segments: VerticalLineSegment[];
-  height: number;
-}
-
-function measureSidewaysRunExtent(ctx: CanvasRenderingContext2D, text: string, fontSize: number, letterSpacing: number) {
-  return Math.max(fontSize, measureTextWidth(ctx, text, letterSpacing));
-}
-
-function getVerticalSegmentAdvance(
-  ctx: CanvasRenderingContext2D,
-  segment: VerticalLineSegment,
-  fontSize: number,
-  lineHeight: number,
-  letterSpacing: number,
-) {
-  if (segment.sideways) {
-    return measureSidewaysRunExtent(ctx, segment.text, fontSize, letterSpacing);
-  }
-
-  return fontSize * lineHeight;
-}
-
-function splitVerticalLineSegments(line: string) {
-  const characters = Array.from(line || ' ');
-  const segments: VerticalLineSegment[] = [];
-  let sidewaysBuffer = '';
-
-  const flushSidewaysBuffer = () => {
-    const text = sidewaysBuffer.trim();
-
-    if (text) {
-      segments.push({ text, sideways: true });
-    }
-
-    sidewaysBuffer = '';
-  };
-
-  characters.forEach((character) => {
-    if (isHorizontalRunGlyph(character)) {
-      sidewaysBuffer += character;
-      return;
-    }
-
-    flushSidewaysBuffer();
-    segments.push({ text: character, sideways: false });
-  });
-
-  flushSidewaysBuffer();
-
-  if (segments.length === 0) {
-    segments.push({ text: ' ', sideways: false });
-  }
-
-  return segments;
-}
-
-function getRotatedRunDrawOffset(ctx: CanvasRenderingContext2D, text: string, letterSpacing: number) {
-  const metrics = ctx.measureText(text);
-  const measuredWidth = measureTextWidth(ctx, text, letterSpacing);
-  const actualLeft = metrics.actualBoundingBoxLeft ?? 0;
-  const actualRight = metrics.actualBoundingBoxRight ?? measuredWidth;
-  const actualAscent = metrics.actualBoundingBoxAscent ?? 0;
-  const actualDescent = metrics.actualBoundingBoxDescent ?? 0;
-  const visualWidth = Math.max(measuredWidth, actualLeft + actualRight);
-
-  return {
-    startX: -visualWidth / 2 + actualLeft,
-    baselineY: (actualAscent - actualDescent) / 2,
-    width: visualWidth,
-    height: actualAscent + actualDescent,
-  };
-}
-
-function measureVerticalLineLayout(
-  ctx: CanvasRenderingContext2D,
-  line: string,
-  fontSize: number,
-  lineHeight: number,
-  letterSpacing: number,
-) {
-  const segments = splitVerticalLineSegments(line);
-  const height = segments.reduce((total, segment, index) => {
-    const advance = getVerticalSegmentAdvance(ctx, segment, fontSize, lineHeight, letterSpacing);
-    const spacing = index === segments.length - 1 ? 0 : letterSpacing;
-    return total + advance + spacing;
-  }, 0);
-
-  return {
-    segments,
-    height: Math.max(fontSize, height),
-  };
-}
-
 function drawHorizontalLine(ctx: CanvasRenderingContext2D, text: string, startX: number, startY: number, letterSpacing: number) {
   if (letterSpacing <= 0) {
     ctx.fillText(text || ' ', startX, startY);
@@ -393,6 +287,36 @@ function drawHorizontalLine(ctx: CanvasRenderingContext2D, text: string, startX:
   Array.from(text || ' ').forEach((character) => {
     ctx.fillText(character, currentX, startY);
     currentX += ctx.measureText(character).width + letterSpacing;
+  });
+}
+
+function drawTextLayout(
+  ctx: CanvasRenderingContext2D,
+  layout: ReturnType<typeof createTextLayout>,
+  letterSpacing: number,
+  offsetX: number,
+  offsetY: number,
+) {
+  layout.items.forEach((item) => {
+    if (item.kind === 'horizontal-line') {
+      drawHorizontalLine(ctx, item.text, offsetX + item.x, offsetY + item.y, letterSpacing);
+      return;
+    }
+
+    if (item.sideways) {
+      ctx.save();
+      ctx.translate(offsetX + item.x, offsetY + item.y);
+      ctx.rotate(Math.PI / 2);
+      ctx.textAlign = 'start';
+      ctx.textBaseline = 'alphabetic';
+      drawHorizontalLine(ctx, item.text, item.startX, item.baselineY, letterSpacing);
+      ctx.restore();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      return;
+    }
+
+    ctx.fillText(item.text, offsetX + item.x, offsetY + item.y);
   });
 }
 
@@ -450,224 +374,62 @@ function drawStampSurfaceLayers(ctx: CanvasRenderingContext2D, stamp: StampConfi
   ctx.restore();
 }
 
-function wrapHorizontalParagraph(ctx: CanvasRenderingContext2D, paragraph: string, maxWidth: number, letterSpacing: number) {
-  if (!paragraph) {
-    return [''];
-  }
-
-  const wrappedLines: string[] = [];
-  let currentLine = '';
-
-  Array.from(paragraph).forEach((character) => {
-    const candidate = `${currentLine}${character}`;
-
-    if (currentLine && measureTextWidth(ctx, candidate, letterSpacing) > maxWidth) {
-      wrappedLines.push(currentLine);
-      currentLine = character.trim() ? character : '';
-      return;
-    }
-
-    currentLine = candidate;
-  });
-
-  if (currentLine || wrappedLines.length === 0) {
-    wrappedLines.push(currentLine);
-  }
-
-  return wrappedLines;
-}
-
-function distributeEvenly<T>(items: T[], groups: number) {
-  const actualGroups = Math.max(1, groups);
-  const baseSize = Math.floor(items.length / actualGroups);
-  const remainder = items.length % actualGroups;
-  let offset = 0;
-
-  return Array.from({ length: actualGroups }, (_, index) => {
-    const size = baseSize + (index < remainder ? 1 : 0);
-    const chunk = items.slice(offset, offset + size);
-    offset += size;
-    return chunk;
-  });
-}
-
-function measureHorizontalColumns(
-  ctx: CanvasRenderingContext2D,
-  typography: CanvasExportTypography,
-  frameRect: Rect,
-  fontSize: number,
-  lineHeight: number,
-) {
-  const actualColumns = Math.max(1, typography.columns);
-  const columnGap = typography.columnGap;
-  const availableWidth = typography.poemPosition.boxWidth !== undefined
-    ? (frameRect.width * typography.poemPosition.boxWidth) / 100
-    : frameRect.width;
-  const targetColumnWidth = Math.max(1, (availableWidth - Math.max(0, actualColumns - 1) * columnGap) / actualColumns);
-  const paragraphs = splitLines(typography.text || ' ');
-  const wrappedLines = paragraphs.flatMap((paragraph) => (
-    wrapHorizontalParagraph(ctx, paragraph, targetColumnWidth, typography.letterSpacing)
-  ));
-  const columnsData = distributeEvenly(wrappedLines, actualColumns);
-  const lineAdvance = fontSize * lineHeight;
-  const columnWidths = columnsData.map((columnLines) => Math.max(0, ...columnLines.map((line) => measureTextWidth(ctx, line || ' ', typography.letterSpacing))));
-  const columnHeights = columnsData.map((columnLines) => Math.max(lineAdvance, columnLines.length * lineAdvance));
-  const width = columnWidths.reduce((sum, value) => sum + value, 0) + Math.max(0, actualColumns - 1) * columnGap;
-  const height = Math.max(...columnHeights, lineAdvance);
-
-  return { columnsData, columnWidths, lineAdvance, width, height };
-}
-
 function drawHorizontalText(ctx: CanvasRenderingContext2D, scene: CanvasExportScene, frameRect: Rect) {
   const { typography } = scene;
+  const layout = createTextLayout(
+    {
+      text: typography.text || ' ',
+      writingMode: typography.writingMode,
+      fontSize: typography.fontSize,
+      lineHeight: typography.lineHeight,
+      letterSpacing: typography.letterSpacing,
+      columns: typography.columns,
+      columnGap: typography.columnGap,
+      textAlign: typography.textAlign,
+      wrapWidth: typography.poemPosition.boxWidth !== undefined
+        ? Math.max(1, (frameRect.width * typography.poemPosition.boxWidth) / 100)
+        : frameRect.width,
+    },
+    createCanvasTextMeasurer(typography.fontFamily, typography.fontSize, ctx),
+  );
+  const startX = typography.poemPosition.exportLeft !== undefined
+    ? frameRect.x + (frameRect.width * typography.poemPosition.exportLeft) / 100
+    : frameRect.x + (frameRect.width * typography.poemPosition.positionX) / 100 - layout.width / 2;
+  const startY = typography.poemPosition.exportTop !== undefined
+    ? frameRect.y + (frameRect.height * typography.poemPosition.exportTop) / 100
+    : frameRect.y + (frameRect.height * typography.poemPosition.positionY) / 100 - layout.height / 2;
 
   ctx.save();
   ctx.fillStyle = typography.textColor;
   ctx.font = `${typography.fontSize}px ${typography.fontFamily}`;
   ctx.textBaseline = 'top';
   applyTextShadow(ctx, typography);
-
-  const { columnsData, columnWidths, lineAdvance, width, height } = measureHorizontalColumns(
-    ctx,
-    typography,
-    frameRect,
-    typography.fontSize,
-    typography.lineHeight,
-  );
-
-  let currentX = typography.poemPosition.exportLeft !== undefined
-    ? frameRect.x + (frameRect.width * typography.poemPosition.exportLeft) / 100
-    : frameRect.x + (frameRect.width * typography.poemPosition.positionX) / 100 - width / 2;
-  const startY = typography.poemPosition.exportTop !== undefined
-    ? frameRect.y + (frameRect.height * typography.poemPosition.exportTop) / 100
-    : frameRect.y + (frameRect.height * typography.poemPosition.positionY) / 100 - height / 2;
-
-  columnsData.forEach((columnLines, columnIndex) => {
-    const columnWidth = columnWidths[columnIndex];
-
-    columnLines.forEach((line, lineIndex) => {
-      let textX = currentX;
-      const lineWidth = measureTextWidth(ctx, line || ' ', typography.letterSpacing);
-
-      if (typography.textAlign === 'center') {
-        textX += (columnWidth - lineWidth) / 2;
-      } else if (typography.textAlign === 'right') {
-        textX += columnWidth - lineWidth;
-      }
-
-      drawHorizontalLine(ctx, line, textX, startY + lineIndex * lineAdvance, typography.letterSpacing);
-    });
-
-    currentX += columnWidth + typography.columnGap;
-  });
+  drawTextLayout(ctx, layout, typography.letterSpacing, startX, startY);
 
   ctx.restore();
 }
 
-function normalizeVerticalLines(text: string, columns: number) {
-  const sourceLines = splitLines(text || ' ');
-
-  if (Math.max(1, columns) === 1 || sourceLines.length > 1) {
-    return sourceLines;
-  }
-
-  return distributeEvenly(Array.from(sourceLines[0] || ' '), Math.max(1, columns)).map((characters) => characters.join(''));
-}
-
-function measureVerticalBlock(
-  ctx: CanvasRenderingContext2D,
-  lines: string[],
-  fontSize: number,
-  lineHeight: number,
-  columnGap: number,
-  letterSpacing: number,
-) {
-  const lineLayouts = lines.map((line) => measureVerticalLineLayout(ctx, line, fontSize, lineHeight, letterSpacing));
-  const blockWidth = Math.max(1, lines.length) * fontSize + Math.max(0, lines.length - 1) * columnGap;
-  const blockHeight = Math.max(fontSize, ...lineLayouts.map((layout) => layout.height));
-  return { lineLayouts, blockWidth, blockHeight };
-}
-
-function drawVerticalTextBlock(
-  ctx: CanvasRenderingContext2D,
-  lines: string[],
-  startX: number,
-  startY: number,
-  fontSize: number,
-  lineHeight: number,
-  columnGap: number,
-  letterSpacing: number,
-) {
-  const { lineLayouts, blockWidth } = measureVerticalBlock(ctx, lines, fontSize, lineHeight, columnGap, letterSpacing);
-  const lineOriginX = startX + blockWidth - fontSize / 2;
-  const blockTop = startY;
-
-  lines.forEach((line, lineIndex) => {
-    const columnX = lineOriginX - lineIndex * (fontSize + columnGap);
-    const layout = lineLayouts[lineIndex];
-    let cursorY = blockTop;
-
-    layout.segments.forEach((segment, segmentIndex) => {
-      const advance = getVerticalSegmentAdvance(ctx, segment, fontSize, lineHeight, letterSpacing);
-
-      if (segment.sideways) {
-        const { startX: runStartX, baselineY } = getRotatedRunDrawOffset(ctx, segment.text, letterSpacing);
-
-        ctx.save();
-        ctx.translate(columnX, cursorY + advance / 2);
-        ctx.rotate(Math.PI / 2);
-        ctx.textAlign = 'start';
-        ctx.textBaseline = 'alphabetic';
-        drawHorizontalLine(ctx, segment.text, runStartX, baselineY, letterSpacing);
-        ctx.restore();
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        cursorY += advance + (segmentIndex === layout.segments.length - 1 ? 0 : letterSpacing);
-        return;
-      }
-
-      ctx.fillText(segment.text, columnX, cursorY + advance / 2);
-      cursorY += advance + (segmentIndex === layout.segments.length - 1 ? 0 : letterSpacing);
-    });
-  });
-}
-
-function measureVerticalColumns(
-  ctx: CanvasRenderingContext2D,
-  lines: string[],
-  fontSize: number,
-  lineHeight: number,
-  columnGap: number,
-  columns: number,
-  letterSpacing: number,
-) {
-  const actualColumns = Math.max(1, columns);
-  const columnGroups = distributeEvenly(lines, actualColumns).filter((group) => group.length > 0);
-  const groupMeasurements = columnGroups.map((group) => measureVerticalBlock(ctx, group, fontSize, lineHeight, columnGap, letterSpacing));
-  const width = groupMeasurements.reduce((sum, measurement) => sum + measurement.blockWidth, 0) + Math.max(0, groupMeasurements.length - 1) * columnGap;
-  const height = Math.max(fontSize, ...groupMeasurements.map((measurement) => measurement.blockHeight));
-
-  return { columnGroups, groupMeasurements, width, height };
-}
-
 function drawVerticalText(ctx: CanvasRenderingContext2D, scene: CanvasExportScene, frameRect: Rect) {
   const { typography } = scene;
-  const lines = normalizeVerticalLines(typography.text || ' ', typography.columns);
-  const { columnGroups, groupMeasurements, width, height } = measureVerticalColumns(
-    ctx,
-    lines,
-    typography.fontSize,
-    typography.lineHeight,
-    typography.columnGap,
-    typography.columns,
-    typography.letterSpacing,
+  const layout = createTextLayout(
+    {
+      text: typography.text || ' ',
+      writingMode: typography.writingMode,
+      fontSize: typography.fontSize,
+      lineHeight: typography.lineHeight,
+      letterSpacing: typography.letterSpacing,
+      columns: typography.columns,
+      columnGap: typography.columnGap,
+      textAlign: typography.textAlign,
+    },
+    createCanvasTextMeasurer(typography.fontFamily, typography.fontSize, ctx),
   );
   const startX = typography.poemPosition.exportLeft !== undefined
     ? frameRect.x + (frameRect.width * typography.poemPosition.exportLeft) / 100
-    : frameRect.x + (frameRect.width * typography.poemPosition.positionX) / 100 - width / 2;
+    : frameRect.x + (frameRect.width * typography.poemPosition.positionX) / 100 - layout.width / 2;
   const startY = typography.poemPosition.exportTop !== undefined
     ? frameRect.y + (frameRect.height * typography.poemPosition.exportTop) / 100
-    : frameRect.y + (frameRect.height * typography.poemPosition.positionY) / 100 - height / 2;
+    : frameRect.y + (frameRect.height * typography.poemPosition.positionY) / 100 - layout.height / 2;
 
   ctx.save();
   ctx.fillStyle = typography.textColor;
@@ -675,12 +437,7 @@ function drawVerticalText(ctx: CanvasRenderingContext2D, scene: CanvasExportScen
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   applyTextShadow(ctx, typography);
-
-  let currentX = startX;
-  columnGroups.forEach((group, index) => {
-    drawVerticalTextBlock(ctx, group, currentX, startY, typography.fontSize, typography.lineHeight, typography.columnGap, typography.letterSpacing);
-    currentX += groupMeasurements[index].blockWidth + typography.columnGap;
-  });
+  drawTextLayout(ctx, layout, typography.letterSpacing, startX, startY);
 
   ctx.restore();
 }
@@ -699,6 +456,22 @@ function drawCustomText(ctx: CanvasRenderingContext2D, customText: CustomText, s
   const letterSpacing = scene.typography.letterSpacing;
   const translateX = frameRect.x + (frameRect.width * customText.positionX) / 100;
   const translateY = frameRect.y + (frameRect.height * customText.positionY) / 100;
+  const layout = createTextLayout(
+    {
+      text: customText.text || ' ',
+      writingMode: customText.writingMode,
+      fontSize: customText.fontSize,
+      lineHeight,
+      letterSpacing,
+      columns: 1,
+      columnGap: 0,
+      textAlign: 'left',
+      wrapWidth: customText.writingMode === 'horizontal-tb' && customText.boxWidth !== undefined
+        ? Math.max(1, (frameRect.width * customText.boxWidth) / 100)
+        : undefined,
+    },
+    createCanvasTextMeasurer(scene.typography.fontFamily, customText.fontSize, ctx),
+  );
 
   ctx.save();
   ctx.translate(translateX, translateY);
@@ -706,53 +479,9 @@ function drawCustomText(ctx: CanvasRenderingContext2D, customText: CustomText, s
   ctx.fillStyle = customText.color;
   ctx.font = `${customText.fontSize}px ${scene.typography.fontFamily}`;
   applyTextShadow(ctx, scene.typography);
-
-  if (customText.writingMode === 'vertical-rl') {
-    const lines = splitLines(customText.text || ' ');
-    const { blockWidth, blockHeight } = measureVerticalBlock(
-      ctx,
-      lines,
-      customText.fontSize,
-      lineHeight,
-      scene.typography.columnGap,
-      letterSpacing,
-    );
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    drawVerticalTextBlock(ctx, lines, -blockWidth / 2, -blockHeight / 2, customText.fontSize, lineHeight, scene.typography.columnGap, letterSpacing);
-    ctx.restore();
-    return;
-  }
-
-  const lines = splitLines(customText.text || ' ');
-  const lineAdvance = customText.fontSize * lineHeight;
-  const wrappedLines = customText.boxWidth !== undefined
-    ? lines.flatMap((line) => {
-        const nextLines = wrapHorizontalParagraph(
-          ctx,
-          line,
-          Math.max(1, (frameRect.width * customText.boxWidth) / 100),
-          letterSpacing,
-        );
-        return nextLines;
-      })
-    : lines;
-  const maxLineWidth = customText.boxWidth !== undefined
-    ? Math.max(1, (frameRect.width * customText.boxWidth) / 100)
-    : Math.max(0, ...wrappedLines.map((line) => measureTextWidth(ctx, line || ' ', letterSpacing)));
-  const blockHeight = Math.max(lineAdvance, wrappedLines.length * lineAdvance);
-  const blockTop = -blockHeight / 2;
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'top';
-  wrappedLines.forEach((line, lineIndex) => {
-    drawHorizontalLine(
-      ctx,
-      line || ' ',
-      -maxLineWidth / 2,
-      blockTop + lineIndex * lineAdvance,
-      letterSpacing,
-    );
-  });
+  ctx.textAlign = layout.writingMode === 'vertical-rl' ? 'center' : 'left';
+  ctx.textBaseline = layout.writingMode === 'vertical-rl' ? 'middle' : 'top';
+  drawTextLayout(ctx, layout, letterSpacing, -layout.width / 2, -layout.height / 2);
   ctx.restore();
 }
 

@@ -1,10 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import type { FC, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, RefObject } from 'react';
+import { useElementSize } from '../../hooks/useElementSize';
 import { getPreviewDragBounds, getPreviewPositioningRect, type PreviewPositioningRect } from '../../positioningRect';
+import { createCanvasTextMeasurer, createTextLayout } from '../../textLayout';
 import type { CustomText } from '../../types';
+import { TextLayoutBlock } from './TextLayoutBlock';
 
 interface CustomTextItemsProps {
   frameRef: RefObject<HTMLDivElement | null>;
+  frameWidth: number;
   customTexts: CustomText[];
   activeCustomTextId: string | null;
   fontFamily: string;
@@ -32,6 +36,7 @@ function measureCustomTextGeometry(frameRect: PreviewPositioningRect, boxRect: D
 
 interface DraggableCustomTextItemProps {
   frameRef: RefObject<HTMLDivElement | null>;
+  frameWidth: number;
   customText: CustomText;
   isSelected: boolean;
   fontFamily: string;
@@ -46,6 +51,7 @@ interface DraggableCustomTextItemProps {
 
 const DraggableCustomTextItem: FC<DraggableCustomTextItemProps> = ({
   frameRef,
+  frameWidth,
   customText,
   isSelected,
   fontFamily,
@@ -64,6 +70,22 @@ const DraggableCustomTextItem: FC<DraggableCustomTextItemProps> = ({
   const isResizingRef = useRef(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
+  const textLayout = createTextLayout(
+    {
+      text: customText.text || ' ',
+      writingMode: customText.writingMode,
+      fontSize: customText.fontSize,
+      lineHeight,
+      letterSpacing,
+      columns: 1,
+      columnGap: 0,
+      textAlign: 'left',
+      wrapWidth: customText.writingMode === 'horizontal-tb' && liveBoxWidth !== undefined
+        ? Math.max(1, (frameWidth * liveBoxWidth) / 100)
+        : undefined,
+    },
+    createCanvasTextMeasurer(fontFamily, customText.fontSize),
+  );
 
   useEffect(() => {
     if (!isDraggingRef.current) {
@@ -261,7 +283,8 @@ const DraggableCustomTextItem: FC<DraggableCustomTextItemProps> = ({
         left: `${livePosition.positionX}%`,
         top: `${livePosition.positionY}%`,
         transform: 'translate(-50%, -50%)',
-        width: liveBoxWidth !== undefined ? `${liveBoxWidth}%` : 'max-content',
+        width: `${textLayout.width}px`,
+        height: `${textLayout.height}px`,
         zIndex: (customText.zIndex ?? 0) + 20,
       }}
     >
@@ -344,19 +367,20 @@ const DraggableCustomTextItem: FC<DraggableCustomTextItemProps> = ({
         ) : null}
 
         <div
-          className="whitespace-pre-wrap wrap-break-word max-w-full"
+          className="max-w-full"
           style={{
-            fontFamily,
-            fontSize: `${customText.fontSize}px`,
-            color: customText.color,
-            writingMode: customText.writingMode,
-            lineHeight,
-            letterSpacing: `${letterSpacing}px`,
-            textShadow: sharedTextShadow,
             rotate: `${customText.rotation}deg`,
           }}
         >
-          {customText.text}
+          <TextLayoutBlock
+            layout={textLayout}
+            fontFamily={fontFamily}
+            fontSize={customText.fontSize}
+            color={customText.color}
+            letterSpacing={letterSpacing}
+            lineHeight={lineHeight}
+            textShadow={sharedTextShadow}
+          />
         </div>
       </div>
     </div>
@@ -365,6 +389,7 @@ const DraggableCustomTextItem: FC<DraggableCustomTextItemProps> = ({
 
 export function CustomTextItems({
   frameRef,
+  frameWidth,
   customTexts,
   activeCustomTextId,
   fontFamily,
@@ -376,12 +401,16 @@ export function CustomTextItems({
   onInteractionStart,
   onInteractionEnd,
 }: CustomTextItemsProps) {
+  const measuredFrameSize = useElementSize(frameRef);
+  const effectiveFrameWidth = frameWidth || measuredFrameSize.width;
+
   return (
     <>
       {customTexts.map((customText) => (
         <DraggableCustomTextItem
           key={customText.id}
           frameRef={frameRef}
+          frameWidth={effectiveFrameWidth}
           customText={customText}
           isSelected={activeCustomTextId === customText.id}
           fontFamily={fontFamily}

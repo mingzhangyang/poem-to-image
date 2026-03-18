@@ -260,10 +260,6 @@ export default function App() {
         logos: decorations.logos,
       },
     },
-    {
-      poemFrameRef,
-      poemTextRef,
-    },
     waitForSceneSettled,
   );
   // 包装导出图片，添加toast提示
