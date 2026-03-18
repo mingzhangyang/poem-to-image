@@ -759,12 +759,8 @@ function drawCustomText(ctx: CanvasRenderingContext2D, customText: CustomText, s
 }
 
 async function drawLogo(ctx: CanvasRenderingContext2D, logo: LogoConfig, frameRect: Rect) {
-  const centerX = logo.exportLeft !== undefined
-    ? frameRect.x + (frameRect.width * logo.exportLeft) / 100
-    : frameRect.x + (frameRect.width * logo.positionX) / 100;
-  const centerY = logo.exportTop !== undefined
-    ? frameRect.y + (frameRect.height * logo.exportTop) / 100
-    : frameRect.y + (frameRect.height * logo.positionY) / 100;
+  const centerX = frameRect.x + (frameRect.width * logo.positionX) / 100;
+  const centerY = frameRect.y + (frameRect.height * logo.positionY) / 100;
   const image = await loadImage(logo.imageUrl);
 
   ctx.save();
