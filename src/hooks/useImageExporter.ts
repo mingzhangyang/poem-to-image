@@ -428,7 +428,32 @@ async function drawPoemSnapshot(
   return true;
 }
 
-function downloadBlob(blob: Blob, format: ExportFormat) {
+async function saveBlob(blob: Blob, format: ExportFormat) {
+  if (typeof window !== 'undefined' && 'showSaveFilePicker' in window) {
+    try {
+      const handle = await (window as any).showSaveFilePicker({
+        suggestedName: getExportFilename(format),
+        types: [
+          {
+            description: 'Image',
+            accept: {
+              [getExportMimeType(format)]: [`.${format}`],
+            },
+          },
+        ],
+      });
+      const writable = await handle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      return;
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        return;
+      }
+      console.error('Failed to save via File System Access API, falling back to download:', error);
+    }
+  }
+
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.download = getExportFilename(format);
@@ -520,7 +545,7 @@ export function useImageExporter(
         return;
       }
 
-      downloadBlob(blob, exportFormat);
+      await saveBlob(blob, exportFormat);
     } catch (error) {
       console.error('Failed to generate image', error);
     } finally {
@@ -576,7 +601,7 @@ export function useImageExporter(
       const copied = await copyImageToClipboard(blob);
 
       if (!copied) {
-        downloadBlob(blob, format);
+        await saveBlob(blob, format);
       }
 
       if (url) {
