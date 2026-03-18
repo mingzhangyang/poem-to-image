@@ -235,7 +235,7 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
                 {t(background.aiProvider === 'gemini' ? 'geminiTip' : 'openaiTip')}
               </span>
             </div>
-          </div>
+            <button
               onClick={background.onGenerateAiBackground}
               disabled={background.isGeneratingAI}
               className="app-button-primary w-full py-2 px-4 text-white rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
