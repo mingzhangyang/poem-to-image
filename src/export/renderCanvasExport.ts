@@ -1,5 +1,5 @@
 import { createOrganicBorderStrokes } from '../borderUtils';
-import type { BorderStyle, CustomText, ExportScale, PositionedElement, StampConfig, TextAlign, WritingMode } from '../types';
+import type { BorderStyle, CustomText, ExportScale, LogoConfig, PositionedElement, StampConfig, TextAlign, WritingMode } from '../types';
 
 interface CanvasExportBackground {
   backgroundType: 'solid' | 'gradient' | 'transparent' | 'image' | 'ai';
@@ -40,6 +40,7 @@ interface CanvasExportDecorations {
   showStamp: boolean;
   stamp: StampConfig;
   customTexts: CustomText[];
+  logos: LogoConfig[];
 }
 
 export interface CanvasExportScene {
@@ -61,6 +62,10 @@ interface Rect {
 interface RenderCanvasExportOptions {
   skipPoem?: boolean;
 }
+
+type DecorationLayer =
+  | { kind: 'customText'; item: CustomText; zIndex: number; order: number }
+  | { kind: 'logo'; item: LogoConfig; zIndex: number; order: number };
 
 function loadImage(src: string) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
@@ -746,6 +751,23 @@ function drawCustomText(ctx: CanvasRenderingContext2D, customText: CustomText, s
   ctx.restore();
 }
 
+async function drawLogo(ctx: CanvasRenderingContext2D, logo: LogoConfig, frameRect: Rect) {
+  const centerX = logo.exportLeft !== undefined
+    ? frameRect.x + (frameRect.width * logo.exportLeft) / 100
+    : frameRect.x + (frameRect.width * logo.positionX) / 100;
+  const centerY = logo.exportTop !== undefined
+    ? frameRect.y + (frameRect.height * logo.exportTop) / 100
+    : frameRect.y + (frameRect.height * logo.positionY) / 100;
+  const image = await loadImage(logo.imageUrl);
+
+  ctx.save();
+  ctx.translate(centerX, centerY);
+  ctx.rotate((logo.rotation * Math.PI) / 180);
+  ctx.globalAlpha = logo.opacity;
+  ctx.drawImage(image, -logo.size / 2, -logo.size / 2, logo.size, logo.size);
+  ctx.restore();
+}
+
 function drawStampShape(ctx: CanvasRenderingContext2D, stamp: StampConfig) {
   const half = stamp.size / 2;
 
@@ -857,6 +879,25 @@ export function getCanvasContentRect(scene: CanvasExportScene): Rect {
   };
 }
 
+function getOrderedDecorationLayers(scene: CanvasExportScene) {
+  const layers: DecorationLayer[] = [
+    ...scene.decorations.customTexts.map((item, index) => ({
+      kind: 'customText' as const,
+      item,
+      zIndex: item.zIndex ?? index,
+      order: index,
+    })),
+    ...scene.decorations.logos.map((item, index) => ({
+      kind: 'logo' as const,
+      item,
+      zIndex: item.zIndex ?? scene.decorations.customTexts.length + index,
+      order: scene.decorations.customTexts.length + index,
+    })),
+  ];
+
+  return layers.sort((left, right) => (left.zIndex - right.zIndex) || (left.order - right.order));
+}
+
 export async function renderCanvasExport(scene: CanvasExportScene, options: RenderCanvasExportOptions = {}) {
   const canvas = document.createElement('canvas');
   canvas.width = scene.canvasWidth * scene.exportScale;
@@ -891,10 +932,17 @@ export async function renderCanvasExport(scene: CanvasExportScene, options: Rend
     drawPoem(ctx, scene, contentRect);
   }
 
-  scene.decorations.customTexts.forEach((customText) => drawCustomText(ctx, customText, scene, contentRect));
-
   if (scene.decorations.showStamp) {
     drawStamp(ctx, scene, contentRect);
+  }
+
+  for (const layer of getOrderedDecorationLayers(scene)) {
+    if (layer.kind === 'customText') {
+      drawCustomText(ctx, layer.item, scene, contentRect);
+      continue;
+    }
+
+    await drawLogo(ctx, layer.item, contentRect);
   }
 
   return canvas;

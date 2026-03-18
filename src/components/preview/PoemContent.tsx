@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, RefObject } from 'react';
 import { createOrganicBorderStrokes, getBorderPadding } from '../../borderUtils';
-import type { BorderStyle, LogoConfig, PositionedElement, StampConfig, TextAlign, TranslateFn, WritingMode } from '../../types';
+import type { BorderStyle, CustomText, LogoConfig, PositionedElement, StampConfig, TextAlign, TranslateFn, WritingMode } from '../../types';
+import { CustomTextItems } from './CustomTextItems';
 import { LogoOverlay } from './LogoOverlay';
 import { StampOverlay } from './StampOverlay';
 
@@ -26,10 +27,12 @@ interface PoemContentProps {
   borderWidth: number;
   showStamp: boolean;
   stamp: StampConfig;
+  customTexts: CustomText[];
   logos: LogoConfig[];
   poemPosition: PositionedElement;
   onPoemPositionChange: (updates: Partial<PositionedElement>) => void;
   onStampChange: (updates: Partial<StampConfig>) => void;
+  onCustomTextChange: (id: string, updates: Partial<CustomText>) => void;
   onLogoChange: (id: string, updates: Partial<LogoConfig>) => void;
   onInteractionStart: () => void;
   onInteractionEnd: () => void;
@@ -60,10 +63,12 @@ export function PoemContent({
   borderWidth,
   showStamp,
   stamp,
+  customTexts,
   logos,
   poemPosition,
   onPoemPositionChange,
   onStampChange,
+  onCustomTextChange,
   onLogoChange,
   onInteractionStart,
   onInteractionEnd,
@@ -369,6 +374,18 @@ export function PoemContent({
           onInteractionEnd={onInteractionEnd}
         />
       ) : null}
+
+      <CustomTextItems
+        frameRef={poemFrameRef}
+        customTexts={customTexts}
+        fontFamily={fontFamily}
+        lineHeight={lineHeight}
+        letterSpacing={letterSpacing}
+        sharedTextShadow={sharedTextShadow}
+        onCustomTextChange={onCustomTextChange}
+        onInteractionStart={onInteractionStart}
+        onInteractionEnd={onInteractionEnd}
+      />
 
       {logos.map((logo) => (
         <LogoOverlay

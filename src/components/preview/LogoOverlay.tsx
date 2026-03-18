@@ -38,6 +38,7 @@ export const LogoOverlay: FC<LogoOverlayProps> = ({ frameRef, logo, onLogoChange
     const startY = event.clientY;
     const startPositionX = livePosition.positionX;
     const startPositionY = livePosition.positionY;
+    const livePositionRef = { current: { positionX: startPositionX, positionY: startPositionY } };
 
     const handlePointerMove = (moveEvent: PointerEvent) => {
       const deltaX = moveEvent.clientX - startX;
@@ -46,14 +47,15 @@ export const LogoOverlay: FC<LogoOverlayProps> = ({ frameRef, logo, onLogoChange
       const newPositionX = clamp(startPositionX + (deltaX / frameRect.width) * 100, 0, 100);
       const newPositionY = clamp(startPositionY + (deltaY / frameRect.height) * 100, 0, 100);
 
-      setLivePosition({ positionX: newPositionX, positionY: newPositionY });
+      livePositionRef.current = { positionX: newPositionX, positionY: newPositionY };
+      setLivePosition(livePositionRef.current);
     };
 
     const handlePointerUp = () => {
       document.removeEventListener('pointermove', handlePointerMove);
       document.removeEventListener('pointerup', handlePointerUp);
 
-      onLogoChange({ positionX: livePosition.positionX, positionY: livePosition.positionY });
+      onLogoChange(livePositionRef.current);
       isDraggingRef.current = false;
       onInteractionEnd();
     };
@@ -74,6 +76,7 @@ export const LogoOverlay: FC<LogoOverlayProps> = ({ frameRef, logo, onLogoChange
     rotate: `${logo.rotation}deg`,
     cursor: 'grab',
     userSelect: 'none',
+    zIndex: (logo.zIndex ?? 0) + 20,
   };
 
   return (

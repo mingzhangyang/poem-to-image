@@ -21,6 +21,7 @@ export interface CustomText {
   rotation: number;
   positionX: number;
   positionY: number;
+  zIndex?: number;
   exportLeft?: number;
   exportTop?: number;
 }
@@ -33,6 +34,7 @@ export interface LogoConfig {
   size: number;
   rotation: number;
   opacity: number;
+  zIndex?: number;
   exportLeft?: number;
   exportTop?: number;
 }
@@ -236,9 +238,11 @@ export interface DecorationsSectionProps {
   onResetStampPosition: () => void;
   onCustomTextChange: (id: string, updates: Partial<CustomText>) => void;
   onCustomTextRemove: (id: string) => void;
+  onCustomTextReorder: (id: string, direction: 'up' | 'down' | 'top' | 'bottom') => void;
   onLogoUpload: (event: ChangeEvent<HTMLInputElement>) => void;
   onLogoChange: (id: string, updates: Partial<LogoConfig>) => void;
   onLogoRemove: (id: string) => void;
+  onLogoReorder: (id: string, direction: 'up' | 'down' | 'top' | 'bottom') => void;
 }
 
 export type TranslateFn = (key: TranslationKey) => string;

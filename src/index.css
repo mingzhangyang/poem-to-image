@@ -187,3 +187,32 @@ body {
 	color: #8a523b;
 	background: rgba(155, 95, 67, 0.12);
 }
+@media (pointer: coarse) {
+	.app-button-primary,
+	.app-button-secondary,
+	.app-action-button,
+	.app-panel-surface,
+	.app-input,
+	.app-select,
+	.app-textarea {
+		touch-action: manipulation;
+		-webkit-tap-highlight-color: transparent;
+	}
+}
+
+@media (hover: none) {
+	.app-button-primary:hover,
+	.app-button-secondary:hover,
+	.app-action-button:hover {
+		transform: none;
+		box-shadow: none;
+	}
+}
+
+.mobile-drawer-handle {
+	width: 2.5rem;
+	height: 0.3rem;
+	background: rgba(31, 52, 54, 0.12);
+	border-radius: 99px;
+	margin: 0.2rem auto 0.75rem;
+}

@@ -1,4 +1,4 @@
-import { Plus, Stamp, Trash2, Upload, Text, TextCursorInput } from 'lucide-react';
+import { Plus, Stamp, Trash2, Upload, Text, TextCursorInput, ChevronUp, ChevronDown, ArrowUpToLine, ArrowDownToLine } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { STAMP_FONT_OPTIONS } from '../../fontOptions';
 import type { BorderStyle, DecorationsSectionProps, ExpandedSections, StampStyle, TranslateFn } from '../../types';
@@ -377,6 +377,39 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                   />
                   <span className="text-xs text-gray-500 w-8 text-right">{customText.rotation}°</span>
                 </div>
+                <div className="flex items-center justify-between border-t border-[rgba(34,48,52,0.06)] pt-2 mt-1">
+                  <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">{t('layers')}</span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => decorations.onCustomTextReorder(customText.id, 'bottom')}
+                      className="p-1 px-1.5 text-gray-400 hover:text-(--app-accent-700) hover:bg-gray-50 rounded transition-colors"
+                      title={t('sendToBack')}
+                    >
+                      <ArrowDownToLine className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => decorations.onCustomTextReorder(customText.id, 'down')}
+                      className="p-1 px-1.5 text-gray-400 hover:text-(--app-accent-700) hover:bg-gray-50 rounded transition-colors"
+                      title={t('moveDown')}
+                    >
+                      <ChevronDown className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => decorations.onCustomTextReorder(customText.id, 'up')}
+                      className="p-1 px-1.5 text-gray-400 hover:text-(--app-accent-700) hover:bg-gray-50 rounded transition-colors"
+                      title={t('moveUp')}
+                    >
+                      <ChevronUp className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => decorations.onCustomTextReorder(customText.id, 'top')}
+                      className="p-1 px-1.5 text-gray-400 hover:text-(--app-accent-700) hover:bg-gray-50 rounded transition-colors"
+                      title={t('bringToFront')}
+                    >
+                      <ArrowUpToLine className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
@@ -436,6 +469,39 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                     className="app-range flex-1"
                   />
                   <span className="text-xs text-gray-500 w-8 text-right">{Math.round(logo.opacity * 100)}%</span>
+                </div>
+                <div className="flex items-center justify-between border-t border-[rgba(34,48,52,0.06)] pt-2 mt-1">
+                  <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">{t('layers')}</span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => decorations.onLogoReorder(logo.id, 'bottom')}
+                      className="p-1 px-1.5 text-gray-400 hover:text-(--app-accent-700) hover:bg-gray-50 rounded transition-colors"
+                      title={t('sendToBack')}
+                    >
+                      <ArrowDownToLine className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => decorations.onLogoReorder(logo.id, 'down')}
+                      className="p-1 px-1.5 text-gray-400 hover:text-(--app-accent-700) hover:bg-gray-50 rounded transition-colors"
+                      title={t('moveDown')}
+                    >
+                      <ChevronDown className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => decorations.onLogoReorder(logo.id, 'up')}
+                      className="p-1 px-1.5 text-gray-400 hover:text-(--app-accent-700) hover:bg-gray-50 rounded transition-colors"
+                      title={t('moveUp')}
+                    >
+                      <ChevronUp className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => decorations.onLogoReorder(logo.id, 'top')}
+                      className="p-1 px-1.5 text-gray-400 hover:text-(--app-accent-700) hover:bg-gray-50 rounded transition-colors"
+                      title={t('bringToFront')}
+                    >
+                      <ArrowUpToLine className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}

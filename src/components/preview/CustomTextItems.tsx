@@ -118,7 +118,7 @@ const DraggableCustomTextItem: FC<DraggableCustomTextItemProps> = ({
         left: `${livePosition.positionX}%`,
         top: `${livePosition.positionY}%`,
         transform: 'translate(-50%, -50%)',
-        zIndex: 50,
+        zIndex: (customText.zIndex ?? 0) + 20,
       }}
     >
       <div

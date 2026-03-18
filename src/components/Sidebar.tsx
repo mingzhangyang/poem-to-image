@@ -14,6 +14,14 @@ import { TypographyPanel } from './sidebar/TypographyPanel';
 
 type MobilePanel = 'templates' | 'content' | 'style' | 'export' | 'settings';
 
+const MOBILE_PANEL_TITLE_KEYS = {
+  templates: 'templates',
+  content: 'content',
+  style: 'stylePanelTitle',
+  export: 'exportAndShare',
+  settings: 'settings',
+} as const;
+
 export function Sidebar({
   language,
   onLanguageChange,
@@ -318,25 +326,28 @@ export function Sidebar({
 
             <motion.aside
               id="mobile-controls-drawer"
-              className="md:hidden fixed inset-x-0 bottom-0 z-40 max-h-[82dvh] overflow-hidden rounded-t-4xl bg-(--app-surface) shadow-2xl flex flex-col"
+              className="md:hidden fixed inset-x-0 bottom-0 z-40 max-h-[85dvh] overflow-hidden rounded-t-[2.5rem] bg-(--app-surface) shadow-[0_-12px_60px_rgba(0,0,0,0.15)] flex flex-col"
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
-              transition={{ type: 'spring', stiffness: 320, damping: 32 }}
+              transition={{ type: 'spring', stiffness: 350, damping: 35 }}
               role="dialog"
               aria-modal="true"
               aria-label={activeMobilePanel === 'export' ? t('exportAndShare') : t('controlsPanelTitle')}
             >
-              <div className="px-4 pt-3 pb-2 border-b border-[rgba(34,48,52,0.06)]">
-                <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-gray-200" />
-                <div className="flex items-center justify-end">
+              <div className="px-5 pt-2 pb-1 border-b border-[rgba(34,48,52,0.04)] sticky top-0 z-10 bg-(--app-surface)/80 backdrop-blur-md">
+                <div className="mobile-drawer-handle" />
+                <div className="flex items-center justify-between gap-4 mb-2">
+                  <h3 className="text-sm font-bold text-(--app-accent-900)">
+                    {activeMobilePanel ? t(MOBILE_PANEL_TITLE_KEYS[activeMobilePanel]) : t('controlsPanelTitle')}
+                  </h3>
                   <button
                     type="button"
                     onClick={() => setActiveMobilePanel(null)}
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[rgba(34,48,52,0.08)] text-(--app-accent-700)"
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-gray-100/50 text-(--app-accent-700) active:scale-90 transition-transform"
                     aria-label={t('closeControls')}
                   >
-                    <X className="h-4 w-4" />
+                    <X className="h-5 w-5" />
                   </button>
                 </div>
               </div>

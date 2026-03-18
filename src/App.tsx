@@ -257,6 +257,7 @@ export default function App() {
         showStamp: decorations.showStamp,
         stamp: decorations.stamp,
         customTexts: decorations.customTexts,
+        logos: decorations.logos,
       },
     },
     {
@@ -578,9 +579,11 @@ export default function App() {
       onResetStampPosition: decorations.resetStampPosition,
       onCustomTextChange: decorations.updateCustomText,
       onCustomTextRemove: decorations.removeCustomText,
+      onCustomTextReorder: decorations.onCustomTextReorder,
       onLogoUpload: handleLogoUpload,
       onLogoChange: decorations.updateLogo,
       onLogoRemove: decorations.removeLogo,
+      onLogoReorder: decorations.onLogoReorder,
     },
     billing: {
       balance,

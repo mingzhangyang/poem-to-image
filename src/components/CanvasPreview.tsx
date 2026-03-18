@@ -4,8 +4,6 @@ import { CheckCircle2, Download, Maximize2, Minus, Plus, Share2, X } from 'lucid
 import type { CanvasPreviewProps, SocialPlatform } from '../types';
 import { SidebarFooter } from './sidebar/SidebarFooter';
 import { BackgroundLayer } from './preview/BackgroundLayer';
-import { CustomTextItems } from './preview/CustomTextItems';
-import { LogoOverlay } from './preview/LogoOverlay';
 import { PoemContent } from './preview/PoemContent';
 import { TransparentGrid } from './preview/TransparentGrid';
 
@@ -570,18 +568,6 @@ export function CanvasPreview({
                   bgBlur={bgBlur}
                 />
 
-                <CustomTextItems
-                  frameRef={previewRef}
-                  customTexts={customTexts}
-                  fontFamily={fontFamily}
-                  lineHeight={lineHeight}
-                  letterSpacing={letterSpacing}
-                  sharedTextShadow={sharedTextShadow}
-                  onCustomTextChange={onCustomTextChange}
-                  onInteractionStart={onInteractionStart}
-                  onInteractionEnd={onInteractionEnd}
-                />
-
                 <PoemContent
                   poemFrameRef={poemFrameRef}
                   poemTextRef={poemTextRef}
@@ -603,10 +589,12 @@ export function CanvasPreview({
                   borderWidth={borderWidth}
                   showStamp={showStamp}
                   stamp={stamp}
+                  customTexts={customTexts}
                   logos={logos}
                   poemPosition={poemPosition}
                   onPoemPositionChange={onPoemPositionChange}
                   onStampChange={onStampChange}
+                  onCustomTextChange={onCustomTextChange}
                   onLogoChange={onLogoChange}
                   onInteractionStart={onInteractionStart}
                   onInteractionEnd={onInteractionEnd}
