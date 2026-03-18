@@ -254,8 +254,6 @@ export function Sidebar({
       return (
         <SidebarFooter
           t={t}
-          presetSize={canvas.presetSize}
-          onCanvasPresetChange={canvas.onPresetChange}
           canvasWidth={canvasWidth}
           canvasHeight={canvasHeight}
           exportFormat={exportFormat}

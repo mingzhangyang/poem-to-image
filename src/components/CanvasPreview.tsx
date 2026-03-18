@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Download, Maximize2, Minus, Plus, X } from 'lucide-react';
-import type { CanvasPreviewProps, SocialPlatform } from '../types';
+import type { CanvasPreviewProps } from '../types';
 import { SidebarFooter } from './sidebar/SidebarFooter';
 import { BackgroundLayer } from './preview/BackgroundLayer';
 import { PoemContent } from './preview/PoemContent';
@@ -56,15 +56,12 @@ export function CanvasPreview({
   onCustomTextChange,
   logos,
   onLogoChange,
-  presetSize,
-  onCanvasPresetChange,
   exportFormat,
   onExportFormatChange,
   exportScale,
   onExportScaleChange,
   onDownload,
   onShare,
-  onShareToSocial,
   isExporting,
   isSharing,
   canShare,
@@ -82,9 +79,6 @@ export function CanvasPreview({
   const [isDraggingPreview, setIsDraggingPreview] = useState(false);
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-  const [socialFeedback, setSocialFeedback] = useState<'clipboard' | 'downloaded' | null>(null);
-  const [activeSocialPlatform, setActiveSocialPlatform] = useState<SocialPlatform | null>(null);
-  const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Refs for pinch-to-zoom
   const activePointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
@@ -193,7 +187,6 @@ export function CanvasPreview({
       return;
     }
 
-    setSocialFeedback(null);
     setIsExportModalOpen(true);
   };
 
@@ -205,19 +198,6 @@ export function CanvasPreview({
   const handleShareFromModal = () => {
     onShare();
     setIsExportModalOpen(false);
-  };
-
-  const handleShareToSocial = async (platform: SocialPlatform) => {
-    if (isOutputBusy) return;
-    setActiveSocialPlatform(platform);
-    setSocialFeedback(null);
-    if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-    const result = await onShareToSocial(platform);
-    setActiveSocialPlatform(null);
-    if (result !== 'cancelled') {
-      setSocialFeedback(result);
-      feedbackTimeoutRef.current = setTimeout(() => setSocialFeedback(null), 5000);
-    }
   };
 
   const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -380,7 +360,6 @@ export function CanvasPreview({
                 <div className="flex items-start justify-between gap-4 border-b border-[rgba(34,48,52,0.06)] px-6 py-5">
                   <div className="min-w-0">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-(--app-accent-500)">{t('exportAndShare')}</p>
-                    <p className="mt-2 text-sm text-gray-600">{t('exportTargetHint')}</p>
                   </div>
 
                   <button
@@ -396,8 +375,6 @@ export function CanvasPreview({
                 <div className="px-6 py-6">
                   <SidebarFooter
                     t={t}
-                    presetSize={presetSize}
-                    onCanvasPresetChange={onCanvasPresetChange}
                     canvasWidth={canvasWidth}
                     canvasHeight={canvasHeight}
                     exportFormat={exportFormat}
@@ -409,11 +386,7 @@ export function CanvasPreview({
                     isExporting={isExporting}
                     isSharing={isSharing}
                     canShare={canShare}
-                    showExportTargets={false}
-                    showSocialActions
-                    onShareToSocial={handleShareToSocial}
-                    activeSocialPlatform={activeSocialPlatform}
-                    socialFeedback={socialFeedback}
+                    actionMode={canShare ? 'both' : 'save'}
                     surface="modal"
                   />
                 </div>

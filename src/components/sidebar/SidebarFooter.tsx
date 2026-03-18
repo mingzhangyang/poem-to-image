@@ -9,8 +9,6 @@ const exportFormatLabelKeys = {
 
 interface SidebarFooterProps {
   t: TranslateFn;
-  presetSize: string;
-  onCanvasPresetChange: (value: string) => void;
   canvasWidth: number;
   canvasHeight: number;
   exportFormat: ExportFormat;
@@ -26,7 +24,6 @@ interface SidebarFooterProps {
   title?: string;
   actionMode?: 'both' | 'save' | 'share';
   surface?: 'sidebar' | 'modal';
-  showExportTargets?: boolean;
   showSocialActions?: boolean;
   onShareToSocial?: (platform: SocialPlatform) => void | Promise<void>;
   activeSocialPlatform?: SocialPlatform | null;
@@ -43,20 +40,6 @@ const exportScaleOptions: Array<{ value: ExportScale; labelKey: 'exportQualitySt
   { value: 1, labelKey: 'exportQualityStandard' },
   { value: 2, labelKey: 'exportQualityHd' },
   { value: 3, labelKey: 'exportQualityUltraHd' },
-];
-
-const exportTargetPresets: Array<{
-  id: 'square-post' | 'portrait-post' | 'story' | 'landscape' | 'print';
-  labelKey: 'exportTargetSquare' | 'exportTargetPortrait' | 'exportTargetStory' | 'exportTargetLandscape' | 'exportTargetPrint';
-  presetSize: string;
-  format: ExportFormat;
-  scale: ExportScale;
-}> = [
-  { id: 'square-post', labelKey: 'exportTargetSquare', presetSize: '1080x1080', format: 'jpg', scale: 2 },
-  { id: 'portrait-post', labelKey: 'exportTargetPortrait', presetSize: '1080x1350', format: 'jpg', scale: 2 },
-  { id: 'story', labelKey: 'exportTargetStory', presetSize: '1080x1920', format: 'jpg', scale: 2 },
-  { id: 'landscape', labelKey: 'exportTargetLandscape', presetSize: '1920x1080', format: 'jpg', scale: 2 },
-  { id: 'print', labelKey: 'exportTargetPrint', presetSize: '1240x1754', format: 'png', scale: 3 },
 ];
 
 const socialPlatforms: Array<{
@@ -84,8 +67,6 @@ function getExportSummaryLabel(t: TranslateFn, canvasWidth: number, canvasHeight
 
 export function SidebarFooter({
   t,
-  presetSize,
-  onCanvasPresetChange,
   canvasWidth,
   canvasHeight,
   exportFormat,
@@ -101,7 +82,6 @@ export function SidebarFooter({
   title,
   actionMode = 'both',
   surface = 'sidebar',
-  showExportTargets = true,
   showSocialActions = false,
   onShareToSocial,
   activeSocialPlatform = null,
@@ -114,22 +94,6 @@ export function SidebarFooter({
     ? 'p-0'
     : 'px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-6 border-t border-[rgba(34,48,52,0.06)] bg-[linear-gradient(180deg,rgba(255,253,249,0.86),rgba(255,250,242,0.96))] md:sticky md:bottom-0';
   const actionGridClassName = shouldShowSaveAction && shouldShowShareAction ? 'grid grid-cols-2 gap-3' : 'grid grid-cols-1 gap-3';
-  const selectedTargetId = exportTargetPresets.find((preset) => (
-    preset.presetSize === presetSize &&
-    preset.format === exportFormat &&
-    preset.scale === exportScale
-  ))?.id ?? null;
-
-  const handleExportTargetSelect = (targetId: (typeof exportTargetPresets)[number]['id']) => {
-    const target = exportTargetPresets.find((preset) => preset.id === targetId);
-    if (!target || isBusy) {
-      return;
-    }
-
-    onCanvasPresetChange(target.presetSize);
-    onExportFormatChange(target.format);
-    onExportScaleChange(target.scale);
-  };
 
   return (
     <div className={containerClassName}>
@@ -137,37 +101,6 @@ export function SidebarFooter({
         <div className="mb-4">
           <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-(--app-accent-500)">{title}</p>
           <p className="mt-2 text-sm text-gray-600">{getExportSummaryLabel(t, canvasWidth, canvasHeight, exportFormat, exportScale)}</p>
-        </div>
-      ) : null}
-
-      {showExportTargets ? (
-        <div className="mb-4">
-          <span className="mb-2 block text-sm font-medium text-gray-700">{t('exportTarget')}</span>
-          <p className="mb-3 text-xs leading-5 text-gray-500">{t('exportTargetHint')}</p>
-          <div className="grid grid-cols-2 gap-2">
-            {exportTargetPresets.map((target) => {
-              const isActive = selectedTargetId === target.id;
-
-              return (
-                <button
-                  key={target.id}
-                  type="button"
-                  onClick={() => handleExportTargetSelect(target.id)}
-                  disabled={isBusy}
-                  className={`rounded-2xl border px-3 py-3 text-left transition-all disabled:cursor-not-allowed disabled:opacity-60 ${
-                    isActive
-                      ? 'border-(--app-accent-300) bg-(--app-accent-50) text-(--app-accent-800) shadow-[0_10px_24px_var(--app-accent-shadow)]'
-                      : 'border-[rgba(34,48,52,0.08)] bg-white/75 text-gray-700 hover:border-(--app-accent-200) hover:bg-white'
-                  }`}
-                >
-                  <div className="text-sm font-semibold">{t(target.labelKey)}</div>
-                  <div className="mt-1 text-[11px] text-gray-500">
-                    {target.presetSize} · {target.format.toUpperCase()} · {target.scale}x
-                  </div>
-                </button>
-              );
-            })}
-          </div>
         </div>
       ) : null}
 
