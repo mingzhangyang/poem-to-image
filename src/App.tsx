@@ -5,6 +5,7 @@ import { translations, Language, TranslationKey } from './translations';
 import { LANGUAGE_STORAGE_KEY, readPreferredLanguage } from './hooks/useLang';
 import { CanvasPreview } from './components/CanvasPreview';
 import { Sidebar } from './components/Sidebar';
+import { OnboardingModal } from './components/OnboardingModal';
 import { useBackgroundConfig } from './hooks/useBackgroundConfig';
 import { useBalance } from './hooks/useBalance';
 import { useBillingHistory } from './hooks/useBillingHistory';
@@ -20,6 +21,7 @@ import { editorTemplates, resolveTemplateForLanguage } from './templates';
 import type { EditorTemplateId, ExpandedSections, ExportFormat, ExportScale } from './types';
 
 const ACTIVE_TEMPLATE_STORAGE_KEY = 'poem-to-image.active-template';
+const ONBOARDING_DISMISSED_STORAGE_KEY = 'poem-to-image.onboarding-dismissed';
 
 const DEFAULT_POEMS: Record<Language, string> = {
   'zh-CN': '床前明月光，\n疑是地上霜。\n举头望明月，\n低头思故乡。',
@@ -69,6 +71,20 @@ export default function App() {
     decorations: false,
     billing: false,
   });
+
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
+
+  useEffect(() => {
+    const isDismissed = window.localStorage.getItem(ONBOARDING_DISMISSED_STORAGE_KEY) === 'true';
+    if (!isDismissed && !activeTemplateId) {
+      setIsOnboardingOpen(true);
+    }
+  }, [activeTemplateId]);
+
+  const handleCloseOnboarding = () => {
+    setIsOnboardingOpen(false);
+    window.localStorage.setItem(ONBOARDING_DISMISSED_STORAGE_KEY, 'true');
+  };
 
   // Billing state
   const { balance, isLoading: isLoadingBalance, refetch: refetchBalance } = useBalance();
@@ -626,6 +642,14 @@ export default function App() {
       <Sidebar {...sidebarProps} />
 
       <CanvasPreview {...canvasPreviewProps} />
+
+      <OnboardingModal
+        isOpen={isOnboardingOpen}
+        onClose={handleCloseOnboarding}
+        t={t}
+        language={language}
+        templates={sidebarProps.templates}
+      />
     </div>
   );
 }

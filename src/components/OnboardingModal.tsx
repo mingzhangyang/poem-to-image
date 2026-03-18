@@ -1,0 +1,195 @@
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Sparkles, ArrowRight, Check, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import type { Language, TranslationKey } from '../translations';
+import type { TemplateSectionProps, TranslateFn } from '../types';
+
+interface OnboardingModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  t: TranslateFn;
+  language: Language;
+  templates: TemplateSectionProps;
+}
+
+export function OnboardingModal({ isOpen, onClose, t, language, templates }: OnboardingModalProps) {
+  const [mobilePage, setMobilePage] = useState(1);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  const handleApplyTemplate = (id: any) => {
+    templates.onApplyTemplate(id);
+    onClose();
+  };
+
+  const steps = [t('templates'), t('content'), t('exportImage')];
+
+  if (!isOpen) return null;
+
+  return (
+    <AnimatePresence>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+        {/* Backdrop */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+          className="fixed inset-0 bg-black/40 backdrop-blur-[2px]"
+        />
+
+        {/* Modal Content */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 20 }}
+          className="relative w-full max-w-4xl overflow-hidden rounded-[2rem] bg-white shadow-2xl flex flex-col md:flex-row min-h-[500px] md:min-h-[600px]"
+        >
+          {/* Close button - absolute for both mobile/desktop */}
+          <button
+            onClick={onClose}
+            className="absolute right-4 top-4 z-10 rounded-full bg-white/20 p-2 text-white/80 transition-colors hover:bg-white/30 hover:text-white md:bg-gray-100 md:text-gray-500 md:hover:bg-gray-200 md:hover:text-gray-700"
+            aria-label={t('closeControls')}
+          >
+            <X className="h-5 w-5" />
+          </button>
+
+          {/* Left Panel (Desktop) / Page 1 (Mobile) */}
+          <div 
+            className={`
+              relative flex-1 md:flex-[0.618] bg-[#0d9488] p-8 md:p-12 flex flex-col justify-center text-white
+              ${isMobile && mobilePage !== 1 ? 'hidden' : 'flex'}
+            `}
+            style={{ background: 'linear-gradient(135deg, #0d9488 0%, #115e59 100%)' }}
+          >
+            <div className="mb-6 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-md">
+              <Sparkles className="h-8 w-8 text-white" />
+            </div>
+            <h2 className="mb-4 text-3xl font-bold tracking-tight md:text-4xl">
+              {t('onboardingWelcome')}
+            </h2>
+            <div className="space-y-6">
+              <p className="text-lg font-medium text-white/90 leading-relaxed">
+                {t('onboardingTitle')}
+              </p>
+              <div className="h-1 w-12 bg-white/40 rounded-full" />
+              <p className="text-base text-white/80 leading-relaxed">
+                {t('onboardingSubtitle')}
+              </p>
+              <p className="text-sm text-white/70 leading-relaxed italic">
+                {t('onboardingDescription')}
+              </p>
+            </div>
+
+            {isMobile && (
+              <div className="mt-12 flex items-center justify-between">
+                <div className="flex gap-2">
+                  <div className="h-1.5 w-6 rounded-full bg-white" />
+                  <div className="h-1.5 w-2 rounded-full bg-white/30" />
+                </div>
+                <button
+                  onClick={() => setMobilePage(2)}
+                  className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-bold text-[#0d9488] shadow-lg transition-transform active:scale-95"
+                >
+                  {t('onboardingNext')}
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Right Panel (Desktop) / Page 2 (Mobile) */}
+          <div 
+            className={`
+              flex-1 md:flex-[0.382] bg-white p-8 md:p-10 flex flex-col
+              ${isMobile && mobilePage !== 2 ? 'hidden' : 'flex'}
+            `}
+          >
+            <div className="flex-1">
+              <div className="mb-6">
+                <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#0d9488]">
+                  {t('appTitle')}
+                </div>
+                <h3 className="mt-2 text-xl font-bold text-gray-900">
+                  {t('quickMore')}
+                </h3>
+              </div>
+
+              <div className="space-y-3">
+                {steps.map((step, index) => (
+                  <div 
+                    key={step} 
+                    className="flex items-center gap-4 rounded-2xl border border-gray-100 bg-gray-50/50 p-4 transition-colors hover:border-[#2dd4bf]/30 hover:bg-[#2dd4bf]/5"
+                  >
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#2dd4bf]/10 text-xs font-bold text-[#0d9488]">
+                      {index + 1}
+                    </div>
+                    <span className="flex-1 text-sm font-semibold text-gray-800">{step}</span>
+                    <ArrowRight className="h-4 w-4 text-gray-300" />
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-8">
+                <div className="mb-4 text-xs font-bold uppercase tracking-wider text-gray-400">
+                  {t('builtInTemplates')}
+                </div>
+                <div className="grid grid-cols-1 gap-3">
+                  {templates.templates.slice(0, 3).map((template) => (
+                    <button
+                      key={template.id}
+                      onClick={() => handleApplyTemplate(template.id)}
+                      className="group flex items-center gap-3 rounded-2xl border border-gray-100 p-3 transition-all hover:border-[#2dd4bf] hover:shadow-md hover:translate-y-[-1px]"
+                    >
+                      <div 
+                        className="h-10 w-10 rounded-xl shadow-sm"
+                        style={{ background: `linear-gradient(135deg, ${template.accentFrom}, ${template.accentTo})` }}
+                      />
+                      <span className="flex-1 text-left text-sm font-medium text-gray-700 group-hover:text-gray-900">
+                        {t(template.nameKey)}
+                      </span>
+                      <Check className="h-4 w-4 opacity-0 transition-opacity group-hover:opacity-100 text-[#0d9488]" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-8">
+              {isMobile ? (
+                <div className="flex items-center justify-between">
+                  <button
+                    onClick={() => setMobilePage(1)}
+                    className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    {t('onboardingPrevious')}
+                  </button>
+                  <button
+                    onClick={onClose}
+                    className="rounded-full bg-[#0d9488] px-8 py-3 text-sm font-bold text-white shadow-lg active:scale-95"
+                  >
+                    {t('onboardingStart')}
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={onClose}
+                  className="w-full rounded-2xl bg-[#0d9488] py-4 text-sm font-bold text-white shadow-xl transition-all hover:bg-[#115e59] hover:shadow-[#0d9488]/20 focus:outline-none focus:ring-4 focus:ring-[#2dd4bf]/20 active:scale-[0.98]"
+                >
+                  {t('onboardingStart')}
+                </button>
+              )}
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    </AnimatePresence>
+  );
+}

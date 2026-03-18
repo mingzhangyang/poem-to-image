@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { ArrowRight, Check, Download, Palette, Settings, Sparkles, Settings2, X } from 'lucide-react';
+import { Download, Palette, Settings, Sparkles, Settings2, X } from 'lucide-react';
 import type { SidebarProps } from '../types';
 import { BackgroundPanel } from './sidebar/BackgroundPanel';
 import { CanvasSizePanel } from './sidebar/CanvasSizePanel';
@@ -13,8 +13,6 @@ import { TemplatesPanel } from './sidebar/TemplatesPanel';
 import { TypographyPanel } from './sidebar/TypographyPanel';
 
 type MobilePanel = 'templates' | 'content' | 'style' | 'export' | 'settings';
-
-const ONBOARDING_DISMISSED_STORAGE_KEY = 'poem-to-image.onboarding-dismissed';
 
 export function Sidebar({
   language,
@@ -44,14 +42,7 @@ export function Sidebar({
 }: SidebarProps) {
   const [activeMobilePanel, setActiveMobilePanel] = useState<MobilePanel | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isOnboardingDismissed, setIsOnboardingDismissed] = useState(false);
   const isMobileControlsOpen = activeMobilePanel !== null;
-  const shouldShowOnboarding = !templates.activeTemplateId && !isOnboardingDismissed;
-
-  const onboardingSteps = useMemo(
-    () => [t('templates'), t('content'), t('exportImage')],
-    [t],
-  );
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(min-width: 768px)');
@@ -65,20 +56,6 @@ export function Sidebar({
     if (mediaQuery.matches) setActiveMobilePanel(null);
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
-
-  useEffect(() => {
-    const storedDismissedState = window.localStorage.getItem(ONBOARDING_DISMISSED_STORAGE_KEY);
-    setIsOnboardingDismissed(storedDismissedState === 'true');
-  }, []);
-
-  useEffect(() => {
-    if (!templates.activeTemplateId) {
-      return;
-    }
-
-    setIsOnboardingDismissed(true);
-    window.localStorage.setItem(ONBOARDING_DISMISSED_STORAGE_KEY, 'true');
-  }, [templates.activeTemplateId]);
 
   useEffect(() => {
     if (!isMobileControlsOpen) return;
@@ -116,61 +93,8 @@ export function Sidebar({
     return `flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2.5 text-[11px] font-medium transition-colors ${isActive ? 'bg-(--app-accent-700) text-white shadow-[0_10px_22px_var(--app-accent-shadow)]' : 'text-(--app-accent-800) hover:bg-[rgba(237,244,243,0.8)]'}`;
   };
 
-  const dismissOnboarding = () => {
-    setIsOnboardingDismissed(true);
-    window.localStorage.setItem(ONBOARDING_DISMISSED_STORAGE_KEY, 'true');
-  };
-
-  const onboardingCard = (compact = false) => (
-    <div className={`overflow-hidden rounded-[1.75rem] border border-(--app-accent-200) bg-[linear-gradient(145deg,rgba(237,244,243,0.96),rgba(255,250,242,0.98))] shadow-[0_24px_60px_var(--app-accent-shadow)] ${compact ? 'p-4' : 'p-5 sm:p-6'}`}>
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-(--app-accent-500)">
-            {t('appTitle')}
-          </div>
-          <p className="mt-2 text-sm leading-6 text-gray-600">
-            {t('templatesHint')}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={dismissOnboarding}
-          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/80 bg-white/80 text-(--app-accent-600) transition-colors hover:text-(--app-accent-900)"
-          aria-label={t('closeControls')}
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-
-      <div className="mt-4 grid gap-2 grid-rows-3">
-        {onboardingSteps.map((step, index) => (
-          <div key={step} className="flex items-center gap-3 min-w-0 rounded-2xl border border-white/80 bg-white/80 px-4 py-3.5 shadow-sm">
-            <div className="text-[12px] shrink-0 font-semibold text-(--app-accent-500)">{index + 1}</div>
-            <span className="min-w-0 flex-1 text-sm font-medium text-gray-800 truncate">{step}</span>
-            <ArrowRight className="h-4 w-4 shrink-0 text-(--app-accent-500)" />
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-4 flex flex-wrap gap-2">
-        {templates.templates.slice(0, 3).map((template) => (
-          <button
-            key={template.id}
-            type="button"
-            onClick={() => templates.onApplyTemplate(template.id)}
-            className="inline-flex items-center gap-2 rounded-full border border-(--app-accent-200) bg-white px-3 py-2 text-sm font-medium text-(--app-accent-700) transition-colors hover:border-(--app-accent-300) hover:bg-(--app-accent-50)"
-          >
-            <Check className="h-3.5 w-3.5" />
-            <span>{t(template.nameKey)}</span>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-
   const sections = () => (
     <div className="p-4 sm:p-6 space-y-6 sm:space-y-8 flex-1 overflow-y-auto">
-      {shouldShowOnboarding ? onboardingCard() : null}
       <div>
         <TemplatesPanel
           t={t}
@@ -240,7 +164,6 @@ export function Sidebar({
     if (activeMobilePanel === 'templates') {
       return (
         <div className="p-4 sm:p-6 space-y-6 flex-1 overflow-y-auto">
-          {shouldShowOnboarding ? onboardingCard(true) : null}
           <TemplatesPanel
             t={t}
             expanded={expandedSections.templates}

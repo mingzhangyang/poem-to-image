@@ -1,5 +1,12 @@
 export const translations = {
   en: {
+    onboardingWelcome: "Welcome to InkPoem",
+    onboardingTitle: "AI images often have wrong text",
+    onboardingSubtitle: "We generate beauty, you add perfection",
+    onboardingDescription: "AI-generated images are stunning, but they often struggle with text. InkPoem lets you generate the perfect background first, then add your poem with full typographic control.",
+    onboardingStart: "Got it, let's start",
+    onboardingNext: "Next",
+    onboardingPrevious: "Previous",
     appTitle: "InkPoem",
     subtitle: "Poetic moods · Leaping off the page",
     templates: "Templates",
@@ -428,6 +435,13 @@ export const translations = {
     bgNotSavedNote: "图片/AI 背景无法储存，将以目前纯色背景代替。",
     exportSuccess: "图片导出成功！",
     exportFailed: "图片导出失败，请重试。",
+    onboardingWelcome: "欢迎使用 InkPoem",
+    onboardingTitle: "AI 生成的精美图片上文字经常是错误的",
+    onboardingSubtitle: "你可以让 AI 只生成精美的图片，然后再添加文字",
+    onboardingDescription: "AI 生成的背景非常惊艳，但在处理文字时常常差强人意。InkPoem 让你先生成完美的背景，然后通过专业的排版工具添加你的诗词。",
+    onboardingStart: "知道了，开始使用",
+    onboardingNext: "下一步",
+    onboardingPrevious: "上一步",
   },
   'zh-TW': {
     appTitle: "InkPoem",
