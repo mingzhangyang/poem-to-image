@@ -191,6 +191,16 @@ const TEMPLATE_FONTS: Record<EditorTemplateId, Record<Language, string>> = {
     fr: '"Source Sans 3", sans-serif',
     de: '"Source Sans 3", sans-serif',
   },
+  'parchment-scroll': {
+    en: '"Cormorant Garamond", serif',
+    'zh-CN': '"Noto Serif SC", serif',
+    'zh-TW': '"Noto Serif TC", serif',
+    ja: '"Shippori Mincho", serif',
+    ko: '"Gowun Batang", serif',
+    es: '"Lora", serif',
+    fr: '"Cormorant Garamond", serif',
+    de: '"Spectral", serif',
+  },
 };
 
 export interface StampFontOption {

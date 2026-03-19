@@ -1,6 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, RefObject } from 'react';
-import { createOrganicBorderStrokes, getBorderPadding, isOrganicBorderStyle } from '../../borderUtils';
+import {
+  createVectorBorderStrokes,
+  getBorderGradientCss,
+  getBorderPadding,
+  getBorderShadowCss,
+  isGradientBorderStyle,
+  isInsetBorderStyle,
+  isShadowBorderStyle,
+  isVectorBorderStyle,
+} from '../../borderUtils';
 import { useElementSize } from '../../hooks/useElementSize';
 import { createStructuredPoemLayout } from '../../poemContent';
 import { getPreviewDragBounds, getPreviewPositioningRect, type PreviewPositioningRect } from '../../positioningRect';
@@ -98,13 +107,16 @@ export function PoemContent({
   const [isResizing, setIsResizing] = useState(false);
   const [liveBoxWidth, setLiveBoxWidth] = useState<number | undefined>(poemPosition.boxWidth);
   const safeBorderWidth = Number.isFinite(borderWidth) ? Math.max(2, borderWidth) : 4;
-  const organicBorder = isOrganicBorderStyle(borderStyle);
+  const insetBorder = isInsetBorderStyle(borderStyle);
+  const vectorBorder = isVectorBorderStyle(borderStyle);
+  const shadowBorder = isShadowBorderStyle(borderStyle);
+  const gradientBorder = isGradientBorderStyle(borderStyle);
   const borderPadding = showBorder ? `${getBorderPadding(safeBorderWidth, borderStyle)}px` : '0';
   const frameSize = useElementSize(poemFrameRef);
   const borderRenderWidth = Math.max(1, frameSize.width || 100);
   const borderRenderHeight = Math.max(1, frameSize.height || 100);
-  const organicBorderStrokes = showBorder && organicBorder
-    ? createOrganicBorderStrokes(borderRenderWidth, borderRenderHeight, safeBorderWidth, borderStyle)
+  const borderStrokes = showBorder && vectorBorder
+    ? createVectorBorderStrokes(borderRenderWidth, borderRenderHeight, safeBorderWidth, borderStyle)
     : [];
   const poemLayout = createStructuredPoemLayout(
     {
@@ -339,28 +351,31 @@ export function PoemContent({
       className="relative z-10 flex h-full w-full flex-col items-center justify-center"
       style={{
         boxSizing: 'border-box',
-        borderColor,
-        borderStyle: showBorder && !organicBorder ? borderStyle : 'none',
-        borderWidth: showBorder && !organicBorder ? `${safeBorderWidth}px` : '0',
+        borderColor: showBorder && insetBorder && !gradientBorder ? borderColor : 'transparent',
+        borderStyle: showBorder && insetBorder ? (gradientBorder ? 'solid' : borderStyle) : 'none',
+        borderWidth: showBorder && insetBorder ? `${safeBorderWidth}px` : '0',
+        borderImage: showBorder && gradientBorder ? `${getBorderGradientCss(borderColor)} 1` : 'none',
+        boxShadow: showBorder && shadowBorder ? getBorderShadowCss(borderColor, safeBorderWidth) : 'none',
         padding: borderPadding,
       }}
     >
-      {showBorder && organicBorder ? (
+      {showBorder && vectorBorder ? (
         <svg
           className="pointer-events-none absolute inset-0 z-0 h-full w-full overflow-visible"
           viewBox={`0 0 ${borderRenderWidth} ${borderRenderHeight}`}
           preserveAspectRatio="none"
           aria-hidden="true"
         >
-          {organicBorderStrokes.map((stroke, index) => (
+          {borderStrokes.map((stroke, index) => (
             <path
               key={`${stroke.path}-${index}`}
               d={stroke.path}
               fill="none"
               stroke={borderColor}
               strokeWidth={stroke.width}
-              strokeLinecap="round"
-              strokeLinejoin="round"
+              strokeLinecap={stroke.lineCap ?? 'round'}
+              strokeLinejoin={stroke.lineJoin ?? 'round'}
+              strokeDasharray={stroke.dash?.join(' ')}
               opacity={stroke.opacity}
               vectorEffect="non-scaling-stroke"
             />

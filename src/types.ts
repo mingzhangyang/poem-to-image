@@ -5,7 +5,23 @@ export type AiProvider = 'gemini' | 'openai';
 export type BackgroundType = 'solid' | 'gradient' | 'transparent' | 'image' | 'ai';
 export type WritingMode = 'horizontal-tb' | 'vertical-rl';
 export type TextAlign = 'left' | 'center' | 'right';
-export type BorderStyle = 'solid' | 'dashed' | 'double' | 'brush' | 'ink';
+export type BorderStyle =
+  | 'solid'
+  | 'dashed'
+  | 'double'
+  | 'shadow'
+  | 'gradient'
+  | 'broken'
+  | 'overflow'
+  | 'brush'
+  | 'ink'
+  | 'cloud'
+  | 'wave'
+  | 'fractal'
+  | 'meander'
+  | 'leiwen'
+  | 'ornamental'
+  | 'envelope';
 export type StampStyle = 'square' | 'round' | 'brush';
 export type EditorTemplateId =
   | 'ink-wash'
@@ -17,6 +33,7 @@ export type EditorTemplateId =
   | 'city-night-photo'
   | 'ink-pine-mist-photo'
   | 'colorblock-cyan-magenta'
+  | 'parchment-scroll'
 ;
 export type ExportScale = 1 | 2 | 3;
 export type ExportFormat = 'png' | 'jpg' | 'webp';

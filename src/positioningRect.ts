@@ -1,4 +1,4 @@
-import { isOrganicBorderStyle } from './borderUtils';
+import { isInsetBorderStyle } from './borderUtils';
 import type { BorderStyle } from './types';
 
 export interface PreviewPositioningRect {
@@ -50,7 +50,7 @@ export function getCanvasPositioningRect(
   borderWidth: number,
 ): CanvasPositioningRect {
   const safeBorderWidth = Number.isFinite(borderWidth) ? Math.max(2, borderWidth) : 4;
-  const inset = showBorder && !isOrganicBorderStyle(borderStyle) ? safeBorderWidth : 0;
+  const inset = showBorder && isInsetBorderStyle(borderStyle) ? safeBorderWidth : 0;
 
   return {
     x: contentRect.x + inset,

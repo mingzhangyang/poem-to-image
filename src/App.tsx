@@ -531,6 +531,15 @@ export default function App() {
 
   useEffect(() => {
     const previousLanguage = previousLanguageRef.current;
+    if (previousLanguage === language) {
+      return;
+    }
+
+    if (!activeTemplateId) {
+      previousLanguageRef.current = language;
+      return;
+    }
+
     const shouldSyncTypography = activeTemplateId ? matchesActiveTemplateTypography(activeTemplateId, previousLanguage) : false;
     const shouldSyncDecorations = activeTemplateId ? matchesActiveTemplateDecorations(activeTemplateId, previousLanguage) : false;
     const shouldSyncPoemStyle = activeTemplateId ? matchesActiveTemplatePoemStyle(activeTemplateId, previousLanguage) : false;
@@ -554,39 +563,7 @@ export default function App() {
     }
 
     previousLanguageRef.current = language;
-  }, [
-    activeTemplateId,
-    language,
-    typography.fontFamily,
-    typography.fontSize,
-    typography.textColor,
-    typography.textAlign,
-    typography.writingMode,
-    typography.padding,
-    typography.lineHeight,
-    typography.letterSpacing,
-    typography.columns,
-    typography.columnGap,
-    typography.textShadowEnabled,
-    typography.textShadowColor,
-    typography.textShadowBlur,
-    typography.textShadowOffsetY,
-    typography.textShadowOffsetX,
-    decorations.showBorder,
-    decorations.borderStyle,
-    decorations.showStamp,
-    decorations.poemPosition.positionX,
-    decorations.poemPosition.positionY,
-    decorations.stamp.text,
-    decorations.stamp.style,
-    decorations.stamp.positionX,
-    decorations.stamp.positionY,
-    decorations.stamp.size,
-    decorations.stamp.rotation,
-    decorations.stamp.opacity,
-    decorations.customTexts.length,
-    poemStyle,
-  ]);
+  }, [activeTemplateId, language]);
 
   const { sidebarProps, canvasPreviewProps } = useEditorViewModels({
     language,

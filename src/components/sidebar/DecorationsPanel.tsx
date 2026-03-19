@@ -4,12 +4,41 @@ import { STAMP_FONT_OPTIONS } from '../../fontOptions';
 import type { BorderStyle, DecorationsSectionProps, ExpandedSections, StampStyle, TranslateFn } from '../../types';
 import { ControlSection } from '../ControlSection';
 
-const BORDER_STYLE_LABELS: Record<BorderStyle, 'borderSolid' | 'borderDashed' | 'borderDouble' | 'borderBrush' | 'borderInk'> = {
+const BORDER_STYLE_LABELS: Record<
+  BorderStyle,
+  | 'borderSolid'
+  | 'borderDashed'
+  | 'borderDouble'
+  | 'borderShadow'
+  | 'borderGradient'
+  | 'borderBroken'
+  | 'borderOverflow'
+  | 'borderBrush'
+  | 'borderInk'
+  | 'borderCloud'
+  | 'borderWave'
+  | 'borderFractal'
+  | 'borderMeander'
+  | 'borderLeiwen'
+  | 'borderOrnamental'
+  | 'borderEnvelope'
+> = {
   solid: 'borderSolid',
   dashed: 'borderDashed',
   double: 'borderDouble',
+  shadow: 'borderShadow',
+  gradient: 'borderGradient',
+  broken: 'borderBroken',
+  overflow: 'borderOverflow',
   brush: 'borderBrush',
   ink: 'borderInk',
+  cloud: 'borderCloud',
+  wave: 'borderWave',
+  fractal: 'borderFractal',
+  meander: 'borderMeander',
+  leiwen: 'borderLeiwen',
+  ornamental: 'borderOrnamental',
+  envelope: 'borderEnvelope',
 };
 
 const BORDER_COLOR_PRESETS = ['#223034', '#406967', '#7d4d32', '#111827', '#5b4636', '#8b1e3f', '#7c2d12', '#1d4ed8'];
@@ -72,8 +101,19 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                   <option value="solid">{t('borderSolid')}</option>
                   <option value="dashed">{t('borderDashed')}</option>
                   <option value="double">{t('borderDouble')}</option>
+                  <option value="shadow">{t('borderShadow')}</option>
+                  <option value="gradient">{t('borderGradient')}</option>
+                  <option value="broken">{t('borderBroken')}</option>
+                  <option value="overflow">{t('borderOverflow')}</option>
                   <option value="brush">{t('borderBrush')}</option>
                   <option value="ink">{t('borderInk')}</option>
+                  <option value="cloud">{t('borderCloud')}</option>
+                  <option value="wave">{t('borderWave')}</option>
+                  <option value="fractal">{t('borderFractal')}</option>
+                  <option value="meander">{t('borderMeander')}</option>
+                  <option value="leiwen">{t('borderLeiwen')}</option>
+                  <option value="ornamental">{t('borderOrnamental')}</option>
+                  <option value="envelope">{t('borderEnvelope')}</option>
                 </select>
               </div>
 

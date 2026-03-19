@@ -1,4 +1,12 @@
-import { createOrganicBorderStrokes, getDoubleBorderMetrics, isOrganicBorderStyle } from '../borderUtils';
+import {
+  createVectorBorderStrokes,
+  getBorderGradientStops,
+  getDoubleBorderMetrics,
+  isGradientBorderStyle,
+  isVectorBorderStyle,
+  isShadowBorderStyle,
+  toRgba,
+} from '../borderUtils';
 import { createStructuredPoemLayout } from '../poemContent';
 import { getCanvasPositioningRect } from '../positioningRect';
 import {
@@ -204,21 +212,70 @@ function drawBorder(ctx: CanvasRenderingContext2D, rect: Rect, borderStyle: Bord
   ctx.lineJoin = 'miter';
   ctx.lineCap = 'butt';
 
-  if (isOrganicBorderStyle(borderStyle)) {
-    const strokes = createOrganicBorderStrokes(rect.width, rect.height, safeBorderWidth, borderStyle);
+  if (isVectorBorderStyle(borderStyle)) {
+    const strokes = createVectorBorderStrokes(rect.width, rect.height, safeBorderWidth, borderStyle);
 
     ctx.translate(rect.x, rect.y);
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
 
     strokes.forEach((stroke) => {
       ctx.save();
       ctx.globalAlpha = stroke.opacity;
       ctx.lineWidth = stroke.width;
+      ctx.lineCap = stroke.lineCap ?? 'round';
+      ctx.lineJoin = stroke.lineJoin ?? 'round';
+      ctx.setLineDash(stroke.dash ?? []);
       ctx.stroke(new Path2D(stroke.path));
       ctx.restore();
     });
 
+    ctx.restore();
+    return;
+  }
+
+  if (isShadowBorderStyle(borderStyle)) {
+    const lineWidth = Math.max(1.1, safeBorderWidth * 0.3);
+    const strokeInset = lineWidth / 2;
+
+    ctx.save();
+    ctx.strokeStyle = toRgba(color, 0.22);
+    ctx.lineWidth = Math.max(1, safeBorderWidth * 0.2);
+    ctx.strokeRect(
+      rect.x + strokeInset,
+      rect.y + strokeInset,
+      rect.width - strokeInset * 2,
+      rect.height - strokeInset * 2,
+    );
+    ctx.restore();
+
+    ctx.shadowColor = toRgba(color, 0.35);
+    ctx.shadowBlur = Math.max(14, safeBorderWidth * 4.8);
+    ctx.shadowOffsetY = Math.max(6, safeBorderWidth * 1.5);
+    ctx.lineWidth = lineWidth;
+    ctx.strokeStyle = toRgba(color, 0.58);
+    ctx.strokeRect(
+      rect.x + strokeInset,
+      rect.y + strokeInset,
+      rect.width - strokeInset * 2,
+      rect.height - strokeInset * 2,
+    );
+    ctx.restore();
+    return;
+  }
+
+  if (isGradientBorderStyle(borderStyle)) {
+    const gradient = ctx.createLinearGradient(rect.x, rect.y, rect.x + rect.width, rect.y + rect.height);
+    const [startColor, midColor, endColor] = getBorderGradientStops(color);
+    gradient.addColorStop(0, startColor);
+    gradient.addColorStop(0.48, midColor);
+    gradient.addColorStop(1, endColor);
+    ctx.strokeStyle = gradient;
+    ctx.lineWidth = safeBorderWidth;
+    ctx.strokeRect(
+      rect.x + safeBorderWidth / 2,
+      rect.y + safeBorderWidth / 2,
+      rect.width - safeBorderWidth,
+      rect.height - safeBorderWidth,
+    );
     ctx.restore();
     return;
   }
