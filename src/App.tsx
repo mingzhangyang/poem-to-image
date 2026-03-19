@@ -3,7 +3,7 @@ import { useAppAuth } from './context/auth';
 import { useToast } from './components/ToastProvider';
 import { getPlainPoemText, isSamePoemContent } from './poemContent';
 import { DEFAULT_POEM_STYLE, isSamePoemLayerStyle } from './poemStyle';
-import { translations, Language, TranslationKey } from './translations';
+import { fallbackTranslations, loadTranslations, type Language, type TranslationKey } from './translations';
 import { LANGUAGE_STORAGE_KEY, readPreferredLanguage } from './hooks/useLang';
 import { CanvasPreview } from './components/CanvasPreview';
 import { Sidebar } from './components/Sidebar';
@@ -82,7 +82,8 @@ export default function App() {
   const [previewZoom, setPreviewZoom] = useState(1);
   const initialLanguageRef = useRef<Language>(readPreferredLanguage());
   const [language, setLanguage] = useState<Language>(initialLanguageRef.current);
-  const t = (key: TranslationKey) => translations[language][key] ?? translations.en[key];
+  const [messages, setMessages] = useState(fallbackTranslations);
+  const t = (key: TranslationKey) => messages[key] ?? fallbackTranslations[key];
 
   const handleLanguageChange = useCallback((newLang: Language) => {
     setPoem((prev) => {
@@ -92,6 +93,20 @@ export default function App() {
     try { window.localStorage.setItem(LANGUAGE_STORAGE_KEY, newLang); } catch { /* ignore */ }
     setLanguage(newLang);
   }, []);
+
+  useEffect(() => {
+    let ignore = false;
+
+    void loadTranslations(language).then((nextMessages) => {
+      if (!ignore) {
+        setMessages(nextMessages);
+      }
+    });
+
+    return () => {
+      ignore = true;
+    };
+  }, [language]);
 
   const [poem, setPoem] = useState(DEFAULT_POEMS[initialLanguageRef.current]);
   const [poemStyle, setPoemStyle] = useState({ ...DEFAULT_POEM_STYLE });

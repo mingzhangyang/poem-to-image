@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
-import { translations, Language, TranslationKey } from '../translations';
+import { useEffect, useState } from 'react';
+import { LANGUAGES, fallbackTranslations, isValidLanguage, loadTranslations, type Language, type TranslationKey } from '../translations';
 
 export const LANGUAGE_STORAGE_KEY = 'poem-to-image.language';
 export const DEFAULT_LANGUAGE: Language = 'en';
 
-const VALID_LANGUAGES = new Set(Object.keys(translations) as Language[]);
+const VALID_LANGUAGES = new Set<Language>(LANGUAGES);
 
 function resolveLocaleToLanguage(locale: string): Language | null {
   const normalized = locale.toLowerCase();
@@ -35,8 +35,8 @@ function resolveLocaleToLanguage(locale: string): Language | null {
 export function readPreferredLanguage(): Language {
   try {
     const stored = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
-    if (stored && VALID_LANGUAGES.has(stored as Language)) {
-      return stored as Language;
+    if (stored && isValidLanguage(stored)) {
+      return stored;
     }
   } catch {
     // ignore
@@ -60,7 +60,22 @@ export function readPreferredLanguage(): Language {
 
 export function useLang() {
   const [language, setLanguage] = useState<Language>(readPreferredLanguage);
-  const t = (key: TranslationKey) => translations[language][key];
+  const [messages, setMessages] = useState(fallbackTranslations);
+  const t = (key: TranslationKey) => messages[key] ?? fallbackTranslations[key];
+
+  useEffect(() => {
+    let ignore = false;
+
+    void loadTranslations(language).then((nextMessages) => {
+      if (!ignore) {
+        setMessages(nextMessages);
+      }
+    });
+
+    return () => {
+      ignore = true;
+    };
+  }, [language]);
 
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
