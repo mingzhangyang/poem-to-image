@@ -34,6 +34,9 @@ export type EditorTemplateId =
   | 'ink-pine-mist-photo'
   | 'colorblock-cyan-magenta'
   | 'parchment-scroll'
+  | 'wax-sealed-letter'
+  | 'illuminated-manuscript'
+  | 'bamboo-scroll'
 ;
 export type ExportScale = 1 | 2 | 3;
 export type ExportFormat = 'png' | 'jpg' | 'webp';

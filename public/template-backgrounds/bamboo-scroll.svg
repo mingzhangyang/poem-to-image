@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1600" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="base" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#b9b07b"/>
+      <stop offset="50%" stop-color="#98895a"/>
+      <stop offset="100%" stop-color="#786b44"/>
+    </linearGradient>
+    <filter id="fiber" x="-20%" y="-20%" width="140%" height="140%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.028 0.72" numOctaves="2" seed="21"/>
+      <feColorMatrix type="matrix" values="
+        0 0 0 0 0.27
+        0 0 0 0 0.22
+        0 0 0 0 0.14
+        0 0 0 0.28 0
+      "/>
+    </filter>
+    <radialGradient id="vignette" cx="50%" cy="50%" r="70%">
+      <stop offset="62%" stop-color="rgba(30,24,13,0)"/>
+      <stop offset="100%" stop-color="rgba(30,24,13,0.5)"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1200" height="1600" fill="url(#base)"/>
+
+  <g>
+    <rect x="0" y="0" width="132" height="1600" fill="#9f925f"/>
+    <rect x="132" y="0" width="132" height="1600" fill="#b5a775"/>
+    <rect x="264" y="0" width="132" height="1600" fill="#8e8152"/>
+    <rect x="396" y="0" width="132" height="1600" fill="#b2a472"/>
+    <rect x="528" y="0" width="132" height="1600" fill="#93865a"/>
+    <rect x="660" y="0" width="132" height="1600" fill="#b7a977"/>
+    <rect x="792" y="0" width="132" height="1600" fill="#8d8055"/>
+    <rect x="924" y="0" width="132" height="1600" fill="#b2a471"/>
+    <rect x="1056" y="0" width="144" height="1600" fill="#93875d"/>
+  </g>
+
+  <g stroke="#5b4e2f" stroke-opacity="0.45" stroke-width="6">
+    <line x1="132" y1="0" x2="132" y2="1600"/>
+    <line x1="264" y1="0" x2="264" y2="1600"/>
+    <line x1="396" y1="0" x2="396" y2="1600"/>
+    <line x1="528" y1="0" x2="528" y2="1600"/>
+    <line x1="660" y1="0" x2="660" y2="1600"/>
+    <line x1="792" y1="0" x2="792" y2="1600"/>
+    <line x1="924" y1="0" x2="924" y2="1600"/>
+    <line x1="1056" y1="0" x2="1056" y2="1600"/>
+  </g>
+
+  <g fill="#6e5d38" opacity="0.3">
+    <ellipse cx="198" cy="340" rx="14" ry="30"/>
+    <ellipse cx="448" cy="1090" rx="12" ry="28"/>
+    <ellipse cx="730" cy="510" rx="16" ry="34"/>
+    <ellipse cx="988" cy="1280" rx="14" ry="30"/>
+  </g>
+
+  <rect width="1200" height="1600" filter="url(#fiber)"/>
+  <rect width="1200" height="1600" fill="url(#vignette)"/>
+</svg>

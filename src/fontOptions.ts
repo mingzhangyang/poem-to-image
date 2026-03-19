@@ -201,6 +201,36 @@ const TEMPLATE_FONTS: Record<EditorTemplateId, Record<Language, string>> = {
     fr: '"Cormorant Garamond", serif',
     de: '"Spectral", serif',
   },
+  'wax-sealed-letter': {
+    en: '"Cormorant Garamond", serif',
+    'zh-CN': '"Noto Serif SC", serif',
+    'zh-TW': '"Noto Serif TC", serif',
+    ja: '"Shippori Mincho", serif',
+    ko: '"Gowun Batang", serif',
+    es: '"Lora", serif',
+    fr: '"Cormorant Garamond", serif',
+    de: '"Spectral", serif',
+  },
+  'illuminated-manuscript': {
+    en: '"Playfair Display", serif',
+    'zh-CN': '"Noto Serif SC", serif',
+    'zh-TW': '"Noto Serif TC", serif',
+    ja: '"Shippori Mincho", serif',
+    ko: '"Gowun Batang", serif',
+    es: '"Lora", serif',
+    fr: '"Cormorant Garamond", serif',
+    de: '"Spectral", serif',
+  },
+  'bamboo-scroll': {
+    en: '"Cormorant Garamond", serif',
+    'zh-CN': '"ZCOOL XiaoWei", serif',
+    'zh-TW': '"Noto Serif TC", serif',
+    ja: '"Shippori Mincho", serif',
+    ko: '"Gowun Batang", serif',
+    es: '"Lora", serif',
+    fr: '"Cormorant Garamond", serif',
+    de: '"Spectral", serif',
+  },
 };
 
 export interface StampFontOption {
