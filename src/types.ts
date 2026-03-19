@@ -12,24 +12,12 @@ export type EditorTemplateId =
   | 'modern-minimal'
   | 'cyberpunk'
   | 'japanese-magazine'
-  | 'ceramic-editorial'
-  | 'retro-riso'
-  | 'theater-noir'
   | 'mountain-mist-photo'
   | 'ocean-dawn-photo'
   | 'city-night-photo'
   | 'ink-pine-mist-photo'
-  | 'ink-li-river-photo'
-  | 'ink-lake-pavilion-photo'
   | 'colorblock-cyan-magenta'
-  | 'colorblock-turquoise-emerald'
-  | 'colorblock-teal-fuchsia'
-  | 'colorblock-pro-cyan-magenta'
-  | 'colorblock-pro-turquoise-purple'
-  | 'colorblock-pro-teal-rose'
-  | 'colorblock-pro-aqua-coral'
-  | 'colorblock-pro-jade-fuchsia'
-  | 'colorblock-pro-mint-magenta';
+;
 export type ExportScale = 1 | 2 | 3;
 export type ExportFormat = 'png' | 'jpg' | 'webp';
 export type SocialPlatform = 'wechat' | 'weibo' | 'xiaohongshu' | 'twitter' | 'instagram' | 'facebook';
