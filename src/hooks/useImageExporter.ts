@@ -8,6 +8,13 @@ interface SocialPlatformConfig {
   url: string | null;
 }
 
+interface BatchExportPreset {
+  id: string;
+  sceneLabel: string;
+  width: number;
+  height: number;
+}
+
 const SOCIAL_PLATFORM_CONFIG: Record<SocialPlatform, SocialPlatformConfig> = {
   wechat:       { format: 'jpg', scale: 2, url: null },
   weibo:        { format: 'jpg', scale: 2, url: 'https://weibo.com/' },
@@ -92,8 +99,8 @@ function getExportMimeType(format: ExportFormat) {
   return 'image/png';
 }
 
-function getExportFilename(format: ExportFormat) {
-  return `poem-image.${format}`;
+function getExportFilename(format: ExportFormat, basename = 'poem-image') {
+  return `${basename}.${format}`;
 }
 
 function createOpaqueCanvasCopy(sourceCanvas: HTMLCanvasElement, fillStyle: string) {
@@ -159,6 +166,15 @@ async function saveBlob(blob: Blob, format: ExportFormat): Promise<boolean> {
   return true;
 }
 
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.download = filename;
+  link.href = url;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 function supportsFileShare() {
   if (typeof navigator === 'undefined' || typeof navigator.share !== 'function' || typeof File === 'undefined') {
     return false;
@@ -186,13 +202,13 @@ export function useImageExporter(
   const [isSharing, setIsSharing] = useState(false);
   const canShare = useMemo(() => supportsFileShare(), []);
 
-  const renderOutputCanvas = useCallback(async (overrideScale?: ExportScale) => {
+  const renderOutputCanvas = useCallback(async (options?: { scale?: ExportScale; canvasWidth?: number; canvasHeight?: number }) => {
     await waitForSceneSettled();
 
-    const effectiveScale = overrideScale ?? exportScale;
+    const effectiveScale = options?.scale ?? exportScale;
     const exportScene = {
-      canvasWidth: scene.canvasWidth,
-      canvasHeight: scene.canvasHeight,
+      canvasWidth: options?.canvasWidth ?? scene.canvasWidth,
+      canvasHeight: options?.canvasHeight ?? scene.canvasHeight,
       exportScale: effectiveScale,
       background: scene.background,
       typography: scene.typography,
@@ -201,8 +217,11 @@ export function useImageExporter(
     return renderCanvasExport(exportScene);
   }, [exportScale, scene, waitForSceneSettled]);
 
-  const createOutputBlob = useCallback(async (overrideFormat?: ExportFormat, overrideScale?: ExportScale) => {
-    const canvas = await renderOutputCanvas(overrideScale);
+  const createOutputBlob = useCallback(async (
+    overrideFormat?: ExportFormat,
+    options?: { scale?: ExportScale; canvasWidth?: number; canvasHeight?: number },
+  ) => {
+    const canvas = await renderOutputCanvas(options);
     return exportCanvasToBlob(canvas, overrideFormat ?? exportFormat);
   }, [exportFormat, renderOutputCanvas]);
 
@@ -268,7 +287,7 @@ export function useImageExporter(
 
     try {
       const { format, scale, url } = SOCIAL_PLATFORM_CONFIG[platform];
-      const blob = await createOutputBlob(format, scale);
+      const blob = await createOutputBlob(format, { scale });
 
       if (!blob) {
         return 'downloaded';
@@ -298,5 +317,43 @@ export function useImageExporter(
     }
   }, [createOutputBlob, isExporting, isSharing]);
 
-  return { exportImage, shareImage, shareToSocialPlatform, isExporting, isSharing, canShare };
+  const exportBatchImages = useCallback(async (presets: BatchExportPreset[]): Promise<number> => {
+    if (isExporting || isSharing || presets.length === 0) {
+      return 0;
+    }
+
+    setIsExporting(true);
+
+    try {
+      let completed = 0;
+
+      for (const preset of presets) {
+        const blob = await createOutputBlob(exportFormat, {
+          scale: exportScale,
+          canvasWidth: preset.width,
+          canvasHeight: preset.height,
+        });
+
+        if (!blob) {
+          continue;
+        }
+
+        const safePresetId = preset.id.replace(/[^a-z0-9-]/gi, '-').toLowerCase();
+        downloadBlob(blob, getExportFilename(exportFormat, `poem-${safePresetId}-${preset.width}x${preset.height}`));
+        completed += 1;
+
+        // Stagger file downloads to reduce browser drop-off on large batches.
+        await new Promise((resolve) => window.setTimeout(resolve, 120));
+      }
+
+      return completed;
+    } catch (error) {
+      console.error('Failed to batch export images', error);
+      throw error;
+    } finally {
+      setIsExporting(false);
+    }
+  }, [createOutputBlob, exportFormat, exportScale, isExporting, isSharing]);
+
+  return { exportImage, exportBatchImages, shareImage, shareToSocialPlatform, isExporting, isSharing, canShare };
 }

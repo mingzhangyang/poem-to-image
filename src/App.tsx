@@ -12,6 +12,7 @@ import { useBackgroundConfig } from './hooks/useBackgroundConfig';
 import { useBalance } from './hooks/useBalance';
 import { useBillingHistory } from './hooks/useBillingHistory';
 import { useBillingPackages } from './hooks/useBillingPackages';
+import { DEFAULT_CANVAS_PRESET_ID, getCanvasSizePresetById } from './canvasPresets';
 import { useCanvasScale } from './hooks/useCanvasScale';
 import { useCheckoutReturn } from './hooks/useCheckoutReturn';
 import { useDecorationsConfig } from './hooks/useDecorationsConfig';
@@ -97,7 +98,7 @@ export default function App() {
 
   const [canvasWidth, setCanvasWidth] = useState(1080);
   const [canvasHeight, setCanvasHeight] = useState(1350);
-  const [presetSize, setPresetSize] = useState('1080x1350');
+  const [presetSize, setPresetSize] = useState(DEFAULT_CANVAS_PRESET_ID);
   const [exportFormat, setExportFormat] = useState<ExportFormat>('png');
   const [exportScale, setExportScale] = useState<ExportScale>(2);
   const [activeTemplateId, setActiveTemplateId] = useState<EditorTemplateId | null>(null);
@@ -166,9 +167,20 @@ export default function App() {
   const handlePresetChange = (val: string) => {
     setPresetSize(val);
     if (val !== 'custom') {
+      const preset = getCanvasSizePresetById(val);
+
+      if (preset) {
+        setCanvasWidth(preset.width);
+        setCanvasHeight(preset.height);
+        return;
+      }
+
+      // Backward compatibility for legacy ratio-based preset ids like "1080x1350".
       const [w, h] = val.split('x').map(Number);
-      setCanvasWidth(w);
-      setCanvasHeight(h);
+      if (Number.isFinite(w) && Number.isFinite(h)) {
+        setCanvasWidth(w);
+        setCanvasHeight(h);
+      }
     }
   };
 
@@ -316,6 +328,7 @@ export default function App() {
       showToast(t('exportFailed') || '图片导出失败', 'error');
     }
   };
+
   const handlePreviewZoomReset = () => setPreviewZoom(1);
   const previousLanguageRef = useRef(language);
 
