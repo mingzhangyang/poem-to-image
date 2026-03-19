@@ -121,6 +121,7 @@ export interface EditorTemplateDefinition {
   background: TemplateBackgroundConfig;
   typography: TemplateTypographyConfig;
   decorations: TemplateDecorationsConfig;
+  poemStyle?: PoemLayerStyle;
 }
 
 export interface UserCustomTemplate {
@@ -132,6 +133,7 @@ export interface UserCustomTemplate {
   background: TemplateBackgroundConfig;
   typography: TemplateTypographyConfig;
   decorations: TemplateDecorationsConfig;
+  poemStyle: PoemLayerStyle;
 }
 
 export interface TemplateSectionProps {
@@ -154,9 +156,51 @@ export interface CanvasSizeSectionProps {
   onCanvasHeightChange: (value: number) => void;
 }
 
+export interface PoemContentData {
+  title: string;
+  author: string;
+  body: string;
+  sourceNote: string;
+}
+
+export type PoemSectionPlacement = 'before-body' | 'after-body' | 'after-author';
+
+export interface PoemLayerStyle {
+  titleScale: number;
+  titleOpacity: number;
+  titleLineHeight: number;
+  titleLetterSpacing: number;
+  titleBodyGap: number;
+  titleAlign: TextAlign;
+  titlePlacement: Exclude<PoemSectionPlacement, 'after-author'>;
+  bodyLineHeight: number;
+  bodyLetterSpacing: number;
+  bodyAlign: TextAlign;
+  authorScale: number;
+  authorOpacity: number;
+  authorLineHeight: number;
+  authorLetterSpacing: number;
+  authorBodyGap: number;
+  authorAlign: TextAlign;
+  authorPlacement: Exclude<PoemSectionPlacement, 'after-author'>;
+  sourceScale: number;
+  sourceOpacity: number;
+  sourceLineHeight: number;
+  sourceLetterSpacing: number;
+  sourceGap: number;
+  sourceAlign: TextAlign;
+  sourcePlacement: PoemSectionPlacement;
+}
+
 export interface ContentSectionProps {
-  text: string;
-  onTextChange: (value: string) => void;
+  poem: PoemContentData;
+  poemStyle: PoemLayerStyle;
+  onTitleChange: (value: string) => void;
+  onAuthorChange: (value: string) => void;
+  onBodyChange: (value: string) => void;
+  onSourceNoteChange: (value: string) => void;
+  onPoemStyleChange: (updates: Partial<PoemLayerStyle>) => void;
+  onResetPoemStyle: () => void;
 }
 
 export interface BackgroundSectionProps {
@@ -283,7 +327,8 @@ export interface CanvasPreviewProps {
   poemFrameRef: RefObject<HTMLDivElement | null>;
   poemTextRef: RefObject<HTMLDivElement | null>;
   t: TranslateFn;
-  text: string;
+  poem: PoemContentData;
+  poemStyle: PoemLayerStyle;
   backgroundType: BackgroundType;
   backgroundStyle: CSSProperties;
   bgBrightness: number;

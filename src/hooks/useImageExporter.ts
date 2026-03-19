@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { renderCanvasExport } from '../export/renderCanvasExport';
-import type { BorderStyle, CustomText, ExportFormat, ExportScale, LogoConfig, PositionedElement, SocialPlatform, StampConfig, TextAlign, WritingMode } from '../types';
+import type { BorderStyle, CustomText, ExportFormat, ExportScale, LogoConfig, PoemContentData, PoemLayerStyle, PositionedElement, SocialPlatform, StampConfig, TextAlign, WritingMode } from '../types';
 
 interface SocialPlatformConfig {
   format: ExportFormat;
@@ -41,7 +41,8 @@ interface UseImageExporterBackgroundOptions {
 }
 
 interface UseImageExporterTypographyOptions {
-  text: string;
+  poem: PoemContentData;
+  poemStyle: PoemLayerStyle;
   fontFamily: string;
   fontSize: number;
   textColor: string;

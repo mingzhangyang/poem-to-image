@@ -119,6 +119,45 @@ export function measureTextWidth(measurer: TextLayoutMeasurer, text: string, let
   }, 0);
 }
 
+interface HorizontalVisualBounds {
+  left: number;
+  right: number;
+  width: number;
+}
+
+function measureHorizontalVisualBounds(measurer: TextLayoutMeasurer, text: string, letterSpacing: number): HorizontalVisualBounds {
+  const characters = Array.from(text || ' ');
+
+  if (characters.length === 0) {
+    return { left: 0, right: 0, width: 0 };
+  }
+
+  let cursorX = 0;
+  let minLeft = Number.POSITIVE_INFINITY;
+  let maxRight = Number.NEGATIVE_INFINITY;
+
+  characters.forEach((character, index) => {
+    const metrics = measurer.measureText(character);
+    const glyphLeft = cursorX - metrics.actualBoundingBoxLeft;
+    const glyphRight = cursorX + metrics.actualBoundingBoxRight;
+
+    minLeft = Math.min(minLeft, glyphLeft);
+    maxRight = Math.max(maxRight, glyphRight);
+
+    cursorX += metrics.width + (index === characters.length - 1 ? 0 : letterSpacing);
+  });
+
+  if (!Number.isFinite(minLeft) || !Number.isFinite(maxRight)) {
+    return { left: 0, right: 0, width: 0 };
+  }
+
+  return {
+    left: minLeft,
+    right: maxRight,
+    width: Math.max(0, maxRight - minLeft),
+  };
+}
+
 function isHorizontalRunGlyph(text: string) {
   return /[\p{Script=Latin}\p{Number}\s.,!?;:'"()\[\]{}\-–—/&]/u.test(text);
 }
@@ -241,18 +280,20 @@ function createHorizontalTextLayout(input: TextLayoutInput, measurer: TextLayout
     const renderWidth = columnRenderWidths[columnIndex];
 
     columnLines.forEach((line, lineIndex) => {
-      const lineWidth = measureTextWidth(measurer, line || ' ', input.letterSpacing);
+      const lineText = line || ' ';
+      const lineWidth = measureTextWidth(measurer, lineText, input.letterSpacing);
+      const visualBounds = measureHorizontalVisualBounds(measurer, lineText, input.letterSpacing);
       let lineX = currentX;
 
       if (textAlign === 'center') {
-        lineX += (renderWidth - lineWidth) / 2;
+        lineX += (renderWidth - visualBounds.width) / 2 - visualBounds.left;
       } else if (textAlign === 'right') {
-        lineX += renderWidth - lineWidth;
+        lineX += renderWidth - visualBounds.width - visualBounds.left;
       }
 
       items.push({
         kind: 'horizontal-line',
-        text: line || ' ',
+        text: lineText,
         x: lineX,
         y: lineIndex * lineAdvance,
         width: lineWidth,

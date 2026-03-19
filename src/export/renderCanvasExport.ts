@@ -1,4 +1,5 @@
 import { createOrganicBorderStrokes, getDoubleBorderMetrics, isOrganicBorderStyle } from '../borderUtils';
+import { createStructuredPoemLayout } from '../poemContent';
 import { getCanvasPositioningRect } from '../positioningRect';
 import {
   createCanvasStampGradient,
@@ -14,7 +15,7 @@ import {
   type StampTextureBlob,
 } from '../stampRendering';
 import { createCanvasTextMeasurer, createTextLayout } from '../textLayout';
-import type { BorderStyle, CustomText, ExportScale, LogoConfig, PositionedElement, StampConfig, TextAlign, WritingMode } from '../types';
+import type { BorderStyle, CustomText, ExportScale, LogoConfig, PoemContentData, PoemLayerStyle, PositionedElement, StampConfig, TextAlign, WritingMode } from '../types';
 
 interface CanvasExportBackground {
   backgroundType: 'solid' | 'gradient' | 'transparent' | 'image' | 'ai';
@@ -28,7 +29,8 @@ interface CanvasExportBackground {
 }
 
 interface CanvasExportTypography {
-  text: string;
+  poem: PoemContentData;
+  poemStyle: PoemLayerStyle;
   fontFamily: string;
   fontSize: number;
   textColor: string;
@@ -374,84 +376,53 @@ function drawStampSurfaceLayers(ctx: CanvasRenderingContext2D, stamp: StampConfi
   ctx.restore();
 }
 
-function drawHorizontalText(ctx: CanvasRenderingContext2D, scene: CanvasExportScene, frameRect: Rect) {
+function drawStructuredPoem(ctx: CanvasRenderingContext2D, scene: CanvasExportScene, frameRect: Rect) {
   const { typography } = scene;
-  const layout = createTextLayout(
+  const poemLayout = createStructuredPoemLayout(
     {
-      text: typography.text || ' ',
+      poem: typography.poem,
+      poemStyle: typography.poemStyle,
+      placeholder: ' ',
       writingMode: typography.writingMode,
+      fontFamily: typography.fontFamily,
       fontSize: typography.fontSize,
       lineHeight: typography.lineHeight,
       letterSpacing: typography.letterSpacing,
+      textAlign: typography.textAlign,
       columns: typography.columns,
       columnGap: typography.columnGap,
-      textAlign: typography.textAlign,
       wrapWidth: typography.poemPosition.boxWidth !== undefined
         ? Math.max(1, (frameRect.width * typography.poemPosition.boxWidth) / 100)
-        : frameRect.width,
+        : typography.writingMode === 'horizontal-tb'
+          ? frameRect.width
+          : undefined,
+      measurerFactory: (fontFamily, size) => createCanvasTextMeasurer(fontFamily, size, ctx),
     },
-    createCanvasTextMeasurer(typography.fontFamily, typography.fontSize, ctx),
   );
   const startX = typography.poemPosition.exportLeft !== undefined
     ? frameRect.x + (frameRect.width * typography.poemPosition.exportLeft) / 100
-    : frameRect.x + (frameRect.width * typography.poemPosition.positionX) / 100 - layout.width / 2;
+    : frameRect.x + (frameRect.width * typography.poemPosition.positionX) / 100 - poemLayout.width / 2;
   const startY = typography.poemPosition.exportTop !== undefined
     ? frameRect.y + (frameRect.height * typography.poemPosition.exportTop) / 100
-    : frameRect.y + (frameRect.height * typography.poemPosition.positionY) / 100 - layout.height / 2;
+    : frameRect.y + (frameRect.height * typography.poemPosition.positionY) / 100 - poemLayout.height / 2;
 
   ctx.save();
-  ctx.fillStyle = typography.textColor;
-  ctx.font = `${typography.fontSize}px ${typography.fontFamily}`;
-  ctx.textBaseline = 'top';
   applyTextShadow(ctx, typography);
-  drawTextLayout(ctx, layout, typography.letterSpacing, startX, startY);
-
-  ctx.restore();
-}
-
-function drawVerticalText(ctx: CanvasRenderingContext2D, scene: CanvasExportScene, frameRect: Rect) {
-  const { typography } = scene;
-  const layout = createTextLayout(
-    {
-      text: typography.text || ' ',
-      writingMode: typography.writingMode,
-      fontSize: typography.fontSize,
-      lineHeight: typography.lineHeight,
-      letterSpacing: typography.letterSpacing,
-      columns: typography.columns,
-      columnGap: typography.columnGap,
-      textAlign: typography.textAlign,
-      wrapWidth: typography.poemPosition.boxWidth !== undefined
-        ? Math.max(1, (frameRect.width * typography.poemPosition.boxWidth) / 100)
-        : undefined,
-    },
-    createCanvasTextMeasurer(typography.fontFamily, typography.fontSize, ctx),
-  );
-  const startX = typography.poemPosition.exportLeft !== undefined
-    ? frameRect.x + (frameRect.width * typography.poemPosition.exportLeft) / 100
-    : frameRect.x + (frameRect.width * typography.poemPosition.positionX) / 100 - layout.width / 2;
-  const startY = typography.poemPosition.exportTop !== undefined
-    ? frameRect.y + (frameRect.height * typography.poemPosition.exportTop) / 100
-    : frameRect.y + (frameRect.height * typography.poemPosition.positionY) / 100 - layout.height / 2;
-
-  ctx.save();
-  ctx.fillStyle = typography.textColor;
-  ctx.font = `${typography.fontSize}px ${typography.fontFamily}`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  applyTextShadow(ctx, typography);
-  drawTextLayout(ctx, layout, typography.letterSpacing, startX, startY);
-
+  poemLayout.sections.forEach((section) => {
+    ctx.save();
+    ctx.globalAlpha = section.opacity;
+    ctx.fillStyle = typography.textColor;
+    ctx.font = `${section.fontSize}px ${typography.fontFamily}`;
+    ctx.textAlign = section.layout.writingMode === 'vertical-rl' ? 'center' : 'left';
+    ctx.textBaseline = section.layout.writingMode === 'vertical-rl' ? 'middle' : 'top';
+    drawTextLayout(ctx, section.layout, section.letterSpacing, startX + section.x, startY + section.y);
+    ctx.restore();
+  });
   ctx.restore();
 }
 
 function drawPoem(ctx: CanvasRenderingContext2D, scene: CanvasExportScene, frameRect: Rect) {
-  if (scene.typography.writingMode === 'vertical-rl') {
-    drawVerticalText(ctx, scene, frameRect);
-    return;
-  }
-
-  drawHorizontalText(ctx, scene, frameRect);
+  drawStructuredPoem(ctx, scene, frameRect);
 }
 
 function drawCustomText(ctx: CanvasRenderingContext2D, customText: CustomText, scene: CanvasExportScene, frameRect: Rect) {

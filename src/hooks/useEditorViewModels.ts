@@ -5,6 +5,8 @@ import type {
   CanvasPreviewProps,
   CanvasSizeSectionProps,
   ContentSectionProps,
+  PoemContentData,
+  PoemLayerStyle,
   CustomText,
   DecorationsSectionProps,
   SocialPlatform,
@@ -43,7 +45,8 @@ interface UseEditorViewModelsParams {
   previewRef: CanvasPreviewProps['previewRef'];
   poemFrameRef: CanvasPreviewProps['poemFrameRef'];
   poemTextRef: CanvasPreviewProps['poemTextRef'];
-  text: string;
+  poem: PoemContentData;
+  poemStyle: PoemLayerStyle;
   backgroundType: CanvasPreviewProps['backgroundType'];
   backgroundStyle: CanvasPreviewProps['backgroundStyle'];
   bgBrightness: number;
@@ -99,7 +102,8 @@ export function useEditorViewModels({
   previewRef,
   poemFrameRef,
   poemTextRef,
-  text,
+  poem,
+  poemStyle,
   backgroundType,
   backgroundStyle,
   bgBrightness,
@@ -160,7 +164,8 @@ export function useEditorViewModels({
     poemFrameRef,
     poemTextRef,
     t,
-    text,
+    poem,
+    poemStyle,
     backgroundType,
     backgroundStyle,
     bgBrightness,

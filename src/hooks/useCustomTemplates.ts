@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { normalizeUserCustomTemplate } from '../poemStyle';
 import type { UserCustomTemplate, TemplateBackgroundConfig, TemplateTypographyConfig, TemplateDecorationsConfig } from '../types';
 
 const STORAGE_KEY = 'poem-to-image.custom-templates';
@@ -9,7 +10,8 @@ function loadFromStorage(): UserCustomTemplate[] {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
-    return JSON.parse(raw) as UserCustomTemplate[];
+    return (JSON.parse(raw) as Array<UserCustomTemplate | (Omit<UserCustomTemplate, 'poemStyle'> & { poemStyle?: UserCustomTemplate['poemStyle'] })>)
+      .map((template) => normalizeUserCustomTemplate(template));
   } catch {
     return [];
   }
@@ -47,8 +49,10 @@ async function apiFetch(path: string, getToken: () => Promise<string | null>, op
 async function fetchCloudTemplates(getToken: () => Promise<string | null>): Promise<UserCustomTemplate[]> {
   const res = await apiFetch('/api/templates', getToken);
   if (!res.ok) return [];
-  const data = (await res.json()) as { templates: UserCustomTemplate[] };
-  return data.templates ?? [];
+  const data = (await res.json()) as {
+    templates: Array<UserCustomTemplate | (Omit<UserCustomTemplate, 'poemStyle'> & { poemStyle?: UserCustomTemplate['poemStyle'] })>;
+  };
+  return (data.templates ?? []).map((template) => normalizeUserCustomTemplate(template));
 }
 
 async function postCloudTemplate(
@@ -111,15 +115,16 @@ export function useCustomTemplates({ isSignedIn, getToken }: UseCustomTemplatesP
     background: TemplateBackgroundConfig,
     typography: TemplateTypographyConfig,
     decorations: TemplateDecorationsConfig,
+    poemStyle: UserCustomTemplate['poemStyle'],
   ) => {
     const { accentFrom, accentTo } = deriveAccentColors(background);
-    const payload = { name: name.trim() || 'Custom Template', accentFrom, accentTo, background, typography, decorations };
+    const payload = { name: name.trim() || 'Custom Template', accentFrom, accentTo, background, typography, decorations, poemStyle };
 
     if (isSignedIn) {
       const saved = await postCloudTemplate(payload, getToken);
       if (!saved) return null;
       setCustomTemplates((prev) => {
-        const updated = [saved, ...prev];
+        const updated = [normalizeUserCustomTemplate(saved), ...prev];
         saveToStorage(updated);
         return updated;
       });
@@ -134,12 +139,12 @@ export function useCustomTemplates({ isSignedIn, getToken }: UseCustomTemplatesP
       ...payload,
     };
     setCustomTemplates((prev) => {
-      const updated = [newTemplate, ...prev];
+      const updated = [normalizeUserCustomTemplate(newTemplate), ...prev];
       saveToStorage(updated);
       return updated;
     });
     setActiveCustomTemplateId(newTemplate.id);
-    return newTemplate;
+    return normalizeUserCustomTemplate(newTemplate);
   }, [isSignedIn, getToken]);
 
   // ── Apply template ─────────────────────────────────────────────────────────

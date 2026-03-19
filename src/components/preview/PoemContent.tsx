@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, RefObject } from 'react';
 import { createOrganicBorderStrokes, getBorderPadding, isOrganicBorderStyle } from '../../borderUtils';
 import { useElementSize } from '../../hooks/useElementSize';
+import { createStructuredPoemLayout } from '../../poemContent';
 import { getPreviewDragBounds, getPreviewPositioningRect, type PreviewPositioningRect } from '../../positioningRect';
-import { createCanvasTextMeasurer, createTextLayout } from '../../textLayout';
-import type { BorderStyle, CustomText, LogoConfig, PositionedElement, StampConfig, TextAlign, TranslateFn, WritingMode } from '../../types';
+import type { BorderStyle, CustomText, LogoConfig, PoemContentData, PoemLayerStyle, PositionedElement, StampConfig, TextAlign, TranslateFn, WritingMode } from '../../types';
 import { CustomTextItems } from './CustomTextItems';
 import { LogoOverlay } from './LogoOverlay';
 import { StampOverlay } from './StampOverlay';
@@ -14,7 +14,8 @@ interface PoemContentProps {
   poemFrameRef: RefObject<HTMLDivElement | null>;
   poemTextRef: RefObject<HTMLDivElement | null>;
   t: TranslateFn;
-  text: string;
+  poem: PoemContentData;
+  poemStyle: PoemLayerStyle;
   fontFamily: string;
   fontSize: number;
   textColor: string;
@@ -59,7 +60,8 @@ export function PoemContent({
   poemFrameRef,
   poemTextRef,
   t,
-  text,
+  poem,
+  poemStyle,
   fontFamily,
   fontSize,
   textColor,
@@ -102,24 +104,25 @@ export function PoemContent({
   const organicBorderStrokes = showBorder && organicBorder
     ? createOrganicBorderStrokes(100, 100, safeBorderWidth, borderStyle)
     : [];
-  const previewText = text || t('poemPlaceholder');
-  const textLayout = createTextLayout(
+  const poemLayout = createStructuredPoemLayout(
     {
-      text: previewText,
+      poem,
+      poemStyle,
+      placeholder: t('poemPlaceholder'),
       writingMode,
+      fontFamily,
       fontSize,
       lineHeight,
       letterSpacing,
+      textAlign,
       columns: columnCount,
       columnGap,
-      textAlign,
       wrapWidth: writingMode === 'horizontal-tb'
         ? Math.max(1, liveBoxWidth !== undefined ? (frameSize.width * liveBoxWidth) / 100 : frameSize.width || 1)
         : liveBoxWidth !== undefined
           ? Math.max(1, (frameSize.width * liveBoxWidth) / 100)
           : undefined,
     },
-    createCanvasTextMeasurer(fontFamily, fontSize),
   );
 
   useEffect(() => {
@@ -370,8 +373,8 @@ export function PoemContent({
           left: `${livePosition.positionX}%`,
           top: `${livePosition.positionY}%`,
           transform: 'translate(-50%, -50%)',
-          width: `${textLayout.width}px`,
-          height: `${textLayout.height}px`,
+          width: `${poemLayout.width}px`,
+          height: `${poemLayout.height}px`,
         }}
       >
         <div
@@ -455,18 +458,38 @@ export function PoemContent({
             </div>
           )}
           <div
+            ref={poemTextRef}
             className="max-w-full"
           >
-            <TextLayoutBlock
-              ref={poemTextRef}
-              layout={textLayout}
-              fontFamily={fontFamily}
-              fontSize={fontSize}
-              color={textColor}
-              letterSpacing={letterSpacing}
-              lineHeight={lineHeight}
-              textShadow={sharedTextShadow}
-            />
+            <div
+              className="relative"
+              style={{
+                width: `${poemLayout.width}px`,
+                height: `${poemLayout.height}px`,
+              }}
+            >
+              {poemLayout.sections.map((section) => (
+                <div
+                  key={section.key}
+                  className="absolute left-0 top-0"
+                  style={{
+                    left: `${section.x}px`,
+                    top: `${section.y}px`,
+                    opacity: section.opacity,
+                  }}
+                >
+                  <TextLayoutBlock
+                    layout={section.layout}
+                    fontFamily={fontFamily}
+                    fontSize={section.fontSize}
+                    color={textColor}
+                    letterSpacing={section.letterSpacing}
+                    lineHeight={section.lineHeight}
+                    textShadow={sharedTextShadow}
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
