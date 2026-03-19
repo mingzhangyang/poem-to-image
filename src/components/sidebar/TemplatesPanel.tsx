@@ -1,7 +1,18 @@
-import { Sparkles, BookmarkPlus, Trash2, X } from 'lucide-react';
-import { useState, type KeyboardEvent } from 'react';
+import { BookmarkPlus, Expand, Sparkles, Trash2, X } from 'lucide-react';
+import { useEffect, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+import { createPortal } from 'react-dom';
+import { AnimatePresence, motion } from 'motion/react';
 import type { ExpandedSections, TemplateSectionProps, TranslateFn } from '../../types';
 import { ControlSection } from '../ControlSection';
+
+const BUILT_IN_PREVIEW_LIMIT = 2;
+
+type BuiltInTemplate = TemplateSectionProps['templates'][number];
+
+interface TemplateGroup {
+  seriesKey: BuiltInTemplate['seriesKey'];
+  items: BuiltInTemplate[];
+}
 
 interface TemplatesPanelProps {
   t: TranslateFn;
@@ -11,25 +22,146 @@ interface TemplatesPanelProps {
   currentBackgroundType: string;
 }
 
+interface BuiltInTemplateCardProps {
+  t: TranslateFn;
+  template: BuiltInTemplate;
+  isActive: boolean;
+  onApply: (id: BuiltInTemplate['id']) => void;
+  variant?: 'compact' | 'library';
+}
+
+function BuiltInTemplateCard({ t, template, isActive, onApply, variant = 'compact' }: BuiltInTemplateCardProps) {
+  const previewStyle = template.usesBackgroundImage && template.background.backgroundImage
+    ? {
+        backgroundImage: `linear-gradient(135deg, rgba(10,17,28,0.14), rgba(255,255,255,0.06)), url(${template.background.backgroundImage})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }
+    : {
+        background: `linear-gradient(135deg, ${template.accentFrom}, ${template.accentTo})`,
+      };
+
+  if (variant === 'library') {
+    return (
+      <button
+        key={template.id}
+        onClick={() => onApply(template.id)}
+        className={`group relative h-[300px] w-[240px] overflow-hidden rounded-2xl border text-left transition-all ${
+          isActive
+            ? 'border-(--app-accent-300) shadow-[0_16px_36px_var(--app-accent-shadow)]'
+            : 'border-[rgba(34,48,52,0.08)] hover:border-(--app-accent-200)'
+        }`}
+      >
+        <div className="absolute inset-0" style={previewStyle} />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(9,14,23,0.04)_0%,rgba(9,14,23,0.2)_100%)]" />
+
+        <div className="absolute left-3 top-3 flex flex-wrap items-center gap-1.5">
+          <span className="rounded-full border border-[rgba(255,255,255,0.35)] bg-[rgba(255,255,255,0.88)] px-2 py-0.5 text-[10px] font-semibold text-gray-600">
+            {t(template.seriesKey)}
+          </span>
+          {template.usesBackgroundImage ? (
+            <span className="rounded-full border border-[rgba(37,99,235,0.22)] bg-[rgba(219,234,254,0.9)] px-2 py-0.5 text-[10px] font-semibold text-[#1d4ed8]">
+              {t('templateImageBadge')}
+            </span>
+          ) : null}
+        </div>
+
+        <div className="absolute inset-x-3 bottom-3 rounded-xl border border-[rgba(34,48,52,0.08)] bg-[rgba(255,253,249,0.92)] px-3 py-2.5 shadow-[0_10px_24px_rgba(26,44,46,0.1)]">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="text-sm font-semibold text-gray-900">{t(template.nameKey)}</div>
+              <p className="mt-0.5 text-[11px] leading-4 text-gray-500">
+                {t(template.descriptionKey)}
+              </p>
+            </div>
+            <span
+              className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold ${
+                isActive ? 'bg-(--app-accent-700) text-white' : 'bg-(--app-accent-50) text-(--app-accent-700)'
+              }`}
+            >
+              {isActive ? t('templateApplied') : t('applyTemplate')}
+            </span>
+          </div>
+        </div>
+      </button>
+    );
+  }
+
+  return (
+    <button
+      key={template.id}
+      onClick={() => onApply(template.id)}
+      className={`text-left rounded-2xl border p-4 transition-all ${
+        isActive
+          ? 'border-(--app-accent-300) bg-(--app-accent-50) shadow-[0_10px_24px_var(--app-accent-shadow)]'
+          : 'border-[rgba(34,48,52,0.08)] bg-white hover:border-(--app-accent-200) hover:bg-(--app-accent-50)'
+      }`}
+    >
+      <div
+        className="h-16 rounded-xl mb-3 border border-[rgba(34,48,52,0.06)]"
+        style={previewStyle}
+      />
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+            <span className="rounded-full border border-[rgba(34,48,52,0.08)] bg-white px-2 py-0.5 text-[10px] font-semibold text-gray-500">
+              {t(template.seriesKey)}
+            </span>
+            {template.usesBackgroundImage ? (
+              <span className="rounded-full border border-[rgba(37,99,235,0.24)] bg-[rgba(59,130,246,0.08)] px-2 py-0.5 text-[10px] font-semibold text-[#1d4ed8]">
+                {t('templateImageBadge')}
+              </span>
+            ) : null}
+          </div>
+          <div className="text-sm font-semibold text-gray-900">{t(template.nameKey)}</div>
+          <p className="mt-1 text-xs leading-5 text-gray-500">{t(template.descriptionKey)}</p>
+        </div>
+        <span
+          className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+            isActive ? 'bg-(--app-accent-700) text-white' : 'bg-(--app-accent-50) text-(--app-accent-700)'
+          }`}
+        >
+          {isActive ? t('templateApplied') : t('applyTemplate')}
+        </span>
+      </div>
+    </button>
+  );
+}
+
 export function TemplatesPanel({ t, expanded, onToggle, templates, currentBackgroundType }: TemplatesPanelProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [templateName, setTemplateName] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isLibraryOpen, setIsLibraryOpen] = useState(false);
 
   const activeBuiltIn = templates.templates.find((template) => template.id === templates.activeTemplateId);
-  const activeCustom = templates.customTemplates.find((t) => t.id === templates.activeCustomTemplateId);
+  const activeCustom = templates.customTemplates.find((item) => item.id === templates.activeCustomTemplateId);
   const activeName = activeCustom?.name ?? (activeBuiltIn ? t(activeBuiltIn.nameKey) : null);
-  const groupedTemplates = templates.templates.reduce<Array<{ seriesKey: (typeof templates.templates)[number]['seriesKey']; items: typeof templates.templates }>>((groups, template) => {
-    const existing = groups.find((group) => group.seriesKey === template.seriesKey);
 
-    if (existing) {
-      existing.items.push(template);
+  const groupedTemplates = useMemo<TemplateGroup[]>(() => {
+    return templates.templates.reduce<TemplateGroup[]>((groups, template) => {
+      const existing = groups.find((group) => group.seriesKey === template.seriesKey);
+
+      if (existing) {
+        existing.items.push(template);
+        return groups;
+      }
+
+      groups.push({ seriesKey: template.seriesKey, items: [template] });
       return groups;
+    }, []);
+  }, [templates.templates]);
+
+  const previewBuiltIns = useMemo(() => {
+    if (!activeBuiltIn) {
+      return templates.templates.slice(0, BUILT_IN_PREVIEW_LIMIT);
     }
 
-    groups.push({ seriesKey: template.seriesKey, items: [template] });
-    return groups;
-  }, []);
+    return [
+      activeBuiltIn,
+      ...templates.templates.filter((template) => template.id !== activeBuiltIn.id),
+    ].slice(0, BUILT_IN_PREVIEW_LIMIT);
+  }, [activeBuiltIn, templates.templates]);
 
   const isImageOrAiBg = currentBackgroundType === 'image' || currentBackgroundType === 'ai';
 
@@ -40,210 +172,268 @@ export function TemplatesPanel({ t, expanded, onToggle, templates, currentBackgr
     setIsSaving(false);
   };
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') handleSave();
-    if (e.key === 'Escape') { setIsSaving(false); setTemplateName(''); }
+  const handleKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') handleSave();
+    if (event.key === 'Escape') {
+      setIsSaving(false);
+      setTemplateName('');
+    }
   };
 
-  return (
-    <ControlSection
-      title={t('templates')}
-      icon={<Sparkles className="w-4 h-4" />}
-      expanded={expanded}
-      onToggle={onToggle}
-      summary={activeName ?? t('templatesHint')}
-      highlighted={!templates.activeTemplateId && !templates.activeCustomTemplateId}
-    >
-      <div className="space-y-4">
-        <p className="text-xs leading-5 text-gray-500">{t('templatesHint')}</p>
+  const handleApplyTemplate = (id: BuiltInTemplate['id']) => {
+    templates.onApplyTemplate(id);
+    setIsLibraryOpen(false);
+  };
 
-        {/* My Templates — shown first, higher priority */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t('myTemplates')}</span>
-            {!isSaving && (
-              <button
-                onClick={() => setIsSaving(true)}
-                className="flex items-center gap-1 text-xs font-medium text-(--app-accent-600) hover:text-(--app-accent-800)"
-              >
-                <BookmarkPlus className="w-3.5 h-3.5" />
-                {t('saveAsTemplate')}
-              </button>
+  useEffect(() => {
+    if (!isLibraryOpen) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    const handleKeyDownEvent = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsLibraryOpen(false);
+      }
+    };
+
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleKeyDownEvent);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleKeyDownEvent);
+    };
+  }, [isLibraryOpen]);
+
+  return (
+    <>
+      <ControlSection
+        title={t('templates')}
+        icon={<Sparkles className="w-4 h-4" />}
+        expanded={expanded}
+        onToggle={onToggle}
+        summary={activeName ?? t('templatesHint')}
+        highlighted={!templates.activeTemplateId && !templates.activeCustomTemplateId}
+      >
+        <div className="space-y-4">
+          <p className="text-xs leading-5 text-gray-500">{t('templatesHint')}</p>
+
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t('myTemplates')}</span>
+              {!isSaving && (
+                <button
+                  onClick={() => setIsSaving(true)}
+                  className="flex items-center gap-1 text-xs font-medium text-(--app-accent-600) hover:text-(--app-accent-800)"
+                >
+                  <BookmarkPlus className="w-3.5 h-3.5" />
+                  {t('saveAsTemplate')}
+                </button>
+              )}
+            </div>
+
+            {isSaving && (
+              <div className="mb-3 space-y-2">
+                {isImageOrAiBg && (
+                  <p className="text-xs text-amber-600 leading-4">{t('bgNotSavedNote')}</p>
+                )}
+                <div className="flex gap-2">
+                  <input
+                    autoFocus
+                    type="text"
+                    value={templateName}
+                    onChange={(event) => setTemplateName(event.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder={t('templateNamePlaceholder')}
+                    className="app-input flex-1 text-sm"
+                  />
+                  <button
+                    onClick={handleSave}
+                    className="app-button-primary rounded-lg px-3 py-1.5 text-xs font-semibold"
+                  >
+                    {t('saveTemplate')}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsSaving(false);
+                      setTemplateName('');
+                    }}
+                    className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {templates.customTemplates.length === 0 ? (
+              <p className="text-xs text-gray-400 py-2">{t('noCustomTemplates')}</p>
+            ) : (
+              <div className="grid gap-2">
+                {templates.customTemplates.map((template) => {
+                  const isActive = templates.activeCustomTemplateId === template.id;
+                  const isConfirmingDelete = deletingId === template.id;
+
+                  return (
+                    <div
+                      key={template.id}
+                      className={`rounded-xl border p-3 transition-all ${
+                        isActive
+                          ? 'border-(--app-accent-300) bg-(--app-accent-50) shadow-[0_10px_24px_var(--app-accent-shadow)]'
+                          : 'border-[rgba(34,48,52,0.08)] bg-white'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="w-10 h-10 rounded-lg shrink-0"
+                          style={{
+                            background: template.accentFrom === template.accentTo
+                              ? template.accentFrom
+                              : `linear-gradient(135deg, ${template.accentFrom}, ${template.accentTo})`,
+                          }}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-semibold text-gray-900 truncate">{template.name}</div>
+                        </div>
+                        {isConfirmingDelete ? (
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                              onClick={() => {
+                                void templates.onDeleteCustomTemplate(template.id).then(() => setDeletingId(null));
+                              }}
+                              className="text-[11px] font-semibold text-red-600 hover:text-red-700 px-2 py-1 rounded-lg hover:bg-red-50"
+                            >
+                              {t('deleteTemplate')}
+                            </button>
+                            <button
+                              onClick={() => setDeletingId(null)}
+                              className="p-1 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                              onClick={() => templates.onApplyCustomTemplate(template.id)}
+                              className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                                isActive ? 'bg-(--app-accent-700) text-white' : 'bg-(--app-accent-50) text-(--app-accent-700) hover:bg-(--app-accent-100)'
+                              }`}
+                            >
+                              {isActive ? t('templateApplied') : t('applyTemplate')}
+                            </button>
+                            <button
+                              onClick={() => setDeletingId(template.id)}
+                              className="p-1 text-gray-300 hover:text-red-400 rounded-lg hover:bg-red-50 transition-colors"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
 
-          {isSaving && (
-            <div className="mb-3 space-y-2">
-              {isImageOrAiBg && (
-                <p className="text-xs text-amber-600 leading-4">{t('bgNotSavedNote')}</p>
-              )}
-              <div className="flex gap-2">
-                <input
-                  autoFocus
-                  type="text"
-                  value={templateName}
-                  onChange={(e) => setTemplateName(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder={t('templateNamePlaceholder')}
-                  className="app-input flex-1 text-sm"
+          <div>
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t('builtInTemplates')}</span>
+              <button
+                type="button"
+                onClick={() => setIsLibraryOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-full border border-(--app-accent-200) bg-white px-3 py-1 text-[11px] font-semibold text-(--app-accent-700) hover:bg-(--app-accent-50)"
+              >
+                <Expand className="h-3.5 w-3.5" />
+                {t('quickMore')} ({templates.templates.length})
+              </button>
+            </div>
+
+            <div className="grid gap-3">
+              {previewBuiltIns.map((template) => (
+                <BuiltInTemplateCard
+                  key={template.id}
+                  t={t}
+                  template={template}
+                  isActive={templates.activeTemplateId === template.id}
+                  onApply={handleApplyTemplate}
                 />
-                <button
-                  onClick={handleSave}
-                  className="app-button-primary rounded-lg px-3 py-1.5 text-xs font-semibold"
-                >
-                  {t('saveTemplate')}
-                </button>
-                <button
-                  onClick={() => { setIsSaving(false); setTemplateName(''); }}
-                  className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+              ))}
             </div>
-          )}
+          </div>
+        </div>
+      </ControlSection>
 
-          {templates.customTemplates.length === 0 ? (
-            <p className="text-xs text-gray-400 py-2">{t('noCustomTemplates')}</p>
-          ) : (
-            <div className="grid gap-2">
-              {templates.customTemplates.map((template) => {
-                const isActive = templates.activeCustomTemplateId === template.id;
-                const isConfirmingDelete = deletingId === template.id;
+      {isLibraryOpen ? createPortal(
+        <AnimatePresence>
+          <div className="fixed inset-0 z-[90]">
+            <motion.button
+              type="button"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-[rgba(20,29,31,0.45)] backdrop-blur-[4px]"
+              onClick={() => setIsLibraryOpen(false)}
+              aria-label={t('closeControls')}
+            />
 
-                return (
-                  <div
-                    key={template.id}
-                    className={`rounded-xl border p-3 transition-all ${
-                      isActive
-                        ? 'border-(--app-accent-300) bg-(--app-accent-50) shadow-[0_10px_24px_var(--app-accent-shadow)]'
-                        : 'border-[rgba(34,48,52,0.08)] bg-white'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      {/* Color swatch */}
-                      <div
-                        className="w-10 h-10 rounded-lg shrink-0"
-                        style={{
-                          background: template.accentFrom === template.accentTo
-                            ? template.accentFrom
-                            : `linear-gradient(135deg, ${template.accentFrom}, ${template.accentTo})`,
-                        }}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-semibold text-gray-900 truncate">{template.name}</div>
-                      </div>
-                      {isConfirmingDelete ? (
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <button
-                            onClick={() => { void templates.onDeleteCustomTemplate(template.id).then(() => setDeletingId(null)); }}
-                            className="text-[11px] font-semibold text-red-600 hover:text-red-700 px-2 py-1 rounded-lg hover:bg-red-50"
-                          >
-                            {t('deleteTemplate')}
-                          </button>
-                          <button
-                            onClick={() => setDeletingId(null)}
-                            className="p-1 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <button
-                            onClick={() => templates.onApplyCustomTemplate(template.id)}
-                            className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                              isActive ? 'bg-(--app-accent-700) text-white' : 'bg-(--app-accent-50) text-(--app-accent-700) hover:bg-(--app-accent-100)'
-                            }`}
-                          >
-                            {isActive ? t('templateApplied') : t('applyTemplate')}
-                          </button>
-                          <button
-                            onClick={() => setDeletingId(template.id)}
-                            className="p-1 text-gray-300 hover:text-red-400 rounded-lg hover:bg-red-50 transition-colors"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 24 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 24 }}
+              className="relative z-[91] flex h-[100dvh] w-screen flex-col overflow-hidden bg-[linear-gradient(180deg,rgba(255,253,249,0.995),rgba(255,249,241,0.98))] shadow-[0_32px_100px_rgba(26,44,46,0.24)]"
+            >
+              <div className="flex items-start justify-between gap-4 border-b border-[rgba(34,48,52,0.06)] px-5 py-5 sm:px-7 lg:px-10">
+                <div className="min-w-0">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-(--app-accent-500)">
+                    {t('templates')}
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Built-in templates */}
-        <div>
-          <div className="mb-3">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t('builtInTemplates')}</span>
-          </div>
-          <div className="space-y-4">
-            {groupedTemplates.map((group) => (
-              <div key={group.seriesKey} className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">{t(group.seriesKey)}</span>
-                  <span className="text-[10px] text-gray-400">{group.items.length}</span>
+                  <h2 className="mt-2 text-2xl font-semibold text-gray-900">{t('builtInTemplates')}</h2>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">{t('templatesHint')}</p>
                 </div>
-                <div className="grid gap-3">
-                  {group.items.map((template) => {
-                    const isActive = templates.activeTemplateId === template.id;
 
-                    return (
-                      <button
-                        key={template.id}
-                        onClick={() => templates.onApplyTemplate(template.id)}
-                        className={`text-left rounded-2xl border p-4 transition-all ${
-                          isActive
-                            ? 'border-(--app-accent-300) bg-(--app-accent-50) shadow-[0_10px_24px_var(--app-accent-shadow)]'
-                            : 'border-[rgba(34,48,52,0.08)] bg-white hover:border-(--app-accent-200) hover:bg-(--app-accent-50)'
-                        }`}
-                      >
-                        <div
-                          className="h-16 rounded-xl mb-3 border border-[rgba(34,48,52,0.06)]"
-                          style={template.usesBackgroundImage && template.background.backgroundImage
-                            ? {
-                                backgroundImage: `linear-gradient(135deg, rgba(10,17,28,0.14), rgba(255,255,255,0.06)), url(${template.background.backgroundImage})`,
-                                backgroundSize: 'cover',
-                                backgroundPosition: 'center',
-                              }
-                            : {
-                                background: `linear-gradient(135deg, ${template.accentFrom}, ${template.accentTo})`,
-                              }}
-                        />
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
-                              <span className="rounded-full border border-[rgba(34,48,52,0.08)] bg-white px-2 py-0.5 text-[10px] font-semibold text-gray-500">
-                                {t(template.seriesKey)}
-                              </span>
-                              {template.usesBackgroundImage ? (
-                                <span className="rounded-full border border-[rgba(37,99,235,0.24)] bg-[rgba(59,130,246,0.08)] px-2 py-0.5 text-[10px] font-semibold text-[#1d4ed8]">
-                                  {t('templateImageBadge')}
-                                </span>
-                              ) : null}
-                            </div>
-                            <div className="text-sm font-semibold text-gray-900">{t(template.nameKey)}</div>
-                            <p className="mt-1 text-xs leading-5 text-gray-500">{t(template.descriptionKey)}</p>
-                          </div>
-                          <span
-                            className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                              isActive ? 'bg-(--app-accent-700) text-white' : 'bg-(--app-accent-50) text-(--app-accent-700)'
-                            }`}
-                          >
-                            {isActive ? t('templateApplied') : t('applyTemplate')}
-                          </span>
-                        </div>
-                      </button>
-                    );
-                  })}
+                <button
+                  type="button"
+                  onClick={() => setIsLibraryOpen(false)}
+                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[rgba(34,48,52,0.08)] bg-white/80 text-(--app-accent-700) transition-colors hover:bg-(--app-accent-50)"
+                  aria-label={t('closeControls')}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-7 lg:px-10">
+                <div className="space-y-6">
+                  {groupedTemplates.map((group) => (
+                    <div key={group.seriesKey} className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">{t(group.seriesKey)}</span>
+                        <span className="text-[10px] text-gray-400">{group.items.length}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-3">
+                        {group.items.map((template) => (
+                          <BuiltInTemplateCard
+                            key={template.id}
+                            t={t}
+                            template={template}
+                            isActive={templates.activeTemplateId === template.id}
+                            onApply={handleApplyTemplate}
+                            variant="library"
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-            ))}
+            </motion.div>
           </div>
-        </div>
-      </div>
-    </ControlSection>
+        </AnimatePresence>,
+        document.body,
+      ) : null}
+    </>
   );
 }

@@ -522,7 +522,7 @@ const templateDecorationsOverrides: Partial<Record<EditorTemplateId, Partial<Rec
   'japanese-magazine': {
     en: { stamp: { text: 'Edit' } },
     'zh-CN': {
-      showStamp: true,
+      showStamp: false,
       poemPosition: { positionX: 51, positionY: 50 },
       stamp: {
         text: '题签',
@@ -549,7 +549,7 @@ const templateDecorationsOverrides: Partial<Record<EditorTemplateId, Partial<Rec
       ],
     },
     'zh-TW': {
-      showStamp: true,
+      showStamp: false,
       poemPosition: { positionX: 51, positionY: 50 },
       stamp: {
         text: '題簽',
@@ -576,7 +576,7 @@ const templateDecorationsOverrides: Partial<Record<EditorTemplateId, Partial<Rec
       ],
     },
     ja: {
-      showStamp: true,
+      showStamp: false,
       poemPosition: { positionX: 51, positionY: 50 },
       stamp: {
         text: '題箋',
@@ -829,7 +829,7 @@ export const editorTemplates: EditorTemplateDefinition[] = [
       borderStyle: 'ink',
       borderColor: '#7d4d32',
       borderWidth: 8,
-      showStamp: true,
+      showStamp: false,
       stamp: {
         text: '雅印',
         style: 'square',
@@ -1119,7 +1119,7 @@ export const editorTemplates: EditorTemplateDefinition[] = [
       borderStyle: 'solid',
       borderColor: '#0f172a',
       borderWidth: 6,
-      showStamp: true,
+      showStamp: false,
       stamp: {
         text: 'RISO',
         style: 'round',
@@ -1237,7 +1237,7 @@ export const editorTemplates: EditorTemplateDefinition[] = [
       borderStyle: 'ink',
       borderColor: '#1f2937',
       borderWidth: 7,
-      showStamp: true,
+      showStamp: false,
       stamp: {
         text: '山',
         style: 'square',
@@ -1417,7 +1417,7 @@ export const editorTemplates: EditorTemplateDefinition[] = [
       borderStyle: 'ink',
       borderColor: '#d1d5db',
       borderWidth: 6,
-      showStamp: true,
+      showStamp: false,
       stamp: {
         text: '墨',
         style: 'square',
@@ -1477,7 +1477,7 @@ export const editorTemplates: EditorTemplateDefinition[] = [
       borderStyle: 'brush',
       borderColor: '#1f2937',
       borderWidth: 6,
-      showStamp: true,
+      showStamp: false,
       stamp: {
         text: '江',
         style: 'square',
@@ -1537,7 +1537,7 @@ export const editorTemplates: EditorTemplateDefinition[] = [
       borderStyle: 'ink',
       borderColor: '#1f2937',
       borderWidth: 6,
-      showStamp: true,
+      showStamp: false,
       stamp: {
         text: '亭',
         style: 'square',
