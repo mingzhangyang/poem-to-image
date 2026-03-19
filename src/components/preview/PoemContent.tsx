@@ -101,8 +101,10 @@ export function PoemContent({
   const organicBorder = isOrganicBorderStyle(borderStyle);
   const borderPadding = showBorder ? `${getBorderPadding(safeBorderWidth, borderStyle)}px` : '0';
   const frameSize = useElementSize(poemFrameRef);
+  const borderRenderWidth = Math.max(1, frameSize.width || 100);
+  const borderRenderHeight = Math.max(1, frameSize.height || 100);
   const organicBorderStrokes = showBorder && organicBorder
-    ? createOrganicBorderStrokes(100, 100, safeBorderWidth, borderStyle)
+    ? createOrganicBorderStrokes(borderRenderWidth, borderRenderHeight, safeBorderWidth, borderStyle)
     : [];
   const poemLayout = createStructuredPoemLayout(
     {
@@ -346,7 +348,7 @@ export function PoemContent({
       {showBorder && organicBorder ? (
         <svg
           className="pointer-events-none absolute inset-0 z-0 h-full w-full overflow-visible"
-          viewBox="0 0 100 100"
+          viewBox={`0 0 ${borderRenderWidth} ${borderRenderHeight}`}
           preserveAspectRatio="none"
           aria-hidden="true"
         >
