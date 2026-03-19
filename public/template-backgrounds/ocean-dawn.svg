@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 2000" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fff3d8"/>
+      <stop offset="34%" stop-color="#ffd6a0"/>
+      <stop offset="62%" stop-color="#9ee2ff"/>
+      <stop offset="100%" stop-color="#1e749a"/>
+    </linearGradient>
+    <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#6fc3df"/>
+      <stop offset="100%" stop-color="#124b67"/>
+    </linearGradient>
+    <radialGradient id="sun" cx="52%" cy="34%" r="20%">
+      <stop offset="0%" stop-color="#fff9de" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#ffe2aa" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1600" height="2000" fill="url(#sky)"/>
+  <ellipse cx="832" cy="700" rx="460" ry="240" fill="url(#sun)"/>
+
+  <rect y="1020" width="1600" height="980" fill="url(#sea)"/>
+
+  <g stroke="#d6f3ff" stroke-opacity="0.42" fill="none" stroke-linecap="round">
+    <path d="M0 1200 C260 1160 390 1240 640 1200 C930 1160 1140 1250 1600 1190" stroke-width="8"/>
+    <path d="M0 1320 C280 1270 470 1370 760 1320 C980 1280 1220 1370 1600 1310" stroke-width="7"/>
+    <path d="M0 1450 C220 1410 510 1500 760 1450 C1020 1400 1250 1510 1600 1440" stroke-width="6"/>
+    <path d="M0 1600 C260 1540 500 1650 820 1590 C1080 1540 1320 1660 1600 1580" stroke-width="5"/>
+  </g>
+</svg>

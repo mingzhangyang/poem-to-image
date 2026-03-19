@@ -19,6 +19,17 @@ export function TemplatesPanel({ t, expanded, onToggle, templates, currentBackgr
   const activeBuiltIn = templates.templates.find((template) => template.id === templates.activeTemplateId);
   const activeCustom = templates.customTemplates.find((t) => t.id === templates.activeCustomTemplateId);
   const activeName = activeCustom?.name ?? (activeBuiltIn ? t(activeBuiltIn.nameKey) : null);
+  const groupedTemplates = templates.templates.reduce<Array<{ seriesKey: (typeof templates.templates)[number]['seriesKey']; items: typeof templates.templates }>>((groups, template) => {
+    const existing = groups.find((group) => group.seriesKey === template.seriesKey);
+
+    if (existing) {
+      existing.items.push(template);
+      return groups;
+    }
+
+    groups.push({ seriesKey: template.seriesKey, items: [template] });
+    return groups;
+  }, []);
 
   const isImageOrAiBg = currentBackgroundType === 'image' || currentBackgroundType === 'ai';
 
@@ -168,42 +179,68 @@ export function TemplatesPanel({ t, expanded, onToggle, templates, currentBackgr
           <div className="mb-3">
             <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t('builtInTemplates')}</span>
           </div>
-          <div className="grid gap-3">
-            {templates.templates.map((template) => {
-              const isActive = templates.activeTemplateId === template.id;
+          <div className="space-y-4">
+            {groupedTemplates.map((group) => (
+              <div key={group.seriesKey} className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">{t(group.seriesKey)}</span>
+                  <span className="text-[10px] text-gray-400">{group.items.length}</span>
+                </div>
+                <div className="grid gap-3">
+                  {group.items.map((template) => {
+                    const isActive = templates.activeTemplateId === template.id;
 
-              return (
-                <button
-                  key={template.id}
-                  onClick={() => templates.onApplyTemplate(template.id)}
-                  className={`text-left rounded-2xl border p-4 transition-all ${
-                    isActive
-                      ? 'border-(--app-accent-300) bg-(--app-accent-50) shadow-[0_10px_24px_var(--app-accent-shadow)]'
-                      : 'border-[rgba(34,48,52,0.08)] bg-white hover:border-(--app-accent-200) hover:bg-(--app-accent-50)'
-                  }`}
-                >
-                  <div
-                    className="h-16 rounded-xl mb-3"
-                    style={{
-                      background: `linear-gradient(135deg, ${template.accentFrom}, ${template.accentTo})`,
-                    }}
-                  />
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-semibold text-gray-900">{t(template.nameKey)}</div>
-                      <p className="mt-1 text-xs leading-5 text-gray-500">{t(template.descriptionKey)}</p>
-                    </div>
-                    <span
-                      className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                        isActive ? 'bg-(--app-accent-700) text-white' : 'bg-(--app-accent-50) text-(--app-accent-700)'
-                      }`}
-                    >
-                      {isActive ? t('templateApplied') : t('applyTemplate')}
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
+                    return (
+                      <button
+                        key={template.id}
+                        onClick={() => templates.onApplyTemplate(template.id)}
+                        className={`text-left rounded-2xl border p-4 transition-all ${
+                          isActive
+                            ? 'border-(--app-accent-300) bg-(--app-accent-50) shadow-[0_10px_24px_var(--app-accent-shadow)]'
+                            : 'border-[rgba(34,48,52,0.08)] bg-white hover:border-(--app-accent-200) hover:bg-(--app-accent-50)'
+                        }`}
+                      >
+                        <div
+                          className="h-16 rounded-xl mb-3 border border-[rgba(34,48,52,0.06)]"
+                          style={template.usesBackgroundImage && template.background.backgroundImage
+                            ? {
+                                backgroundImage: `linear-gradient(135deg, rgba(10,17,28,0.14), rgba(255,255,255,0.06)), url(${template.background.backgroundImage})`,
+                                backgroundSize: 'cover',
+                                backgroundPosition: 'center',
+                              }
+                            : {
+                                background: `linear-gradient(135deg, ${template.accentFrom}, ${template.accentTo})`,
+                              }}
+                        />
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+                              <span className="rounded-full border border-[rgba(34,48,52,0.08)] bg-white px-2 py-0.5 text-[10px] font-semibold text-gray-500">
+                                {t(template.seriesKey)}
+                              </span>
+                              {template.usesBackgroundImage ? (
+                                <span className="rounded-full border border-[rgba(37,99,235,0.24)] bg-[rgba(59,130,246,0.08)] px-2 py-0.5 text-[10px] font-semibold text-[#1d4ed8]">
+                                  {t('templateImageBadge')}
+                                </span>
+                              ) : null}
+                            </div>
+                            <div className="text-sm font-semibold text-gray-900">{t(template.nameKey)}</div>
+                            <p className="mt-1 text-xs leading-5 text-gray-500">{t(template.descriptionKey)}</p>
+                          </div>
+                          <span
+                            className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                              isActive ? 'bg-(--app-accent-700) text-white' : 'bg-(--app-accent-50) text-(--app-accent-700)'
+                            }`}
+                          >
+                            {isActive ? t('templateApplied') : t('applyTemplate')}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>

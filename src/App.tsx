@@ -456,6 +456,7 @@ export default function App() {
       gradientColor1: background.gradientColor1,
       gradientColor2: background.gradientColor2,
       gradientDirection: background.gradientDirection,
+      backgroundImage: null,
       bgBrightness: background.bgBrightness,
       bgBlur: background.bgBlur,
     };

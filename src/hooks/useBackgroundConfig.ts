@@ -171,7 +171,7 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getTok
     setGradientDirection(template.gradientDirection);
     setBgBrightness(template.bgBrightness);
     setBgBlur(template.bgBlur);
-    updateBackgroundImage(null);
+    updateBackgroundImage(template.backgroundType === 'image' ? (template.backgroundImage ?? null) : null);
     setAiPrompt('');
     setAiError('');
     setIsGeneratingAI(false);

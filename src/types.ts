@@ -7,7 +7,29 @@ export type WritingMode = 'horizontal-tb' | 'vertical-rl';
 export type TextAlign = 'left' | 'center' | 'right';
 export type BorderStyle = 'solid' | 'dashed' | 'double' | 'brush' | 'ink';
 export type StampStyle = 'square' | 'round' | 'brush';
-export type EditorTemplateId = 'ink-wash' | 'modern-minimal' | 'cyberpunk' | 'japanese-magazine';
+export type EditorTemplateId =
+  | 'ink-wash'
+  | 'modern-minimal'
+  | 'cyberpunk'
+  | 'japanese-magazine'
+  | 'ceramic-editorial'
+  | 'retro-riso'
+  | 'theater-noir'
+  | 'mountain-mist-photo'
+  | 'ocean-dawn-photo'
+  | 'city-night-photo'
+  | 'ink-pine-mist-photo'
+  | 'ink-li-river-photo'
+  | 'ink-lake-pavilion-photo'
+  | 'colorblock-cyan-magenta'
+  | 'colorblock-turquoise-emerald'
+  | 'colorblock-teal-fuchsia'
+  | 'colorblock-pro-cyan-magenta'
+  | 'colorblock-pro-turquoise-purple'
+  | 'colorblock-pro-teal-rose'
+  | 'colorblock-pro-aqua-coral'
+  | 'colorblock-pro-jade-fuchsia'
+  | 'colorblock-pro-mint-magenta';
 export type ExportScale = 1 | 2 | 3;
 export type ExportFormat = 'png' | 'jpg' | 'webp';
 export type SocialPlatform = 'wechat' | 'weibo' | 'xiaohongshu' | 'twitter' | 'instagram' | 'facebook';
@@ -73,11 +95,12 @@ export interface StampConfig {
 }
 
 export interface TemplateBackgroundConfig {
-  backgroundType: Exclude<BackgroundType, 'image' | 'ai'>;
+  backgroundType: Exclude<BackgroundType, 'ai'>;
   backgroundColor: string;
   gradientColor1: string;
   gradientColor2: string;
   gradientDirection: string;
+  backgroundImage?: string | null;
   bgBrightness: number;
   bgBlur: number;
 }
@@ -116,6 +139,8 @@ export interface EditorTemplateDefinition {
   id: EditorTemplateId;
   nameKey: TranslationKey;
   descriptionKey: TranslationKey;
+  seriesKey: TranslationKey;
+  usesBackgroundImage?: boolean;
   accentFrom: string;
   accentTo: string;
   background: TemplateBackgroundConfig;
