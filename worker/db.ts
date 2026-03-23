@@ -321,6 +321,19 @@ export async function deleteUserTemplate(
   return result.meta.changes > 0;
 }
 
+export async function renameUserTemplate(
+  db: D1Database,
+  userId: string,
+  templateId: string,
+  name: string,
+): Promise<boolean> {
+  const result = await db
+    .prepare('UPDATE custom_templates SET name = ? WHERE id = ? AND user_id = ?')
+    .bind(name, templateId, userId)
+    .run();
+  return result.meta.changes > 0;
+}
+
 export interface TransactionHistoryItem {
   id: string;
   type: string;

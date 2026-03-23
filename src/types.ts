@@ -178,6 +178,7 @@ export interface TemplateSectionProps {
   onApplyCustomTemplate: (id: string) => void;
   onSaveCustomTemplate: (name: string) => void;
   onDeleteCustomTemplate: (id: string) => Promise<void>;
+  onRenameCustomTemplate: (id: string, name: string) => Promise<void>;
 }
 
 export interface CanvasSizeSectionProps {

@@ -1,5 +1,5 @@
-import { BookmarkPlus, Expand, Sparkles, Trash2, X } from 'lucide-react';
-import { useEffect, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+import { BookmarkPlus, Expand, Pencil, Sparkles, Trash2, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import type { ExpandedSections, TemplateSectionProps, TranslateFn } from '../../types';
@@ -132,6 +132,9 @@ export function TemplatesPanel({ t, expanded, onToggle, templates, currentBackgr
   const [isSaving, setIsSaving] = useState(false);
   const [templateName, setTemplateName] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+  const renameInputRef = useRef<HTMLInputElement>(null);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
 
   const activeBuiltIn = templates.templates.find((template) => template.id === templates.activeTemplateId);
@@ -178,6 +181,25 @@ export function TemplatesPanel({ t, expanded, onToggle, templates, currentBackgr
       setIsSaving(false);
       setTemplateName('');
     }
+  };
+
+  const startRenaming = (id: string, currentName: string) => {
+    setRenamingId(id);
+    setRenameValue(currentName);
+    setDeletingId(null);
+    setTimeout(() => renameInputRef.current?.select(), 0);
+  };
+
+  const commitRename = () => {
+    if (renamingId && renameValue.trim()) {
+      void templates.onRenameCustomTemplate(renamingId, renameValue);
+    }
+    setRenamingId(null);
+  };
+
+  const handleRenameKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') commitRename();
+    if (event.key === 'Escape') setRenamingId(null);
   };
 
   const handleApplyTemplate = (id: BuiltInTemplate['id']) => {
@@ -274,6 +296,7 @@ export function TemplatesPanel({ t, expanded, onToggle, templates, currentBackgr
                 {templates.customTemplates.map((template) => {
                   const isActive = templates.activeCustomTemplateId === template.id;
                   const isConfirmingDelete = deletingId === template.id;
+                  const isRenaming = renamingId === template.id;
 
                   return (
                     <div
@@ -294,7 +317,20 @@ export function TemplatesPanel({ t, expanded, onToggle, templates, currentBackgr
                           }}
                         />
                         <div className="flex-1 min-w-0">
-                          <div className="text-sm font-semibold text-gray-900 truncate">{template.name}</div>
+                          {isRenaming ? (
+                            <input
+                              ref={renameInputRef}
+                              type="text"
+                              value={renameValue}
+                              onChange={(e) => setRenameValue(e.target.value)}
+                              onBlur={commitRename}
+                              onKeyDown={handleRenameKeyDown}
+                              className="app-input w-full text-sm py-0.5"
+                              autoFocus
+                            />
+                          ) : (
+                            <div className="text-sm font-semibold text-gray-900 truncate">{template.name}</div>
+                          )}
                         </div>
                         {isConfirmingDelete ? (
                           <div className="flex items-center gap-1.5 shrink-0">
@@ -313,7 +349,7 @@ export function TemplatesPanel({ t, expanded, onToggle, templates, currentBackgr
                               <X className="w-3.5 h-3.5" />
                             </button>
                           </div>
-                        ) : (
+                        ) : isRenaming ? null : (
                           <div className="flex items-center gap-1.5 shrink-0">
                             <button
                               onClick={() => templates.onApplyCustomTemplate(template.id)}
@@ -322,6 +358,13 @@ export function TemplatesPanel({ t, expanded, onToggle, templates, currentBackgr
                               }`}
                             >
                               {isActive ? t('templateApplied') : t('applyTemplate')}
+                            </button>
+                            <button
+                              onClick={() => startRenaming(template.id, template.name)}
+                              className="p-1 text-gray-300 hover:text-gray-500 rounded-lg hover:bg-gray-100 transition-colors"
+                              title="Rename"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={() => setDeletingId(template.id)}
@@ -407,6 +450,53 @@ export function TemplatesPanel({ t, expanded, onToggle, templates, currentBackgr
 
               <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-7 lg:px-10">
                 <div className="space-y-6">
+                  {templates.customTemplates.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">{t('myTemplates')}</span>
+                        <span className="text-[10px] text-gray-400">{templates.customTemplates.length}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-3">
+                        {templates.customTemplates.map((template) => {
+                          const isActive = templates.activeCustomTemplateId === template.id;
+                          const previewStyle = template.accentFrom === template.accentTo
+                            ? { background: template.accentFrom }
+                            : { background: `linear-gradient(135deg, ${template.accentFrom}, ${template.accentTo})` };
+
+                          return (
+                            <button
+                              key={template.id}
+                              onClick={() => {
+                                templates.onApplyCustomTemplate(template.id);
+                                setIsLibraryOpen(false);
+                              }}
+                              className={`group relative h-[300px] w-[240px] overflow-hidden rounded-2xl border text-left transition-all ${
+                                isActive
+                                  ? 'border-(--app-accent-300) shadow-[0_16px_36px_var(--app-accent-shadow)]'
+                                  : 'border-[rgba(34,48,52,0.08)] hover:border-(--app-accent-200)'
+                              }`}
+                            >
+                              <div className="absolute inset-0" style={previewStyle} />
+                              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(9,14,23,0.04)_0%,rgba(9,14,23,0.2)_100%)]" />
+                              <div className="absolute inset-x-3 bottom-3 rounded-xl border border-[rgba(34,48,52,0.08)] bg-[rgba(255,253,249,0.92)] px-3 py-2.5 shadow-[0_10px_24px_rgba(26,44,46,0.1)]">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <div className="text-sm font-semibold text-gray-900 truncate">{template.name}</div>
+                                    <p className="mt-0.5 text-[11px] leading-4 text-gray-500">{t('myTemplates')}</p>
+                                  </div>
+                                  <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold ${
+                                    isActive ? 'bg-(--app-accent-700) text-white' : 'bg-(--app-accent-50) text-(--app-accent-700)'
+                                  }`}>
+                                    {isActive ? t('templateApplied') : t('applyTemplate')}
+                                  </span>
+                                </div>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                   {groupedTemplates.map((group) => (
                     <div key={group.seriesKey} className="space-y-3">
                       <div className="flex items-center justify-between">

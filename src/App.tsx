@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'reac
 import { useAppAuth } from './context/auth';
 import { useToast } from './components/ToastProvider';
 import { getPlainPoemText, isSamePoemContent } from './poemContent';
-import { DEFAULT_POEM_STYLE, isSamePoemLayerStyle } from './poemStyle';
+import { DEFAULT_POEM_STYLE } from './poemStyle';
 import { fallbackTranslations, loadTranslations, type Language, type TranslationKey } from './translations';
 import { LANGUAGE_STORAGE_KEY, readPreferredLanguage } from './hooks/useLang';
 import { CanvasPreview } from './components/CanvasPreview';
@@ -20,61 +20,12 @@ import { useEditorViewModels } from './hooks/useEditorViewModels';
 import { useImageExporter } from './hooks/useImageExporter';
 import { useTypographyConfig } from './hooks/useTypographyConfig';
 import { useCustomTemplates } from './hooks/useCustomTemplates';
-import { editorTemplates, resolveTemplateForLanguage } from './templates';
-import type { EditorTemplateId, ExpandedSections, ExportFormat, ExportScale, PoemContentData } from './types';
+import { useTemplateManager } from './hooks/useTemplateManager';
+import { DEFAULT_POEMS } from './defaultPoems';
+import { editorTemplates } from './templates';
+import type { ExpandedSections, ExportFormat, ExportScale } from './types';
 
-const ACTIVE_TEMPLATE_STORAGE_KEY = 'poem-to-image.active-template';
 const ONBOARDING_DISMISSED_STORAGE_KEY = 'poem-to-image.onboarding-dismissed';
-const DEFAULT_POEMS: Record<Language, PoemContentData> = {
-  'zh-CN': {
-    title: '静夜思',
-    author: '唐·李白',
-    body: '床前明月光，\n疑是地上霜。\n举头望明月，\n低头思故乡。',
-    sourceNote: '',
-  },
-  'zh-TW': {
-    title: '靜夜思',
-    author: '唐·李白',
-    body: '床前明月光，\n疑是地上霜。\n舉頭望明月，\n低頭思故鄉。',
-    sourceNote: '',
-  },
-  en: {
-    title: 'Sonnet 18',
-    author: 'William Shakespeare',
-    body: 'Shall I compare thee to a summer\'s day?\nThou art more lovely and more temperate.\nRough winds do shake the darling buds of May,\nAnd summer\'s lease hath all too short a date.',
-    sourceNote: '',
-  },
-  ja: {
-    title: '春はあけぼの',
-    author: '清少納言',
-    body: '春はあけぼの。\nやうやう白くなりゆく山ぎは、\n少し明かりて、\n紫だちたる雲の細くたなびきたる。',
-    sourceNote: '『枕草子』',
-  },
-  ko: {
-    title: '청산리 벽계수야',
-    author: '황진이',
-    body: '청산리 벽계수야\n수이 감을 자랑 마라\n일도 창해하면\n다시 오기 어려워라',
-    sourceNote: '',
-  },
-  es: {
-    title: 'Cultivo una rosa blanca',
-    author: 'José Martí',
-    body: 'Cultivo una rosa blanca\nen julio como en enero\npara el amigo sincero\nque me da su mano franca.',
-    sourceNote: '',
-  },
-  fr: {
-    title: 'Demain, dès l\'aube',
-    author: 'Victor Hugo',
-    body: 'Demain, dès l\'aube, à l\'heure où blanchit la campagne,\nJe partirai. Vois-tu, je sais que tu m\'attends.\nJ\'irai par la forêt, j\'irai par la montagne.\nJe ne puis demeurer loin de toi plus longtemps.',
-    sourceNote: '',
-  },
-  de: {
-    title: 'Wandrers Nachtlied',
-    author: 'Johann Wolfgang von Goethe',
-    body: 'Über allen Gipfeln\nIst Ruh,\nIn allen Wipfeln\nSpürest du\nKaum einen Hauch.',
-    sourceNote: '',
-  },
-};
 
 export default function App() {
   const { showToast } = useToast();
@@ -116,7 +67,6 @@ export default function App() {
   const [presetSize, setPresetSize] = useState(DEFAULT_CANVAS_PRESET_ID);
   const [exportFormat, setExportFormat] = useState<ExportFormat>('png');
   const [exportScale, setExportScale] = useState<ExportScale>(2);
-  const [activeTemplateId, setActiveTemplateId] = useState<EditorTemplateId | null>(null);
   const activeInteractionCountRef = useRef(0);
   const pendingSceneSettleResolversRef = useRef<Array<() => void>>([]);
 
@@ -131,13 +81,6 @@ export default function App() {
   });
 
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
-
-  useEffect(() => {
-    const isDismissed = window.localStorage.getItem(ONBOARDING_DISMISSED_STORAGE_KEY) === 'true';
-    if (!isDismissed && !activeTemplateId) {
-      setIsOnboardingOpen(true);
-    }
-  }, [activeTemplateId]);
 
   const handleCloseOnboarding = () => {
     setIsOnboardingOpen(false);
@@ -230,6 +173,25 @@ export default function App() {
     onCustomTextAdded: () => setExpandedSections((prev) => ({ ...prev, decorations: true })),
   });
   const customTemplates = useCustomTemplates({ isSignedIn, getToken });
+
+  const { activeTemplateId, handleApplyTemplate, handleApplyCustomTemplate, handleSaveCustomTemplate } =
+    useTemplateManager({
+      language,
+      background,
+      typography,
+      decorations,
+      poemStyle,
+      setPoemStyle,
+      setExpandedSections,
+      customTemplates,
+    });
+
+  useEffect(() => {
+    const isDismissed = window.localStorage.getItem(ONBOARDING_DISMISSED_STORAGE_KEY) === 'true';
+    if (!isDismissed && !activeTemplateId) {
+      setIsOnboardingOpen(true);
+    }
+  }, [activeTemplateId]);
 
   const onInteractionStart = useCallback(() => {
     activeInteractionCountRef.current += 1;
@@ -345,225 +307,6 @@ export default function App() {
   };
 
   const handlePreviewZoomReset = () => setPreviewZoom(1);
-  const previousLanguageRef = useRef(language);
-
-  const matchesActiveTemplateTypography = (templateId: EditorTemplateId, templateLanguage: Language) => {
-    const resolvedTemplate = resolveTemplateForLanguage(templateId, templateLanguage);
-
-    if (!resolvedTemplate) {
-      return false;
-    }
-
-    const { typography: templateTypography } = resolvedTemplate;
-
-    return (
-      typography.fontFamily === templateTypography.fontFamily &&
-      typography.fontSize === templateTypography.fontSize &&
-      typography.textColor === templateTypography.textColor &&
-      typography.textAlign === templateTypography.textAlign &&
-      typography.writingMode === templateTypography.writingMode &&
-      typography.padding === templateTypography.padding &&
-      typography.lineHeight === templateTypography.lineHeight &&
-      typography.letterSpacing === templateTypography.letterSpacing &&
-      typography.columns === templateTypography.columns &&
-      typography.columnGap === templateTypography.columnGap &&
-      typography.textShadowEnabled === templateTypography.textShadowEnabled &&
-      typography.textShadowColor === templateTypography.textShadowColor &&
-      typography.textShadowBlur === templateTypography.textShadowBlur &&
-      typography.textShadowOffsetY === templateTypography.textShadowOffsetY &&
-      typography.textShadowOffsetX === templateTypography.textShadowOffsetX
-    );
-  };
-
-  const matchesActiveTemplateDecorations = (templateId: EditorTemplateId, templateLanguage: Language) => {
-    const resolvedTemplate = resolveTemplateForLanguage(templateId, templateLanguage);
-
-    if (!resolvedTemplate) {
-      return false;
-    }
-
-    const { decorations: templateDecorations } = resolvedTemplate;
-
-    return (
-      decorations.showBorder === templateDecorations.showBorder &&
-      decorations.borderStyle === templateDecorations.borderStyle &&
-      decorations.borderColor === (templateDecorations.borderColor ?? resolvedTemplate.typography.textColor) &&
-      decorations.borderWidth === (templateDecorations.borderWidth ?? 4) &&
-      decorations.showStamp === templateDecorations.showStamp &&
-      decorations.poemPosition.positionX === templateDecorations.poemPosition.positionX &&
-      decorations.poemPosition.positionY === templateDecorations.poemPosition.positionY &&
-      decorations.stamp.text === templateDecorations.stamp.text &&
-      decorations.stamp.style === templateDecorations.stamp.style &&
-      decorations.stamp.positionX === templateDecorations.stamp.positionX &&
-      decorations.stamp.positionY === templateDecorations.stamp.positionY &&
-      decorations.stamp.size === templateDecorations.stamp.size &&
-      decorations.stamp.rotation === templateDecorations.stamp.rotation &&
-      decorations.stamp.opacity === templateDecorations.stamp.opacity &&
-      decorations.customTexts.length === templateDecorations.customTexts.length
-    );
-  };
-
-  const matchesActiveTemplatePoemStyle = (templateId: EditorTemplateId, templateLanguage: Language) => {
-    const resolvedTemplate = resolveTemplateForLanguage(templateId, templateLanguage);
-
-    if (!resolvedTemplate?.poemStyle) {
-      return false;
-    }
-
-    return isSamePoemLayerStyle(poemStyle, resolvedTemplate.poemStyle);
-  };
-
-  const applyTemplateById = (templateId: EditorTemplateId, options?: { expandSections?: boolean }) => {
-    const template = resolveTemplateForLanguage(templateId, language);
-
-    if (!template) {
-      return false;
-    }
-
-    background.applyBackgroundTemplate(template.background);
-    typography.applyTypographyTemplate(template.typography);
-    decorations.applyDecorationsTemplate(template.decorations);
-    setPoemStyle(template.poemStyle ?? { ...DEFAULT_POEM_STYLE });
-    setActiveTemplateId(templateId);
-
-    if (options?.expandSections ?? true) {
-      setExpandedSections((prev) => ({
-        ...prev,
-        templates: true,
-        background: true,
-        typography: true,
-        decorations: true,
-      }));
-    }
-
-    return true;
-  };
-
-  const handleApplyTemplate = (templateId: EditorTemplateId) => {
-    applyTemplateById(templateId);
-    customTemplates.clearActiveCustomTemplate();
-  };
-
-  const handleApplyCustomTemplate = (id: string) => {
-    const template = customTemplates.customTemplates.find((t) => t.id === id);
-    if (!template) return;
-    background.applyBackgroundTemplate(template.background);
-    typography.applyTypographyTemplate(template.typography);
-    decorations.applyDecorationsTemplate(template.decorations);
-    setPoemStyle(template.poemStyle);
-    customTemplates.applyCustomTemplate(id);
-    setActiveTemplateId(null);
-    setExpandedSections((prev) => ({
-      ...prev,
-      templates: true,
-      background: true,
-      typography: true,
-      decorations: true,
-    }));
-  };
-
-  const handleSaveCustomTemplate = (name: string) => {
-    const bgConfig = {
-      backgroundType: (background.backgroundType === 'image' || background.backgroundType === 'ai')
-        ? 'solid' as const
-        : background.backgroundType,
-      backgroundColor: background.backgroundColor,
-      gradientColor1: background.gradientColor1,
-      gradientColor2: background.gradientColor2,
-      gradientDirection: background.gradientDirection,
-      backgroundImage: null,
-      bgBrightness: background.bgBrightness,
-      bgBlur: background.bgBlur,
-    };
-    const decConfig = {
-      showBorder: decorations.showBorder,
-      borderStyle: decorations.borderStyle,
-      borderColor: decorations.borderColor,
-      borderWidth: decorations.borderWidth,
-      showStamp: decorations.showStamp,
-      stamp: decorations.stamp,
-      poemPosition: decorations.poemPosition,
-      customTexts: decorations.customTexts,
-    };
-    const typConfig = {
-      fontFamily: typography.fontFamily,
-      fontSize: typography.fontSize,
-      textColor: typography.textColor,
-      textAlign: typography.textAlign,
-      writingMode: typography.writingMode,
-      padding: typography.padding,
-      lineHeight: typography.lineHeight,
-      letterSpacing: typography.letterSpacing,
-      columns: typography.columns,
-      columnGap: typography.columnGap,
-      textShadowEnabled: typography.textShadowEnabled,
-      textShadowColor: typography.textShadowColor,
-      textShadowBlur: typography.textShadowBlur,
-      textShadowOffsetY: typography.textShadowOffsetY,
-      textShadowOffsetX: typography.textShadowOffsetX,
-    };
-    void customTemplates.saveCustomTemplate(name, bgConfig, typConfig, decConfig, poemStyle);
-    setActiveTemplateId(null);
-  };
-
-  useEffect(() => {
-    const storedTemplateId = window.localStorage.getItem(ACTIVE_TEMPLATE_STORAGE_KEY) as EditorTemplateId | null;
-
-    if (!storedTemplateId) {
-      return;
-    }
-
-    const didApply = applyTemplateById(storedTemplateId, { expandSections: false });
-
-    if (!didApply) {
-      window.localStorage.removeItem(ACTIVE_TEMPLATE_STORAGE_KEY);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!activeTemplateId) {
-      window.localStorage.removeItem(ACTIVE_TEMPLATE_STORAGE_KEY);
-      return;
-    }
-
-    window.localStorage.setItem(ACTIVE_TEMPLATE_STORAGE_KEY, activeTemplateId);
-  }, [activeTemplateId]);
-
-  useEffect(() => {
-    const previousLanguage = previousLanguageRef.current;
-    if (previousLanguage === language) {
-      return;
-    }
-
-    if (!activeTemplateId) {
-      previousLanguageRef.current = language;
-      return;
-    }
-
-    const shouldSyncTypography = activeTemplateId ? matchesActiveTemplateTypography(activeTemplateId, previousLanguage) : false;
-    const shouldSyncDecorations = activeTemplateId ? matchesActiveTemplateDecorations(activeTemplateId, previousLanguage) : false;
-    const shouldSyncPoemStyle = activeTemplateId ? matchesActiveTemplatePoemStyle(activeTemplateId, previousLanguage) : false;
-
-    if (activeTemplateId && (shouldSyncTypography || shouldSyncDecorations || shouldSyncPoemStyle)) {
-      const resolvedTemplate = resolveTemplateForLanguage(activeTemplateId, language);
-
-      if (resolvedTemplate) {
-        if (shouldSyncTypography) {
-          typography.applyTypographyTemplate(resolvedTemplate.typography);
-        }
-
-        if (shouldSyncDecorations) {
-          decorations.applyDecorationsTemplate(resolvedTemplate.decorations);
-        }
-
-        if (shouldSyncPoemStyle) {
-          setPoemStyle(resolvedTemplate.poemStyle ?? { ...DEFAULT_POEM_STYLE });
-        }
-      }
-    }
-
-    previousLanguageRef.current = language;
-  }, [activeTemplateId, language]);
 
   const { sidebarProps, canvasPreviewProps } = useEditorViewModels({
     language,
@@ -581,6 +324,7 @@ export default function App() {
       onApplyCustomTemplate: handleApplyCustomTemplate,
       onSaveCustomTemplate: handleSaveCustomTemplate,
       onDeleteCustomTemplate: customTemplates.deleteCustomTemplate,
+      onRenameCustomTemplate: customTemplates.renameCustomTemplate,
     },
     canvas: {
       presetSize,

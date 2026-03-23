@@ -152,6 +152,25 @@ export function useCustomTemplates({ isSignedIn, getToken }: UseCustomTemplatesP
     setActiveCustomTemplateId(id);
   }, []);
 
+  // ── Rename template ────────────────────────────────────────────────────────
+  const renameCustomTemplate = useCallback(async (id: string, name: string) => {
+    const trimmedName = name.trim();
+    if (!trimmedName) return;
+
+    if (isSignedIn) {
+      await apiFetch(`/api/templates/${id}`, getToken, {
+        method: 'PATCH',
+        body: JSON.stringify({ name: trimmedName }),
+      });
+    }
+
+    setCustomTemplates((prev) => {
+      const updated = prev.map((t) => (t.id === id ? { ...t, name: trimmedName } : t));
+      saveToStorage(updated);
+      return updated;
+    });
+  }, [isSignedIn, getToken]);
+
   // ── Delete template ────────────────────────────────────────────────────────
   const deleteCustomTemplate = useCallback(async (id: string) => {
     if (isSignedIn) {
@@ -176,6 +195,7 @@ export function useCustomTemplates({ isSignedIn, getToken }: UseCustomTemplatesP
     saveCustomTemplate,
     applyCustomTemplate,
     deleteCustomTemplate,
+    renameCustomTemplate,
     clearActiveCustomTemplate,
   };
 }

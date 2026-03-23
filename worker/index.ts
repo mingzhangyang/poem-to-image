@@ -1,6 +1,6 @@
 import { getAuthenticatedUser } from './auth';
 import type { D1Database } from './db';
-import { ensureUser, getBalance, reserveGeneration, finalizeGenerationSuccess, finalizeGenerationFailure, listUserTemplates, createUserTemplate, deleteUserTemplate } from './db';
+import { ensureUser, getBalance, reserveGeneration, finalizeGenerationSuccess, finalizeGenerationFailure, listUserTemplates, createUserTemplate, deleteUserTemplate, renameUserTemplate } from './db';
 import {
   handleGetBalance,
   handleGetPackages,
@@ -214,6 +214,27 @@ async function handleDeleteTemplate(templateId: string, request: Request, env: E
   return json({ success: true });
 }
 
+async function handleRenameTemplate(templateId: string, request: Request, env: Env): Promise<Response> {
+  if (!env.CLERK_SECRET_KEY || !env.DB) return json({ error: 'Not configured.' }, 503);
+  const user = await getAuthenticatedUser(request, env.CLERK_SECRET_KEY);
+  if (!user) return unauthorized();
+
+  let payload: { name?: string };
+  try {
+    payload = (await request.json()) as { name?: string };
+  } catch {
+    return badRequest('Request body must be valid JSON.');
+  }
+
+  const name = (payload.name ?? '').toString().trim().slice(0, MAX_TEMPLATE_NAME_LENGTH);
+  if (!name) return badRequest('Name is required.');
+
+  await ensureUser(env.DB, user.userId, user.email);
+  const updated = await renameUserTemplate(env.DB, user.userId, templateId, name);
+  if (!updated) return json({ error: 'Not found.' }, 404);
+  return json({ success: true, name });
+}
+
 async function handleMe(request: Request, env: Env): Promise<Response> {
   if (!env.CLERK_SECRET_KEY || !env.DB) {
     return json({ error: 'Auth not configured.' }, 503);
@@ -250,6 +271,7 @@ export default {
       const templateId = pathname.slice('/api/templates/'.length);
       if (!templateId) return badRequest('Template ID required.', 400);
       if (request.method === 'DELETE') return handleDeleteTemplate(templateId, request, env);
+      if (request.method === 'PATCH') return handleRenameTemplate(templateId, request, env);
       return badRequest('Method not allowed.', 405);
     }
 
