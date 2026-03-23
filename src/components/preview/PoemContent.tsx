@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, RefObject } from 'react';
 import {
   createVectorBorderStrokes,
@@ -115,9 +115,12 @@ export function PoemContent({
   const frameSize = useElementSize(poemFrameRef);
   const borderRenderWidth = Math.max(1, frameSize.width || 100);
   const borderRenderHeight = Math.max(1, frameSize.height || 100);
-  const borderStrokes = showBorder && vectorBorder
-    ? createVectorBorderStrokes(borderRenderWidth, borderRenderHeight, safeBorderWidth, borderStyle)
-    : [];
+  const borderStrokes = useMemo(
+    () => showBorder && vectorBorder
+      ? createVectorBorderStrokes(borderRenderWidth, borderRenderHeight, safeBorderWidth, borderStyle)
+      : [],
+    [showBorder, vectorBorder, borderRenderWidth, borderRenderHeight, safeBorderWidth, borderStyle],
+  );
   const poemLayout = createStructuredPoemLayout(
     {
       poem,

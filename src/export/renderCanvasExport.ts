@@ -234,29 +234,32 @@ function drawBorder(ctx: CanvasRenderingContext2D, rect: Rect, borderStyle: Bord
 
   if (isShadowBorderStyle(borderStyle)) {
     const lineWidth = Math.max(1.1, safeBorderWidth * 0.3);
-    const strokeInset = lineWidth / 2;
+    const shadowStrokeInset = lineWidth / 2;
+    const thinStrokeWidth = Math.max(1, safeBorderWidth * 0.2);
+    const thinStrokeInset = thinStrokeWidth / 2;
 
     ctx.save();
     ctx.strokeStyle = toRgba(color, 0.22);
-    ctx.lineWidth = Math.max(1, safeBorderWidth * 0.2);
+    ctx.lineWidth = thinStrokeWidth;
     ctx.strokeRect(
-      rect.x + strokeInset,
-      rect.y + strokeInset,
-      rect.width - strokeInset * 2,
-      rect.height - strokeInset * 2,
+      rect.x + thinStrokeInset,
+      rect.y + thinStrokeInset,
+      rect.width - thinStrokeInset * 2,
+      rect.height - thinStrokeInset * 2,
     );
     ctx.restore();
 
+    // Match CSS getBorderShadowCss: blur max(16, bw*4.6), offsetY max(8, bw*1.7)
     ctx.shadowColor = toRgba(color, 0.35);
-    ctx.shadowBlur = Math.max(14, safeBorderWidth * 4.8);
-    ctx.shadowOffsetY = Math.max(6, safeBorderWidth * 1.5);
+    ctx.shadowBlur = Math.max(16, safeBorderWidth * 4.6);
+    ctx.shadowOffsetY = Math.max(8, safeBorderWidth * 1.7);
     ctx.lineWidth = lineWidth;
     ctx.strokeStyle = toRgba(color, 0.58);
     ctx.strokeRect(
-      rect.x + strokeInset,
-      rect.y + strokeInset,
-      rect.width - strokeInset * 2,
-      rect.height - strokeInset * 2,
+      rect.x + shadowStrokeInset,
+      rect.y + shadowStrokeInset,
+      rect.width - shadowStrokeInset * 2,
+      rect.height - shadowStrokeInset * 2,
     );
     ctx.restore();
     return;
