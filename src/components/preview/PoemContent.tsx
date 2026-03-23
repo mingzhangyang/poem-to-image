@@ -371,7 +371,7 @@ export function PoemContent({
         >
           {borderStrokes.map((stroke, index) => (
             <path
-              key={`${stroke.path}-${index}`}
+              key={index}
               d={stroke.path}
               fill="none"
               stroke={borderColor}
