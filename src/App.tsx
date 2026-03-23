@@ -23,6 +23,7 @@ import { useCustomTemplates } from './hooks/useCustomTemplates';
 import { useTemplateManager } from './hooks/useTemplateManager';
 import { DEFAULT_POEMS } from './defaultPoems';
 import { editorTemplates } from './templates';
+import { isCjkLanguage } from './fontOptions';
 import type { ExpandedSections, ExportFormat, ExportScale } from './types';
 
 const ONBOARDING_DISMISSED_STORAGE_KEY = 'poem-to-image.onboarding-dismissed';
@@ -244,6 +245,8 @@ export default function App() {
     event.target.value = '';
   }, [decorations]);
 
+  const stampSupported = isCjkLanguage(language);
+
   const scale = useCanvasScale(containerRef, canvasWidth, canvasHeight);
   const { exportImage, shareImage: handleShare, shareToSocialPlatform: handleShareToSocial, isExporting, isSharing, canShare } = useImageExporter(
     exportFormat,
@@ -286,7 +289,7 @@ export default function App() {
         borderStyle: decorations.borderStyle,
         borderColor: decorations.borderColor,
         borderWidth: decorations.borderWidth,
-        showStamp: decorations.showStamp,
+        showStamp: decorations.showStamp && stampSupported,
         stamp: decorations.stamp,
         customTexts: decorations.customTexts,
         logos: decorations.logos,
@@ -377,6 +380,7 @@ export default function App() {
       borderColor: decorations.borderColor,
       borderWidth: decorations.borderWidth,
       showStamp: decorations.showStamp,
+      stampSupported,
       stamp: decorations.stamp,
       poemPosition: decorations.poemPosition,
       customTexts: decorations.customTexts,
@@ -432,7 +436,7 @@ export default function App() {
     borderStyle: decorations.borderStyle,
     borderColor: decorations.borderColor,
     borderWidth: decorations.borderWidth,
-    showStamp: decorations.showStamp,
+    showStamp: decorations.showStamp && stampSupported,
     stamp: decorations.stamp,
     poemPosition: decorations.poemPosition,
     onPoemPositionChange: decorations.setPoemPosition,

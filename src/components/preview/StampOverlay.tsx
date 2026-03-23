@@ -2,17 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties, PointerEvent as ReactPointerEvent, RefObject } from 'react';
 import { getPreviewDragBounds, getPreviewPositioningRect } from '../../positioningRect';
 import {
-  getStampAppearance,
   getBrushStampSkew,
-  getStampCharacters,
-  getStampCssBackground,
   getStampCssBorderRadius,
-  getStampTextFontSize,
-  getStampTextLetterSpacing,
-  getStampTextPlacements,
-  STAMP_EDGE_WEAR_BLOBS,
-  STAMP_TEXTURE_BLOBS,
 } from '../../stampRendering';
+import { renderStampBodyToContext } from '../../export/renderCanvasExport';
 import type { StampConfig } from '../../types';
 
 interface StampOverlayProps {
@@ -29,31 +22,43 @@ function clamp(value: number, min: number, max: number) {
 
 function getFrameStyle(stamp: StampConfig): CSSProperties {
   const { skewXDeg, skewYDeg } = getBrushStampSkew();
-  const appearance = getStampAppearance(stamp);
   const borderRadius = getStampCssBorderRadius(stamp.style, stamp.size);
   const transform = `rotate(${stamp.rotation}deg)${stamp.style === 'brush' ? ` skew(${skewXDeg}deg, ${skewYDeg}deg)` : ''}`;
+  const isFilled = stamp.colorScheme !== 'outline';
+  const boxShadow = isFilled
+    ? '0 8px 20px rgba(160, 20, 20, 0.22), 0 2px 6px rgba(160, 20, 20, 0.14)'
+    : '0 8px 20px rgba(200, 40, 41, 0.12), 0 2px 6px rgba(200, 40, 41, 0.08)';
 
   return {
     width: `${stamp.size}px`,
     height: `${stamp.size}px`,
     opacity: stamp.opacity,
-    color: appearance.textColor,
     borderRadius,
     overflow: 'hidden',
-    background: getStampCssBackground([appearance.baseFill]),
-    boxShadow: appearance.previewBoxShadow,
+    boxShadow,
     transform,
   };
 }
 
 export function StampOverlay({ frameRef, stamp, onStampChange, onInteractionStart, onInteractionEnd }: StampOverlayProps) {
-  const appearance = getStampAppearance(stamp);
-  const characters = getStampCharacters(stamp.text);
-  const fontSize = getStampTextFontSize(stamp.size, characters.length);
-  const letterSpacing = getStampTextLetterSpacing(stamp.size, characters.length);
-  const placements = getStampTextPlacements(stamp.size, characters.length);
   const [livePosition, setLivePosition] = useState({ positionX: stamp.positionX, positionY: stamp.positionY });
   const isDraggingRef = useRef(false);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    canvas.width = stamp.size;
+    canvas.height = stamp.size;
+    ctx.clearRect(0, 0, stamp.size, stamp.size);
+    ctx.save();
+    ctx.translate(stamp.size / 2, stamp.size / 2);
+    renderStampBodyToContext(ctx, stamp);
+    ctx.restore();
+  }, [stamp]);
 
   useEffect(() => {
     if (!isDraggingRef.current) {
@@ -135,84 +140,17 @@ export function StampOverlay({ frameRef, stamp, onStampChange, onInteractionStar
     >
       <div
         onPointerDown={handlePointerDown}
-        className="pointer-events-auto relative flex cursor-move touch-none select-none items-center justify-center"
+        className="pointer-events-auto relative cursor-move touch-none select-none"
         style={{
           ...getFrameStyle(stamp),
         }}
       >
-        <div
-          className="absolute inset-0"
-          style={{ background: getStampCssBackground(appearance.surfaceLayers), borderRadius: 'inherit' }}
+        <canvas
+          ref={canvasRef}
+          className="pointer-events-none absolute inset-0"
+          width={stamp.size}
+          height={stamp.size}
         />
-
-        {STAMP_TEXTURE_BLOBS.map((blob, index) => (
-          <div
-            key={`stamp-texture-${index}`}
-            className="pointer-events-none absolute"
-            style={{
-              left: `${blob.x * 100}%`,
-              top: `${blob.y * 100}%`,
-              width: `${stamp.size * blob.radius * 2 * blob.scaleX}px`,
-              height: `${stamp.size * blob.radius * 2 * blob.scaleY}px`,
-              transform: `translate(-50%, -50%) rotate(${blob.rotationDeg}deg)`,
-              borderRadius: '999px',
-              background: appearance.textureColors[blob.tint],
-              filter: `blur(${Math.max(1.2, stamp.size * blob.blur)}px)`,
-            }}
-          />
-        ))}
-
-        {STAMP_EDGE_WEAR_BLOBS.map((blob, index) => (
-          <div
-            key={`stamp-edge-${index}`}
-            className="pointer-events-none absolute"
-            style={{
-              left: `${blob.x * 100}%`,
-              top: `${blob.y * 100}%`,
-              width: `${stamp.size * blob.radius * 2 * blob.scaleX}px`,
-              height: `${stamp.size * blob.radius * 2 * blob.scaleY}px`,
-              transform: `translate(-50%, -50%) rotate(${blob.rotationDeg}deg)`,
-              borderRadius: '999px',
-              background: appearance.textureColors[blob.tint],
-              filter: `blur(${Math.max(0.8, stamp.size * blob.blur)}px)`,
-            }}
-          />
-        ))}
-
-        <div
-          className="pointer-events-none absolute"
-          style={{
-            inset: `${Math.max(stamp.size * 0.15, 14)}px`,
-            borderRadius: 'inherit',
-            background: getStampCssBackground([appearance.centerGlow]),
-          }}
-        />
-
-        <div className="pointer-events-none absolute inset-0">
-          {characters.map((character, index) => {
-            const placement = placements[index] ?? placements[placements.length - 1];
-
-            return (
-              <span
-                key={`${character}-${index}`}
-                className="absolute text-center font-bold"
-                style={{
-                  left: `calc(50% + ${placement.x}px)`,
-                  top: `calc(50% + ${placement.y}px)`,
-                  transform: `translate(-50%, -50%) rotate(${placement.rotateDeg}deg) scale(${placement.scale})`,
-                  fontFamily: stamp.fontFamily,
-                  fontSize: `${fontSize}px`,
-                  lineHeight: 1,
-                  letterSpacing: `${letterSpacing}px`,
-                  color: appearance.textColor,
-                  textShadow: `0 0 ${appearance.textShadowBlur}px ${appearance.textShadowColor}`,
-                }}
-              >
-                {character}
-              </span>
-            );
-          })}
-        </div>
       </div>
     </div>
   );

@@ -62,7 +62,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
 
   const summaryParts = [
     decorations.showBorder ? t(BORDER_STYLE_LABELS[decorations.borderStyle]) : null,
-    decorations.showStamp ? t('showStamp') : null,
+    decorations.showStamp && decorations.stampSupported ? t('showStamp') : null,
     `${decorations.customTexts.length} ${t('customTexts')}`,
     `${decorations.logos.length} ${t('logos')}`,
   ].filter(Boolean);
@@ -168,6 +168,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
             </div>
           ) : null}
 
+          {decorations.stampSupported ? (
           <div className="flex items-center justify-between">
             <label className="text-xs text-gray-600 flex items-center gap-2">
               <input
@@ -182,8 +183,9 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
               <span className="text-[11px] font-medium rounded-full bg-[rgba(155,95,67,0.12)] px-2 py-1 text-[#8a523b]">{t('dragStampHint')}</span>
             ) : null}
           </div>
+          ) : null}
 
-          {decorations.showStamp ? (
+          {decorations.showStamp && decorations.stampSupported ? (
             <div className="rounded-xl bg-white border border-[rgba(34,48,52,0.08)] p-3 space-y-3">
               <div className="grid grid-cols-[1fr_auto] gap-2 items-center">
                 <label className="text-xs text-gray-500">{t('stampText')}</label>

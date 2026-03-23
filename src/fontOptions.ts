@@ -268,3 +268,7 @@ export function getOtherFontOptions(language: Language) {
 export function getTemplateFontForLanguage(templateId: EditorTemplateId, language: Language) {
   return TEMPLATE_FONTS[templateId][language];
 }
+
+export function isCjkLanguage(language: Language): boolean {
+  return language === 'zh-CN' || language === 'zh-TW' || language === 'ja' || language === 'ko';
+}

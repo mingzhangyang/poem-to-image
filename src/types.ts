@@ -303,6 +303,7 @@ export interface DecorationsSectionProps {
   borderColor: string;
   borderWidth: number;
   showStamp: boolean;
+  stampSupported: boolean;
   stamp: StampConfig;
   poemPosition: PositionedElement;
   customTexts: CustomText[];

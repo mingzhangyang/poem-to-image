@@ -388,7 +388,7 @@ export function TemplatesPanel({ t, expanded, onToggle, templates, currentBackgr
               <button
                 type="button"
                 onClick={() => setIsLibraryOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-full border border-(--app-accent-200) bg-white px-3 py-1 text-[11px] font-semibold text-(--app-accent-700) hover:bg-(--app-accent-50)"
+                className="inline-flex items-center gap-1.5 rounded-full bg-(--app-accent-600) px-3 py-1 text-[11px] font-semibold text-white shadow-sm transition-all hover:bg-(--app-accent-700) hover:shadow-md active:scale-95"
               >
                 <Expand className="h-3.5 w-3.5" />
                 {t('quickMore')} ({templates.templates.length})

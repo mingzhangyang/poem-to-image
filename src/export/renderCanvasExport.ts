@@ -10,17 +10,14 @@ import {
 import { createStructuredPoemLayout } from '../poemContent';
 import { getCanvasPositioningRect } from '../positioningRect';
 import {
-  createCanvasStampGradient,
-  getStampAppearance,
+  createStampWeatheringRand,
   getBrushStampSkew,
+  getStampBorderWidth,
   getStampCanvasRadii,
   getStampCharacters,
   getStampTextFontSize,
-  getStampTextLetterSpacing,
   getStampTextPlacements,
-  STAMP_EDGE_WEAR_BLOBS,
-  STAMP_TEXTURE_BLOBS,
-  type StampTextureBlob,
+  STAMP_INK_COLOR,
 } from '../stampRendering';
 import { createCanvasTextMeasurer, createTextLayout } from '../textLayout';
 import type { BorderStyle, CustomText, ExportScale, LogoConfig, PoemContentData, PoemLayerStyle, PositionedElement, StampConfig, TextAlign, WritingMode } from '../types';
@@ -389,56 +386,56 @@ function drawTextLayout(
   });
 }
 
-function drawStampBlob(
-  ctx: CanvasRenderingContext2D,
-  stamp: StampConfig,
-  blob: StampTextureBlob,
-  appearance: ReturnType<typeof getStampAppearance>,
-) {
-  const radiusX = stamp.size * blob.radius * blob.scaleX;
-  const radiusY = stamp.size * blob.radius * blob.scaleY;
+function applyStampWeathering(ctx: CanvasRenderingContext2D, size: number, rand: () => number) {
+  const weathering = 0.5;
+  const half = size / 2;
 
   ctx.save();
-  ctx.translate((blob.x - 0.5) * stamp.size, (blob.y - 0.5) * stamp.size);
-  ctx.rotate((blob.rotationDeg * Math.PI) / 180);
-  ctx.filter = `blur(${Math.max(0.8, stamp.size * blob.blur)}px)`;
+  ctx.globalCompositeOperation = 'destination-out';
+  ctx.fillStyle = '#000';
 
-  if (blob.tint === 'void' && appearance.isFilled) {
-    ctx.globalCompositeOperation = 'destination-out';
-    ctx.fillStyle = appearance.textureColors[blob.tint];
-    ctx.globalAlpha = Math.min(0.85, blob.opacity * 1.8);
-  } else {
-    ctx.fillStyle = appearance.textureColors[blob.tint];
-    ctx.globalAlpha = blob.opacity * (appearance.isFilled ? 1 : 0.95);
+  // Surface noise
+  const noiseCount = weathering * 2000;
+  for (let i = 0; i < noiseCount; i++) {
+    ctx.beginPath();
+    ctx.arc(
+      (rand() - 0.5) * size,
+      (rand() - 0.5) * size,
+      rand() * 2,
+      0,
+      Math.PI * 2,
+    );
+    ctx.fill();
   }
 
-  ctx.beginPath();
-  ctx.ellipse(0, 0, radiusX, radiusY, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
-}
+  // Edge wear
+  const edgeWearCount = weathering * 400;
+  const depth = size * 0.06;
+  for (let i = 0; i < edgeWearCount; i++) {
+    const edge = Math.floor(rand() * 4);
+    let x: number, y: number;
+    if (edge === 0) { x = (rand() - 0.5) * size; y = -half + rand() * depth; }
+    else if (edge === 1) { x = (rand() - 0.5) * size; y = half - rand() * depth; }
+    else if (edge === 2) { x = -half + rand() * depth; y = (rand() - 0.5) * size; }
+    else { x = half - rand() * depth; y = (rand() - 0.5) * size; }
+    ctx.beginPath();
+    ctx.arc(x, y, rand() * 6, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
-function fillStampShapeWithGradient(ctx: CanvasRenderingContext2D, stamp: StampConfig, spec: ReturnType<typeof getStampAppearance>['baseFill']) {
-  ctx.fillStyle = createCanvasStampGradient(ctx, spec, stamp.size);
-  ctx.fillRect(-stamp.size / 2, -stamp.size / 2, stamp.size, stamp.size);
-}
-
-function drawStampSurfaceLayers(ctx: CanvasRenderingContext2D, stamp: StampConfig, appearance: ReturnType<typeof getStampAppearance>) {
-  ctx.save();
-  drawStampShape(ctx, stamp);
-  ctx.clip();
-
-  appearance.surfaceLayers.forEach((spec) => {
-    fillStampShapeWithGradient(ctx, stamp, spec);
-  });
-
-  STAMP_TEXTURE_BLOBS.forEach((blob) => {
-    drawStampBlob(ctx, stamp, blob, appearance);
-  });
-
-  STAMP_EDGE_WEAR_BLOBS.forEach((blob) => {
-    drawStampBlob(ctx, stamp, blob, appearance);
-  });
+  // Large chunks
+  const chunkCount = weathering * 10;
+  for (let i = 0; i < chunkCount; i++) {
+    const edge = Math.floor(rand() * 4);
+    let x: number, y: number;
+    if (edge === 0) { x = (rand() - 0.5) * size; y = -half; }
+    else if (edge === 1) { x = (rand() - 0.5) * size; y = half; }
+    else if (edge === 2) { x = -half; y = (rand() - 0.5) * size; }
+    else { x = half; y = (rand() - 0.5) * size; }
+    ctx.beginPath();
+    ctx.arc(x, y, rand() * size * 0.15, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
   ctx.restore();
 }
@@ -554,41 +551,98 @@ function drawStampShape(ctx: CanvasRenderingContext2D, stamp: StampConfig) {
 }
 
 function drawStampText(ctx: CanvasRenderingContext2D, stamp: StampConfig) {
-  const appearance = getStampAppearance(stamp);
+  const isFilled = stamp.colorScheme !== 'outline';
   const characters = getStampCharacters(stamp.text);
   const fontSize = getStampTextFontSize(stamp.size, characters.length);
-  const letterSpacing = getStampTextLetterSpacing(stamp.size, characters.length);
   const placements = getStampTextPlacements(stamp.size, characters.length);
 
   ctx.save();
-  ctx.fillStyle = appearance.textColor;
-  ctx.font = `700 ${fontSize}px ${stamp.fontFamily}`;
+  ctx.font = `bold ${fontSize}px ${stamp.fontFamily}`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.shadowColor = appearance.textShadowColor;
-  ctx.shadowBlur = appearance.textShadowBlur;
-  characters.forEach((character, index) => {
-    const placement = placements[index] ?? placements[placements.length - 1];
 
-    ctx.save();
-    ctx.translate(placement.x, placement.y);
-    ctx.rotate((placement.rotateDeg * Math.PI) / 180);
-    ctx.scale(placement.scale, placement.scale);
-    drawHorizontalLine(ctx, character, -measureTextWidth(ctx, character, letterSpacing) / 2, -fontSize / 2, letterSpacing);
-    ctx.restore();
+  if (isFilled) {
+    drawStampShape(ctx, stamp);
+    ctx.clip();
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.fillStyle = '#000';
+  } else {
+    ctx.fillStyle = STAMP_INK_COLOR;
+  }
+
+  characters.forEach((character, index) => {
+    const { x, y } = placements[index] ?? placements[placements.length - 1];
+    ctx.fillText(character, x, y);
   });
+
   ctx.restore();
+}
+
+function drawStampBody(ctx: CanvasRenderingContext2D, stamp: StampConfig) {
+  const isFilled = stamp.colorScheme !== 'outline';
+  const half = stamp.size / 2;
+  const borderWidth = getStampBorderWidth(stamp.size);
+  const chars = getStampCharacters(stamp.text);
+
+  if (isFilled) {
+    // Baiwen (白文): solid red fill, text carved out
+    drawStampShape(ctx, stamp);
+    ctx.fillStyle = STAMP_INK_COLOR;
+    ctx.fill();
+  } else {
+    // Zhuwen (朱文): red border, transparent fill, red text
+    ctx.save();
+    drawStampShape(ctx, stamp);
+    ctx.lineWidth = borderWidth;
+    ctx.strokeStyle = STAMP_INK_COLOR;
+    ctx.stroke();
+
+    // Grid dividers: vertical for 2+ chars, horizontal for 3+ chars
+    if (chars.length > 1) {
+      ctx.save();
+      drawStampShape(ctx, stamp);
+      ctx.clip();
+      ctx.lineWidth = borderWidth / 2;
+      ctx.strokeStyle = STAMP_INK_COLOR;
+      ctx.beginPath();
+      ctx.moveTo(0, -half);
+      ctx.lineTo(0, half);
+      ctx.stroke();
+
+      if (chars.length > 2) {
+        ctx.beginPath();
+        ctx.moveTo(-half, 0);
+        ctx.lineTo(half, 0);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  drawStampText(ctx, stamp);
+  applyStampWeathering(ctx, stamp.size, createStampWeatheringRand(stamp));
 }
 
 function drawStamp(ctx: CanvasRenderingContext2D, scene: CanvasExportScene, frameRect: Rect) {
   const { stamp } = scene.decorations;
-  const appearance = getStampAppearance(stamp);
   const centerX = frameRect.x + (frameRect.width * stamp.positionX) / 100;
   const centerY = frameRect.y + (frameRect.height * stamp.positionY) / 100;
   const { skewXDeg, skewYDeg } = getBrushStampSkew();
   const brushSkewX = Math.tan((skewXDeg * Math.PI) / 180);
   const brushSkewY = Math.tan((skewYDeg * Math.PI) / 180);
   const half = stamp.size / 2;
+
+  // Render stamp to offscreen canvas so destination-out text carving
+  // does not punch through the background already drawn on the main canvas.
+  const offCanvas = document.createElement('canvas');
+  offCanvas.width = stamp.size;
+  offCanvas.height = stamp.size;
+  const offCtx = offCanvas.getContext('2d');
+  if (!offCtx) return;
+
+  offCtx.translate(half, half);
+  drawStampBody(offCtx, stamp);
 
   ctx.save();
   ctx.translate(centerX, centerY);
@@ -597,33 +651,17 @@ function drawStamp(ctx: CanvasRenderingContext2D, scene: CanvasExportScene, fram
     ctx.transform(1, brushSkewY, brushSkewX, 1, 0, 0);
   }
   ctx.globalAlpha = stamp.opacity;
-
-  ctx.save();
-  ctx.shadowColor = appearance.shadowColor;
-  ctx.shadowBlur = appearance.shadowBlur;
-  ctx.shadowOffsetY = appearance.shadowOffsetY;
-  drawStampShape(ctx, stamp);
-  ctx.fillStyle = appearance.shadowFill;
-  ctx.fill();
+  ctx.drawImage(offCanvas, -half, -half);
   ctx.restore();
+}
 
-  ctx.save();
-  drawStampShape(ctx, stamp);
-  ctx.clip();
-  fillStampShapeWithGradient(ctx, stamp, appearance.baseFill);
-  ctx.restore();
-
-  drawStampSurfaceLayers(ctx, stamp, appearance);
-
-  ctx.save();
-  drawStampShape(ctx, stamp);
-  ctx.clip();
-  ctx.fillStyle = createCanvasStampGradient(ctx, appearance.centerGlow, stamp.size);
-  ctx.fillRect(-half, -half, stamp.size, stamp.size);
-  ctx.restore();
-
-  drawStampText(ctx, stamp);
-  ctx.restore();
+/**
+ * Draws the stamp body centred at (0, 0) on the given context.
+ * The caller must translate to the stamp centre before calling this.
+ * Intended for the live preview canvas in StampOverlay.
+ */
+export function renderStampBodyToContext(ctx: CanvasRenderingContext2D, stamp: StampConfig) {
+  drawStampBody(ctx, stamp);
 }
 
 export function getCanvasContentRect(scene: CanvasExportScene): Rect {
