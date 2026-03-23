@@ -345,10 +345,11 @@ function appendPatternEdgePoints(
   wavelength: number,
   phase: number,
   mode: Exclude<ProceduralPatternMode, 'fractal'>,
+  segmentsPerCycle: number,
 ) {
   const edgeLength = Math.hypot(endX - startX, endY - startY);
   const cycles = Math.max(1, edgeLength / Math.max(8, wavelength));
-  const segments = Math.max(10, Math.round(cycles * 22));
+  const segments = Math.max(10, Math.round(cycles * segmentsPerCycle));
   const startIndex = points.length === 0 ? 0 : 1;
 
   for (let index = startIndex; index <= segments; index += 1) {
@@ -375,11 +376,14 @@ function buildPatternPath(
 ) {
   const { left, top, right, bottom } = getInsetBounds(width, height, inset);
   const points: Point[] = [];
+  // Square waves need far fewer sample points than smooth curves — sharp transitions
+  // are adequately represented with ~10 samples/cycle, while smooth modes need ~16.
+  const segmentsPerCycle = smooth ? 16 : 10;
 
-  appendPatternEdgePoints(points, left, top, right, top, 0, -1, amplitude, wavelength, phase + 0.1, mode);
-  appendPatternEdgePoints(points, right, top, right, bottom, 1, 0, amplitude, wavelength, phase + 1.2, mode);
-  appendPatternEdgePoints(points, right, bottom, left, bottom, 0, 1, amplitude, wavelength, phase + 2.35, mode);
-  appendPatternEdgePoints(points, left, bottom, left, top, -1, 0, amplitude, wavelength, phase + 3.4, mode);
+  appendPatternEdgePoints(points, left, top, right, top, 0, -1, amplitude, wavelength, phase + 0.1, mode, segmentsPerCycle);
+  appendPatternEdgePoints(points, right, top, right, bottom, 1, 0, amplitude, wavelength, phase + 1.2, mode, segmentsPerCycle);
+  appendPatternEdgePoints(points, right, bottom, left, bottom, 0, 1, amplitude, wavelength, phase + 2.35, mode, segmentsPerCycle);
+  appendPatternEdgePoints(points, left, bottom, left, top, -1, 0, amplitude, wavelength, phase + 3.4, mode, segmentsPerCycle);
 
   return smooth ? toSmoothClosedPath(points) : toClosedPolylinePath(points);
 }

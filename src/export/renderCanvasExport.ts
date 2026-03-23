@@ -263,7 +263,14 @@ function drawBorder(ctx: CanvasRenderingContext2D, rect: Rect, borderStyle: Bord
   }
 
   if (isGradientBorderStyle(borderStyle)) {
-    const gradient = ctx.createLinearGradient(rect.x, rect.y, rect.x + rect.width, rect.y + rect.height);
+    // Match CSS linear-gradient(132deg): angle measured clockwise from top
+    const angleRad = (132 * Math.PI) / 180;
+    const dx = Math.sin(angleRad);
+    const dy = -Math.cos(angleRad);
+    const halfLen = (rect.width * Math.abs(dx) + rect.height * Math.abs(dy)) / 2;
+    const cx = rect.x + rect.width / 2;
+    const cy = rect.y + rect.height / 2;
+    const gradient = ctx.createLinearGradient(cx - dx * halfLen, cy - dy * halfLen, cx + dx * halfLen, cy + dy * halfLen);
     const [startColor, midColor, endColor] = getBorderGradientStops(color);
     gradient.addColorStop(0, startColor);
     gradient.addColorStop(0.48, midColor);
