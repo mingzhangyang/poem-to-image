@@ -318,24 +318,42 @@ export function createStructuredPoemLayout({
   }
 
   if (writingMode === 'vertical-rl') {
-    const totalGap = sections.reduce(
-      (sum, section, index) => sum + getSectionGap(fontSize, writingMode, section.key, sections[index + 1]),
+    // In vertical mode, ensure section gaps adjacent to body are larger than column gap
+    const minBodySectionGap = columnGap + Math.round(fontSize * 0.15);
+    const adjustedSections = sections.map((section, index) => {
+      const prevSection = sections[index - 1];
+      if (!prevSection || section.gapBefore === undefined) return section;
+      const isBodyAdjacent =
+        (section.key === 'body' && (prevSection.key === 'title' || prevSection.key === 'author'))
+        || ((section.key === 'title' || section.key === 'author') && prevSection.key === 'body');
+      return isBodyAdjacent
+        ? { ...section, gapBefore: Math.max(section.gapBefore, minBodySectionGap) }
+        : section;
+    });
+
+    const totalGap = adjustedSections.reduce(
+      (sum, section, index) => sum + getSectionGap(fontSize, writingMode, section.key, adjustedSections[index + 1]),
       0,
     );
-    const width = sections.reduce((sum, section) => sum + section.layout.width, 0) + totalGap;
-    const height = Math.max(...sections.map((section) => section.layout.height));
-    let currentX = width;
+    const width = adjustedSections.reduce((sum, section) => sum + section.layout.width, 0) + totalGap;
 
-    const positionedSections = sections.map((section, index) => {
+    // Compute y-offsets to align first characters of all sections at the same visual top position
+    const topPaddings = adjustedSections.map((s) => s.fontSize * (s.lineHeight - 1) / 2);
+    const maxTopPadding = Math.max(0, ...topPaddings);
+
+    let currentX = width;
+    const positionedSections = adjustedSections.map((section, index) => {
       currentX -= section.layout.width;
       const positionedSection = {
         ...section,
         x: currentX,
-        y: 0,
+        y: Math.round(maxTopPadding - topPaddings[index]),
       };
-      currentX -= getSectionGap(fontSize, writingMode, section.key, sections[index + 1]);
+      currentX -= getSectionGap(fontSize, writingMode, section.key, adjustedSections[index + 1]);
       return positionedSection;
     });
+
+    const height = Math.max(...positionedSections.map((s) => s.y + s.layout.height));
 
     return {
       writingMode,
