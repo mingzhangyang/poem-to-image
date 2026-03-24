@@ -23,6 +23,7 @@ export type BorderStyle =
   | 'ornamental'
   | 'envelope';
 export type StampStyle = 'square' | 'round' | 'brush';
+export type SignatureFlourish = 'none' | 'swoosh' | 'double' | 'loop' | 'strike' | 'wave' | 'underline';
 export type EditorTemplateId =
   | 'ink-wash'
   | 'modern-minimal'
@@ -90,6 +91,22 @@ export interface ExpandedSections {
   billing: boolean;
 }
 
+export interface SignatureConfig {
+  id: string;
+  text: string;
+  font: string;
+  color: string;
+  fontSize: number;
+  slant: number;
+  thickness: number;
+  flourish: SignatureFlourish;
+  positionX: number;
+  positionY: number;
+  opacity: number;
+  rotation: number;
+  zIndex?: number;
+}
+
 export interface StampConfig {
   text: string;
   style: StampStyle;
@@ -141,6 +158,7 @@ export interface TemplateDecorationsConfig {
   poemPosition: PositionedElement;
   customTexts: CustomText[];
   logos: LogoConfig[];
+  signatures?: SignatureConfig[];
 }
 
 export interface EditorTemplateDefinition {
@@ -308,7 +326,9 @@ export interface DecorationsSectionProps {
   poemPosition: PositionedElement;
   customTexts: CustomText[];
   logos: LogoConfig[];
+  signatures: SignatureConfig[];
   onAddCustomText: () => void;
+  onAddSignature: () => void;
   onShowBorderChange: (value: boolean) => void;
   onBorderStyleChange: (value: BorderStyle) => void;
   onBorderColorChange: (value: string) => void;
@@ -324,6 +344,8 @@ export interface DecorationsSectionProps {
   onLogoChange: (id: string, updates: Partial<LogoConfig>) => void;
   onLogoRemove: (id: string) => void;
   onLogoReorder: (id: string, direction: 'up' | 'down' | 'top' | 'bottom') => void;
+  onSignatureChange: (id: string, updates: Partial<SignatureConfig>) => void;
+  onSignatureRemove: (id: string) => void;
 }
 
 export type TranslateFn = (key: TranslationKey) => string;
@@ -398,6 +420,8 @@ export interface CanvasPreviewProps {
   onCustomTextChange: (id: string, updates: Partial<CustomText>) => void;
   logos: LogoConfig[];
   onLogoChange: (id: string, updates: Partial<LogoConfig>) => void;
+  signatures: SignatureConfig[];
+  onSignatureChange: (id: string, updates: Partial<SignatureConfig>) => void;
   exportFormat: ExportFormat;
   onExportFormatChange: (value: ExportFormat) => void;
   exportScale: ExportScale;

@@ -1,7 +1,8 @@
-import { Plus, Stamp, Trash2, Upload, Text, TextCursorInput, ChevronUp, ChevronDown, ArrowUpToLine, ArrowDownToLine } from 'lucide-react';
+import { Plus, Stamp, Trash2, Upload, Text, TextCursorInput, ChevronUp, ChevronDown, ArrowUpToLine, ArrowDownToLine, PenLine } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { STAMP_FONT_OPTIONS } from '../../fontOptions';
-import type { BorderStyle, DecorationsSectionProps, ExpandedSections, StampStyle, TranslateFn } from '../../types';
+import { SIGNATURE_FONTS } from '../../signatureRendering';
+import type { BorderStyle, DecorationsSectionProps, ExpandedSections, SignatureFlourish, StampStyle, TranslateFn } from '../../types';
 import { ControlSection } from '../ControlSection';
 
 const BORDER_STYLE_LABELS: Record<
@@ -65,6 +66,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
     decorations.showStamp && decorations.stampSupported ? t('showStamp') : null,
     `${decorations.customTexts.length} ${t('customTexts')}`,
     `${decorations.logos.length} ${t('logos')}`,
+    decorations.signatures.length > 0 ? `${decorations.signatures.length} ${t('signatures')}` : null,
   ].filter(Boolean);
 
   return (
@@ -324,7 +326,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
           ) : null}
         </div>
 
-        <div className="grid grid-cols-2 gap-2 rounded-2xl border border-[rgba(34,48,52,0.06)] bg-[linear-gradient(180deg,rgba(237,244,243,0.42),rgba(255,253,249,0.82))] p-2">
+        <div className="grid grid-cols-3 gap-2 rounded-2xl border border-[rgba(34,48,52,0.06)] bg-[linear-gradient(180deg,rgba(237,244,243,0.42),rgba(255,253,249,0.82))] p-2">
           <button
             type="button"
             onClick={decorations.onAddCustomText}
@@ -333,6 +335,16 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
           >
             <Plus className="h-3.5 w-3.5 shrink-0" />
             <span className="truncate">{t('addTextShort')}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={decorations.onAddSignature}
+            className="app-action-button"
+            title={t('addSignature')}
+          >
+            <PenLine className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">{t('addSignature')}</span>
           </button>
 
           <label
@@ -545,6 +557,139 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                     </button>
                   </div>
                 </div>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
+        {decorations.signatures.length > 0 ? (
+          <div className="space-y-3">
+            <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">{t('signatures')}</div>
+            {decorations.signatures.map((sig) => (
+              <div key={sig.id} className="app-soft-surface p-3 rounded-lg space-y-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    defaultValue={sig.text}
+                    key={sig.id + '-text'}
+                    onBlur={(e) => decorations.onSignatureChange(sig.id, { text: e.target.value })}
+                    className="app-input flex-1 p-1.5 text-sm"
+                    placeholder={t('signatureText')}
+                  />
+                  <button
+                    onClick={() => decorations.onSignatureRemove(sig.id)}
+                    className="p-1.5 text-[#8a523b] hover:bg-[rgba(155,95,67,0.12)] rounded transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">{t('signatureFont')}</label>
+                  <select
+                    value={sig.font}
+                    onChange={(e) => decorations.onSignatureChange(sig.id, { font: e.target.value })}
+                    className="app-select text-sm"
+                    style={{ fontFamily: `"${sig.font}", cursive` }}
+                  >
+                    {SIGNATURE_FONTS.map((f) => (
+                      <option key={f.value} value={f.value} style={{ fontFamily: `"${f.value}", cursive` }}>
+                        {f.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={sig.color}
+                    onChange={(e) => decorations.onSignatureChange(sig.id, { color: e.target.value })}
+                    className="w-6 h-6 rounded cursor-pointer border-0 p-0 shrink-0"
+                  />
+                  <input
+                    type="range"
+                    min="30"
+                    max="160"
+                    value={sig.fontSize}
+                    onChange={(e) => decorations.onSignatureChange(sig.id, { fontSize: Number(e.target.value) })}
+                    className="app-range flex-1"
+                  />
+                  <span className="text-xs text-gray-500 w-8">{sig.fontSize}px</span>
+                </div>
+
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">{t('signatureFlourish')}</label>
+                  <select
+                    value={sig.flourish}
+                    onChange={(e) => decorations.onSignatureChange(sig.id, { flourish: e.target.value as SignatureFlourish })}
+                    className="app-select text-sm"
+                  >
+                    <option value="none">{t('flourishNone')}</option>
+                    <option value="swoosh">{t('flourishSwoosh')}</option>
+                    <option value="double">{t('flourishDouble')}</option>
+                    <option value="loop">{t('flourishLoop')}</option>
+                    <option value="strike">{t('flourishStrike')}</option>
+                    <option value="wave">{t('flourishWave')}</option>
+                    <option value="underline">{t('flourishUnderline')}</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500 w-10">{t('signatureSlant')}</span>
+                  <input
+                    type="range"
+                    min="-30"
+                    max="30"
+                    value={sig.slant}
+                    onChange={(e) => decorations.onSignatureChange(sig.id, { slant: Number(e.target.value) })}
+                    className="app-range flex-1"
+                  />
+                  <span className="text-xs text-gray-500 w-8 text-right">{sig.slant}°</span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500 w-10">{t('signatureThickness')}</span>
+                  <input
+                    type="range"
+                    min="0"
+                    max="5"
+                    value={sig.thickness}
+                    onChange={(e) => decorations.onSignatureChange(sig.id, { thickness: Number(e.target.value) })}
+                    className="app-range flex-1"
+                  />
+                  <span className="text-xs text-gray-500 w-8 text-right">{sig.thickness}</span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500 w-10">{t('signatureRotation')}</span>
+                  <input
+                    type="range"
+                    min="-180"
+                    max="180"
+                    value={sig.rotation}
+                    onChange={(e) => decorations.onSignatureChange(sig.id, { rotation: Number(e.target.value) })}
+                    className="app-range flex-1"
+                  />
+                  <span className="text-xs text-gray-500 w-8 text-right">{sig.rotation}°</span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500 w-10">{t('signatureOpacity')}</span>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={Math.round(sig.opacity * 100)}
+                    onChange={(e) => decorations.onSignatureChange(sig.id, { opacity: Number(e.target.value) / 100 })}
+                    className="app-range flex-1"
+                  />
+                  <span className="text-xs text-gray-500 w-8 text-right">{Math.round(sig.opacity * 100)}%</span>
+                </div>
+
+                <p className="text-[11px] font-medium rounded-full bg-[rgba(84,127,125,0.1)] px-2 py-1 text-[rgba(84,127,125,0.9)] text-center">
+                  {t('dragSignatureHint')}
+                </p>
               </div>
             ))}
           </div>

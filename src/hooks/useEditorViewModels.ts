@@ -66,6 +66,8 @@ interface UseEditorViewModelsParams {
   onCustomTextChange: CanvasPreviewProps['onCustomTextChange'];
   logos: CanvasPreviewProps['logos'];
   onLogoChange: CanvasPreviewProps['onLogoChange'];
+  signatures: CanvasPreviewProps['signatures'];
+  onSignatureChange: CanvasPreviewProps['onSignatureChange'];
   onInteractionStart: CanvasPreviewProps['onInteractionStart'];
   onInteractionEnd: CanvasPreviewProps['onInteractionEnd'];
   previewZoom: number;
@@ -123,6 +125,8 @@ export function useEditorViewModels({
   onCustomTextChange,
   logos,
   onLogoChange,
+  signatures,
+  onSignatureChange,
   onInteractionStart,
   onInteractionEnd,
   previewZoom,
@@ -200,6 +204,8 @@ export function useEditorViewModels({
     onCustomTextChange,
     logos,
     onLogoChange,
+    signatures,
+    onSignatureChange,
     exportFormat,
     onExportFormatChange,
     exportScale,

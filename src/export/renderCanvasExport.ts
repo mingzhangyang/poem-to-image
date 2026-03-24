@@ -20,7 +20,8 @@ import {
   STAMP_INK_COLOR,
 } from '../stampRendering';
 import { createCanvasTextMeasurer, createTextLayout } from '../textLayout';
-import type { BorderStyle, CustomText, ExportScale, LogoConfig, PoemContentData, PoemLayerStyle, PositionedElement, StampConfig, TextAlign, WritingMode } from '../types';
+import { drawSignatureToCanvas, getSignatureCanvasSize } from '../signatureRendering';
+import type { BorderStyle, CustomText, ExportScale, LogoConfig, PoemContentData, PoemLayerStyle, PositionedElement, SignatureConfig, StampConfig, TextAlign, WritingMode } from '../types';
 
 interface CanvasExportBackground {
   backgroundType: 'solid' | 'gradient' | 'transparent' | 'image' | 'ai';
@@ -63,6 +64,7 @@ interface CanvasExportDecorations {
   stamp: StampConfig;
   customTexts: CustomText[];
   logos: LogoConfig[];
+  signatures: SignatureConfig[];
 }
 
 export interface CanvasExportScene {
@@ -655,6 +657,27 @@ function drawStamp(ctx: CanvasRenderingContext2D, scene: CanvasExportScene, fram
   ctx.restore();
 }
 
+function drawSignatureElement(ctx: CanvasRenderingContext2D, sig: SignatureConfig, frameRect: Rect) {
+  const { width: sigWidth, height: sigHeight } = getSignatureCanvasSize(sig.fontSize);
+  const centerX = frameRect.x + (frameRect.width * sig.positionX) / 100;
+  const centerY = frameRect.y + (frameRect.height * sig.positionY) / 100;
+
+  const offCanvas = document.createElement('canvas');
+  offCanvas.width = sigWidth;
+  offCanvas.height = sigHeight;
+  const offCtx = offCanvas.getContext('2d');
+  if (!offCtx) return;
+
+  drawSignatureToCanvas(offCtx, sig, sigWidth, sigHeight);
+
+  ctx.save();
+  ctx.translate(centerX, centerY);
+  ctx.rotate((sig.rotation * Math.PI) / 180);
+  ctx.globalAlpha = sig.opacity;
+  ctx.drawImage(offCanvas, -sigWidth / 2, -sigHeight / 2);
+  ctx.restore();
+}
+
 /**
  * Draws the stamp body centred at (0, 0) on the given context.
  * The caller must translate to the stamp centre before calling this.
@@ -743,6 +766,10 @@ export async function renderCanvasExport(scene: CanvasExportScene, options: Rend
     }
 
     await drawLogo(ctx, layer.item, positioningRect);
+  }
+
+  for (const sig of scene.decorations.signatures) {
+    drawSignatureElement(ctx, sig, positioningRect);
   }
 
   return canvas;

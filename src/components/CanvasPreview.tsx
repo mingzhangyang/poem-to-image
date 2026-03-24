@@ -57,6 +57,8 @@ export function CanvasPreview({
   onCustomTextChange,
   logos,
   onLogoChange,
+  signatures,
+  onSignatureChange,
   exportFormat,
   onExportFormatChange,
   exportScale,
@@ -475,11 +477,13 @@ export function CanvasPreview({
                   stamp={stamp}
                   customTexts={customTexts}
                   logos={logos}
+                  signatures={signatures}
                   poemPosition={poemPosition}
                   onPoemPositionChange={onPoemPositionChange}
                   onStampChange={onStampChange}
                   onCustomTextChange={onCustomTextChange}
                   onLogoChange={onLogoChange}
+                  onSignatureChange={onSignatureChange}
                   onInteractionStart={onInteractionStart}
                   onInteractionEnd={onInteractionEnd}
                 />

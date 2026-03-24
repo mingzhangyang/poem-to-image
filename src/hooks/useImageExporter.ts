@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { renderCanvasExport } from '../export/renderCanvasExport';
-import type { BorderStyle, CustomText, ExportFormat, ExportScale, LogoConfig, PoemContentData, PoemLayerStyle, PositionedElement, SocialPlatform, StampConfig, TextAlign, WritingMode } from '../types';
+import type { BorderStyle, CustomText, ExportFormat, ExportScale, LogoConfig, PoemContentData, PoemLayerStyle, PositionedElement, SignatureConfig, SocialPlatform, StampConfig, TextAlign, WritingMode } from '../types';
 
 interface SocialPlatformConfig {
   format: ExportFormat;
@@ -75,6 +75,7 @@ interface UseImageExporterDecorationsOptions {
   stamp: StampConfig;
   customTexts: CustomText[];
   logos: LogoConfig[];
+  signatures: SignatureConfig[];
   borderColor: string;
   borderWidth: number;
 }

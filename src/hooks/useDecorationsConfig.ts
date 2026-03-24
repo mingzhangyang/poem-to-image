@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { DEFAULT_STAMP_FONT } from '../fontOptions';
 import { getDefaultStampTextForLanguage } from '../stampDefaults';
+import { DEFAULT_SIGNATURE_FONT } from '../signatureRendering';
 import type { Language } from '../translations';
-import type { BorderStyle, CustomText, LogoConfig, PositionedElement, StampConfig, TemplateDecorationsConfig, TranslateFn, WritingMode } from '../types';
+import type { BorderStyle, CustomText, LogoConfig, PositionedElement, SignatureConfig, StampConfig, TemplateDecorationsConfig, TranslateFn, WritingMode } from '../types';
 
 type LayerDirection = 'up' | 'down' | 'top' | 'bottom';
 type LayerKind = 'customText' | 'logo';
@@ -130,9 +131,11 @@ export function useDecorationsConfig({
   const [poemPosition, setPoemPosition] = useState<PositionedElement>(() => createDefaultPoemPosition());
   const [customTexts, setCustomTexts] = useState<CustomText[]>([]);
   const [logos, setLogos] = useState<LogoConfig[]>([]);
+  const [signatures, setSignatures] = useState<SignatureConfig[]>([]);
   const previousLanguageRef = useRef(language);
   const customTextsRef = useRef(customTexts);
   const logosRef = useRef(logos);
+  const signaturesRef = useRef(signatures);
 
   useEffect(() => {
     customTextsRef.current = customTexts;
@@ -141,6 +144,10 @@ export function useDecorationsConfig({
   useEffect(() => {
     logosRef.current = logos;
   }, [logos]);
+
+  useEffect(() => {
+    signaturesRef.current = signatures;
+  }, [signatures]);
 
   useEffect(() => {
     const previousLanguage = previousLanguageRef.current;
@@ -199,7 +206,34 @@ export function useDecorationsConfig({
   const removeLogo = (id: string) => {
     setLogos((prev) => prev.filter((logo) => logo.id !== id));
   };
- 
+
+  const addSignature = () => {
+    const nextSignature: SignatureConfig = {
+      id: Date.now().toString(),
+      text: 'Signature',
+      font: DEFAULT_SIGNATURE_FONT,
+      color: textColor,
+      fontSize: Math.round(fontSize * 1.2),
+      slant: -8,
+      thickness: 0,
+      flourish: 'swoosh',
+      positionX: 50,
+      positionY: 80,
+      opacity: 0.9,
+      rotation: 0,
+      zIndex: signaturesRef.current.length,
+    };
+    setSignatures((prev) => [...prev, nextSignature]);
+  };
+
+  const updateSignature = (id: string, updates: Partial<SignatureConfig>) => {
+    setSignatures((prev) => prev.map((sig) => (sig.id === id ? { ...sig, ...updates } : sig)));
+  };
+
+  const removeSignature = (id: string) => {
+    setSignatures((prev) => prev.filter((sig) => sig.id !== id));
+  };
+
   const applyLayerUpdate = (nextCustomTexts: CustomText[], nextLogos: LogoConfig[]) => {
     const normalized = normalizeDecorationLayers(nextCustomTexts, nextLogos);
     setCustomTexts(normalized.customTexts);
@@ -243,6 +277,7 @@ export function useDecorationsConfig({
     setPoemPosition(template.poemPosition);
     setCustomTexts(normalized.customTexts);
     setLogos(normalized.logos);
+    setSignatures(template.signatures ?? []);
   };
 
   return {
@@ -255,6 +290,7 @@ export function useDecorationsConfig({
     poemPosition,
     customTexts,
     logos,
+    signatures,
     setShowBorder,
     setBorderStyle,
     setBorderColor,
@@ -271,6 +307,9 @@ export function useDecorationsConfig({
     updateLogo,
     removeLogo,
     onLogoReorder: reorderLogo,
+    addSignature,
+    updateSignature,
+    removeSignature,
     applyDecorationsTemplate,
   };
 }

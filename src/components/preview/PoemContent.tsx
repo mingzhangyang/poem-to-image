@@ -13,9 +13,10 @@ import {
 import { useElementSize } from '../../hooks/useElementSize';
 import { createStructuredPoemLayout } from '../../poemContent';
 import { getPreviewDragBounds, getPreviewPositioningRect, type PreviewPositioningRect } from '../../positioningRect';
-import type { BorderStyle, CustomText, LogoConfig, PoemContentData, PoemLayerStyle, PositionedElement, StampConfig, TextAlign, TranslateFn, WritingMode } from '../../types';
+import type { BorderStyle, CustomText, LogoConfig, PoemContentData, PoemLayerStyle, PositionedElement, SignatureConfig, StampConfig, TextAlign, TranslateFn, WritingMode } from '../../types';
 import { CustomTextItems } from './CustomTextItems';
 import { LogoOverlay } from './LogoOverlay';
+import { SignatureOverlay } from './SignatureOverlay';
 import { StampOverlay } from './StampOverlay';
 import { TextLayoutBlock } from './TextLayoutBlock';
 
@@ -43,11 +44,13 @@ interface PoemContentProps {
   stamp: StampConfig;
   customTexts: CustomText[];
   logos: LogoConfig[];
+  signatures: SignatureConfig[];
   poemPosition: PositionedElement;
   onPoemPositionChange: (updates: Partial<PositionedElement>) => void;
   onStampChange: (updates: Partial<StampConfig>) => void;
   onCustomTextChange: (id: string, updates: Partial<CustomText>) => void;
   onLogoChange: (id: string, updates: Partial<LogoConfig>) => void;
+  onSignatureChange: (id: string, updates: Partial<SignatureConfig>) => void;
   onInteractionStart: () => void;
   onInteractionEnd: () => void;
 }
@@ -89,11 +92,13 @@ export function PoemContent({
   stamp,
   customTexts,
   logos,
+  signatures,
   poemPosition,
   onPoemPositionChange,
   onStampChange,
   onCustomTextChange,
   onLogoChange,
+  onSignatureChange,
   onInteractionStart,
   onInteractionEnd,
 }: PoemContentProps) {
@@ -545,6 +550,17 @@ export function PoemContent({
           frameRef={poemFrameRef}
           logo={logo}
           onLogoChange={(updates) => onLogoChange(logo.id, updates)}
+          onInteractionStart={onInteractionStart}
+          onInteractionEnd={onInteractionEnd}
+        />
+      ))}
+
+      {signatures.map((sig) => (
+        <SignatureOverlay
+          key={sig.id}
+          frameRef={poemFrameRef}
+          signature={sig}
+          onSignatureChange={(updates) => onSignatureChange(sig.id, updates)}
           onInteractionStart={onInteractionStart}
           onInteractionEnd={onInteractionEnd}
         />
