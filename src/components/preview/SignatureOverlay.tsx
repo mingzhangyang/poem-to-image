@@ -114,7 +114,7 @@ export const SignatureOverlay: FC<SignatureOverlayProps> = ({
     height: `${canvasHeight}px`,
     opacity: signature.opacity,
     rotate: `${signature.rotation}deg`,
-    cursor: 'grab',
+    cursor: 'move',
     userSelect: 'none',
     zIndex: (signature.zIndex ?? 0) + 30,
   };

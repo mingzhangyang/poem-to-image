@@ -334,7 +334,6 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
             title={t('addTextBox')}
           >
             <Plus className="h-3.5 w-3.5 shrink-0" />
-            <span className="truncate">{t('addTextShort')}</span>
           </button>
 
           <button
@@ -344,7 +343,6 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
             title={t('addSignature')}
           >
             <PenLine className="h-3.5 w-3.5 shrink-0" />
-            <span className="truncate">{t('addSignature')}</span>
           </button>
 
           <label
@@ -352,7 +350,6 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
             title={t('uploadLogo')}
           >
             <Upload className="h-3.5 w-3.5 shrink-0" />
-            <span className="truncate">{t('imageShort')}</span>
             <input
               type="file"
               accept="image/*"
