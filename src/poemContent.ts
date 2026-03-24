@@ -337,8 +337,11 @@ export function createStructuredPoemLayout({
     );
     const width = adjustedSections.reduce((sum, section) => sum + section.layout.width, 0) + totalGap;
 
-    // Compute y-offsets to align first characters of all sections at the same visual top position
-    const topPaddings = adjustedSections.map((s) => s.fontSize * (s.lineHeight - 1) / 2);
+    // Compute y-offsets to align first characters of all sections at the same visual top position.
+    // The 0.1 * fontSize term corrects for the font's internal glyph offset within the em box:
+    // CJK glyphs sit ~10% of fontSize below the span top, and this offset scales with font size,
+    // so without it the smaller author font appears visually above the larger title font.
+    const topPaddings = adjustedSections.map((s) => s.fontSize * ((s.lineHeight - 1) / 2 + 0.1));
     const maxTopPadding = Math.max(0, ...topPaddings);
 
     let currentX = width;

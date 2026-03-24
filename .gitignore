@@ -11,3 +11,5 @@ coverage/
 !.dev.vars.example
 
 .wrangler/
+
+screenshot*.png
