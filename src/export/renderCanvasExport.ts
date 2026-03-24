@@ -388,8 +388,8 @@ function drawTextLayout(
   });
 }
 
-function applyStampWeathering(ctx: CanvasRenderingContext2D, size: number, rand: () => number) {
-  const weathering = 0.5;
+function applyStampWeathering(ctx: CanvasRenderingContext2D, size: number, rand: () => number, weatheringLevel: number) {
+  const weathering = weatheringLevel / 100;
   const half = size / 2;
 
   ctx.save();
@@ -563,13 +563,15 @@ function drawStampText(ctx: CanvasRenderingContext2D, stamp: StampConfig) {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
+  const inkColor = stamp.inkColor ?? STAMP_INK_COLOR;
+
   if (isFilled) {
     drawStampShape(ctx, stamp);
     ctx.clip();
     ctx.globalCompositeOperation = 'destination-out';
     ctx.fillStyle = '#000';
   } else {
-    ctx.fillStyle = STAMP_INK_COLOR;
+    ctx.fillStyle = inkColor;
   }
 
   characters.forEach((character, index) => {
@@ -585,18 +587,19 @@ function drawStampBody(ctx: CanvasRenderingContext2D, stamp: StampConfig) {
   const half = stamp.size / 2;
   const borderWidth = getStampBorderWidth(stamp.size);
   const chars = getStampCharacters(stamp.text);
+  const inkColor = stamp.inkColor ?? STAMP_INK_COLOR;
 
   if (isFilled) {
     // Baiwen (白文): solid red fill, text carved out
     drawStampShape(ctx, stamp);
-    ctx.fillStyle = STAMP_INK_COLOR;
+    ctx.fillStyle = inkColor;
     ctx.fill();
   } else {
     // Zhuwen (朱文): red border, transparent fill, red text
     ctx.save();
     drawStampShape(ctx, stamp);
     ctx.lineWidth = borderWidth;
-    ctx.strokeStyle = STAMP_INK_COLOR;
+    ctx.strokeStyle = inkColor;
     ctx.stroke();
 
     // Grid dividers: vertical for 2+ chars, horizontal for 3+ chars
@@ -605,7 +608,7 @@ function drawStampBody(ctx: CanvasRenderingContext2D, stamp: StampConfig) {
       drawStampShape(ctx, stamp);
       ctx.clip();
       ctx.lineWidth = borderWidth / 2;
-      ctx.strokeStyle = STAMP_INK_COLOR;
+      ctx.strokeStyle = inkColor;
       ctx.beginPath();
       ctx.moveTo(0, -half);
       ctx.lineTo(0, half);
@@ -623,7 +626,10 @@ function drawStampBody(ctx: CanvasRenderingContext2D, stamp: StampConfig) {
   }
 
   drawStampText(ctx, stamp);
-  applyStampWeathering(ctx, stamp.size, createStampWeatheringRand(stamp));
+  const weatheringLevel = stamp.weathering ?? 50;
+  if (weatheringLevel > 0) {
+    applyStampWeathering(ctx, stamp.size, createStampWeatheringRand(stamp), weatheringLevel);
+  }
 }
 
 function drawStamp(ctx: CanvasRenderingContext2D, scene: CanvasExportScene, frameRect: Rect) {

@@ -114,6 +114,8 @@ export function useDecorationsConfig({
     text: getDefaultStampTextForLanguage(language),
     style: 'square',
     colorScheme: 'filled',
+    inkColor: '#c82829',
+    weathering: 50,
     positionX: 80,
     positionY: 80,
     size: Math.round(fontSize * 2.5),

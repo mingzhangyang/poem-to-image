@@ -205,6 +205,8 @@ const ja: TranslationMessages = {
     stampColorScheme: "印章の色",
     stampColorOutline: "朱文",
     stampColorFilled: "白文",
+    stampInkColor: "印肉の色",
+    stampWeathering: "経年効果",
     resetStampPosition: "位置をリセット",
     dragStampHint: "プレビュー上で印章をドラッグ",
     previewZoom: "プレビュー倍率",

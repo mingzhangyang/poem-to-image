@@ -25,9 +25,10 @@ function getFrameStyle(stamp: StampConfig): CSSProperties {
   const borderRadius = getStampCssBorderRadius(stamp.style, stamp.size);
   const transform = `rotate(${stamp.rotation}deg)${stamp.style === 'brush' ? ` skew(${skewXDeg}deg, ${skewYDeg}deg)` : ''}`;
   const isFilled = stamp.colorScheme !== 'outline';
+  const inkColor = stamp.inkColor ?? '#c82829';
   const boxShadow = isFilled
-    ? '0 8px 20px rgba(160, 20, 20, 0.22), 0 2px 6px rgba(160, 20, 20, 0.14)'
-    : '0 8px 20px rgba(200, 40, 41, 0.12), 0 2px 6px rgba(200, 40, 41, 0.08)';
+    ? `0 8px 20px ${inkColor}38, 0 2px 6px ${inkColor}24`
+    : `0 8px 20px ${inkColor}1f, 0 2px 6px ${inkColor}14`;
 
   return {
     width: `${stamp.size}px`,

@@ -210,6 +210,8 @@ const en = {
     stampColorScheme: "Color Scheme",
     stampColorOutline: "Vermilion",
     stampColorFilled: "White on Red",
+    stampInkColor: "Ink Color",
+    stampWeathering: "Aging Effect",
     resetStampPosition: "Reset Position",
     dragStampHint: "Drag the stamp in the preview",
     previewZoom: "Preview Zoom",

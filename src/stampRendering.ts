@@ -83,7 +83,7 @@ export function getStampTextPlacements(size: number, count: number): StampTextPl
  * weathering, so the texture is stable across re-renders.
  */
 export function createStampWeatheringRand(stamp: StampConfig): () => number {
-  const key = `${stamp.text}|${stamp.style}|${stamp.size}|${stamp.fontFamily}|${stamp.colorScheme ?? ''}`;
+  const key = `${stamp.text}|${stamp.style}|${stamp.size}|${stamp.fontFamily}|${stamp.colorScheme ?? ''}|${stamp.inkColor ?? ''}|${stamp.weathering ?? 50}`;
   let seed = 0;
   for (let i = 0; i < key.length; i++) {
     seed = (Math.imul(31, seed) + key.charCodeAt(i)) | 0;

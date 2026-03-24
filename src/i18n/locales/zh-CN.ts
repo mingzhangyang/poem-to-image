@@ -205,6 +205,8 @@ const zhCN: TranslationMessages = {
     stampColorScheme: "印章颜色",
     stampColorOutline: "朱文",
     stampColorFilled: "白文",
+    stampInkColor: "印泥颜色",
+    stampWeathering: "做旧效果",
     resetStampPosition: "重置位置",
     dragStampHint: "可在预览中拖曳印章",
     previewZoom: "预览缩放",

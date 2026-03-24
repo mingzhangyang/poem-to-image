@@ -205,6 +205,8 @@ const ko: TranslationMessages = {
     stampColorScheme: "도장 색상",
     stampColorOutline: "주문",
     stampColorFilled: "백문",
+    stampInkColor: "인주 색상",
+    stampWeathering: "노화 효과",
     resetStampPosition: "위치 재설정",
     dragStampHint: "미리보기에서 도장을 드래그하세요",
     previewZoom: "미리보기 확대 비율",

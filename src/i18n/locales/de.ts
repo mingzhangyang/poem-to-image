@@ -205,6 +205,8 @@ const de: TranslationMessages = {
     stampColorScheme: "Farbschema",
     stampColorOutline: "Zinnoberrot",
     stampColorFilled: "Weiß auf Rot",
+    stampInkColor: "Tintenfarbe",
+    stampWeathering: "Alterungseffekt",
     resetStampPosition: "Position zurücksetzen",
     dragStampHint: "Stempel in der Vorschau ziehen",
     previewZoom: "Vorschau-Zoom",

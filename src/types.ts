@@ -111,6 +111,8 @@ export interface StampConfig {
   text: string;
   style: StampStyle;
   colorScheme?: 'outline' | 'filled';
+  inkColor?: string;
+  weathering?: number;
   positionX: number;
   positionY: number;
   size: number;
