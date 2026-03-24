@@ -16,7 +16,8 @@
       "Bash(wc -l /mnt/c/Users/mingz/Codes/poem-to-image/src/*.ts /mnt/c/Users/mingz/Codes/poem-to-image/src/*.tsx /mnt/c/Users/mingz/Codes/poem-to-image/worker/*.ts)",
       "Bash(wc -l /mnt/c/Users/mingz/Codes/poem-to-image/src/borders/*.ts /mnt/c/Users/mingz/Codes/poem-to-image/src/borderUtils.ts)",
       "Bash(find /mnt/c/Users/mingz/Codes/poem-to-image -type f -name *stamp* -o -name *seal*)",
-      "Bash(find /mnt/c/Users/mingz/Codes/poem-to-image/src -type f -name *stamp* -o -name *seal* -o -name *印章*)"
+      "Bash(find /mnt/c/Users/mingz/Codes/poem-to-image/src -type f -name *stamp* -o -name *seal* -o -name *印章*)",
+      "Bash(find /mnt/c/Users/mingz/Codes/poem-to-image -type f \\\\\\(-name *template* -o -name *config* \\\\\\))"
     ]
   }
 }

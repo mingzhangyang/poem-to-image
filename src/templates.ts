@@ -1373,7 +1373,7 @@ const ALL_EDITOR_TEMPLATES: EditorTemplateDefinition[] = [
     id: 'cyberpunk',
     nameKey: 'templateCyberpunk',
     descriptionKey: 'templateCyberpunkDesc',
-    seriesKey: 'templateSeriesExperimental',
+    seriesKey: 'templateSeriesEditorial',
     accentFrom: '#06b6d4',
     accentTo: '#ec4899',
     background: {
@@ -1669,7 +1669,7 @@ const ALL_EDITOR_TEMPLATES: EditorTemplateDefinition[] = [
     id: 'ink-pine-mist-photo',
     nameKey: 'templateInkPineMistPhoto',
     descriptionKey: 'templateInkPineMistPhotoDesc',
-    seriesKey: 'templateSeriesInkPhoto',
+    seriesKey: 'templateSeriesPhoto',
     usesBackgroundImage: true,
     accentFrom: '#6f7c75',
     accentTo: '#26332f',
@@ -1729,7 +1729,7 @@ const ALL_EDITOR_TEMPLATES: EditorTemplateDefinition[] = [
     id: 'colorblock-cyan-magenta',
     nameKey: 'templateColorblockCyanMagenta',
     descriptionKey: 'templateColorblockCyanMagentaDesc',
-    seriesKey: 'templateSeriesColorBlocks',
+    seriesKey: 'templateSeriesEditorial',
     accentFrom: '#06b6d4',
     accentTo: '#db2777',
     background: {
@@ -1792,13 +1792,13 @@ const CURATED_EDITOR_TEMPLATE_IDS: EditorTemplateId[] = [
   'illuminated-manuscript',
   'bamboo-scroll',
   'modern-minimal',
-  'cyberpunk',
   'japanese-magazine',
+  'colorblock-cyan-magenta',
+  'cyberpunk',
   'mountain-mist-photo',
   'ocean-dawn-photo',
   'city-night-photo',
   'ink-pine-mist-photo',
-  'colorblock-cyan-magenta',
 ];
 
 export const editorTemplates: EditorTemplateDefinition[] = CURATED_EDITOR_TEMPLATE_IDS

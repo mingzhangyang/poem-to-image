@@ -1,57 +1,40 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1600" preserveAspectRatio="xMidYMid slice">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%">
   <defs>
-    <linearGradient id="base" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#b9b07b"/>
-      <stop offset="50%" stop-color="#98895a"/>
-      <stop offset="100%" stop-color="#786b44"/>
+    <linearGradient id="bamboo-slat" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#c2a059" />
+      <stop offset="15%" stop-color="#d9b973" />
+      <stop offset="50%" stop-color="#e6c981" />
+      <stop offset="85%" stop-color="#d9b973" />
+      <stop offset="100%" stop-color="#a6803c" />
     </linearGradient>
-    <filter id="fiber" x="-20%" y="-20%" width="140%" height="140%">
-      <feTurbulence type="fractalNoise" baseFrequency="0.028 0.72" numOctaves="2" seed="21"/>
-      <feColorMatrix type="matrix" values="
-        0 0 0 0 0.27
-        0 0 0 0 0.22
-        0 0 0 0 0.14
-        0 0 0 0.28 0
-      "/>
+    <linearGradient id="bamboo-edge" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#5c4000" />
+      <stop offset="50%" stop-color="#8b6508" />
+      <stop offset="100%" stop-color="#5c4000" />
+    </linearGradient>
+    <filter id="bamboo-texture">
+      <feTurbulence type="fractalNoise" baseFrequency="0.05 0.01" numOctaves="2" result="noise" />
+      <feColorMatrix type="matrix" values="1 0 0 0 0.9  0 1 0 0 0.8  0 0 1 0 0.5  0 0 0 0.1 0" in="noise" result="coloredNoise" />
+      <feBlend in="SourceGraphic" in2="coloredNoise" mode="multiply" />
     </filter>
-    <radialGradient id="vignette" cx="50%" cy="50%" r="70%">
-      <stop offset="62%" stop-color="rgba(30,24,13,0)"/>
-      <stop offset="100%" stop-color="rgba(30,24,13,0.5)"/>
-    </radialGradient>
   </defs>
-
-  <rect width="1200" height="1600" fill="url(#base)"/>
-
-  <g>
-    <rect x="0" y="0" width="132" height="1600" fill="#9f925f"/>
-    <rect x="132" y="0" width="132" height="1600" fill="#b5a775"/>
-    <rect x="264" y="0" width="132" height="1600" fill="#8e8152"/>
-    <rect x="396" y="0" width="132" height="1600" fill="#b2a472"/>
-    <rect x="528" y="0" width="132" height="1600" fill="#93865a"/>
-    <rect x="660" y="0" width="132" height="1600" fill="#b7a977"/>
-    <rect x="792" y="0" width="132" height="1600" fill="#8d8055"/>
-    <rect x="924" y="0" width="132" height="1600" fill="#b2a471"/>
-    <rect x="1056" y="0" width="144" height="1600" fill="#93875d"/>
+  <rect width="800" height="600" fill="#8b6508" />
+  <pattern id="slats" width="40" height="600" patternUnits="userSpaceOnUse">
+    <rect x="1" y="0" width="38" height="600" fill="url(#bamboo-slat)" rx="2" ry="2" filter="url(#bamboo-texture)" />
+    <line x1="0" y1="0" x2="0" y2="600" stroke="#5c4000" stroke-width="1.5" />
+    <path d="M 1 150 Q 20 145 39 150" fill="none" stroke="#8b6508" stroke-width="1.5" opacity="0.7"/>
+    <path d="M 1 300 Q 20 305 39 300" fill="none" stroke="#8b6508" stroke-width="1.5" opacity="0.7"/>
+    <path d="M 1 450 Q 20 145 39 450" fill="none" stroke="#8b6508" stroke-width="1.5" opacity="0.7"/>
+  </pattern>
+  <rect width="800" height="600" fill="url(#slats)" />
+  <g stroke-dasharray="6,4">
+    <line x1="0" y1="100" x2="800" y2="100" stroke="#3a2000" stroke-width="3" />
+    <line x1="0" y1="103" x2="800" y2="103" stroke="#6b4a1b" stroke-width="1.5" />
+    <line x1="0" y1="300" x2="800" y2="300" stroke="#3a2000" stroke-width="3" />
+    <line x1="0" y1="303" x2="800" y2="303" stroke="#6b4a1b" stroke-width="1.5" />
+    <line x1="0" y1="500" x2="800" y2="500" stroke="#3a2000" stroke-width="3" />
+    <line x1="0" y1="503" x2="800" y2="503" stroke="#6b4a1b" stroke-width="1.5" />
   </g>
-
-  <g stroke="#5b4e2f" stroke-opacity="0.45" stroke-width="6">
-    <line x1="132" y1="0" x2="132" y2="1600"/>
-    <line x1="264" y1="0" x2="264" y2="1600"/>
-    <line x1="396" y1="0" x2="396" y2="1600"/>
-    <line x1="528" y1="0" x2="528" y2="1600"/>
-    <line x1="660" y1="0" x2="660" y2="1600"/>
-    <line x1="792" y1="0" x2="792" y2="1600"/>
-    <line x1="924" y1="0" x2="924" y2="1600"/>
-    <line x1="1056" y1="0" x2="1056" y2="1600"/>
-  </g>
-
-  <g fill="#6e5d38" opacity="0.3">
-    <ellipse cx="198" cy="340" rx="14" ry="30"/>
-    <ellipse cx="448" cy="1090" rx="12" ry="28"/>
-    <ellipse cx="730" cy="510" rx="16" ry="34"/>
-    <ellipse cx="988" cy="1280" rx="14" ry="30"/>
-  </g>
-
-  <rect width="1200" height="1600" filter="url(#fiber)"/>
-  <rect width="1200" height="1600" fill="url(#vignette)"/>
+  <rect x="0" y="0" width="800" height="24" fill="url(#bamboo-edge)" />
+  <rect x="0" y="576" width="800" height="24" fill="url(#bamboo-edge)" />
 </svg>
