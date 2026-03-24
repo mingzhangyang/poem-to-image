@@ -1,30 +1,61 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 2000" preserveAspectRatio="xMidYMid slice">
   <defs>
+    <!-- Richer Sunrise Sky -->
     <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#fff3d8"/>
-      <stop offset="34%" stop-color="#ffd6a0"/>
-      <stop offset="62%" stop-color="#9ee2ff"/>
-      <stop offset="100%" stop-color="#1e749a"/>
+      <stop offset="0%" stop-color="#fffbeb"/>
+      <stop offset="30%" stop-color="#ffdfbd"/>
+      <stop offset="65%" stop-color="#84cdff"/>
+      <stop offset="100%" stop-color="#1b5b82"/>
     </linearGradient>
+
+    <!-- Deeper Ocean Gradient -->
     <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="#6fc3df"/>
-      <stop offset="100%" stop-color="#124b67"/>
+      <stop offset="100%" stop-color="#103b54"/>
     </linearGradient>
-    <radialGradient id="sun" cx="52%" cy="34%" r="20%">
-      <stop offset="0%" stop-color="#fff9de" stop-opacity="0.95"/>
-      <stop offset="100%" stop-color="#ffe2aa" stop-opacity="0"/>
+
+    <!-- Sun Burst Outer Glow -->
+    <radialGradient id="sunBurst" cx="52%" cy="34%" r="45%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.8"/>
+      <stop offset="30%" stop-color="#ffedd4" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#ffc16e" stop-opacity="0"/>
     </radialGradient>
+
+    <!-- Sun Core -->
+    <radialGradient id="sunCore" cx="52%" cy="34%" r="12%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+      <stop offset="70%" stop-color="#fff4e0" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#ffddaa" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Sun Reflection on Water -->
+    <linearGradient id="reflection" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="50%" stop-color="#fff4e6" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
   </defs>
 
+  <!-- Sky -->
   <rect width="1600" height="2000" fill="url(#sky)"/>
-  <ellipse cx="832" cy="700" rx="460" ry="240" fill="url(#sun)"/>
+  
+  <!-- Sun Layers -->
+  <ellipse cx="832" cy="700" rx="600" ry="380" fill="url(#sunBurst)"/>
+  <ellipse cx="832" cy="700" rx="200" ry="120" fill="url(#sunCore)"/>
 
+  <!-- Ocean Base -->
   <rect y="1020" width="1600" height="980" fill="url(#sea)"/>
 
-  <g stroke="#d6f3ff" stroke-opacity="0.42" fill="none" stroke-linecap="round">
-    <path d="M0 1200 C260 1160 390 1240 640 1200 C930 1160 1140 1250 1600 1190" stroke-width="8"/>
-    <path d="M0 1320 C280 1270 470 1370 760 1320 C980 1280 1220 1370 1600 1310" stroke-width="7"/>
-    <path d="M0 1450 C220 1410 510 1500 760 1450 C1020 1400 1250 1510 1600 1440" stroke-width="6"/>
-    <path d="M0 1600 C260 1540 500 1650 820 1590 C1080 1540 1320 1660 1600 1580" stroke-width="5"/>
+  <!-- Sun Path Reflection -->
+  <polygon points="632,1020 1032,1020 1200,2000 464,2000" fill="url(#reflection)" />
+
+  <!-- Stylized Smooth Waves -->
+  <g stroke="#d6f3ff" stroke-opacity="0.5" fill="none" stroke-linecap="round">
+    <path d="M -50 1100 Q 150 1080 350 1100 T 750 1100 T 1150 1100 T 1650 1100" stroke-width="4" opacity="0.4"/>
+    <path d="M -50 1200 Q 250 1150 550 1200 T 1150 1200 T 1650 1200" stroke-width="6"/>
+    <path d="M -50 1320 Q 280 1270 610 1320 T 1270 1320 T 1650 1320" stroke-width="7"/>
+    <path d="M -50 1460 Q 300 1390 650 1460 T 1350 1460 T 1650 1460" stroke-width="9"/>
+    <path d="M -50 1640 Q 350 1550 750 1640 T 1550 1640 T 1650 1640" stroke-width="12"/>
+    <path d="M -50 1850 Q 400 1740 850 1850 T 1650 1850" stroke-width="16" opacity="0.8"/>
   </g>
 </svg>

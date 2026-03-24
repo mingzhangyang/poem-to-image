@@ -39,6 +39,8 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getTok
   const [gradientColor2, setGradientColor2] = useState('#ede9fe');
   const [gradientDirection, setGradientDirection] = useState('to bottom right');
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
+  const [backgroundSize, setBackgroundSize] = useState<'cover' | 'contain' | 'stretch'>('cover');
+  const [backgroundPosition, setBackgroundPosition] = useState<string>('center');
   const [bgBrightness, setBgBrightness] = useState(100);
   const [bgBlur, setBgBlur] = useState(0);
   const [aiProvider, setAiProvider] = useState<AiProvider>('gemini');
@@ -139,6 +141,8 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getTok
     try {
       await applyBackgroundImage(file);
       setBackgroundType('image');
+      setBackgroundSize('cover');
+      setBackgroundPosition('center');
       setAiError('');
     } catch (error) {
       console.error('Failed to process background image', error);
@@ -172,6 +176,8 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getTok
     setBgBrightness(template.bgBrightness);
     setBgBlur(template.bgBlur);
     updateBackgroundImage(template.backgroundType === 'image' ? (template.backgroundImage ?? null) : null);
+    setBackgroundSize(template.backgroundSize ?? 'cover');
+    setBackgroundPosition(template.backgroundPosition ?? 'center');
     setAiPrompt('');
     setAiError('');
     setIsGeneratingAI(false);
@@ -191,8 +197,8 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getTok
       case 'ai':
         return {
           backgroundImage: backgroundImage ? `url(${backgroundImage})` : 'none',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
+          backgroundSize: backgroundSize === 'stretch' ? '100% 100%' : backgroundSize,
+          backgroundPosition,
         };
       default:
         return { backgroundColor };
@@ -206,6 +212,8 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getTok
     gradientColor2,
     gradientDirection,
     backgroundImage,
+    backgroundSize,
+    backgroundPosition,
     bgBrightness,
     bgBlur,
     aiProvider,

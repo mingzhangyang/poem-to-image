@@ -128,6 +128,8 @@ export interface TemplateBackgroundConfig {
   gradientColor2: string;
   gradientDirection: string;
   backgroundImage?: string | null;
+  backgroundSize?: 'cover' | 'contain' | 'stretch';
+  backgroundPosition?: string;
   bgBrightness: number;
   bgBlur: number;
 }

@@ -30,6 +30,8 @@ interface CanvasExportBackground {
   gradientColor2: string;
   gradientDirection: string;
   backgroundImage: string | null;
+  backgroundSize?: 'cover' | 'contain' | 'stretch';
+  backgroundPosition?: string;
   bgBrightness: number;
   bgBlur: number;
 }
@@ -178,12 +180,26 @@ async function drawBackground(ctx: CanvasRenderingContext2D, scene: CanvasExport
   let drawWidth = canvasWidth;
   let drawHeight = canvasHeight;
 
-  if (imageRatio > canvasRatio) {
-    drawHeight = canvasHeight;
-    drawWidth = canvasHeight * imageRatio;
-  } else {
+  if (background.backgroundSize === 'stretch') {
     drawWidth = canvasWidth;
-    drawHeight = canvasWidth / imageRatio;
+    drawHeight = canvasHeight;
+  } else if (background.backgroundSize === 'contain') {
+    if (imageRatio > canvasRatio) {
+      drawWidth = canvasWidth;
+      drawHeight = canvasWidth / imageRatio;
+    } else {
+      drawHeight = canvasHeight;
+      drawWidth = canvasHeight * imageRatio;
+    }
+  } else {
+    // Default cover behavior
+    if (imageRatio > canvasRatio) {
+      drawHeight = canvasHeight;
+      drawWidth = canvasHeight * imageRatio;
+    } else {
+      drawWidth = canvasWidth;
+      drawHeight = canvasWidth / imageRatio;
+    }
   }
 
   if (background.bgBlur > 0) {

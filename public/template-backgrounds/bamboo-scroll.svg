@@ -1,40 +1,77 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%">
   <defs>
+    <!-- True 3D Cylindrical Bamboo Slat Gradient -->
     <linearGradient id="bamboo-slat" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#c2a059" />
-      <stop offset="15%" stop-color="#d9b973" />
-      <stop offset="50%" stop-color="#e6c981" />
-      <stop offset="85%" stop-color="#d9b973" />
-      <stop offset="100%" stop-color="#a6803c" />
+      <stop offset="0%" stop-color="#73521b" />
+      <stop offset="15%" stop-color="#b69553" />
+      <stop offset="45%" stop-color="#ffdca1" />
+      <stop offset="70%" stop-color="#c7a760" />
+      <stop offset="95%" stop-color="#8a6326" />
+      <stop offset="100%" stop-color="#4a320c" />
     </linearGradient>
+
+    <!-- Edge Border Gradient -->
     <linearGradient id="bamboo-edge" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#5c4000" />
-      <stop offset="50%" stop-color="#8b6508" />
-      <stop offset="100%" stop-color="#5c4000" />
+      <stop offset="0%" stop-color="#382600" />
+      <stop offset="50%" stop-color="#805b01" />
+      <stop offset="100%" stop-color="#382600" />
     </linearGradient>
+
+    <!-- Rich Bamboo Wood Texture -->
     <filter id="bamboo-texture">
-      <feTurbulence type="fractalNoise" baseFrequency="0.05 0.01" numOctaves="2" result="noise" />
-      <feColorMatrix type="matrix" values="1 0 0 0 0.9  0 1 0 0 0.8  0 0 1 0 0.5  0 0 0 0.1 0" in="noise" result="coloredNoise" />
+      <feTurbulence type="fractalNoise" baseFrequency="0.08 0.005" numOctaves="3" result="noise" />
+      <feColorMatrix type="matrix" values="1 0 0 0 0.85  0 1 0 0 0.7  0 0 1 0 0.4  0 0 0 0.18 0" in="noise" result="coloredNoise" />
       <feBlend in="SourceGraphic" in2="coloredNoise" mode="multiply" />
     </filter>
+    
+    <!-- Drop Shadow for the rope -->
+    <filter id="rope-shadow" x="-5%" y="-50%" width="110%" height="200%">
+      <feDropShadow dx="0" dy="3" stdDeviation="2" flood-color="#33220a" flood-opacity="0.8"/>
+    </filter>
   </defs>
-  <rect width="800" height="600" fill="#8b6508" />
+
+  <!-- Base Underlay -->
+  <rect width="800" height="600" fill="#52390a" />
+
+  <!-- Repeating Bamboo Slats -->
   <pattern id="slats" width="40" height="600" patternUnits="userSpaceOnUse">
-    <rect x="1" y="0" width="38" height="600" fill="url(#bamboo-slat)" rx="2" ry="2" filter="url(#bamboo-texture)" />
-    <line x1="0" y1="0" x2="0" y2="600" stroke="#5c4000" stroke-width="1.5" />
-    <path d="M 1 150 Q 20 145 39 150" fill="none" stroke="#8b6508" stroke-width="1.5" opacity="0.7"/>
-    <path d="M 1 300 Q 20 305 39 300" fill="none" stroke="#8b6508" stroke-width="1.5" opacity="0.7"/>
-    <path d="M 1 450 Q 20 145 39 450" fill="none" stroke="#8b6508" stroke-width="1.5" opacity="0.7"/>
+    <!-- Main Slat Body -->
+    <rect x="1" y="0" width="38" height="600" fill="url(#bamboo-slat)" rx="3" ry="3" filter="url(#bamboo-texture)" />
+    
+    <!-- Highlight & Shadow details -->
+    <line x1="0" y1="0" x2="0" y2="600" stroke="#362208" stroke-width="2" opacity="0.9" />
+    
+    <!-- Organic Bamboo Nodes / Joints -->
+    <path d="M 0 150 Q 20 142 40 150 M 0 153 Q 20 145 40 153" fill="none" stroke="#694817" stroke-width="1.5" opacity="0.8"/>
+    <path d="M 0 300 Q 20 308 40 300 M 0 297 Q 20 305 40 297" fill="none" stroke="#694817" stroke-width="1.5" opacity="0.8"/>
+    <path d="M 0 450 Q 20 142 40 450 M 0 453 Q 20 145 40 453" fill="none" stroke="#694817" stroke-width="1.5" opacity="0.8"/>
   </pattern>
+
   <rect width="800" height="600" fill="url(#slats)" />
-  <g stroke-dasharray="6,4">
-    <line x1="0" y1="100" x2="800" y2="100" stroke="#3a2000" stroke-width="3" />
-    <line x1="0" y1="103" x2="800" y2="103" stroke="#6b4a1b" stroke-width="1.5" />
-    <line x1="0" y1="300" x2="800" y2="300" stroke="#3a2000" stroke-width="3" />
-    <line x1="0" y1="303" x2="800" y2="303" stroke="#6b4a1b" stroke-width="1.5" />
-    <line x1="0" y1="500" x2="800" y2="500" stroke="#3a2000" stroke-width="3" />
-    <line x1="0" y1="503" x2="800" y2="503" stroke="#6b4a1b" stroke-width="1.5" />
+
+  <!-- Holding Ropes / Cords (Using Overlapping Dashed Paths for realistic twist) -->
+  <g filter="url(#rope-shadow)">
+    <!-- Top Rope -->
+    <line x1="0" y1="100" x2="800" y2="100" stroke="#7a552b" stroke-width="5" stroke-dasharray="10 6" />
+    <line x1="0" y1="100" x2="800" y2="100" stroke="#d4ab77" stroke-width="5" stroke-dasharray="10 6" stroke-dashoffset="8" />
+    <!-- Center Stitch -->
+    <line x1="0" y1="100" x2="800" y2="100" stroke="#4a3013" stroke-width="1.5" opacity="0.8" />
+
+    <!-- Middle Rope -->
+    <line x1="0" y1="300" x2="800" y2="300" stroke="#7a552b" stroke-width="5" stroke-dasharray="10 6" />
+    <line x1="0" y1="300" x2="800" y2="300" stroke="#d4ab77" stroke-width="5" stroke-dasharray="10 6" stroke-dashoffset="8" />
+    <line x1="0" y1="300" x2="800" y2="300" stroke="#4a3013" stroke-width="1.5" opacity="0.8" />
+
+    <!-- Bottom Rope -->
+    <line x1="0" y1="500" x2="800" y2="500" stroke="#7a552b" stroke-width="5" stroke-dasharray="10 6" />
+    <line x1="0" y1="500" x2="800" y2="500" stroke="#d4ab77" stroke-width="5" stroke-dasharray="10 6" stroke-dashoffset="8" />
+    <line x1="0" y1="500" x2="800" y2="500" stroke="#4a3013" stroke-width="1.5" opacity="0.8" />
   </g>
-  <rect x="0" y="0" width="800" height="24" fill="url(#bamboo-edge)" />
-  <rect x="0" y="576" width="800" height="24" fill="url(#bamboo-edge)" />
+
+  <!-- Cloth Borders (Top and Bottom) -->
+  <rect x="0" y="0" width="800" height="28" fill="url(#bamboo-edge)" />
+  <rect x="0" y="26" width="800" height="2" fill="#241801" opacity="0.7"/>
+  
+  <rect x="0" y="572" width="800" height="28" fill="url(#bamboo-edge)" />
+  <rect x="0" y="572" width="800" height="2" fill="#241801" opacity="0.7"/>
 </svg>
