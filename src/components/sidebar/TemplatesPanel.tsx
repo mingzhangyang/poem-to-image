@@ -23,6 +23,7 @@ interface TemplatesPanelProps {
 }
 
 interface BuiltInTemplateCardProps {
+  key?: string | number;
   t: TranslateFn;
   template: BuiltInTemplate;
   isActive: boolean;
