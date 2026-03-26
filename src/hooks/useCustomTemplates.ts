@@ -72,6 +72,18 @@ async function deleteCloudTemplate(id: string, getToken: () => Promise<string | 
   return res.ok;
 }
 
+async function renameCloudTemplate(
+  id: string,
+  name: string,
+  getToken: () => Promise<string | null>,
+): Promise<boolean> {
+  const res = await apiFetch(`/api/templates/${id}`, getToken, {
+    method: 'PATCH',
+    body: JSON.stringify({ name }),
+  });
+  return res.ok;
+}
+
 // ── Hook ────────────────────────────────────────────────────────────────────
 
 interface UseCustomTemplatesParams {
@@ -158,10 +170,8 @@ export function useCustomTemplates({ isSignedIn, getToken }: UseCustomTemplatesP
     if (!trimmedName) return;
 
     if (isSignedIn) {
-      await apiFetch(`/api/templates/${id}`, getToken, {
-        method: 'PATCH',
-        body: JSON.stringify({ name: trimmedName }),
-      });
+      const renamed = await renameCloudTemplate(id, trimmedName, getToken);
+      if (!renamed) return;
     }
 
     setCustomTemplates((prev) => {
@@ -174,7 +184,8 @@ export function useCustomTemplates({ isSignedIn, getToken }: UseCustomTemplatesP
   // ── Delete template ────────────────────────────────────────────────────────
   const deleteCustomTemplate = useCallback(async (id: string) => {
     if (isSignedIn) {
-      await deleteCloudTemplate(id, getToken);
+      const deleted = await deleteCloudTemplate(id, getToken);
+      if (!deleted) return;
     }
     setCustomTemplates((prev) => {
       const updated = prev.filter((t) => t.id !== id);

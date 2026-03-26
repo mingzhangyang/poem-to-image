@@ -1,4 +1,4 @@
-import { getAuthenticatedUser } from './auth';
+import { getAuthenticatedUser, type AuthUser, type AuthValidationOptions } from './auth';
 import type { D1Database } from './db';
 import { ensureUser, getBalance, reserveGeneration, finalizeGenerationSuccess, finalizeGenerationFailure, listUserTemplates, createUserTemplate, deleteUserTemplate, renameUserTemplate } from './db';
 import {
@@ -15,6 +15,10 @@ export interface Env {
   GEMINI_API_KEY?: string;
   OPENAI_API_KEY?: string;
   CLERK_SECRET_KEY?: string;
+  CLERK_JWT_ISSUER?: string;
+  CLERK_JWT_AUDIENCE?: string;
+  CLERK_ALLOWED_AUTHORIZED_PARTIES?: string;
+  CLERK_ALLOWED_TOKEN_USES?: string;
   STRIPE_SECRET_KEY?: string;
   STRIPE_WEBHOOK_SECRET?: string;
   DB?: D1Database;
@@ -42,6 +46,26 @@ function getAppOrigin(request: Request): string {
   return `${url.protocol}//${url.host}`;
 }
 
+function parseCsvEnv(raw?: string): string[] | undefined {
+  if (!raw) return undefined;
+  const items = raw.split(',').map((item) => item.trim()).filter(Boolean);
+  return items.length > 0 ? items : undefined;
+}
+
+function getAuthValidationOptions(env: Env): AuthValidationOptions {
+  return {
+    expectedIssuer: env.CLERK_JWT_ISSUER,
+    expectedAudience: env.CLERK_JWT_AUDIENCE,
+    allowedAuthorizedParties: parseCsvEnv(env.CLERK_ALLOWED_AUTHORIZED_PARTIES),
+    allowedTokenUses: parseCsvEnv(env.CLERK_ALLOWED_TOKEN_USES),
+  };
+}
+
+async function getAuthenticatedRequestUser(request: Request, env: Env): Promise<AuthUser | null> {
+  if (!env.CLERK_SECRET_KEY) return null;
+  return getAuthenticatedUser(request, env.CLERK_SECRET_KEY, getAuthValidationOptions(env));
+}
+
 interface GenerateImageRequest {
   prompt?: string;
   aspectRatio?: string;
@@ -50,20 +74,18 @@ interface GenerateImageRequest {
 }
 
 async function handleGenerateAiBackground(request: Request, env: Env): Promise<Response> {
-  // Auth: require signed-in user when CLERK_SECRET_KEY is configured
-  const clerkSecretKey = env.CLERK_SECRET_KEY;
-  const db = env.DB;
-
-  let userId: string | null = null;
-  let email = '';
-
-  if (clerkSecretKey && db) {
-    const user = await getAuthenticatedUser(request, clerkSecretKey);
-    if (!user) return unauthorized();
-    userId = user.userId;
-    email = user.email;
-    await ensureUser(db, userId, email);
+  // Fail closed: AI generation must not be reachable without auth + billing state.
+  if (!env.CLERK_SECRET_KEY || !env.DB) {
+    return json({ error: 'AI generation is not configured.' }, 503);
   }
+
+  const db = env.DB;
+  const user = await getAuthenticatedRequestUser(request, env);
+  if (!user) return unauthorized();
+
+  const userId = user.userId;
+  const email = user.email;
+  await ensureUser(db, userId, email);
 
   let payload: GenerateImageRequest;
   try {
@@ -82,46 +104,48 @@ async function handleGenerateAiBackground(request: Request, env: Env): Promise<R
   const provider = normalizeProvider(payload.provider);
   const costCredits = CREDIT_COST[provider];
 
-  // Credit check (only when billing is configured)
-  if (userId && db) {
-    const balance = await getBalance(db, userId);
-    if (balance < costCredits) {
+  if (provider === 'openai' && !env.OPENAI_API_KEY) {
+    return badRequest('Missing OPENAI_API_KEY Worker secret.', 500);
+  }
+  if (provider === 'gemini' && !env.GEMINI_API_KEY) {
+    return badRequest('Missing GEMINI_API_KEY Worker secret.', 500);
+  }
+
+  const balance = await getBalance(db, userId);
+  if (balance < costCredits) {
+    return json(
+      {
+        error: 'Insufficient credits.',
+        code: 'INSUFFICIENT_CREDITS',
+        balance,
+        required: costCredits,
+      },
+      402,
+    );
+  }
+
+  let requestId = '';
+  let transactionId = '';
+
+  try {
+    const reserved = await reserveGeneration(db, userId, provider, prompt.length, costCredits);
+    requestId = reserved.requestId;
+    transactionId = reserved.transactionId;
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Insufficient credits.') {
+      const latestBalance = await getBalance(db, userId);
       return json(
         {
           error: 'Insufficient credits.',
           code: 'INSUFFICIENT_CREDITS',
-          balance,
+          balance: latestBalance,
           required: costCredits,
         },
         402,
       );
     }
-  }
 
-  let requestId: string | null = null;
-  let transactionId: string | null = null;
-
-  if (userId && db) {
-    try {
-      const reserved = await reserveGeneration(db, userId, provider, prompt.length, costCredits);
-      requestId = reserved.requestId;
-      transactionId = reserved.transactionId;
-    } catch (error) {
-      if (error instanceof Error && error.message === 'Insufficient credits.') {
-        const balance = await getBalance(db, userId);
-        return json(
-          {
-            error: 'Insufficient credits.',
-            code: 'INSUFFICIENT_CREDITS',
-            balance,
-            required: costCredits,
-          },
-          402,
-        );
-      }
-
-      return badRequest('Failed to reserve credits.', 502);
-    }
+    return badRequest('Failed to reserve credits.', 502);
   }
 
   // Call the AI provider
@@ -129,30 +153,34 @@ async function handleGenerateAiBackground(request: Request, env: Env): Promise<R
     let result: { imageDataUrl: string };
 
     if (provider === 'openai') {
-      if (!env.OPENAI_API_KEY) return badRequest('Missing OPENAI_API_KEY Worker secret.', 500);
-      result = await generateWithOpenAi(prompt, aspectRatio, env.OPENAI_API_KEY);
+      result = await generateWithOpenAi(prompt, aspectRatio, env.OPENAI_API_KEY as string);
     } else {
-      if (!env.GEMINI_API_KEY) return badRequest('Missing GEMINI_API_KEY Worker secret.', 500);
-      result = await generateWithGemini(prompt, aspectRatio, env.GEMINI_API_KEY);
+      result = await generateWithGemini(prompt, aspectRatio, env.GEMINI_API_KEY as string);
     }
 
     // Finalize: deduct credits
-    let newBalance: number | null = null;
-    if (userId && db && requestId && transactionId) {
-      newBalance = await finalizeGenerationSuccess(db, userId, requestId, transactionId);
-    }
+    const newBalance = await finalizeGenerationSuccess(db, userId, requestId, transactionId);
 
     return json({
       imageDataUrl: result.imageDataUrl,
-      creditsCharged: userId ? costCredits : 0,
+      creditsCharged: costCredits,
       balance: newBalance,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to generate AI background.';
 
-    // Mark as failed (no credit deduction)
-    if (db && userId && requestId && transactionId) {
+    // Mark as failed (no credit deduction), retry once if rollback path had a transient failure.
+    try {
       await finalizeGenerationFailure(db, userId, requestId, transactionId, costCredits, message);
+    } catch {
+      try {
+        await finalizeGenerationFailure(db, userId, requestId, transactionId, costCredits, message);
+      } catch {
+        return badRequest(
+          'Failed to generate AI background and failed to restore reserved credits. Please retry later.',
+          502,
+        );
+      }
     }
 
     return badRequest(message, 502);
@@ -164,7 +192,7 @@ const MAX_TEMPLATE_DATA_BYTES = 32_000; // ~32 KB per template
 
 async function handleGetTemplates(request: Request, env: Env): Promise<Response> {
   if (!env.CLERK_SECRET_KEY || !env.DB) return json({ error: 'Not configured.' }, 503);
-  const user = await getAuthenticatedUser(request, env.CLERK_SECRET_KEY);
+  const user = await getAuthenticatedRequestUser(request, env);
   if (!user) return unauthorized();
   await ensureUser(env.DB, user.userId, user.email);
   const rows = await listUserTemplates(env.DB, user.userId);
@@ -174,7 +202,7 @@ async function handleGetTemplates(request: Request, env: Env): Promise<Response>
 
 async function handleCreateTemplate(request: Request, env: Env): Promise<Response> {
   if (!env.CLERK_SECRET_KEY || !env.DB) return json({ error: 'Not configured.' }, 503);
-  const user = await getAuthenticatedUser(request, env.CLERK_SECRET_KEY);
+  const user = await getAuthenticatedRequestUser(request, env);
   if (!user) return unauthorized();
 
   let payload: { name?: string; [key: string]: unknown };
@@ -206,7 +234,7 @@ async function handleCreateTemplate(request: Request, env: Env): Promise<Respons
 
 async function handleDeleteTemplate(templateId: string, request: Request, env: Env): Promise<Response> {
   if (!env.CLERK_SECRET_KEY || !env.DB) return json({ error: 'Not configured.' }, 503);
-  const user = await getAuthenticatedUser(request, env.CLERK_SECRET_KEY);
+  const user = await getAuthenticatedRequestUser(request, env);
   if (!user) return unauthorized();
   await ensureUser(env.DB, user.userId, user.email);
   const deleted = await deleteUserTemplate(env.DB, user.userId, templateId);
@@ -216,7 +244,7 @@ async function handleDeleteTemplate(templateId: string, request: Request, env: E
 
 async function handleRenameTemplate(templateId: string, request: Request, env: Env): Promise<Response> {
   if (!env.CLERK_SECRET_KEY || !env.DB) return json({ error: 'Not configured.' }, 503);
-  const user = await getAuthenticatedUser(request, env.CLERK_SECRET_KEY);
+  const user = await getAuthenticatedRequestUser(request, env);
   if (!user) return unauthorized();
 
   let payload: { name?: string };
@@ -240,7 +268,7 @@ async function handleMe(request: Request, env: Env): Promise<Response> {
     return json({ error: 'Auth not configured.' }, 503);
   }
 
-  const user = await getAuthenticatedUser(request, env.CLERK_SECRET_KEY);
+  const user = await getAuthenticatedRequestUser(request, env);
   if (!user) return unauthorized();
 
   await ensureUser(env.DB, user.userId, user.email);
@@ -285,7 +313,7 @@ export default {
     if (pathname === '/api/billing/balance') {
       if (request.method !== 'GET') return badRequest('Method not allowed.', 405);
       if (!env.CLERK_SECRET_KEY || !env.DB) return json({ error: 'Billing not configured.' }, 503);
-      const user = await getAuthenticatedUser(request, env.CLERK_SECRET_KEY);
+      const user = await getAuthenticatedRequestUser(request, env);
       if (!user) return unauthorized();
       return handleGetBalance(env.DB, user.userId, user.email);
     }
@@ -300,7 +328,7 @@ export default {
       if (!env.CLERK_SECRET_KEY || !env.DB || !env.STRIPE_SECRET_KEY) {
         return json({ error: 'Billing not configured.' }, 503);
       }
-      const user = await getAuthenticatedUser(request, env.CLERK_SECRET_KEY);
+      const user = await getAuthenticatedRequestUser(request, env);
       if (!user) return unauthorized();
       return handleCreateCheckoutSession(
         request,
@@ -317,7 +345,7 @@ export default {
       if (!env.CLERK_SECRET_KEY || !env.DB || !env.STRIPE_SECRET_KEY) {
         return json({ error: 'Billing not configured.' }, 503);
       }
-      const user = await getAuthenticatedUser(request, env.CLERK_SECRET_KEY);
+      const user = await getAuthenticatedRequestUser(request, env);
       if (!user) return unauthorized();
       return handleGetCheckoutStatus(request, env.DB, user.userId, user.email, env.STRIPE_SECRET_KEY);
     }
@@ -331,7 +359,7 @@ export default {
     if (pathname === '/api/billing/history') {
       if (request.method !== 'GET') return badRequest('Method not allowed.', 405);
       if (!env.CLERK_SECRET_KEY || !env.DB) return json({ error: 'Billing not configured.' }, 503);
-      const user = await getAuthenticatedUser(request, env.CLERK_SECRET_KEY);
+      const user = await getAuthenticatedRequestUser(request, env);
       if (!user) return unauthorized();
       return handleGetHistory(env.DB, user.userId, user.email);
     }

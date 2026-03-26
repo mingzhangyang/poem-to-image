@@ -178,26 +178,25 @@ export async function finalizeGenerationFailure(
   costCredits: number,
   errorMessage: string,
 ): Promise<void> {
-  const requestUpdate = await db
-    .prepare('UPDATE generation_requests SET status = ?, error_message = ? WHERE id = ? AND status = ?')
-    .bind('failed', errorMessage, requestId, 'pending')
-    .run();
-
-  if (requestUpdate.meta.changes === 0) {
-    return;
-  }
-
   await db
-    .prepare(
-      'UPDATE credit_accounts SET balance = balance + ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?',
-    )
-    .bind(costCredits, userId)
+    .prepare('UPDATE generation_requests SET status = ?, error_message = ?, completed_at = CURRENT_TIMESTAMP WHERE id = ? AND status != ?')
+    .bind('failed', errorMessage, requestId, 'succeeded')
     .run();
 
+  // Retry-safe rollback:
+  // 1) refund only when the debit transaction is still pending
+  // 2) mark that transaction failed in the same call path
   await db.batch([
     db
-      .prepare('UPDATE credit_transactions SET status = ?, balance_after = ? WHERE id = ?')
-      .bind('failed', await getBalance(db, userId), transactionId),
+      .prepare(
+        'UPDATE credit_accounts SET balance = balance + ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ? AND EXISTS (SELECT 1 FROM credit_transactions WHERE id = ? AND user_id = ? AND status = ?)',
+      )
+      .bind(costCredits, userId, transactionId, userId, 'pending'),
+    db
+      .prepare(
+        'UPDATE credit_transactions SET status = ?, balance_after = (SELECT balance FROM credit_accounts WHERE user_id = ?) WHERE id = ? AND user_id = ? AND status = ?',
+      )
+      .bind('failed', userId, transactionId, userId, 'pending'),
   ]);
 }
 

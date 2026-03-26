@@ -132,20 +132,25 @@ export async function handleStripeWebhook(
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as StripeCheckoutSession;
     const userId = session.metadata?.userId;
-    const packageId = session.metadata?.packageId;
-    const creditsGranted = parseInt(session.metadata?.creditsGranted ?? '0', 10);
     const email = session.customer_email ?? '';
+    const isPaid = session.payment_status === 'paid';
+    const validation = validateFulfillmentSession(session);
 
-    if (userId && packageId && creditsGranted > 0) {
+    if (!isPaid) {
+      return json({ received: true });
+    }
+
+    if (userId && validation.ok) {
+      const pkg = validation.pkg;
       await ensureUser(db, userId, email);
       await fulfillStripeOrder(
         db,
         userId,
         session.id,
         session.payment_intent ?? null,
-        packageId,
+        pkg.id,
         session.amount_total ?? 0,
-        creditsGranted,
+        pkg.credits,
       );
     }
   }
@@ -191,20 +196,20 @@ export async function handleGetCheckoutStatus(
 
   const isPaid = session.payment_status === 'paid';
   if (isPaid) {
-    const creditsGranted = parseInt(session.metadata?.creditsGranted ?? '0', 10);
-    const packageId = session.metadata?.packageId ?? '';
-
-    if (packageId && creditsGranted > 0) {
-      await fulfillStripeOrder(
-        db,
-        userId,
-        session.id,
-        session.payment_intent ?? null,
-        packageId,
-        session.amount_total ?? 0,
-        creditsGranted,
-      );
+    const validation = validateFulfillmentSession(session);
+    if ('error' in validation) {
+      return json({ error: validation.error }, 400);
     }
+
+    await fulfillStripeOrder(
+      db,
+      userId,
+      session.id,
+      session.payment_intent ?? null,
+      validation.pkg.id,
+      session.amount_total ?? 0,
+      validation.pkg.credits,
+    );
   }
 
   const balance = await getBalance(db, userId);
@@ -221,6 +226,27 @@ export async function handleGetHistory(
   return json({ items });
 }
 
+export function validateFulfillmentSession(
+  session: StripeCheckoutSession,
+): { ok: true; pkg: BillingPackage } | { ok: false; error: string } {
+  const packageId = session.metadata?.packageId ?? '';
+  const pkg = packageById(packageId);
+  if (!pkg) {
+    return { ok: false, error: 'Unknown package in checkout session metadata.' };
+  }
+
+  const amountTotal = session.amount_total;
+  if (typeof amountTotal !== 'number' || amountTotal !== pkg.priceCents) {
+    return { ok: false, error: 'Checkout session amount does not match package price.' };
+  }
+
+  if (session.currency && session.currency.toLowerCase() !== pkg.currency.toLowerCase()) {
+    return { ok: false, error: 'Checkout session currency does not match package currency.' };
+  }
+
+  return { ok: true, pkg };
+}
+
 // --- Stripe webhook signature verification via Web Crypto (HMAC-SHA256) ---
 
 interface StripeEvent {
@@ -228,11 +254,13 @@ interface StripeEvent {
   data: { object: unknown };
 }
 
-interface StripeCheckoutSession {
+export interface StripeCheckoutSession {
   id: string;
   customer_email?: string | null;
   payment_intent?: string | null;
   amount_total?: number | null;
+  currency?: string | null;
+  payment_status?: string | null;
   metadata?: Record<string, string>;
 }
 

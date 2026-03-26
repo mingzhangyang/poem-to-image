@@ -11,7 +11,8 @@
     "deploy": "npm run build && wrangler deploy",
     "cf:typegen": "wrangler types",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test": "node --import tsx --test tests/**/*.test.ts"
   },
   "dependencies": {
     "@clerk/react": "^6.1.0",
