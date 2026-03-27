@@ -69,38 +69,6 @@ function normalizeAuthorizedParty(value: string): string {
   }
 }
 
-function getRequestAuthorizedPartyCandidates(request: Request): Set<string> {
-  const candidates = new Set<string>();
-
-  try {
-    candidates.add(new URL(request.url).origin);
-  } catch {
-    // ignore
-  }
-
-  const origin = request.headers.get('Origin');
-  if (origin) {
-    candidates.add(normalizeAuthorizedParty(origin));
-  }
-
-  const referer = request.headers.get('Referer');
-  if (referer) {
-    try {
-      candidates.add(new URL(referer).origin);
-    } catch {
-      // ignore
-    }
-  }
-
-  const forwardedProto = request.headers.get('X-Forwarded-Proto');
-  const forwardedHost = request.headers.get('X-Forwarded-Host');
-  if (forwardedProto && forwardedHost) {
-    candidates.add(`${forwardedProto}://${forwardedHost}`);
-  }
-
-  return candidates;
-}
-
 function parseAudience(aud: string | string[] | undefined): string[] {
   if (!aud) return [];
   return Array.isArray(aud) ? aud : [aud];
@@ -111,6 +79,8 @@ function isValidTokenUse(tokenUse: string, allowedTokenUses: string[]): boolean 
 }
 
 function isValidIssuer(issuer: string, expectedIssuer?: string): boolean {
+  if (!expectedIssuer) return false;
+
   try {
     const parsed = new URL(issuer);
     if (parsed.protocol !== 'https:') return false;
@@ -118,36 +88,29 @@ function isValidIssuer(issuer: string, expectedIssuer?: string): boolean {
     return false;
   }
 
-  if (!expectedIssuer) return true;
   return normalizeIssuer(issuer) === normalizeIssuer(expectedIssuer);
 }
 
 function isValidAuthorizedParty(
   azp: string | undefined,
-  request: Request,
   allowedAuthorizedParties: string[],
 ): boolean {
-  if (!azp) {
+  if (!azp || allowedAuthorizedParties.length === 0) {
     return false;
   }
 
   const normalizedAzp = normalizeAuthorizedParty(azp);
 
-  if (allowedAuthorizedParties.length > 0) {
-    return allowedAuthorizedParties
-      .map((entry) => normalizeAuthorizedParty(entry))
-      .some((entry) => entry === normalizedAzp);
-  }
-
-  const requestCandidates = getRequestAuthorizedPartyCandidates(request);
-  return requestCandidates.has(normalizedAzp);
+  return allowedAuthorizedParties
+    .map((entry) => normalizeAuthorizedParty(entry))
+    .some((entry) => entry === normalizedAzp);
 }
 
 function isValidAudience(
   aud: string | string[] | undefined,
   expectedAudience?: string,
 ): boolean {
-  if (!expectedAudience) return true;
+  if (!expectedAudience) return false;
 
   const audiences = parseAudience(aud);
   if (audiences.length === 0) return false;
@@ -167,21 +130,21 @@ interface JwtPayload {
 
 export function validateAuthClaims(
   payload: JwtPayload,
-  request: Request,
+  _request: Request,
   options: AuthValidationOptions = {},
   nowSeconds = Date.now() / 1000,
 ): boolean {
-  if (payload.exp && payload.exp < nowSeconds) return false;
+  if (typeof payload.exp !== 'number' || Number.isNaN(payload.exp) || payload.exp < nowSeconds) return false;
   if (payload.nbf && payload.nbf > nowSeconds) return false;
   if (!payload.sub) return false;
   if (!payload.iss || !isValidIssuer(payload.iss, options.expectedIssuer)) return false;
   if (!isValidAudience(payload.aud, options.expectedAudience)) return false;
 
   const allowedTokenUses = options.allowedTokenUses?.filter(Boolean) ?? ['session_token', 'access_token'];
-  if (payload.token_use && !isValidTokenUse(payload.token_use, allowedTokenUses)) return false;
+  if (!payload.token_use || !isValidTokenUse(payload.token_use, allowedTokenUses)) return false;
 
   const allowedAuthorizedParties = options.allowedAuthorizedParties?.filter(Boolean) ?? [];
-  if (!isValidAuthorizedParty(payload.azp, request, allowedAuthorizedParties)) return false;
+  if (!isValidAuthorizedParty(payload.azp, allowedAuthorizedParties)) return false;
 
   return true;
 }

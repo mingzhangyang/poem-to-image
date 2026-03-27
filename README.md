@@ -12,7 +12,6 @@ Turn poems into AI-generated images with precise text control. Built with React 
 - Clerk authentication
 - Stripe credit purchases
 - Cloudflare D1 database for user credits and transaction history
-- PWA support
 
 ## Credit Costs
 
@@ -50,6 +49,10 @@ Turn poems into AI-generated images with precise text control. Built with React 
    GEMINI_API_KEY=your_key_here
    OPENAI_API_KEY=your_key_here
    CLERK_SECRET_KEY=your_key_here
+   CLERK_JWT_ISSUER=https://your-clerk-issuer
+   CLERK_JWT_AUDIENCE=your-clerk-audience
+   CLERK_ALLOWED_AUTHORIZED_PARTIES=https://your-app-origin
+   CLERK_ALLOWED_TOKEN_USES=session_token,access_token
    STRIPE_SECRET_KEY=your_key_here
    STRIPE_WEBHOOK_SECRET=your_key_here
    ```
@@ -91,7 +94,15 @@ The Vite dev server proxies `/api/*` requests to the local Worker on port `8787`
    npx wrangler secret put GEMINI_API_KEY
    npx wrangler secret put OPENAI_API_KEY
    ```
-7. Set the Stripe webhook endpoint to:
+7. Set Worker auth validation variables (must match your Clerk JWT template and frontend origins):
+   ```
+   # wrangler.toml [vars] (recommended) or equivalent dashboard env vars
+   CLERK_JWT_ISSUER=https://your-clerk-issuer
+   CLERK_JWT_AUDIENCE=your-clerk-audience
+   CLERK_ALLOWED_AUTHORIZED_PARTIES=https://your-app-origin
+   CLERK_ALLOWED_TOKEN_USES=session_token,access_token
+   ```
+8. Set the Stripe webhook endpoint to:
    ```
    https://<your-worker-domain>/api/billing/webhook/stripe
    ```

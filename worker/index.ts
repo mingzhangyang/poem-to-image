@@ -28,9 +28,34 @@ export interface Env {
 }
 
 const MAX_AI_PROMPT_LENGTH = 500;
+const HTML_CSP = "base-uri 'self'; frame-ancestors 'none'; object-src 'none'";
+
+function applySecurityHeaders(response: Response, { noStore = false }: { noStore?: boolean } = {}): Response {
+  const headers = new Headers(response.headers);
+  headers.set('X-Content-Type-Options', 'nosniff');
+  headers.set('X-Frame-Options', 'DENY');
+  headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  headers.set('Cross-Origin-Opener-Policy', 'same-origin');
+
+  if (noStore) {
+    headers.set('Cache-Control', 'no-store');
+  }
+
+  const contentType = headers.get('content-type')?.toLowerCase() ?? '';
+  if (contentType.includes('text/html')) {
+    headers.set('Content-Security-Policy', HTML_CSP);
+  }
+
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
 
 function json(data: unknown, status = 200): Response {
-  return Response.json(data, { status });
+  return applySecurityHeaders(Response.json(data, { status }), { noStore: true });
 }
 
 function badRequest(message: string, status = 400): Response {
@@ -52,6 +77,23 @@ function parseCsvEnv(raw?: string): string[] | undefined {
   return items.length > 0 ? items : undefined;
 }
 
+function hasRequiredAuthConfig(env: Env): boolean {
+  const allowedAuthorizedParties = parseCsvEnv(env.CLERK_ALLOWED_AUTHORIZED_PARTIES);
+  return !!(env.CLERK_SECRET_KEY && env.CLERK_JWT_ISSUER && env.CLERK_JWT_AUDIENCE && allowedAuthorizedParties?.length);
+}
+
+function parseTemplateData(raw: string): Record<string, unknown> {
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+  } catch {
+    // ignore malformed template payloads and fall back to metadata-only result
+  }
+  return {};
+}
+
 function getAuthValidationOptions(env: Env): AuthValidationOptions {
   return {
     expectedIssuer: env.CLERK_JWT_ISSUER,
@@ -62,8 +104,8 @@ function getAuthValidationOptions(env: Env): AuthValidationOptions {
 }
 
 async function getAuthenticatedRequestUser(request: Request, env: Env): Promise<AuthUser | null> {
-  if (!env.CLERK_SECRET_KEY) return null;
-  return getAuthenticatedUser(request, env.CLERK_SECRET_KEY, getAuthValidationOptions(env));
+  if (!hasRequiredAuthConfig(env)) return null;
+  return getAuthenticatedUser(request, env.CLERK_SECRET_KEY as string, getAuthValidationOptions(env));
 }
 
 interface GenerateImageRequest {
@@ -75,7 +117,7 @@ interface GenerateImageRequest {
 
 async function handleGenerateAiBackground(request: Request, env: Env): Promise<Response> {
   // Fail closed: AI generation must not be reachable without auth + billing state.
-  if (!env.CLERK_SECRET_KEY || !env.DB) {
+  if (!hasRequiredAuthConfig(env) || !env.DB) {
     return json({ error: 'AI generation is not configured.' }, 503);
   }
 
@@ -191,17 +233,22 @@ const MAX_TEMPLATE_NAME_LENGTH = 100;
 const MAX_TEMPLATE_DATA_BYTES = 32_000; // ~32 KB per template
 
 async function handleGetTemplates(request: Request, env: Env): Promise<Response> {
-  if (!env.CLERK_SECRET_KEY || !env.DB) return json({ error: 'Not configured.' }, 503);
+  if (!hasRequiredAuthConfig(env) || !env.DB) return json({ error: 'Not configured.' }, 503);
   const user = await getAuthenticatedRequestUser(request, env);
   if (!user) return unauthorized();
   await ensureUser(env.DB, user.userId, user.email);
   const rows = await listUserTemplates(env.DB, user.userId);
-  const templates = rows.map((r) => ({ id: r.id, name: r.name, createdAt: new Date(r.created_at).getTime(), ...JSON.parse(r.data) }));
+  const templates = rows.map((r) => ({
+    ...parseTemplateData(r.data),
+    id: r.id,
+    name: r.name,
+    createdAt: new Date(r.created_at).getTime(),
+  }));
   return json({ templates });
 }
 
 async function handleCreateTemplate(request: Request, env: Env): Promise<Response> {
-  if (!env.CLERK_SECRET_KEY || !env.DB) return json({ error: 'Not configured.' }, 503);
+  if (!hasRequiredAuthConfig(env) || !env.DB) return json({ error: 'Not configured.' }, 503);
   const user = await getAuthenticatedRequestUser(request, env);
   if (!user) return unauthorized();
 
@@ -215,15 +262,16 @@ async function handleCreateTemplate(request: Request, env: Env): Promise<Respons
   const name = (payload.name ?? '').toString().trim().slice(0, MAX_TEMPLATE_NAME_LENGTH) || 'Custom Template';
   const { name: _n, ...rest } = payload;
   const dataStr = JSON.stringify(rest);
+  const dataBytes = new TextEncoder().encode(dataStr).byteLength;
 
-  if (dataStr.length > MAX_TEMPLATE_DATA_BYTES) {
+  if (dataBytes > MAX_TEMPLATE_DATA_BYTES) {
     return badRequest('Template data too large.');
   }
 
   try {
     await ensureUser(env.DB, user.userId, user.email);
     const row = await createUserTemplate(env.DB, user.userId, name, dataStr);
-    return json({ id: row.id, name: row.name, createdAt: new Date(row.created_at).getTime(), ...rest }, 201);
+    return json({ ...rest, id: row.id, name: row.name, createdAt: new Date(row.created_at).getTime() }, 201);
   } catch (err) {
     if (err instanceof Error && err.message === 'Template limit reached.') {
       return badRequest('Template limit reached.', 400);
@@ -233,7 +281,7 @@ async function handleCreateTemplate(request: Request, env: Env): Promise<Respons
 }
 
 async function handleDeleteTemplate(templateId: string, request: Request, env: Env): Promise<Response> {
-  if (!env.CLERK_SECRET_KEY || !env.DB) return json({ error: 'Not configured.' }, 503);
+  if (!hasRequiredAuthConfig(env) || !env.DB) return json({ error: 'Not configured.' }, 503);
   const user = await getAuthenticatedRequestUser(request, env);
   if (!user) return unauthorized();
   await ensureUser(env.DB, user.userId, user.email);
@@ -243,7 +291,7 @@ async function handleDeleteTemplate(templateId: string, request: Request, env: E
 }
 
 async function handleRenameTemplate(templateId: string, request: Request, env: Env): Promise<Response> {
-  if (!env.CLERK_SECRET_KEY || !env.DB) return json({ error: 'Not configured.' }, 503);
+  if (!hasRequiredAuthConfig(env) || !env.DB) return json({ error: 'Not configured.' }, 503);
   const user = await getAuthenticatedRequestUser(request, env);
   if (!user) return unauthorized();
 
@@ -264,7 +312,7 @@ async function handleRenameTemplate(templateId: string, request: Request, env: E
 }
 
 async function handleMe(request: Request, env: Env): Promise<Response> {
-  if (!env.CLERK_SECRET_KEY || !env.DB) {
+  if (!hasRequiredAuthConfig(env) || !env.DB) {
     return json({ error: 'Auth not configured.' }, 503);
   }
 
@@ -312,7 +360,7 @@ export default {
     // ── Billing ─────────────────────────────────────────────────────────
     if (pathname === '/api/billing/balance') {
       if (request.method !== 'GET') return badRequest('Method not allowed.', 405);
-      if (!env.CLERK_SECRET_KEY || !env.DB) return json({ error: 'Billing not configured.' }, 503);
+      if (!hasRequiredAuthConfig(env) || !env.DB) return json({ error: 'Billing not configured.' }, 503);
       const user = await getAuthenticatedRequestUser(request, env);
       if (!user) return unauthorized();
       return handleGetBalance(env.DB, user.userId, user.email);
@@ -325,7 +373,7 @@ export default {
 
     if (pathname === '/api/billing/checkout-session') {
       if (request.method !== 'POST') return badRequest('Method not allowed.', 405);
-      if (!env.CLERK_SECRET_KEY || !env.DB || !env.STRIPE_SECRET_KEY) {
+      if (!hasRequiredAuthConfig(env) || !env.DB || !env.STRIPE_SECRET_KEY) {
         return json({ error: 'Billing not configured.' }, 503);
       }
       const user = await getAuthenticatedRequestUser(request, env);
@@ -342,7 +390,7 @@ export default {
 
     if (pathname === '/api/billing/checkout-status') {
       if (request.method !== 'GET') return badRequest('Method not allowed.', 405);
-      if (!env.CLERK_SECRET_KEY || !env.DB || !env.STRIPE_SECRET_KEY) {
+      if (!hasRequiredAuthConfig(env) || !env.DB || !env.STRIPE_SECRET_KEY) {
         return json({ error: 'Billing not configured.' }, 503);
       }
       const user = await getAuthenticatedRequestUser(request, env);
@@ -358,13 +406,14 @@ export default {
 
     if (pathname === '/api/billing/history') {
       if (request.method !== 'GET') return badRequest('Method not allowed.', 405);
-      if (!env.CLERK_SECRET_KEY || !env.DB) return json({ error: 'Billing not configured.' }, 503);
+      if (!hasRequiredAuthConfig(env) || !env.DB) return json({ error: 'Billing not configured.' }, 503);
       const user = await getAuthenticatedRequestUser(request, env);
       if (!user) return unauthorized();
       return handleGetHistory(env.DB, user.userId, user.email);
     }
 
     // ── Static assets ────────────────────────────────────────────────────
-    return env.ASSETS.fetch(request);
+    const assetResponse = await env.ASSETS.fetch(request);
+    return applySecurityHeaders(assetResponse);
   },
 } satisfies { fetch(request: Request, env: Env): Promise<Response> };

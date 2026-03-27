@@ -3,6 +3,12 @@ import test from 'node:test';
 import { validateAuthClaims } from '../../worker/auth';
 
 const now = 1_700_000_000;
+const strictOptions = {
+  expectedIssuer: 'https://clerk.example.com',
+  expectedAudience: 'poem-to-image',
+  allowedAuthorizedParties: ['https://app.example.com'],
+  allowedTokenUses: ['session_token'],
+};
 
 function makePayload(overrides: Partial<Parameters<typeof validateAuthClaims>[0]> = {}) {
   return {
@@ -27,12 +33,7 @@ test('validateAuthClaims accepts valid issuer/audience/azp/token_use', () => {
   const valid = validateAuthClaims(
     makePayload(),
     makeRequest(),
-    {
-      expectedIssuer: 'https://clerk.example.com',
-      expectedAudience: 'poem-to-image',
-      allowedAuthorizedParties: ['https://app.example.com'],
-      allowedTokenUses: ['session_token'],
-    },
+    strictOptions,
     now,
   );
 
@@ -43,7 +44,7 @@ test('validateAuthClaims rejects invalid audience', () => {
   const valid = validateAuthClaims(
     makePayload({ aud: 'other-app' }),
     makeRequest(),
-    { expectedAudience: 'poem-to-image' },
+    strictOptions,
     now,
   );
 
@@ -54,7 +55,7 @@ test('validateAuthClaims rejects invalid authorized party', () => {
   const valid = validateAuthClaims(
     makePayload({ azp: 'https://other.example.com' }),
     makeRequest(),
-    { allowedAuthorizedParties: ['https://app.example.com'] },
+    strictOptions,
     now,
   );
 
@@ -65,7 +66,7 @@ test('validateAuthClaims rejects tokens without azp claim', () => {
   const valid = validateAuthClaims(
     makePayload({ azp: undefined }),
     makeRequest(),
-    {},
+    strictOptions,
     now,
   );
 
@@ -76,7 +77,7 @@ test('validateAuthClaims rejects disallowed token_use', () => {
   const valid = validateAuthClaims(
     makePayload({ token_use: 'id_token' }),
     makeRequest(),
-    { allowedTokenUses: ['session_token'] },
+    strictOptions,
     now,
   );
 
@@ -87,7 +88,62 @@ test('validateAuthClaims rejects expired tokens', () => {
   const valid = validateAuthClaims(
     makePayload({ exp: now - 1 }),
     makeRequest(),
-    {},
+    strictOptions,
+    now,
+  );
+
+  assert.equal(valid, false);
+});
+
+test('validateAuthClaims rejects tokens without exp claim', () => {
+  const valid = validateAuthClaims(
+    makePayload({ exp: undefined }),
+    makeRequest(),
+    strictOptions,
+    now,
+  );
+
+  assert.equal(valid, false);
+});
+
+test('validateAuthClaims rejects tokens without token_use claim', () => {
+  const valid = validateAuthClaims(
+    makePayload({ token_use: undefined }),
+    makeRequest(),
+    strictOptions,
+    now,
+  );
+
+  assert.equal(valid, false);
+});
+
+test('validateAuthClaims rejects when expectedIssuer is missing', () => {
+  const valid = validateAuthClaims(
+    makePayload(),
+    makeRequest(),
+    { ...strictOptions, expectedIssuer: undefined },
+    now,
+  );
+
+  assert.equal(valid, false);
+});
+
+test('validateAuthClaims rejects when expectedAudience is missing', () => {
+  const valid = validateAuthClaims(
+    makePayload(),
+    makeRequest(),
+    { ...strictOptions, expectedAudience: undefined },
+    now,
+  );
+
+  assert.equal(valid, false);
+});
+
+test('validateAuthClaims rejects when allowedAuthorizedParties are missing', () => {
+  const valid = validateAuthClaims(
+    makePayload(),
+    makeRequest(),
+    { ...strictOptions, allowedAuthorizedParties: undefined },
     now,
   );
 
