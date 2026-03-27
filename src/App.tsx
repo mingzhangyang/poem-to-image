@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { useAppAuth } from './context/auth';
 import { useToast } from './components/ToastProvider';
 import { getPlainPoemText, isSamePoemContent } from './poemContent';
@@ -7,7 +7,6 @@ import { fallbackTranslations, loadTranslations, type Language, type Translation
 import { LANGUAGE_STORAGE_KEY, readPreferredLanguage } from './hooks/useLang';
 import { CanvasPreview } from './components/CanvasPreview';
 import { Sidebar } from './components/Sidebar';
-import { OnboardingModal } from './components/OnboardingModal';
 import { useBackgroundConfig } from './hooks/useBackgroundConfig';
 import { useBalance } from './hooks/useBalance';
 import { useBillingHistory } from './hooks/useBillingHistory';
@@ -24,9 +23,11 @@ import { useTemplateManager } from './hooks/useTemplateManager';
 import { DEFAULT_POEMS } from './defaultPoems';
 import { editorTemplates } from './templates';
 import { isCjkLanguage } from './fontOptions';
+import { usePageMetadata } from './hooks/usePageMetadata';
 import type { ExpandedSections, ExportFormat, ExportScale } from './types';
 
 const ONBOARDING_DISMISSED_STORAGE_KEY = 'poem-to-image.onboarding-dismissed';
+const OnboardingModal = lazy(async () => ({ default: (await import('./components/OnboardingModal')).OnboardingModal }));
 
 export default function App() {
   const { showToast } = useToast();
@@ -36,6 +37,15 @@ export default function App() {
   const [language, setLanguage] = useState<Language>(initialLanguageRef.current);
   const [messages, setMessages] = useState(fallbackTranslations);
   const t = (key: TranslationKey) => messages[key] ?? fallbackTranslations[key];
+  usePageMetadata({
+    title: 'InkPoem – Turn Poems into Beautiful Art with AI',
+    description: 'Turn your poems into stunning visual art with AI. Customize typography, backgrounds, and styles. Export in high resolution. Free to start.',
+    canonical: 'https://inkpoem.com/',
+    ogTitle: 'InkPoem – Turn Poems into Beautiful Art with AI',
+    ogDescription: 'Turn your poems into stunning visual art with AI. Customize typography, backgrounds, and styles. Export in high resolution.',
+    ogUrl: 'https://inkpoem.com/',
+    robots: 'index, follow',
+  });
 
   const handleLanguageChange = useCallback((newLang: Language) => {
     setPoem((prev) => {
@@ -111,16 +121,19 @@ export default function App() {
         });
 
         const data = (await response.json()) as { checkoutUrl?: string; error?: string };
-        if (data.checkoutUrl) {
+        if (response.ok && data.checkoutUrl) {
           window.location.href = data.checkoutUrl;
+          return;
         }
+
+        showToast(data.error ?? t('checkoutFailed'), 'error');
       } catch {
-        // Purchase failed silently
+        showToast(t('networkError'), 'error');
       } finally {
         setIsPurchasing(false);
       }
     },
-    [getToken],
+    [getToken, showToast, t],
   );
 
   const handlePresetChange = (val: string) => {
@@ -298,15 +311,15 @@ export default function App() {
     },
     waitForSceneSettled,
   );
-  // 包装导出图片，添加toast提示
+  // Wrap export action with toast feedback.
   const handleDownload = async () => {
     try {
       const success = await exportImage();
       if (success) {
-        showToast(t('exportSuccess') || '图片导出成功', 'success');
+        showToast(t('exportSuccess') || 'Image exported successfully.', 'success');
       }
     } catch (e) {
-      showToast(t('exportFailed') || '图片导出失败', 'error');
+      showToast(t('exportFailed') || 'Image export failed.', 'error');
     }
   };
 
@@ -464,20 +477,19 @@ export default function App() {
 
   return (
     <div className="min-h-dvh bg-transparent flex flex-col md:flex-row font-sans text-(--app-ink)">
-      <title>InkPoem – Turn Poems into Beautiful Art with AI</title>
-      <meta name="description" content="Turn your poems into stunning visual art with AI. Customize typography, backgrounds, and styles. Export in high resolution. Free to start." />
-      <link rel="canonical" href="https://inkpoem.com/" />
       <Sidebar {...sidebarProps} />
 
       <CanvasPreview {...canvasPreviewProps} />
 
-      <OnboardingModal
-        isOpen={isOnboardingOpen}
-        onClose={handleCloseOnboarding}
-        t={t}
-        language={language}
-        templates={sidebarProps.templates}
-      />
+      <Suspense fallback={null}>
+        <OnboardingModal
+          isOpen={isOnboardingOpen}
+          onClose={handleCloseOnboarding}
+          t={t}
+          language={language}
+          templates={sidebarProps.templates}
+        />
+      </Suspense>
     </div>
   );
 }

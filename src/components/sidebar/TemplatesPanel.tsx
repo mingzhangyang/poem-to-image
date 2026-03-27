@@ -1,9 +1,10 @@
 import { BookmarkPlus, Expand, Pencil, Sparkles, Trash2, X } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+import { useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import type { ExpandedSections, TemplateSectionProps, TranslateFn } from '../../types';
 import { ControlSection } from '../ControlSection';
+import { useDialogA11y } from '../../hooks/useDialogA11y';
 
 const BUILT_IN_PREVIEW_LIMIT = 2;
 
@@ -137,6 +138,7 @@ export function TemplatesPanel({ t, expanded, onToggle, templates, currentBackgr
   const [renameValue, setRenameValue] = useState('');
   const renameInputRef = useRef<HTMLInputElement>(null);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+  const libraryDialogRef = useRef<HTMLDivElement>(null);
 
   const activeBuiltIn = templates.templates.find((template) => template.id === templates.activeTemplateId);
   const activeCustom = templates.customTemplates.find((item) => item.id === templates.activeCustomTemplateId);
@@ -208,26 +210,7 @@ export function TemplatesPanel({ t, expanded, onToggle, templates, currentBackgr
     setIsLibraryOpen(false);
   };
 
-  useEffect(() => {
-    if (!isLibraryOpen) {
-      return;
-    }
-
-    const previousOverflow = document.body.style.overflow;
-    const handleKeyDownEvent = (event: globalThis.KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setIsLibraryOpen(false);
-      }
-    };
-
-    document.body.style.overflow = 'hidden';
-    window.addEventListener('keydown', handleKeyDownEvent);
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener('keydown', handleKeyDownEvent);
-    };
-  }, [isLibraryOpen]);
+  useDialogA11y({ isOpen: isLibraryOpen, dialogRef: libraryDialogRef, onClose: () => setIsLibraryOpen(false) });
 
   return (
     <>
@@ -283,6 +266,7 @@ export function TemplatesPanel({ t, expanded, onToggle, templates, currentBackgr
                       setTemplateName('');
                     }}
                     className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+                    aria-label={t('closeControls')}
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -346,6 +330,7 @@ export function TemplatesPanel({ t, expanded, onToggle, templates, currentBackgr
                             <button
                               onClick={() => setDeletingId(null)}
                               className="p-1 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+                              aria-label={t('closeControls')}
                             >
                               <X className="w-3.5 h-3.5" />
                             </button>
@@ -363,13 +348,15 @@ export function TemplatesPanel({ t, expanded, onToggle, templates, currentBackgr
                             <button
                               onClick={() => startRenaming(template.id, template.name)}
                               className="p-1 text-gray-300 hover:text-gray-500 rounded-lg hover:bg-gray-100 transition-colors"
-                              title="Rename"
+                              title="Rename template"
+                              aria-label="Rename template"
                             >
                               <Pencil className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={() => setDeletingId(template.id)}
                               className="p-1 text-gray-300 hover:text-red-400 rounded-lg hover:bg-red-50 transition-colors"
+                              aria-label={t('deleteTemplate')}
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -425,18 +412,24 @@ export function TemplatesPanel({ t, expanded, onToggle, templates, currentBackgr
             />
 
             <motion.div
+              ref={libraryDialogRef}
               initial={{ opacity: 0, scale: 0.96, y: 24 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.96, y: 24 }}
               className="relative z-[91] flex h-[100dvh] w-screen flex-col overflow-hidden bg-[linear-gradient(180deg,rgba(255,253,249,0.995),rgba(255,249,241,0.98))] shadow-[0_32px_100px_rgba(26,44,46,0.24)]"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="template-library-title"
+              aria-describedby="template-library-description"
+              tabIndex={-1}
             >
               <div className="flex items-start justify-between gap-4 border-b border-[rgba(34,48,52,0.06)] px-5 py-5 sm:px-7 lg:px-10">
                 <div className="min-w-0">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-(--app-accent-500)">
                     {t('templates')}
                   </div>
-                  <h2 className="mt-2 text-2xl font-semibold text-gray-900">{t('builtInTemplates')}</h2>
-                  <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">{t('templatesHint')}</p>
+                  <h2 id="template-library-title" className="mt-2 text-2xl font-semibold text-gray-900">{t('builtInTemplates')}</h2>
+                  <p id="template-library-description" className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">{t('templatesHint')}</p>
                 </div>
 
                 <button

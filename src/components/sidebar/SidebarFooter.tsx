@@ -49,9 +49,9 @@ const socialPlatforms: Array<{
   bg: string;
   symbol: string;
 }> = [
-  { id: 'wechat', label: 'WeChat', color: '#fff', bg: '#07C160', symbol: '微' },
-  { id: 'weibo', label: '微博', color: '#fff', bg: '#E6162D', symbol: '博' },
-  { id: 'xiaohongshu', label: '小红书', color: '#fff', bg: '#FF2442', symbol: '红' },
+  { id: 'wechat', label: 'WeChat', color: '#fff', bg: '#07C160', symbol: 'W' },
+  { id: 'weibo', label: 'Weibo', color: '#fff', bg: '#E6162D', symbol: 'We' },
+  { id: 'xiaohongshu', label: 'Xiaohongshu', color: '#fff', bg: '#FF2442', symbol: 'XHS' },
   { id: 'twitter', label: 'X', color: '#fff', bg: '#000000', symbol: 'X' },
   { id: 'instagram', label: 'Instagram', color: '#fff', bg: '#C13584', symbol: 'In' },
   { id: 'facebook', label: 'Facebook', color: '#fff', bg: '#1877F2', symbol: 'f' },

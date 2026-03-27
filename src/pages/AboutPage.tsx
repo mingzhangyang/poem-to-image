@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft, Cpu, Globe, ImageIcon, Layers, Sparkles, Zap } from 'lucide-react';
 import { Logo } from '../components/logo';
 import { useLang } from '../hooks/useLang';
+import { usePageMetadata } from '../hooks/usePageMetadata';
 
 function FeatureCard({ icon, title, description }: { icon: import('react').ReactNode; title: string; description: string }) {
   return (
@@ -28,16 +29,18 @@ function PoweredByBadge({ name, description }: { name: string; description: stri
 
 export function AboutPage() {
   const { t } = useLang();
+  usePageMetadata({
+    title: 'About InkPoem – AI Poetry Art Generator',
+    description: 'InkPoem turns your poems into beautiful visual art using AI. Learn about our features, technology, and how it works.',
+    canonical: 'https://inkpoem.com/about',
+    ogTitle: 'About InkPoem – AI Poetry Art Generator',
+    ogDescription: 'InkPoem turns your poems into beautiful visual art using AI. Learn about our features, technology, and how it works.',
+    ogUrl: 'https://inkpoem.com/about',
+    robots: 'index, follow',
+  });
 
   return (
     <div className="min-h-screen bg-transparent">
-      <title>About InkPoem – AI Poetry Art Generator</title>
-      <meta name="description" content="InkPoem turns your poems into beautiful visual art using AI. Learn about our features, technology, and how it works." />
-      <meta property="og:title" content="About InkPoem – AI Poetry Art Generator" />
-      <meta property="og:description" content="InkPoem turns your poems into beautiful visual art using AI. Learn about our features, technology, and how it works." />
-      <meta property="og:url" content="https://inkpoem.com/about" />
-      <link rel="canonical" href="https://inkpoem.com/about" />
-
       {/* Nav */}
       <header className="bg-[rgba(255,253,249,0.92)] border-b border-[rgba(34,48,52,0.08)] sticky top-0 z-10 backdrop-blur">
         <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between gap-4">

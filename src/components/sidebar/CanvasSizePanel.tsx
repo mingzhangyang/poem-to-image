@@ -11,20 +11,20 @@ interface CanvasSizePanelProps {
 }
 
 const LEGACY_PRESET_LABELS: Record<string, string> = {
-  '1080x1080': '方图 1:1',
-  '1080x1350': '竖图 4:5',
-  '1440x1080': '横图 4:3',
+  '1080x1080': 'Square 1:1',
+  '1080x1350': 'Portrait 4:5',
+  '1440x1080': 'Landscape 4:3',
   '1080x1920': 'Story 9:16',
-  '1920x1080': '横版 16:9',
-  '1240x1754': 'A4 打印',
+  '1920x1080': 'Landscape 16:9',
+  '1240x1754': 'A4 Print',
 };
 
 const PRESET_GROUPS = [
-  { id: 'xiaohongshu', label: '小红书' },
+  { id: 'xiaohongshu', label: 'Xiaohongshu' },
   { id: 'instagram', label: 'Instagram' },
-  { id: 'wechat', label: '微信' },
-  { id: 'print', label: '打印' },
-  { id: 'general', label: '通用' },
+  { id: 'wechat', label: 'WeChat' },
+  { id: 'print', label: 'Print' },
+  { id: 'general', label: 'General' },
 ] as const;
 
 const QUICK_PRESET_IDS = [
@@ -60,7 +60,7 @@ export function CanvasSizePanel({ t, expanded, onToggle, canvas }: CanvasSizePan
     >
       <div className="space-y-3">
         <div>
-          <label className="block text-xs text-gray-500 mb-1">多平台快速预设</label>
+          <label className="block text-xs text-gray-500 mb-1">Quick platform presets</label>
           <div className="flex flex-wrap gap-2">
             {QUICK_PRESET_IDS.map((presetId) => {
               const preset = getCanvasSizePresetById(presetId);

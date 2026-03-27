@@ -274,14 +274,14 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {[
-                    { color: '#c82829', label: '朱砂' },
-                    { color: '#e60000', label: '鲜红' },
-                    { color: '#8b0000', label: '暗红' },
-                    { color: '#e03c60', label: '洋红' },
-                    { color: '#ff8c00', label: '橙色' },
-                    { color: '#00a497', label: '松石绿' },
-                    { color: '#b87333', label: '古铜' },
-                    { color: '#1a1a1a', label: '墨黑' },
+                    { color: '#c82829', label: 'Vermilion' },
+                    { color: '#e60000', label: 'Bright Red' },
+                    { color: '#8b0000', label: 'Dark Red' },
+                    { color: '#e03c60', label: 'Magenta' },
+                    { color: '#ff8c00', label: 'Orange' },
+                    { color: '#00a497', label: 'Turquoise' },
+                    { color: '#b87333', label: 'Bronze' },
+                    { color: '#1a1a1a', label: 'Ink Black' },
                   ].map(({ color, label }) => {
                     const current = decorations.stamp.inkColor ?? '#c82829';
                     const isActive = current.toLowerCase() === color.toLowerCase();
@@ -389,6 +389,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
             onClick={decorations.onAddCustomText}
             className="app-action-button"
             title={t('addTextBox')}
+            aria-label={t('addTextBox')}
           >
             <Plus className="h-3.5 w-3.5 shrink-0" />
           </button>
@@ -398,6 +399,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
             onClick={decorations.onAddSignature}
             className="app-action-button"
             title={t('addSignature')}
+            aria-label={t('addSignature')}
           >
             <PenLine className="h-3.5 w-3.5 shrink-0" />
           </button>
@@ -429,12 +431,13 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                     className="app-input flex-1 p-1.5 text-sm"
                     placeholder={t('textContent')}
                   />
-                  <button
-                    onClick={() => decorations.onCustomTextRemove(customText.id)}
-                    className="p-1.5 text-[#8a523b] hover:bg-[rgba(155,95,67,0.12)] rounded transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                <button
+                  onClick={() => decorations.onCustomTextRemove(customText.id)}
+                  className="p-1.5 text-[#8a523b] hover:bg-[rgba(155,95,67,0.12)] rounded transition-colors"
+                  aria-label={t('deleteTemplate')}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
                 </div>
                 <div className="flex items-center gap-2">
                   <input
@@ -492,6 +495,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                       onClick={() => decorations.onCustomTextReorder(customText.id, 'bottom')}
                       className="p-1 px-1.5 text-gray-400 hover:text-(--app-accent-700) hover:bg-gray-50 rounded transition-colors"
                       title={t('sendToBack')}
+                      aria-label={t('sendToBack')}
                     >
                       <ArrowDownToLine className="w-3.5 h-3.5" />
                     </button>
@@ -499,6 +503,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                       onClick={() => decorations.onCustomTextReorder(customText.id, 'down')}
                       className="p-1 px-1.5 text-gray-400 hover:text-(--app-accent-700) hover:bg-gray-50 rounded transition-colors"
                       title={t('moveDown')}
+                      aria-label={t('moveDown')}
                     >
                       <ChevronDown className="w-3.5 h-3.5" />
                     </button>
@@ -506,6 +511,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                       onClick={() => decorations.onCustomTextReorder(customText.id, 'up')}
                       className="p-1 px-1.5 text-gray-400 hover:text-(--app-accent-700) hover:bg-gray-50 rounded transition-colors"
                       title={t('moveUp')}
+                      aria-label={t('moveUp')}
                     >
                       <ChevronUp className="w-3.5 h-3.5" />
                     </button>
@@ -513,6 +519,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                       onClick={() => decorations.onCustomTextReorder(customText.id, 'top')}
                       className="p-1 px-1.5 text-gray-400 hover:text-(--app-accent-700) hover:bg-gray-50 rounded transition-colors"
                       title={t('bringToFront')}
+                      aria-label={t('bringToFront')}
                     >
                       <ArrowUpToLine className="w-3.5 h-3.5" />
                     </button>
@@ -538,6 +545,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                   <button
                     onClick={() => decorations.onLogoRemove(logo.id)}
                     className="p-1.5 text-[#8a523b] hover:bg-[rgba(155,95,67,0.12)] rounded transition-colors"
+                    aria-label={t('deleteTemplate')}
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -585,6 +593,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                       onClick={() => decorations.onLogoReorder(logo.id, 'bottom')}
                       className="p-1 px-1.5 text-gray-400 hover:text-(--app-accent-700) hover:bg-gray-50 rounded transition-colors"
                       title={t('sendToBack')}
+                      aria-label={t('sendToBack')}
                     >
                       <ArrowDownToLine className="w-3.5 h-3.5" />
                     </button>
@@ -592,6 +601,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                       onClick={() => decorations.onLogoReorder(logo.id, 'down')}
                       className="p-1 px-1.5 text-gray-400 hover:text-(--app-accent-700) hover:bg-gray-50 rounded transition-colors"
                       title={t('moveDown')}
+                      aria-label={t('moveDown')}
                     >
                       <ChevronDown className="w-3.5 h-3.5" />
                     </button>
@@ -599,6 +609,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                       onClick={() => decorations.onLogoReorder(logo.id, 'up')}
                       className="p-1 px-1.5 text-gray-400 hover:text-(--app-accent-700) hover:bg-gray-50 rounded transition-colors"
                       title={t('moveUp')}
+                      aria-label={t('moveUp')}
                     >
                       <ChevronUp className="w-3.5 h-3.5" />
                     </button>
@@ -606,6 +617,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                       onClick={() => decorations.onLogoReorder(logo.id, 'top')}
                       className="p-1 px-1.5 text-gray-400 hover:text-(--app-accent-700) hover:bg-gray-50 rounded transition-colors"
                       title={t('bringToFront')}
+                      aria-label={t('bringToFront')}
                     >
                       <ArrowUpToLine className="w-3.5 h-3.5" />
                     </button>
@@ -633,6 +645,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                   <button
                     onClick={() => decorations.onSignatureRemove(sig.id)}
                     className="p-1.5 text-[#8a523b] hover:bg-[rgba(155,95,67,0.12)] rounded transition-colors"
+                    aria-label={t('deleteTemplate')}
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>

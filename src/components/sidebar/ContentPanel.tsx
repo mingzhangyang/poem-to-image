@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react';
+import { Suspense, lazy, useMemo, useState } from 'react';
 import { Expand, ScrollText, Type } from 'lucide-react';
-import { PoemEditorModal } from '../PoemEditorModal';
 import type { ContentSectionProps, ExpandedSections, TranslateFn } from '../../types';
 import { ControlSection } from '../ControlSection';
+
+const PoemEditorModal = lazy(async () => ({ default: (await import('../PoemEditorModal')).PoemEditorModal }));
 
 interface ContentPanelProps {
   t: TranslateFn;
@@ -76,12 +77,14 @@ export function ContentPanel({ t, expanded, onToggle, content }: ContentPanelPro
         </div>
       </ControlSection>
 
-      <PoemEditorModal
-        isOpen={isEditorOpen}
-        onClose={() => setIsEditorOpen(false)}
-        t={t}
-        content={content}
-      />
+      <Suspense fallback={null}>
+        <PoemEditorModal
+          isOpen={isEditorOpen}
+          onClose={() => setIsEditorOpen(false)}
+          t={t}
+          content={content}
+        />
+      </Suspense>
     </>
   );
 }

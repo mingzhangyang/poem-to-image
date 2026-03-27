@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, RefObject } from 'react';
+import type {
+  KeyboardEvent as ReactKeyboardEvent,
+  MouseEvent as ReactMouseEvent,
+  PointerEvent as ReactPointerEvent,
+  RefObject,
+} from 'react';
 import {
   createVectorBorderStrokes,
   getBorderGradientCss,
@@ -58,6 +63,10 @@ interface PoemContentProps {
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
+
+const KEYBOARD_MOVE_STEP = 1;
+const KEYBOARD_MOVE_STEP_FAST = 3;
+const KEYBOARD_RESIZE_STEP = 2;
 
 function measurePositionedElement(frameRect: PreviewPositioningRect, boxRect: DOMRect): PositionedElement {
   return {
@@ -348,6 +357,58 @@ export function PoemContent({
     });
   };
 
+  const handlePoemKeyboardMove = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    const isArrowKey = event.key === 'ArrowLeft'
+      || event.key === 'ArrowRight'
+      || event.key === 'ArrowUp'
+      || event.key === 'ArrowDown';
+
+    if (!isArrowKey) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    setActiveTextSelection({ kind: 'poem' });
+
+    const step = event.shiftKey ? KEYBOARD_MOVE_STEP_FAST : KEYBOARD_MOVE_STEP;
+    const frameRect = poemFrameRef.current ? getPreviewPositioningRect(poemFrameRef.current) : null;
+    const boxRect = poemBoxRef.current?.getBoundingClientRect();
+    const bounds = frameRect && boxRect
+      ? getPreviewDragBounds(frameRect, boxRect)
+      : {
+          minPositionX: 0,
+          maxPositionX: 100,
+          minPositionY: 0,
+          maxPositionY: 100,
+        };
+
+    if (event.altKey && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
+      const fallbackWidth = frameRect?.width
+        ? clamp((poemLayout.width / frameRect.width) * 100, 5, 100)
+        : 100;
+      const currentWidth = liveBoxWidth ?? fallbackWidth;
+      const nextWidth = clamp(
+        currentWidth + (event.key === 'ArrowRight' ? KEYBOARD_RESIZE_STEP : -KEYBOARD_RESIZE_STEP),
+        5,
+        100,
+      );
+      setLiveBoxWidth(nextWidth);
+      onPoemPositionChange({ ...livePosition, boxWidth: nextWidth });
+      return;
+    }
+
+    const deltaX = event.key === 'ArrowLeft' ? -step : event.key === 'ArrowRight' ? step : 0;
+    const deltaY = event.key === 'ArrowUp' ? -step : event.key === 'ArrowDown' ? step : 0;
+    const nextPosition = {
+      positionX: clamp(livePosition.positionX + deltaX, bounds.minPositionX, bounds.maxPositionX),
+      positionY: clamp(livePosition.positionY + deltaY, bounds.minPositionY, bounds.maxPositionY),
+    };
+
+    setLivePosition(nextPosition);
+    onPoemPositionChange({ ...nextPosition, boxWidth: liveBoxWidth });
+  };
+
   return (
     <div
       ref={poemFrameRef}
@@ -404,7 +465,11 @@ export function PoemContent({
       >
         <div
           onPointerDown={handlePointerDown}
-          className="pointer-events-auto relative flex cursor-move touch-none select-none flex-col items-center justify-center"
+          onKeyDown={handlePoemKeyboardMove}
+          onFocus={() => setActiveTextSelection({ kind: 'poem' })}
+          tabIndex={0}
+          aria-label={t('poemBody')}
+          className="pointer-events-auto relative flex cursor-move touch-none select-none flex-col items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(84,127,125,0.45)]"
         >
           {/* Hover/drag/resize border indicator — absolutely positioned, no effect on text layout */}
           {(activeTextSelection?.kind === 'poem' || isDragging || isResizing) && (

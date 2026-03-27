@@ -1,8 +1,9 @@
-import { useEffect } from 'react';
+import { useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import { AlignCenter, AlignLeft, AlignRight, BookOpenText, SlidersHorizontal, X } from 'lucide-react';
 import type { ContentSectionProps, PoemSectionPlacement, TextAlign, TranslateFn } from '../types';
+import { useDialogA11y } from '../hooks/useDialogA11y';
 
 interface PoemEditorModalProps {
   isOpen: boolean;
@@ -194,6 +195,7 @@ function LayerControlCard({
 }
 
 export function PoemEditorModal({ isOpen, onClose, t, content }: PoemEditorModalProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
   const titlePlacementOptions = [
     { value: 'before-body' as const, label: t('positionBeforeBody') },
     { value: 'after-body' as const, label: t('positionAfterBody') },
@@ -208,26 +210,7 @@ export function PoemEditorModal({ isOpen, onClose, t, content }: PoemEditorModal
     { value: 'after-author' as const, label: t('positionAfterAuthor') },
   ];
 
-  useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-
-    const previousOverflow = document.body.style.overflow;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onClose();
-      }
-    };
-
-    document.body.style.overflow = 'hidden';
-    window.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isOpen, onClose]);
+  useDialogA11y({ isOpen, dialogRef, onClose });
 
   if (!isOpen) {
     return null;
@@ -247,18 +230,24 @@ export function PoemEditorModal({ isOpen, onClose, t, content }: PoemEditorModal
         />
 
         <motion.div
+          ref={dialogRef}
           initial={{ opacity: 0, scale: 0.96, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 20 }}
           className="relative z-[91] flex h-[100dvh] w-screen flex-col overflow-hidden bg-[linear-gradient(180deg,rgba(255,253,249,0.995),rgba(255,249,241,0.98))] shadow-[0_32px_100px_rgba(26,44,46,0.24)]"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="poem-editor-title"
+          aria-describedby="poem-editor-description"
+          tabIndex={-1}
         >
           <div className="flex items-start justify-between gap-4 border-b border-[rgba(34,48,52,0.06)] px-5 py-5 sm:px-7 lg:px-10">
             <div className="min-w-0">
               <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-(--app-accent-500)">
                 {t('content')}
               </div>
-              <h2 className="mt-2 text-2xl font-semibold text-gray-900">{t('poemEditorTitle')}</h2>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">{t('poemEditorHint')}</p>
+              <h2 id="poem-editor-title" className="mt-2 text-2xl font-semibold text-gray-900">{t('poemEditorTitle')}</h2>
+              <p id="poem-editor-description" className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">{t('poemEditorHint')}</p>
             </div>
 
             <button

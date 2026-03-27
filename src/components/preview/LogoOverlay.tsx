@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import type { CSSProperties, PointerEvent as ReactPointerEvent, RefObject, FC } from 'react';
+import type {
+  CSSProperties,
+  KeyboardEvent as ReactKeyboardEvent,
+  PointerEvent as ReactPointerEvent,
+  RefObject,
+  FC,
+} from 'react';
 import { getPreviewDragBounds, getPreviewPositioningRect } from '../../positioningRect';
 import type { LogoConfig } from '../../types';
 
@@ -15,9 +21,13 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
+const KEYBOARD_MOVE_STEP = 1;
+const KEYBOARD_MOVE_STEP_FAST = 3;
+
 export const LogoOverlay: FC<LogoOverlayProps> = ({ frameRef, logo, onLogoChange, onInteractionStart, onInteractionEnd }) => {
   const [livePosition, setLivePosition] = useState({ positionX: logo.positionX, positionY: logo.positionY });
   const isDraggingRef = useRef(false);
+  const logoRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!isDraggingRef.current) {
@@ -88,6 +98,41 @@ export const LogoOverlay: FC<LogoOverlayProps> = ({ frameRef, logo, onLogoChange
     window.addEventListener('pointercancel', handlePointerUp);
   };
 
+  const handleKeyboardMove = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    const isArrowKey = event.key === 'ArrowLeft'
+      || event.key === 'ArrowRight'
+      || event.key === 'ArrowUp'
+      || event.key === 'ArrowDown';
+
+    if (!isArrowKey) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const step = event.shiftKey ? KEYBOARD_MOVE_STEP_FAST : KEYBOARD_MOVE_STEP;
+    const frameRect = frameRef.current ? getPreviewPositioningRect(frameRef.current) : null;
+    const boxRect = logoRef.current?.getBoundingClientRect();
+    const bounds = frameRect && boxRect
+      ? getPreviewDragBounds(frameRect, boxRect)
+      : {
+          minPositionX: 0,
+          maxPositionX: 100,
+          minPositionY: 0,
+          maxPositionY: 100,
+        };
+    const deltaX = event.key === 'ArrowLeft' ? -step : event.key === 'ArrowRight' ? step : 0;
+    const deltaY = event.key === 'ArrowUp' ? -step : event.key === 'ArrowDown' ? step : 0;
+    const nextPosition = {
+      positionX: clamp(livePosition.positionX + deltaX, bounds.minPositionX, bounds.maxPositionX),
+      positionY: clamp(livePosition.positionY + deltaY, bounds.minPositionY, bounds.maxPositionY),
+    };
+
+    setLivePosition(nextPosition);
+    onLogoChange(nextPosition);
+  };
+
   const style: CSSProperties = {
     position: 'absolute',
     left: `${livePosition.positionX}%`,
@@ -105,9 +150,13 @@ export const LogoOverlay: FC<LogoOverlayProps> = ({ frameRef, logo, onLogoChange
 
   return (
     <div
+      ref={logoRef}
       style={style}
       onPointerDown={handlePointerDown}
-      className="absolute touch-none select-none"
+      onKeyDown={handleKeyboardMove}
+      tabIndex={0}
+      aria-label="Logo element"
+      className="absolute touch-none select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(84,127,125,0.45)]"
     >
       <img
         src={logo.imageUrl}

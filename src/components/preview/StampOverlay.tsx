@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { CSSProperties, PointerEvent as ReactPointerEvent, RefObject } from 'react';
+import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent, RefObject } from 'react';
 import { getPreviewDragBounds, getPreviewPositioningRect } from '../../positioningRect';
 import {
   getBrushStampSkew,
@@ -19,6 +19,9 @@ interface StampOverlayProps {
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
+
+const KEYBOARD_MOVE_STEP = 1;
+const KEYBOARD_MOVE_STEP_FAST = 3;
 
 function getFrameStyle(stamp: StampConfig): CSSProperties {
   const { skewXDeg, skewYDeg } = getBrushStampSkew();
@@ -44,6 +47,7 @@ function getFrameStyle(stamp: StampConfig): CSSProperties {
 export function StampOverlay({ frameRef, stamp, onStampChange, onInteractionStart, onInteractionEnd }: StampOverlayProps) {
   const [livePosition, setLivePosition] = useState({ positionX: stamp.positionX, positionY: stamp.positionY });
   const isDraggingRef = useRef(false);
+  const stampRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -130,6 +134,41 @@ export function StampOverlay({ frameRef, stamp, onStampChange, onInteractionStar
     window.addEventListener('pointercancel', handlePointerUp);
   };
 
+  const handleKeyboardMove = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    const isArrowKey = event.key === 'ArrowLeft'
+      || event.key === 'ArrowRight'
+      || event.key === 'ArrowUp'
+      || event.key === 'ArrowDown';
+
+    if (!isArrowKey) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const step = event.shiftKey ? KEYBOARD_MOVE_STEP_FAST : KEYBOARD_MOVE_STEP;
+    const frameRect = frameRef.current ? getPreviewPositioningRect(frameRef.current) : null;
+    const boxRect = stampRef.current?.getBoundingClientRect();
+    const bounds = frameRect && boxRect
+      ? getPreviewDragBounds(frameRect, boxRect)
+      : {
+          minPositionX: 0,
+          maxPositionX: 100,
+          minPositionY: 0,
+          maxPositionY: 100,
+        };
+    const deltaX = event.key === 'ArrowLeft' ? -step : event.key === 'ArrowRight' ? step : 0;
+    const deltaY = event.key === 'ArrowUp' ? -step : event.key === 'ArrowDown' ? step : 0;
+    const nextPosition = {
+      positionX: clamp(livePosition.positionX + deltaX, bounds.minPositionX, bounds.maxPositionX),
+      positionY: clamp(livePosition.positionY + deltaY, bounds.minPositionY, bounds.maxPositionY),
+    };
+
+    setLivePosition(nextPosition);
+    onStampChange(nextPosition);
+  };
+
   return (
     <div
       className="absolute pointer-events-none"
@@ -140,8 +179,12 @@ export function StampOverlay({ frameRef, stamp, onStampChange, onInteractionStar
       }}
     >
       <div
+        ref={stampRef}
         onPointerDown={handlePointerDown}
-        className="pointer-events-auto relative cursor-move touch-none select-none"
+        onKeyDown={handleKeyboardMove}
+        tabIndex={0}
+        aria-label="Stamp element"
+        className="pointer-events-auto relative cursor-move touch-none select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(84,127,125,0.45)]"
         style={{
           ...getFrameStyle(stamp),
         }}

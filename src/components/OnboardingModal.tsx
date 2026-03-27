@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles, ArrowRight, Check, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Language } from '../translations';
 import type { TemplateSectionProps, TranslateFn } from '../types';
+import { useDialogA11y } from '../hooks/useDialogA11y';
 
 interface OnboardingModalProps {
   isOpen: boolean;
@@ -15,6 +16,9 @@ interface OnboardingModalProps {
 export function OnboardingModal({ isOpen, onClose, t, language, templates }: OnboardingModalProps) {
   const [mobilePage, setMobilePage] = useState(1);
   const [isMobile, setIsMobile] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useDialogA11y({ isOpen, dialogRef, onClose });
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -44,10 +48,16 @@ export function OnboardingModal({ isOpen, onClose, t, language, templates }: Onb
         />
 
         <motion.div
+          ref={dialogRef}
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
           className="relative flex min-h-[500px] w-full max-w-4xl flex-col overflow-hidden rounded-[2rem] bg-white shadow-2xl md:min-h-[600px] md:flex-row"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="onboarding-modal-title"
+          aria-describedby="onboarding-modal-description"
+          tabIndex={-1}
         >
           <button
             onClick={onClose}
@@ -67,7 +77,7 @@ export function OnboardingModal({ isOpen, onClose, t, language, templates }: Onb
             <div className="mb-6 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-md">
               <Sparkles className="h-8 w-8 text-white" />
             </div>
-            <h2 className="mb-4 text-3xl font-bold tracking-tight md:text-4xl">
+            <h2 id="onboarding-modal-title" className="mb-4 text-3xl font-bold tracking-tight md:text-4xl">
               {t('onboardingWelcome')}
             </h2>
             <div className="space-y-6">
@@ -75,7 +85,7 @@ export function OnboardingModal({ isOpen, onClose, t, language, templates }: Onb
                 {t('onboardingTitle')}
               </p>
               <div className="h-1 w-12 rounded-full bg-white/40" />
-              <p className="text-base leading-relaxed text-white/80">
+              <p id="onboarding-modal-description" className="text-base leading-relaxed text-white/80">
                 {t('onboardingSubtitle')}
               </p>
               <p className="text-sm leading-relaxed text-white/70 italic">

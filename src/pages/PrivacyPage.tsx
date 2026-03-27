@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Logo } from '../components/logo';
+import { usePageMetadata } from '../hooks/usePageMetadata';
 
 function Section({ title, children }: { title: string; children: import('react').ReactNode }) {
   return (
@@ -12,14 +13,17 @@ function Section({ title, children }: { title: string; children: import('react')
 }
 
 export function PrivacyPage() {
+  usePageMetadata({
+    title: 'Privacy Policy – InkPoem',
+    description: 'Learn how InkPoem collects, uses, and protects your personal data.',
+    canonical: 'https://inkpoem.com/privacy',
+    ogTitle: 'Privacy Policy – InkPoem',
+    ogUrl: 'https://inkpoem.com/privacy',
+    robots: 'index, follow',
+  });
+
   return (
     <div className="min-h-screen bg-transparent">
-      <title>Privacy Policy – InkPoem</title>
-      <meta name="description" content="Learn how InkPoem collects, uses, and protects your personal data." />
-      <meta property="og:title" content="Privacy Policy – InkPoem" />
-      <meta property="og:url" content="https://inkpoem.com/privacy" />
-      <link rel="canonical" href="https://inkpoem.com/privacy" />
-
       {/* Nav */}
       <header className="bg-[rgba(255,253,249,0.92)] border-b border-[rgba(34,48,52,0.08)] sticky top-0 z-10 backdrop-blur">
         <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between gap-4">

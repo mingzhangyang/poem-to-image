@@ -8,6 +8,7 @@ import { useBillingPackages } from '../hooks/useBillingPackages';
 import { useBillingHistory, type TransactionItem } from '../hooks/useBillingHistory';
 import { useCheckoutReturn } from '../hooks/useCheckoutReturn';
 import { useLang } from '../hooks/useLang';
+import { usePageMetadata } from '../hooks/usePageMetadata';
 import { Logo } from '../components/logo';
 
 const CLERK_CONFIGURED = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
@@ -28,6 +29,10 @@ export function AccountPage() {
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [purchaseError, setPurchaseError] = useState<string | null>(null);
   const { t } = useLang();
+  usePageMetadata({
+    title: 'Account – InkPoem',
+    robots: 'noindex, nofollow',
+  });
 
   useCheckoutReturn({ getToken, refetchBalance, refetchHistory });
 
@@ -66,9 +71,6 @@ export function AccountPage() {
 
   return (
     <div className="min-h-screen bg-transparent">
-      <title>Account – InkPoem</title>
-      <meta name="robots" content="noindex, nofollow" />
-
       {/* Nav */}
       <header className="bg-[rgba(255,253,249,0.92)] border-b border-[rgba(34,48,52,0.08)] sticky top-0 z-10 backdrop-blur">
         <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
