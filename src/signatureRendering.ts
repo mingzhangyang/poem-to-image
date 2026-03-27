@@ -16,6 +16,62 @@ export const SIGNATURE_FONTS = [
 ];
 
 export const DEFAULT_SIGNATURE_FONT = SIGNATURE_FONTS[0].value;
+const SIGNATURE_FONT_STYLESHEET_HREF = 'https://fonts.googleapis.com/css2?family=Great+Vibes&family=Mr+Dafoe&family=Caveat&family=Dancing+Script&family=Pacifico&family=Satisfy&family=Alex+Brush&family=Parisienne&family=Sacramento&family=Yellowtail&family=Homemade+Apple&family=Allura&display=swap';
+let signatureFontsReadyPromise: Promise<void> | null = null;
+
+function waitForSignatureFonts(link: HTMLLinkElement): Promise<void> {
+  return new Promise((resolve) => {
+    let resolved = false;
+    const finish = () => {
+      if (resolved) return;
+      resolved = true;
+      resolve();
+    };
+
+    const handleLoad = () => {
+      link.dataset.loaded = 'true';
+      finish();
+    };
+
+    link.addEventListener('load', handleLoad, { once: true });
+    link.addEventListener('error', finish, { once: true });
+
+    // Fallback for browsers that do not reliably fire load for cached stylesheets.
+    window.setTimeout(finish, 1800);
+  });
+}
+
+export async function ensureSignatureFontsLoaded(): Promise<void> {
+  if (typeof document === 'undefined') {
+    return;
+  }
+
+  if (!signatureFontsReadyPromise) {
+    signatureFontsReadyPromise = (async () => {
+      let link = document.head.querySelector<HTMLLinkElement>('link[data-signature-fonts="true"]');
+
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = SIGNATURE_FONT_STYLESHEET_HREF;
+        link.setAttribute('data-signature-fonts', 'true');
+        document.head.appendChild(link);
+      }
+
+      if (link.dataset.loaded !== 'true') {
+        await waitForSignatureFonts(link);
+      }
+
+      if ('fonts' in document) {
+        await Promise.allSettled(
+          SIGNATURE_FONTS.map((font) => document.fonts.load(`16px "${font.value}"`)),
+        );
+      }
+    })();
+  }
+
+  await signatureFontsReadyPromise;
+}
 
 // Canvas area relative to fontSize so the signature has room
 const WIDTH_FACTOR = 9;

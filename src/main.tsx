@@ -1,18 +1,21 @@
 import { Suspense, StrictMode, lazy } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { ClerkProvider } from '@clerk/react';
-import { ClerkAuthBridge } from './components/auth/ClerkAuthBridge';
 import { NoAuthProvider } from './context/auth';
 import App from './App.tsx';
 import { ToastProvider } from './components/ToastProvider';
 import './index.css';
 
+const ClerkProvider = lazy(async () => ({ default: (await import('@clerk/react')).ClerkProvider }));
+const ClerkAuthBridge = lazy(async () => ({ default: (await import('./components/auth/ClerkAuthBridge')).ClerkAuthBridge }));
 const AccountPage = lazy(async () => ({ default: (await import('./pages/AccountPage.tsx')).AccountPage }));
 const PrivacyPage = lazy(async () => ({ default: (await import('./pages/PrivacyPage.tsx')).PrivacyPage }));
 const AboutPage = lazy(async () => ({ default: (await import('./pages/AboutPage.tsx')).AboutPage }));
 
-const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string | undefined;
+const runtimeClerkKey = typeof window !== 'undefined'
+  ? (window as { __INKPOEM_CLERK_PUBLISHABLE_KEY?: string }).__INKPOEM_CLERK_PUBLISHABLE_KEY
+  : undefined;
+const clerkPublishableKey = runtimeClerkKey ?? (import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string | undefined);
 
 function RouteFallback() {
   return (
@@ -40,11 +43,13 @@ createRoot(document.getElementById('root')!).render(
     <BrowserRouter>
       <ToastProvider>
         {clerkPublishableKey ? (
-          <ClerkProvider publishableKey={clerkPublishableKey}>
-            <ClerkAuthBridge>
-              <AppRoutes />
-            </ClerkAuthBridge>
-          </ClerkProvider>
+          <Suspense fallback={<RouteFallback />}>
+            <ClerkProvider publishableKey={clerkPublishableKey}>
+              <ClerkAuthBridge>
+                <AppRoutes />
+              </ClerkAuthBridge>
+            </ClerkProvider>
+          </Suspense>
         ) : (
           <NoAuthProvider>
             <AppRoutes />

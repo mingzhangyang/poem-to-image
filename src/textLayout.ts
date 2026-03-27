@@ -77,6 +77,7 @@ export function createCanvasTextMeasurer(
   context?: CanvasRenderingContext2D | null,
 ): TextLayoutMeasurer {
   const canvasContext = context ?? document.createElement('canvas').getContext('2d');
+  const font = `${fontSize}px ${fontFamily}`;
 
   if (!canvasContext) {
     return {
@@ -90,18 +91,38 @@ export function createCanvasTextMeasurer(
     };
   }
 
+  canvasContext.font = font;
+  const measureCache = new Map<string, MeasuredText>();
+
   return {
     measureText: (text: string) => {
-      canvasContext.font = `${fontSize}px ${fontFamily}`;
-      const metrics = canvasContext.measureText(text || ' ');
+      const key = text || ' ';
+      const cached = measureCache.get(key);
+      if (cached) {
+        return cached;
+      }
 
-      return {
+      // Canvas state can change when a shared context is passed from drawing code.
+      if (canvasContext.font !== font) {
+        canvasContext.font = font;
+      }
+
+      const metrics = canvasContext.measureText(key);
+      const measured: MeasuredText = {
         width: metrics.width,
         actualBoundingBoxLeft: metrics.actualBoundingBoxLeft ?? 0,
         actualBoundingBoxRight: metrics.actualBoundingBoxRight ?? metrics.width,
         actualBoundingBoxAscent: metrics.actualBoundingBoxAscent ?? fontSize,
         actualBoundingBoxDescent: metrics.actualBoundingBoxDescent ?? 0,
       };
+
+      measureCache.set(key, measured);
+      if (measureCache.size > 2048) {
+        measureCache.clear();
+        measureCache.set(key, measured);
+      }
+
+      return measured;
     },
   };
 }
@@ -225,17 +246,26 @@ function wrapHorizontalParagraph(measurer: TextLayoutMeasurer, paragraph: string
 
   const wrappedLines: string[] = [];
   let currentLine = '';
+  let currentWidth = 0;
 
   Array.from(paragraph).forEach((character) => {
-    const candidate = `${currentLine}${character}`;
+    const characterWidth = measurer.measureText(character).width;
+    const nextWidth = currentLine ? currentWidth + letterSpacing + characterWidth : characterWidth;
 
-    if (currentLine && measureTextWidth(measurer, candidate, letterSpacing) > maxWidth) {
+    if (currentLine && nextWidth > maxWidth) {
       wrappedLines.push(currentLine);
-      currentLine = character.trim() ? character : '';
+      if (character.trim()) {
+        currentLine = character;
+        currentWidth = characterWidth;
+      } else {
+        currentLine = '';
+        currentWidth = 0;
+      }
       return;
     }
 
-    currentLine = candidate;
+    currentLine = `${currentLine}${character}`;
+    currentWidth = nextWidth;
   });
 
   if (currentLine || wrappedLines.length === 0) {

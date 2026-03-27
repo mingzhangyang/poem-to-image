@@ -1,6 +1,6 @@
 import { ChevronRight, CreditCard, Globe, Info, Loader2, LogIn, Shield } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { SignInButton, UserButton } from '@clerk/react';
+import { AuthSignInButton, AuthUserButton } from '../auth/ClerkUi';
 import { useAppAuth } from '../../context/auth';
 import type { BillingSectionProps, TranslateFn } from '../../types';
 import type { Language } from '../../translations';
@@ -69,14 +69,14 @@ export function SettingsPanel({ t, language, onLanguageChange, billing }: Settin
           <div className="app-soft-surface rounded-xl p-4 text-center space-y-3">
             <p className="text-sm text-gray-500">{t('errSignInRequired')}</p>
             {CLERK_CONFIGURED ? (
-              <SignInButton mode="modal">
+              <AuthSignInButton mode="modal">
                 <button
                   type="button"
                   className="app-button-primary inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium"
                 >
                   <LogIn className="w-4 h-4" /> {t('signIn')}
                 </button>
-              </SignInButton>
+              </AuthSignInButton>
             ) : (
               <p className="text-xs text-gray-400">Set VITE_CLERK_PUBLISHABLE_KEY to enable auth.</p>
             )}
@@ -87,7 +87,7 @@ export function SettingsPanel({ t, language, onLanguageChange, billing }: Settin
             className="app-soft-surface flex items-center justify-between gap-3 p-3 rounded-xl hover:border-[var(--app-accent-200)] hover:bg-[rgba(237,244,243,0.6)] transition-colors"
           >
             <div className="flex items-center gap-2 min-w-0">
-              {CLERK_CONFIGURED && <UserButton afterSignOutUrl={window.location.href} />}
+              {CLERK_CONFIGURED && <AuthUserButton afterSignOutUrl={window.location.href} />}
               {email && <span className="text-sm text-gray-700 truncate">{email}</span>}
             </div>
             <div className="shrink-0 flex items-center gap-2 text-sm font-semibold text-[var(--app-accent-700)]">

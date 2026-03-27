@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { SignInButton, UserButton } from '@clerk/react';
 import { ArrowLeft, CreditCard, Loader2, LogIn } from 'lucide-react';
+import { AuthSignInButton, AuthUserButton } from '../components/auth/ClerkUi';
 import { useAppAuth } from '../context/auth';
 import { useBalance } from '../hooks/useBalance';
 import { useBillingPackages } from '../hooks/useBillingPackages';
@@ -98,14 +98,14 @@ export function AccountPage() {
               <p className="text-sm text-gray-500 mt-1">{t('signInForCredits')}</p>
             </div>
             {CLERK_CONFIGURED ? (
-              <SignInButton mode="modal">
+              <AuthSignInButton mode="modal">
                 <button
                   type="button"
                   className="app-button-primary inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium"
                 >
                   <LogIn className="w-4 h-4" /> {t('signIn')}
                 </button>
-              </SignInButton>
+              </AuthSignInButton>
             ) : (
               <p className="text-xs text-gray-400">{t('authNotConfigured')}</p>
             )}
@@ -116,7 +116,7 @@ export function AccountPage() {
             <section className="app-panel-surface rounded-2xl p-6">
               <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 mb-4">{t('profile')}</h2>
               <div className="flex items-center gap-4">
-                {CLERK_CONFIGURED && <UserButton afterSignOutUrl="/account" />}
+                {CLERK_CONFIGURED && <AuthUserButton afterSignOutUrl="/account" />}
                 <div>
                   <p className="text-sm text-gray-500">{t('manageProfileDesc')}</p>
                 </div>

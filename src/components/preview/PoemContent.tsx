@@ -135,11 +135,23 @@ export function PoemContent({
       : [],
     [showBorder, vectorBorder, borderRenderWidth, borderRenderHeight, safeBorderWidth, borderStyle],
   );
-  const poemLayout = createStructuredPoemLayout(
-    {
+  const poemWrapWidth = useMemo(() => {
+    if (writingMode === 'horizontal-tb') {
+      return Math.max(1, liveBoxWidth !== undefined ? (frameSize.width * liveBoxWidth) / 100 : frameSize.width || 1);
+    }
+
+    if (liveBoxWidth !== undefined) {
+      return Math.max(1, (frameSize.width * liveBoxWidth) / 100);
+    }
+
+    return undefined;
+  }, [writingMode, liveBoxWidth, frameSize.width]);
+  const poemPlaceholder = t('poemPlaceholder');
+  const poemLayout = useMemo(
+    () => createStructuredPoemLayout({
       poem,
       poemStyle,
-      placeholder: t('poemPlaceholder'),
+      placeholder: poemPlaceholder,
       writingMode,
       fontFamily,
       fontSize,
@@ -148,12 +160,22 @@ export function PoemContent({
       textAlign,
       columns: columnCount,
       columnGap,
-      wrapWidth: writingMode === 'horizontal-tb'
-        ? Math.max(1, liveBoxWidth !== undefined ? (frameSize.width * liveBoxWidth) / 100 : frameSize.width || 1)
-        : liveBoxWidth !== undefined
-          ? Math.max(1, (frameSize.width * liveBoxWidth) / 100)
-          : undefined,
-    },
+      wrapWidth: poemWrapWidth,
+    }),
+    [
+      poem,
+      poemStyle,
+      poemPlaceholder,
+      writingMode,
+      fontFamily,
+      fontSize,
+      lineHeight,
+      letterSpacing,
+      textAlign,
+      columnCount,
+      columnGap,
+      poemWrapWidth,
+    ],
   );
 
   useEffect(() => {

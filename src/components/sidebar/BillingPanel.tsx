@@ -1,10 +1,8 @@
 import { CreditCard, Loader2, LogIn, Wallet } from 'lucide-react';
 import type { BillingSectionProps, TranslateFn } from '../../types';
 import { ControlSection } from '../ControlSection';
+import { AuthSignInButton, AuthUserButton } from '../auth/ClerkUi';
 import { useAppAuth } from '../../context/auth';
-
-// Clerk components — only rendered when VITE_CLERK_PUBLISHABLE_KEY is set (ClerkProvider is present)
-import { SignInButton, UserButton } from '@clerk/react';
 
 const CLERK_CONFIGURED = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
@@ -50,11 +48,11 @@ export function BillingPanel({ t, expanded, onToggle, billing }: BillingPanelPro
           <div className="text-center py-4 space-y-3">
             <p className="text-sm text-gray-500">{t('errSignInRequired')}</p>
             {CLERK_CONFIGURED ? (
-              <SignInButton mode="modal">
+              <AuthSignInButton mode="modal">
                 <button className="app-button-primary px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 mx-auto">
                   <LogIn className="w-4 h-4" /> {t('signIn')}
                 </button>
-              </SignInButton>
+              </AuthSignInButton>
             ) : (
               <p className="text-xs text-gray-400">Set VITE_CLERK_PUBLISHABLE_KEY to enable auth.</p>
             )}
@@ -64,7 +62,7 @@ export function BillingPanel({ t, expanded, onToggle, billing }: BillingPanelPro
             {/* User + balance */}
             <div className="app-soft-surface flex items-center justify-between gap-3 p-3 rounded-xl">
               <div className="flex items-center gap-2 min-w-0">
-                {CLERK_CONFIGURED && <UserButton afterSignOutUrl={window.location.href} />}
+                {CLERK_CONFIGURED && <AuthUserButton afterSignOutUrl={window.location.href} />}
                 {email && <span className="text-sm text-gray-700 truncate">{email}</span>}
               </div>
               <div className="shrink-0 flex items-center gap-1.5 text-sm font-semibold text-[var(--app-accent-700)]">

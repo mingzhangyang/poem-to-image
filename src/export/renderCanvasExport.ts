@@ -20,7 +20,7 @@ import {
   STAMP_INK_COLOR,
 } from '../stampRendering';
 import { createCanvasTextMeasurer, createTextLayout } from '../textLayout';
-import { drawSignatureToCanvas, getSignatureCanvasSize } from '../signatureRendering';
+import { drawSignatureToCanvas, ensureSignatureFontsLoaded, getSignatureCanvasSize } from '../signatureRendering';
 import type { BorderStyle, CustomText, ExportScale, LogoConfig, PoemContentData, PoemLayerStyle, PositionedElement, SignatureConfig, StampConfig, TextAlign, WritingMode } from '../types';
 
 interface CanvasExportBackground {
@@ -93,14 +93,35 @@ type DecorationLayer =
   | { kind: 'customText'; item: CustomText; zIndex: number; order: number }
   | { kind: 'logo'; item: LogoConfig; zIndex: number; order: number };
 
+const IMAGE_CACHE_LIMIT = 32;
+const imageLoadCache = new Map<string, Promise<HTMLImageElement>>();
+
 function loadImage(src: string) {
-  return new Promise<HTMLImageElement>((resolve, reject) => {
+  const cached = imageLoadCache.get(src);
+  if (cached) {
+    return cached;
+  }
+
+  const loadPromise = new Promise<HTMLImageElement>((resolve, reject) => {
     const image = new Image();
     image.decoding = 'async';
     image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error('Failed to load image'));
+    image.onerror = () => {
+      imageLoadCache.delete(src);
+      reject(new Error('Failed to load image'));
+    };
     image.src = src;
   });
+
+  imageLoadCache.set(src, loadPromise);
+  if (imageLoadCache.size > IMAGE_CACHE_LIMIT) {
+    const oldestKey = imageLoadCache.keys().next().value;
+    if (oldestKey) {
+      imageLoadCache.delete(oldestKey);
+    }
+  }
+
+  return loadPromise;
 }
 
 function toBlob(canvas: HTMLCanvasElement) {
@@ -746,6 +767,10 @@ export async function renderCanvasExport(scene: CanvasExportScene, options: Rend
 
   if (!ctx) {
     throw new Error('Failed to create export canvas');
+  }
+
+  if (scene.decorations.signatures.length > 0) {
+    await ensureSignatureFontsLoaded();
   }
 
   if ('fonts' in document) {

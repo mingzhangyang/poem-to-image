@@ -19,7 +19,6 @@ export default defineConfig({
         manualChunks: {
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
           'ui-vendor': ['lucide-react', 'motion'],
-          'auth-vendor': ['@clerk/react'],
         },
       },
     },
