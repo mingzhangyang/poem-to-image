@@ -219,6 +219,14 @@ export interface PoemContentData {
   sourceNote: string;
 }
 
+export interface PoemAutofillSuggestion extends PoemContentData {
+  id: string;
+  source: string;
+  licenseStatus: 'public-domain';
+  licenseNote: string;
+  confidence: number;
+}
+
 export type PoemSectionPlacement = 'before-body' | 'after-body' | 'after-author';
 
 export interface PoemLayerStyle {
@@ -251,10 +259,14 @@ export interface PoemLayerStyle {
 export interface ContentSectionProps {
   poem: PoemContentData;
   poemStyle: PoemLayerStyle;
+  poemAutofillSuggestion: PoemAutofillSuggestion | null;
+  isPoemAutofillMatching: boolean;
   onTitleChange: (value: string) => void;
   onAuthorChange: (value: string) => void;
   onBodyChange: (value: string) => void;
   onSourceNoteChange: (value: string) => void;
+  onApplyPoemAutofill: () => void;
+  onDismissPoemAutofill: () => void;
   onPoemStyleChange: (updates: Partial<PoemLayerStyle>) => void;
   onResetPoemStyle: () => void;
 }

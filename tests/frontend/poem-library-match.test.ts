@@ -1,0 +1,59 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { findBestPoemMatch, isAppliedPoemSuggestion } from '../../src/poemLibrary';
+
+test('findBestPoemMatch identifies a known Chinese poem by partial line', () => {
+  const suggestion = findBestPoemMatch('床前明月光', 'zh-CN');
+
+  assert.ok(suggestion);
+  assert.equal(suggestion?.title, '静夜思');
+  assert.equal(suggestion?.author, '李白');
+});
+
+test('findBestPoemMatch tolerates punctuation and whitespace', () => {
+  const suggestion = findBestPoemMatch('白日依山尽， 黄河入海流。', 'zh-CN');
+
+  assert.ok(suggestion);
+  assert.equal(suggestion?.title, '登鹳雀楼');
+});
+
+test('findBestPoemMatch prefers locale-specific variant when available', () => {
+  const suggestion = findBestPoemMatch('舉頭望明月', 'zh-TW');
+
+  assert.ok(suggestion);
+  assert.equal(suggestion?.title, '靜夜思');
+});
+
+test('findBestPoemMatch returns null for very short inputs', () => {
+  const suggestion = findBestPoemMatch('月光', 'zh-CN');
+
+  assert.equal(suggestion, null);
+});
+
+test('isAppliedPoemSuggestion remains false when only body text matches', () => {
+  const suggestion = findBestPoemMatch('床前明月光', 'zh-CN');
+  assert.ok(suggestion);
+
+  const applied = isAppliedPoemSuggestion({
+    title: '',
+    author: '',
+    body: suggestion.body,
+    sourceNote: '',
+  }, suggestion);
+
+  assert.equal(applied, false);
+});
+
+test('isAppliedPoemSuggestion becomes true when metadata also matches', () => {
+  const suggestion = findBestPoemMatch('床前明月光', 'zh-CN');
+  assert.ok(suggestion);
+
+  const applied = isAppliedPoemSuggestion({
+    title: ` ${suggestion.title} `,
+    author: suggestion.author,
+    body: suggestion.body,
+    sourceNote: suggestion.sourceNote,
+  }, suggestion);
+
+  assert.equal(applied, true);
+});

@@ -20,6 +20,7 @@ import { useImageExporter } from './hooks/useImageExporter';
 import { useTypographyConfig } from './hooks/useTypographyConfig';
 import { useCustomTemplates } from './hooks/useCustomTemplates';
 import { useTemplateManager } from './hooks/useTemplateManager';
+import { usePoemAutofill } from './hooks/usePoemAutofill';
 import { DEFAULT_POEMS } from './defaultPoems';
 import { editorTemplates } from './templates';
 import { isCjkLanguage } from './fontOptions';
@@ -72,6 +73,7 @@ export default function App() {
 
   const [poem, setPoem] = useState(DEFAULT_POEMS[initialLanguageRef.current]);
   const [poemStyle, setPoemStyle] = useState({ ...DEFAULT_POEM_STYLE });
+  const poemAutofill = usePoemAutofill({ poem, language });
 
   const [canvasWidth, setCanvasWidth] = useState(1080);
   const [canvasHeight, setCanvasHeight] = useState(1350);
@@ -394,10 +396,25 @@ export default function App() {
     content: {
       poem,
       poemStyle,
+      poemAutofillSuggestion: poemAutofill.suggestion,
+      isPoemAutofillMatching: poemAutofill.isMatching,
       onTitleChange: (value) => setPoem((prev) => ({ ...prev, title: value })),
       onAuthorChange: (value) => setPoem((prev) => ({ ...prev, author: value })),
       onBodyChange: (value) => setPoem((prev) => ({ ...prev, body: value })),
       onSourceNoteChange: (value) => setPoem((prev) => ({ ...prev, sourceNote: value })),
+      onApplyPoemAutofill: () => {
+        const suggestion = poemAutofill.applySuggestionToPoem();
+        if (!suggestion) {
+          return;
+        }
+        setPoem({
+          title: suggestion.title,
+          author: suggestion.author,
+          body: suggestion.body,
+          sourceNote: suggestion.sourceNote,
+        });
+      },
+      onDismissPoemAutofill: poemAutofill.dismissSuggestion,
       onPoemStyleChange: (updates) => setPoemStyle((prev) => ({ ...prev, ...updates })),
       onResetPoemStyle: () => setPoemStyle({ ...DEFAULT_POEM_STYLE }),
     },
