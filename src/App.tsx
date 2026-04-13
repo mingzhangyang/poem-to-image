@@ -441,6 +441,8 @@ export default function App() {
       onAiProviderChange: background.onAiProviderChange,
       onAiPromptChange: background.setAiPrompt,
       onGenerateAiBackground: background.onGenerateAiBackground,
+      backgroundSize: background.backgroundSize,
+      onBackgroundSizeChange: background.setBackgroundSize,
       onBgBrightnessChange: background.setBgBrightness,
       onBgBlurChange: background.setBgBlur,
     },

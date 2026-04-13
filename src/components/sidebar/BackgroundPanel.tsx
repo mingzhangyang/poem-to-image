@@ -280,7 +280,26 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
         ) : null}
 
         {background.backgroundType === 'image' || background.backgroundType === 'ai' ? (
-          <div className="pt-3 border-t border-gray-100">
+          <div className="pt-3 border-t border-gray-100 space-y-3">
+            <div>
+              <div className="mb-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-(--app-accent-500)">{t('bgFillMode')}</div>
+              <div className="flex gap-1.5">
+                {(['cover', 'contain', 'stretch'] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => background.onBackgroundSizeChange(mode)}
+                    className={`flex-1 rounded-lg border px-2 py-1.5 text-xs font-medium transition-colors ${
+                      background.backgroundSize === mode
+                        ? 'border-(--app-accent-400) bg-(--app-accent-50) text-(--app-accent-700)'
+                        : 'border-[rgba(34,48,52,0.08)] bg-white text-gray-600 hover:border-(--app-accent-200) hover:bg-(--app-accent-50)'
+                    }`}
+                  >
+                    {t(mode === 'cover' ? 'bgFillCover' : mode === 'contain' ? 'bgFillContain' : 'bgFillStretch')}
+                  </button>
+                ))}
+              </div>
+            </div>
             <button
               type="button"
               onClick={() => setIsImageAdjustmentsOpen((current) => !current)}

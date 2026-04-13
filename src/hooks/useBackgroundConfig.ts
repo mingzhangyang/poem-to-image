@@ -227,6 +227,7 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getTok
     setGradientColor1,
     setGradientColor2,
     setGradientDirection,
+    setBackgroundSize,
     setBgBrightness,
     setBgBlur,
     onAiProviderChange,

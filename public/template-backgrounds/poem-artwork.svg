@@ -1,0 +1,114 @@
+<svg viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="sunGlow" cx="70%" cy="25%" r="60%">
+      <stop offset="0%" stop-color="#F2E6D0" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#FAF7F2" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="waterWash1" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#A3BEB2" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#FAF7F2" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="waterWash2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#92B0A2" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#FAF7F2" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="bottomWash" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0%" stop-color="#A3BEB2" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#FAF7F2" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="inkGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1C1E1A"/>
+      <stop offset="100%" stop-color="#3A3E36"/>
+    </linearGradient>
+    <linearGradient id="inkLightGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3F443B"/>
+      <stop offset="100%" stop-color="#5D6356"/>
+    </linearGradient>
+
+    <g id="duck">
+      <path d="M -60 20 Q -30 40, 10 30 Q 30 20, 35 0 Q 40 -30, 55 -30 Q 65 -30, 70 -25 Q 60 -20, 50 -22 Q 40 -15, 30 5 Q -10 10, -60 20 Z"/>
+      <path d="M 55 -30 Q 65 -30, 70 -25 Q 60 -20, 50 -22 Z" fill="#A67C58"/>
+      <circle cx="46" cy="-24" r="1.5" fill="#FAF7F2"/>
+      <circle cx="46.5" cy="-24" r="0.8" fill="#1A1C18"/>
+      <path d="M -15 10 Q -5 0, 15 5" stroke="#FAF7F2" stroke-width="1.5" fill="none" opacity="0.4"/>
+    </g>
+
+    <g id="blossom">
+      <circle cx="0" cy="-4" r="3.5" fill="#E8B4B8" opacity="0.85"/>
+      <circle cx="4" cy="-1" r="3.5" fill="#E8B4B8" opacity="0.85"/>
+      <circle cx="2.5" cy="4" r="3.5" fill="#E8B4B8" opacity="0.85"/>
+      <circle cx="-2.5" cy="4" r="3.5" fill="#E8B4B8" opacity="0.85"/>
+      <circle cx="-4" cy="-1" r="3.5" fill="#E8B4B8" opacity="0.85"/>
+      <circle cx="0" cy="0" r="1.2" fill="#9C5B61"/>
+    </g>
+  </defs>
+
+  <rect width="100%" height="100%" fill="#FAF7F2"/>
+  <rect width="100%" height="100%" fill="url(#sunGlow)"/>
+
+  <g id="water-layers">
+    <path d="M 0 320 Q 250 300, 500 330 T 800 350 L 800 600 L 0 600 Z" fill="url(#waterWash1)"/>
+    <path d="M 0 420 Q 300 390, 600 440 T 800 450 L 800 600 L 0 600 Z" fill="url(#waterWash2)"/>
+    <path d="M 0 600 L 800 600 L 800 480 Q 500 520, 0 480 Z" fill="url(#bottomWash)"/>
+  </g>
+
+  <g id="bamboo-background" opacity="0.4">
+    <path d="M -20 -20 L 30 160" stroke="#6A7A6E" stroke-width="5" opacity="0.4" fill="none"/>
+    <path d="M 30 -20 L 70 200" stroke="#6A7A6E" stroke-width="3" opacity="0.3" fill="none"/>
+    <path d="M 20 20 Q 50 30, 70 45 Q 45 25, 20 20 M 20 20 Q 35 45, 40 70 Q 25 45, 20 20 M 50 50 Q 80 50, 100 60 Q 75 45, 50 50 M 50 50 Q 70 70, 80 95 Q 60 70, 50 50 M 10 80 Q 40 90, 60 110 Q 35 85, 10 80 M 10 80 Q 25 110, 30 135 Q 15 105, 10 80 M 40 120 Q 70 125, 95 140 Q 65 115, 40 120 M 70 150 Q 90 170, 100 190 Q 80 165, 70 150" fill="#6A7A6E" opacity="0.6"/>
+  </g>
+
+  <g id="peach-branch">
+    <g stroke="#3A332C" fill="none" stroke-linecap="round">
+      <path d="M -10 120 Q 60 100, 120 130 T 260 110 T 360 150" stroke-width="2.5"/>
+      <path d="M 120 130 Q 150 100, 170 80" stroke-width="1.5"/>
+      <path d="M 145 105 Q 175 110, 190 130" stroke-width="1.5"/>
+      <path d="M 260 110 Q 290 80, 300 70" stroke-width="1.2"/>
+      <path d="M 320 135 Q 350 120, 360 100" stroke-width="1"/>
+    </g>
+    <use href="#blossom" x="120" y="130"/>
+    <use href="#blossom" x="170" y="80" transform="scale(0.8)" transform-origin="170 80"/>
+    <use href="#blossom" x="190" y="130" transform="scale(0.9)" transform-origin="190 130"/>
+    <use href="#blossom" x="260" y="110"/>
+    <use href="#blossom" x="300" y="70" transform="scale(0.7)" transform-origin="300 70"/>
+    <use href="#blossom" x="360" y="150" transform="scale(0.85)" transform-origin="360 150"/>
+    <use href="#blossom" x="360" y="100" transform="scale(0.9)" transform-origin="360 100"/>
+    <use href="#blossom" x="80" y="115"/>
+    
+    <ellipse cx="220" cy="95" rx="2.5" ry="4" fill="#D99C9F" transform="rotate(45, 220, 95)"/>
+    <ellipse cx="280" cy="120" rx="2" ry="3.5" fill="#D99C9F" transform="rotate(-30, 280, 120)"/>
+    <ellipse cx="340" cy="140" rx="2.5" ry="3.5" fill="#D99C9F" transform="rotate(60, 340, 140)"/>
+  </g>
+
+  <g id="duck-reflections">
+    <g transform="translate(550, 465) scale(-1, -0.4)">
+      <use href="#duck" fill="#8DA69A" opacity="0.35"/>
+    </g>
+    <g transform="translate(680, 495) scale(-0.8, -0.3)">
+      <use href="#duck" fill="#8DA69A" opacity="0.25"/>
+    </g>
+  </g>
+
+  <g id="water-ripples-wakes">
+    <path d="M 580 445 Q 660 430, 780 440" stroke="#9BB3A7" fill="none" stroke-width="1.5" opacity="0.6"/>
+    <path d="M 590 465 Q 670 480, 770 490" stroke="#9BB3A7" fill="none" stroke-width="1.5" opacity="0.5"/>
+    <path d="M 610 455 Q 700 460, 800 465" stroke="#9BB3A7" fill="none" stroke-width="1" opacity="0.4"/>
+
+    <path d="M 700 485 Q 750 475, 820 480" stroke="#9BB3A7" fill="none" stroke-width="1.2" opacity="0.5"/>
+    <path d="M 710 500 Q 760 510, 820 515" stroke="#9BB3A7" fill="none" stroke-width="1.2" opacity="0.4"/>
+    <path d="M 725 492 Q 770 495, 820 500" stroke="#9BB3A7" fill="none" stroke-width="0.8" opacity="0.3"/>
+
+    <path d="M -50 430 Q 300 450, 500 420" stroke="#A5BFB2" stroke-width="0.8" fill="none" opacity="0.5"/>
+    <path d="M 150 480 Q 400 490, 550 470" stroke="#A5BFB2" stroke-width="0.8" fill="none" opacity="0.4"/>
+    <path d="M 300 530 Q 550 510, 850 540" stroke="#A5BFB2" stroke-width="0.8" fill="none" opacity="0.4"/>
+  </g>
+
+  <g id="ducks">
+    <g transform="translate(680, 490) scale(-0.8, 0.8)">
+      <use href="#duck" fill="url(#inkLightGrad)"/>
+    </g>
+    <g transform="translate(550, 450) scale(-1, 1)">
+      <use href="#duck" fill="url(#inkGrad)"/>
+    </g>
+  </g>
+</svg>

@@ -278,6 +278,7 @@ export interface BackgroundSectionProps {
   gradientColor2: string;
   gradientDirection: string;
   backgroundImage: string | null;
+  backgroundSize: 'cover' | 'contain' | 'stretch';
   bgBrightness: number;
   bgBlur: number;
   aiProvider: AiProvider;
@@ -294,6 +295,7 @@ export interface BackgroundSectionProps {
   onAiProviderChange: (value: AiProvider) => void;
   onAiPromptChange: (value: string) => void;
   onGenerateAiBackground: () => void;
+  onBackgroundSizeChange: (value: 'cover' | 'contain' | 'stretch') => void;
   onBgBrightnessChange: (value: number) => void;
   onBgBlurChange: (value: number) => void;
 }
