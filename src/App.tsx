@@ -1,4 +1,5 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { useUndoHistory } from './hooks/useUndoHistory';
 import { useAppAuth } from './context/auth';
 import { useToast } from './components/ToastProvider';
 import { getPlainPoemText, isSamePoemContent } from './poemContent';
@@ -25,7 +26,7 @@ import { DEFAULT_POEMS } from './defaultPoems';
 import { editorTemplates } from './templates';
 import { isCjkLanguage } from './fontOptions';
 import { usePageMetadata } from './hooks/usePageMetadata';
-import type { ExpandedSections, ExportFormat, ExportScale } from './types';
+import type { ExpandedSections, ExportFormat, ExportScale, PoemLayerStyle, TemplateBackgroundConfig, TemplateTypographyConfig, TemplateDecorationsConfig } from './types';
 
 const ONBOARDING_DISMISSED_STORAGE_KEY = 'poem-to-image.onboarding-dismissed';
 const OnboardingModal = lazy(async () => ({ default: (await import('./components/OnboardingModal')).OnboardingModal }));
@@ -347,6 +348,152 @@ export default function App() {
     decorations.logos,
     decorations.signatures,
   ]);
+  // --- Undo / Redo ---
+  interface EditorSnapshot {
+    poem: typeof poem;
+    poemStyle: PoemLayerStyle;
+    canvasWidth: number;
+    canvasHeight: number;
+    background: TemplateBackgroundConfig;
+    typography: TemplateTypographyConfig;
+    decorations: TemplateDecorationsConfig;
+  }
+
+  const { push: pushSnapshot, undo: undoHistory, redo: redoHistory, canUndo, canRedo } = useUndoHistory<EditorSnapshot>();
+
+  // Always-current ref: assigned during render so closures in timers always
+  // read the latest state without stale-closure issues.
+  const snapshotDataRef = useRef({ poem, poemStyle, canvasWidth, canvasHeight, background, typography, decorations });
+  snapshotDataRef.current = { poem, poemStyle, canvasWidth, canvasHeight, background, typography, decorations };
+
+  // Stable refs for the template-apply functions (they change identity each render)
+  const applyBackgroundTemplateRef = useRef(background.applyBackgroundTemplate);
+  const applyTypographyTemplateRef = useRef(typography.applyTypographyTemplate);
+  const applyDecorationsTemplateRef = useRef(decorations.applyDecorationsTemplate);
+  applyBackgroundTemplateRef.current = background.applyBackgroundTemplate;
+  applyTypographyTemplateRef.current = typography.applyTypographyTemplate;
+  applyDecorationsTemplateRef.current = decorations.applyDecorationsTemplate;
+
+  const isRestoringRef = useRef(false);
+  const snapshotTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const buildSnapshot = useCallback((): EditorSnapshot => {
+    const { poem, poemStyle, canvasWidth, canvasHeight, background, typography, decorations } = snapshotDataRef.current;
+    return {
+      poem,
+      poemStyle,
+      canvasWidth,
+      canvasHeight,
+      background: {
+        backgroundType: background.backgroundType === 'ai' ? 'image' : background.backgroundType,
+        backgroundColor: background.backgroundColor,
+        gradientColor1: background.gradientColor1,
+        gradientColor2: background.gradientColor2,
+        gradientDirection: background.gradientDirection,
+        backgroundImage: background.backgroundImage,
+        backgroundSize: background.backgroundSize,
+        bgBrightness: background.bgBrightness,
+        bgBlur: background.bgBlur,
+      },
+      typography: {
+        fontFamily: typography.fontFamily,
+        fontSize: typography.fontSize,
+        textColor: typography.textColor,
+        textAlign: typography.textAlign,
+        writingMode: typography.writingMode,
+        padding: typography.padding,
+        lineHeight: typography.lineHeight,
+        letterSpacing: typography.letterSpacing,
+        columns: typography.columns,
+        columnGap: typography.columnGap,
+        textShadowEnabled: typography.textShadowEnabled,
+        textShadowColor: typography.textShadowColor,
+        textShadowBlur: typography.textShadowBlur,
+        textShadowOffsetY: typography.textShadowOffsetY,
+        textShadowOffsetX: typography.textShadowOffsetX,
+      },
+      decorations: {
+        showBorder: decorations.showBorder,
+        borderStyle: decorations.borderStyle,
+        borderColor: decorations.borderColor,
+        borderWidth: decorations.borderWidth,
+        showStamp: decorations.showStamp,
+        stamp: decorations.stamp,
+        poemPosition: decorations.poemPosition,
+        customTexts: decorations.customTexts,
+        logos: decorations.logos,
+        signatures: decorations.signatures,
+      },
+    };
+  }, []); // reads from refs — stable
+
+  // Snapshot on scene changes; first invocation pushes the initial state immediately.
+  const isFirstSnapshotRef = useRef(true);
+  useEffect(() => {
+    if (isRestoringRef.current) {
+      isRestoringRef.current = false;
+      return;
+    }
+    if (isFirstSnapshotRef.current) {
+      isFirstSnapshotRef.current = false;
+      pushSnapshot(buildSnapshot());
+      return;
+    }
+    if (snapshotTimerRef.current) clearTimeout(snapshotTimerRef.current);
+    snapshotTimerRef.current = setTimeout(() => {
+      if (!isRestoringRef.current) pushSnapshot(buildSnapshot());
+    }, 800);
+    return () => {
+      if (snapshotTimerRef.current) clearTimeout(snapshotTimerRef.current);
+    };
+  }, [exportScene]); // exportScene captures all meaningful visual state
+
+  const restoreSnapshot = useCallback((snapshot: EditorSnapshot) => {
+    isRestoringRef.current = true;
+    if (snapshotTimerRef.current) clearTimeout(snapshotTimerRef.current);
+    setPoem(snapshot.poem);
+    setPoemStyle(snapshot.poemStyle);
+    setCanvasWidth(snapshot.canvasWidth);
+    setCanvasHeight(snapshot.canvasHeight);
+    setPresetSize('custom');
+    applyBackgroundTemplateRef.current(snapshot.background);
+    applyTypographyTemplateRef.current(snapshot.typography);
+    applyDecorationsTemplateRef.current(snapshot.decorations);
+  }, []); // stable — reads from refs
+
+  const handleUndo = useCallback(() => {
+    const snapshot = undoHistory();
+    if (snapshot) restoreSnapshot(snapshot);
+  }, [undoHistory, restoreSnapshot]);
+
+  const handleRedo = useCallback(() => {
+    const snapshot = redoHistory();
+    if (snapshot) restoreSnapshot(snapshot);
+  }, [redoHistory, restoreSnapshot]);
+
+  // Stable refs for the keyboard handler so the listener is only added once
+  const handleUndoRef = useRef(handleUndo);
+  const handleRedoRef = useRef(handleRedo);
+  handleUndoRef.current = handleUndo;
+  handleRedoRef.current = handleRedo;
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      // Skip when typing in a text field
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        handleUndoRef.current();
+      } else if (e.key === 'y' || (e.key === 'z' && e.shiftKey)) {
+        e.preventDefault();
+        handleRedoRef.current();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
   const { exportImage, shareImage: handleShare, shareToSocialPlatform: handleShareToSocial, isExporting, isSharing, canShare } = useImageExporter(
     exportFormat,
     exportScale,
@@ -538,7 +685,7 @@ export default function App() {
     <div className="min-h-dvh bg-transparent flex flex-col md:flex-row font-sans text-(--app-ink)">
       <Sidebar {...sidebarProps} />
 
-      <CanvasPreview {...canvasPreviewProps} />
+      <CanvasPreview {...canvasPreviewProps} canUndo={canUndo} canRedo={canRedo} onUndo={handleUndo} onRedo={handleRedo} />
 
       <Suspense fallback={null}>
         <OnboardingModal

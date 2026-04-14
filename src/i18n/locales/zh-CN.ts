@@ -268,7 +268,7 @@ const zhCN: TranslationMessages = {
     profile: "个人资料",
     manageProfileDesc: "通过头像菜单管理个人资料、安全设置和关联账户。",
     availableBalance: "可用余额",
-    creditCostInfo: "Gemini（NanoBanana 2）消耗 2 积分 · OpenAI 每次生成消耗 1 积分",
+    creditCostInfo: "Gemini 消耗 2 积分 · OpenAI 每次生成消耗 1 积分",
     checkoutFailed: "启动结帐失败，请重试。",
     networkError: "网络错误，请重试。",
     myTemplates: "我的模板",
@@ -283,9 +283,11 @@ const zhCN: TranslationMessages = {
     exportSuccess: "图片导出成功！",
     exportFailed: "图片导出失败，请重试。",
     onboardingWelcome: "欢迎使用 InkPoem",
-    onboardingTitle: "AI 生成的精美图片上文字经常是错误的",
-    onboardingSubtitle: "你可以让 AI 只生成精美的图片，然后再添加文字",
-    onboardingDescription: "AI 生成的背景非常惊艳，但在处理文字时常常差强人意。InkPoem 让你先生成完美的背景，然后通过专业的排版工具添加你的诗词。",
+    onboardingTitle: "将诗词变成精美图片，几秒导出。",
+    onboardingSubtitle: "选模板，填诗词，自由定制。",
+    onboardingDescription: "从精选模板出发，搭配纯色、渐变、上传图片或 AI 生成背景，一键导出高清图。",
+    onboardingFreemiumFree: "模板、排版、图片上传和导出永久免费。",
+    onboardingFreemiumPaid: "只有 AI 背景生成需要积分，最低 ¥14.99 起。",
     onboardingStart: "知道了，开始使用",
     onboardingNext: "下一步",
     onboardingPrevious: "上一步",
@@ -313,6 +315,8 @@ const zhCN: TranslationMessages = {
     flourishWave: "波浪线",
     flourishUnderline: "下划线",
     dragSignatureHint: "可在预览中拖曳签名",
+    undo: "撤销",
+    redo: "重做",
   };
 
 export default zhCN;

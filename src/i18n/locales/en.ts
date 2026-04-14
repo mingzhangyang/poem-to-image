@@ -1,8 +1,10 @@
 const en = {
     onboardingWelcome: "Welcome to InkPoem",
-    onboardingTitle: "AI images often have wrong text",
-    onboardingSubtitle: "We generate beauty, you add perfection",
-    onboardingDescription: "AI-generated images are stunning, but they often struggle with text. InkPoem lets you generate the perfect background first, then add your poem with full typographic control.",
+    onboardingTitle: "Design poem art. Export in seconds.",
+    onboardingSubtitle: "Pick a template, type your poem, customize everything.",
+    onboardingDescription: "Choose from curated templates or build your own look. Add a solid color, upload a photo, or generate a unique AI background — then export in high resolution.",
+    onboardingFreemiumFree: "Templates, typography, image upload, and export are always free.",
+    onboardingFreemiumPaid: "Only AI backgrounds cost credits — starting at $1.99 for 20 credits.",
     onboardingStart: "Got it, let's start",
     onboardingNext: "Next",
     onboardingPrevious: "Previous",
@@ -273,7 +275,7 @@ const en = {
     profile: "Profile",
     manageProfileDesc: "Manage your profile, security settings, and connected accounts via the avatar menu.",
     availableBalance: "Available balance",
-    creditCostInfo: "Gemini (NanoBanana 2) costs 2 credits · OpenAI costs 1 credit per generation",
+    creditCostInfo: "Gemini costs 2 credits · OpenAI costs 1 credit per generation",
     checkoutFailed: "Failed to start checkout. Please try again.",
     networkError: "Network error. Please try again.",
     myTemplates: "My Templates",
@@ -311,6 +313,8 @@ const en = {
     flourishWave: "Wavy",
     flourishUnderline: "Underline",
     dragSignatureHint: "Drag in preview",
+    undo: "Undo",
+    redo: "Redo",
   } as const;
 
 export default en;

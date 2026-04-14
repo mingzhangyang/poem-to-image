@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sparkles, ArrowRight, Check, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Sparkles, ArrowRight, Check, X, ChevronLeft, ChevronRight, Zap } from 'lucide-react';
 import type { Language } from '../translations';
 import type { TemplateSectionProps, TranslateFn } from '../types';
 import { useDialogA11y } from '../hooks/useDialogA11y';
@@ -166,7 +166,18 @@ export function OnboardingModal({ isOpen, onClose, t, language, templates }: Onb
               </div>
             </div>
 
-            <div className="mt-8">
+            <div className="mt-6 rounded-2xl border border-[#2dd4bf]/20 bg-[#f0fdfc] p-4 space-y-2">
+              <div className="flex items-start gap-2.5">
+                <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#0d9488]" />
+                <p className="text-xs leading-relaxed text-gray-600">{t('onboardingFreemiumFree')}</p>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <Zap className="mt-0.5 h-4 w-4 shrink-0 text-[#0d9488]" />
+                <p className="text-xs leading-relaxed text-gray-600">{t('onboardingFreemiumPaid')}</p>
+              </div>
+            </div>
+
+            <div className="mt-4">
               {isMobile ? (
                 <div className="flex items-center justify-between">
                   <button

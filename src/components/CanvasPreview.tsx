@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Download, Maximize2, Minus, Plus, X } from 'lucide-react';
+import { Download, Maximize2, Minus, Plus, Undo2, Redo2, X } from 'lucide-react';
 import type { CanvasPreviewProps } from '../types';
 import { SidebarFooter } from './sidebar/SidebarFooter';
 import { BackgroundLayer } from './preview/BackgroundLayer';
@@ -74,6 +74,10 @@ export function CanvasPreview({
   onPreviewZoomChange,
   onPreviewZoomReset,
   scale,
+  canUndo,
+  canRedo,
+  onUndo,
+  onRedo,
 }: CanvasPreviewProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const dragStartRef = useRef({ x: 0, y: 0 });
@@ -281,6 +285,29 @@ export function CanvasPreview({
       className="order-1 flex items-center justify-center bg-[radial-gradient(circle_at_top,rgba(191,214,213,0.34),transparent_34%),linear-gradient(180deg,rgba(255,250,242,0.6),rgba(246,243,236,0.92))] overflow-hidden relative h-dvh min-h-105 p-4 pt-6 pb-24 sm:p-6 md:order-2 md:flex-1 md:h-screen md:min-h-screen md:max-h-screen md:px-8 md:pb-8 md:pt-24"
     >
       <TransparentGrid visible={backgroundType === 'transparent'} />
+
+      <div className="flex absolute left-4 top-4 z-20 items-center gap-1 rounded-full border border-[rgba(84,127,125,0.16)] bg-[rgba(255,253,249,0.72)] px-2 py-1.5 text-xs text-(--app-accent-700) shadow-[0_10px_24px_var(--app-accent-shadow)] backdrop-blur-sm opacity-70 transition-opacity duration-200 hover:opacity-100 focus-within:opacity-100 md:left-6 md:top-6">
+        <button
+          type="button"
+          onClick={onUndo}
+          disabled={!canUndo}
+          className="flex items-center justify-center w-6 h-6 rounded-full text-(--app-accent-700) hover:bg-(--app-accent-50) hover:text-(--app-accent-900) transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          aria-label={t('undo')}
+          title={`${t('undo')} (Ctrl+Z)`}
+        >
+          <Undo2 size={13} />
+        </button>
+        <button
+          type="button"
+          onClick={onRedo}
+          disabled={!canRedo}
+          className="flex items-center justify-center w-6 h-6 rounded-full text-(--app-accent-700) hover:bg-(--app-accent-50) hover:text-(--app-accent-900) transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          aria-label={t('redo')}
+          title={`${t('redo')} (Ctrl+Y)`}
+        >
+          <Redo2 size={13} />
+        </button>
+      </div>
 
       <div className="flex absolute right-4 top-4 z-20 items-center gap-1 rounded-full border border-[rgba(84,127,125,0.16)] bg-[rgba(255,253,249,0.72)] px-2.5 py-1.5 text-xs text-(--app-accent-700) shadow-[0_10px_24px_var(--app-accent-shadow)] backdrop-blur-sm opacity-70 transition-opacity duration-200 hover:opacity-100 focus-within:opacity-100 md:right-6 md:top-6">
         <button

@@ -268,7 +268,7 @@ const ko: TranslationMessages = {
     profile: "프로필",
     manageProfileDesc: "아바타 메뉴를 통해 프로필, 보안 설정, 연결된 계정을 관리하세요.",
     availableBalance: "사용 가능한 잔액",
-    creditCostInfo: "Gemini（NanoBanana 2）는 2 크레딧 · OpenAI는 생성당 1 크레딧",
+    creditCostInfo: "Gemini는 2 크레딧 · OpenAI는 생성당 1 크레딧",
     checkoutFailed: "결제 시작에 실패했습니다. 다시 시도해 주세요.",
     networkError: "네트워크 오류. 다시 시도해 주세요.",
     myTemplates: "내 템플릿",
@@ -283,9 +283,11 @@ const ko: TranslationMessages = {
     exportSuccess: "Exported successfully!",
     exportFailed: "Export failed. Please try again.",
     onboardingWelcome: "InkPoem에 오신 것을 환영합니다",
-    onboardingTitle: "AI 이미지는 글자가 자주 틀립니다",
-    onboardingSubtitle: "아름다운 배경은 AI가, 정확한 글자는 당신이",
-    onboardingDescription: "AI가 만든 이미지는 아름답지만 텍스트는 자주 틀립니다. InkPoem에서는 먼저 배경을 만들고, 그 위에 시를 정확한 타이포그래피로 배치할 수 있습니다.",
+    onboardingTitle: "시를 아트로. 몇 초 만에 내보내기.",
+    onboardingSubtitle: "템플릿 선택, 시 입력, 자유롭게 커스터마이즈.",
+    onboardingDescription: "엄선된 템플릿으로 시작해 단색, 그라데이션, 사진 업로드, AI 배경 생성 중 원하는 스타일로 고해상도로 내보낼 수 있습니다.",
+    onboardingFreemiumFree: "템플릿, 타이포그래피, 이미지 업로드, 내보내기는 모두 무료.",
+    onboardingFreemiumPaid: "AI 배경만 크레딧이 필요 — 20 크레딧 $1.99부터.",
     onboardingStart: "알겠습니다, 시작할게요",
     onboardingNext: "다음",
     onboardingPrevious: "이전",
@@ -313,6 +315,8 @@ const ko: TranslationMessages = {
     flourishWave: "물결선",
     flourishUnderline: "밑줄",
     dragSignatureHint: "미리보기에서 드래그",
+    undo: "실행 취소",
+    redo: "다시 실행",
   };
 
 export default ko;

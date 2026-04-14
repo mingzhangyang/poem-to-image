@@ -268,7 +268,7 @@ const de: TranslationMessages = {
     profile: "Profil",
     manageProfileDesc: "Verwalte dein Profil, Sicherheitseinstellungen und verbundene Konten über das Avatar-Menü.",
     availableBalance: "Verfügbares Guthaben",
-    creditCostInfo: "Gemini (NanoBanana 2) kostet 2 Credits · OpenAI kostet 1 Credit pro Generierung",
+    creditCostInfo: "Gemini kostet 2 Credits · OpenAI kostet 1 Credit pro Generierung",
     checkoutFailed: "Checkout konnte nicht gestartet werden. Bitte versuche es erneut.",
     networkError: "Netzwerkfehler. Bitte versuche es erneut.",
     myTemplates: "Meine Vorlagen",
@@ -283,9 +283,11 @@ const de: TranslationMessages = {
     exportSuccess: "Exported successfully!",
     exportFailed: "Export failed. Please try again.",
     onboardingWelcome: "Willkommen bei InkPoem",
-    onboardingTitle: "KI-Bilder enthalten oft falschen Text",
-    onboardingSubtitle: "Die Schönheit erzeugt die KI, die Präzision bringst du",
-    onboardingDescription: "KI-generierte Bilder sehen großartig aus, haben aber oft Probleme mit Text. Mit InkPoem erzeugst du zuerst den Hintergrund und fügst dein Gedicht danach mit voller typografischer Kontrolle hinzu.",
+    onboardingTitle: "Gestalte Gedichtkunst. Exportiere in Sekunden.",
+    onboardingSubtitle: "Wähle eine Vorlage, gib dein Gedicht ein, passe alles an.",
+    onboardingDescription: "Starte mit einer kuratierten Vorlage. Wähle eine Volltonfarbe, einen Farbverlauf, ein Foto oder einen KI-generierten Hintergrund und exportiere in hoher Auflösung.",
+    onboardingFreemiumFree: "Vorlagen, Typografie, Bild-Upload und Export sind immer kostenlos.",
+    onboardingFreemiumPaid: "Nur KI-Hintergründe kosten Credits — ab $1,99 für 20 Credits.",
     onboardingStart: "Verstanden, los geht's",
     onboardingNext: "Weiter",
     onboardingPrevious: "Zurück",
@@ -313,6 +315,8 @@ const de: TranslationMessages = {
     flourishWave: "Wellenförmig",
     flourishUnderline: "Unterstrichen",
     dragSignatureHint: "In Vorschau ziehen",
+    undo: "Rückgängig",
+    redo: "Wiederholen",
   };
 
 export default de;

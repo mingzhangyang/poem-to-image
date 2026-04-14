@@ -456,6 +456,10 @@ export interface CanvasPreviewProps {
   onPreviewZoomChange: (value: number) => void;
   onPreviewZoomReset: () => void;
   scale: number;
+  canUndo: boolean;
+  canRedo: boolean;
+  onUndo: () => void;
+  onRedo: () => void;
 }
 
 export interface BillingPackage {

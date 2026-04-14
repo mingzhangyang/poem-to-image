@@ -268,7 +268,7 @@ const es: TranslationMessages = {
     profile: "Profil",
     manageProfileDesc: "Gérez votre profil, vos paramètres de sécurité et vos comptes connectés via le menu avatar.",
     availableBalance: "Solde disponible",
-    creditCostInfo: "Gemini（NanoBanana 2）消耗 2 积分 · OpenAI 每次生成消耗 1 积分",
+    creditCostInfo: "Gemini cuesta 2 créditos · OpenAI cuesta 1 crédito por generación",
     checkoutFailed: "啟動結帳失敗，請重試。",
     networkError: "網路錯誤，請重試。",
     myTemplates: "我的範本",
@@ -283,9 +283,11 @@ const es: TranslationMessages = {
     exportSuccess: "Exported successfully!",
     exportFailed: "Export failed. Please try again.",
     onboardingWelcome: "Bienvenido a InkPoem",
-    onboardingTitle: "Las imágenes de IA suelen tener texto incorrecto",
-    onboardingSubtitle: "La belleza la genera la IA, la precisión la pones tú",
-    onboardingDescription: "Las imágenes generadas por IA pueden ser preciosas, pero suelen fallar con el texto. InkPoem te permite crear primero el fondo y luego añadir tu poema con control tipográfico completo.",
+    onboardingTitle: "Crea arte poético. Exporta en segundos.",
+    onboardingSubtitle: "Elige una plantilla, escribe tu poema, personaliza todo.",
+    onboardingDescription: "Comienza con plantillas cuidadosamente diseñadas. Elige color sólido, degradado, una foto o fondo generado por IA y exporta en alta resolución.",
+    onboardingFreemiumFree: "Plantillas, tipografía, carga de imágenes y exportación son siempre gratuitos.",
+    onboardingFreemiumPaid: "Solo los fondos de IA cuestan créditos — desde $1,99 por 20 créditos.",
     onboardingStart: "Entendido, empezar",
     onboardingNext: "Siguiente",
     onboardingPrevious: "Anterior",
@@ -313,6 +315,8 @@ const es: TranslationMessages = {
     flourishWave: "Ondulado",
     flourishUnderline: "Subrayado",
     dragSignatureHint: "Arrastrar en vista previa",
+    undo: "Deshacer",
+    redo: "Rehacer",
   };
 
 export default es;

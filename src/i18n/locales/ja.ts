@@ -268,7 +268,7 @@ const ja: TranslationMessages = {
     profile: "プロフィール",
     manageProfileDesc: "アバターメニューからプロフィール、セキュリティ設定、連携アカウントを管理できます。",
     availableBalance: "利用可能残高",
-    creditCostInfo: "Gemini（NanoBanana 2）は 2 クレジット · OpenAI は 1 回の生成につき 1 クレジット",
+    creditCostInfo: "Gemini は 2 クレジット · OpenAI は 1 回の生成につき 1 クレジット",
     checkoutFailed: "チェックアウトの開始に失敗しました。もう一度お試しください。",
     networkError: "ネットワークエラー。もう一度お試しください。",
     myTemplates: "マイテンプレート",
@@ -283,9 +283,11 @@ const ja: TranslationMessages = {
     exportSuccess: "Exported successfully!",
     exportFailed: "Export failed. Please try again.",
     onboardingWelcome: "InkPoem へようこそ",
-    onboardingTitle: "AI 画像の文字はよく間違います",
-    onboardingSubtitle: "美しい背景は AI に、正しい文字はあなたに",
-    onboardingDescription: "AI 生成画像は美しい一方で、文字の扱いは苦手です。InkPoem なら背景を先に作り、その上に詩を正確なタイポグラフィで載せられます。",
+    onboardingTitle: "詩をアートに。数秒でエクスポート。",
+    onboardingSubtitle: "テンプレートを選び、詩を入力し、自由にカスタマイズ。",
+    onboardingDescription: "厳選テンプレートからスタートし、単色・グラデーション・画像アップロード・AI 背景生成を選択して高解像度でエクスポートできます。",
+    onboardingFreemiumFree: "テンプレート、タイポグラフィ、画像アップロード、エクスポートはすべて無料。",
+    onboardingFreemiumPaid: "AI 背景のみクレジットが必要 — 20 クレジット $1.99 から。",
     onboardingStart: "わかりました、始めます",
     onboardingNext: "次へ",
     onboardingPrevious: "前へ",
@@ -313,6 +315,8 @@ const ja: TranslationMessages = {
     flourishWave: "波線",
     flourishUnderline: "下線",
     dragSignatureHint: "プレビューでドラッグ",
+    undo: "元に戻す",
+    redo: "やり直す",
   };
 
 export default ja;
