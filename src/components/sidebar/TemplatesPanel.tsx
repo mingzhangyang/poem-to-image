@@ -100,7 +100,7 @@ function BuiltInTemplateCard({ t, template, isActive, onApply, variant = 'compac
       }`}
     >
       <div
-        className="h-16 rounded-xl mb-3 border border-[rgba(34,48,52,0.06)]"
+        className="h-24 rounded-xl mb-3 border border-[rgba(34,48,52,0.06)]"
         style={previewStyle}
       />
       <div className="flex items-start justify-between gap-3">

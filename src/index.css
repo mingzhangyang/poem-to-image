@@ -57,7 +57,7 @@ body {
 .app-select,
 .app-textarea {
 	width: 100%;
-	border-radius: 0.9rem;
+	border-radius: 0.75rem;
 	border: 1px solid rgba(34, 48, 52, 0.1);
 	background: rgba(255, 253, 249, 0.96);
 	color: var(--app-ink);

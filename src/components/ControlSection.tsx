@@ -20,7 +20,7 @@ export function ControlSection({ title, icon, expanded, onToggle, summary, highl
             <span className="min-w-0">
               <span className={`flex items-center gap-2 text-sm font-semibold ${expanded || highlighted ? 'text-(--app-ink)' : 'text-(--app-accent-800)'}`}>
                 <span className={expanded || highlighted ? 'text-[var(--app-accent-600)]' : 'text-[rgba(34,48,52,0.38)]'}>{icon}</span>
-                <span>{title}</span>
+                <span style={{ fontFamily: "'Cormorant Garamond', 'Noto Serif SC', Georgia, serif" }}>{title}</span>
               </span>
               {summary ? (
                 <span className={`mt-1.5 block text-xs leading-5 ${expanded ? 'text-[color:rgba(51,88,87,0.82)]' : 'text-(--app-accent-500)'}`}>

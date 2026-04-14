@@ -8,9 +8,9 @@ export function TransparentGrid({ visible }: TransparentGridProps) {
       className="absolute inset-0 pointer-events-none"
       style={{
         backgroundImage:
-          'linear-gradient(45deg, #e5e7eb 25%, transparent 25%), linear-gradient(-45deg, #e5e7eb 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e5e7eb 75%), linear-gradient(-45deg, transparent 75%, #e5e7eb 75%)',
-        backgroundSize: '20px 20px',
-        backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px',
+          'linear-gradient(45deg, rgba(34,48,52,0.06) 25%, transparent 25%), linear-gradient(-45deg, rgba(34,48,52,0.06) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(34,48,52,0.06) 75%), linear-gradient(-45deg, transparent 75%, rgba(34,48,52,0.06) 75%)',
+        backgroundSize: '12px 12px',
+        backgroundPosition: '0 0, 0 6px, 6px -6px, -6px 0px',
         opacity: visible ? 1 : 0,
         transition: 'opacity 0.3s',
       }}
