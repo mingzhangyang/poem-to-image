@@ -58,7 +58,7 @@ function BuiltInTemplateCard({ t, template, isActive, onApply, variant = 'compac
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(9,14,23,0.04)_0%,rgba(9,14,23,0.2)_100%)]" />
 
         <div className="absolute left-3 top-3 flex flex-wrap items-center gap-1.5">
-          <span className="rounded-full border border-[rgba(255,255,255,0.35)] bg-[rgba(255,255,255,0.88)] px-2 py-0.5 text-[10px] font-semibold text-gray-600">
+          <span className="rounded-full border border-[rgba(255,255,255,0.35)] bg-[rgba(255,255,255,0.88)] px-2 py-0.5 text-[10px] font-semibold text-(--app-accent-700)">
             {t(template.seriesKey)}
           </span>
           {template.usesBackgroundImage ? (
@@ -71,8 +71,8 @@ function BuiltInTemplateCard({ t, template, isActive, onApply, variant = 'compac
         <div className="absolute inset-x-3 bottom-3 rounded-xl border border-[rgba(34,48,52,0.08)] bg-[rgba(255,253,249,0.92)] px-3 py-2.5 shadow-[0_10px_24px_rgba(26,44,46,0.1)]">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <div className="text-sm font-semibold text-gray-900">{t(template.nameKey)}</div>
-              <p className="mt-0.5 text-[11px] leading-4 text-gray-500">
+              <div className="text-sm font-semibold text-(--app-ink)">{t(template.nameKey)}</div>
+              <p className="mt-0.5 text-[11px] leading-4 text-(--app-accent-500)">
                 {t(template.descriptionKey)}
               </p>
             </div>
@@ -106,7 +106,7 @@ function BuiltInTemplateCard({ t, template, isActive, onApply, variant = 'compac
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
-            <span className="rounded-full border border-[rgba(34,48,52,0.08)] bg-white px-2 py-0.5 text-[10px] font-semibold text-gray-500">
+            <span className="rounded-full border border-[rgba(34,48,52,0.08)] bg-white px-2 py-0.5 text-[10px] font-semibold text-(--app-accent-500)">
               {t(template.seriesKey)}
             </span>
             {template.usesBackgroundImage ? (
@@ -115,8 +115,8 @@ function BuiltInTemplateCard({ t, template, isActive, onApply, variant = 'compac
               </span>
             ) : null}
           </div>
-          <div className="text-sm font-semibold text-gray-900">{t(template.nameKey)}</div>
-          <p className="mt-1 text-xs leading-5 text-gray-500">{t(template.descriptionKey)}</p>
+          <div className="text-sm font-semibold text-(--app-ink)">{t(template.nameKey)}</div>
+          <p className="mt-1 text-xs leading-5 text-(--app-accent-500)">{t(template.descriptionKey)}</p>
         </div>
         <span
           className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
@@ -223,11 +223,11 @@ export function TemplatesPanel({ t, expanded, onToggle, templates, currentBackgr
         highlighted={!templates.activeTemplateId && !templates.activeCustomTemplateId}
       >
         <div className="space-y-4">
-          <p className="text-xs leading-5 text-gray-500">{t('templatesHint')}</p>
+          <p className="text-xs leading-5 text-(--app-accent-500)">{t('templatesHint')}</p>
 
           <div>
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t('myTemplates')}</span>
+              <span className="text-xs font-semibold text-(--app-accent-500) uppercase tracking-wide">{t('myTemplates')}</span>
               {!isSaving && (
                 <button
                   onClick={() => setIsSaving(true)}
@@ -265,7 +265,7 @@ export function TemplatesPanel({ t, expanded, onToggle, templates, currentBackgr
                       setIsSaving(false);
                       setTemplateName('');
                     }}
-                    className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+                    className="p-1.5 text-[rgba(34,48,52,0.4)] hover:text-(--app-accent-700) rounded-lg hover:bg-(--app-accent-50)"
                     aria-label={t('closeControls')}
                   >
                     <X className="w-4 h-4" />
@@ -275,7 +275,7 @@ export function TemplatesPanel({ t, expanded, onToggle, templates, currentBackgr
             )}
 
             {templates.customTemplates.length === 0 ? (
-              <p className="text-xs text-gray-400 py-2">{t('noCustomTemplates')}</p>
+              <p className="text-xs text-[rgba(34,48,52,0.4)] py-2">{t('noCustomTemplates')}</p>
             ) : (
               <div className="grid gap-2">
                 {templates.customTemplates.map((template) => {
@@ -314,7 +314,7 @@ export function TemplatesPanel({ t, expanded, onToggle, templates, currentBackgr
                               autoFocus
                             />
                           ) : (
-                            <div className="text-sm font-semibold text-gray-900 truncate">{template.name}</div>
+                            <div className="text-sm font-semibold text-(--app-ink) truncate">{template.name}</div>
                           )}
                         </div>
                         {isConfirmingDelete ? (
@@ -329,7 +329,7 @@ export function TemplatesPanel({ t, expanded, onToggle, templates, currentBackgr
                             </button>
                             <button
                               onClick={() => setDeletingId(null)}
-                              className="p-1 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+                              className="p-1 text-[rgba(34,48,52,0.4)] hover:text-(--app-accent-700) rounded-lg hover:bg-(--app-accent-50)"
                               aria-label={t('closeControls')}
                             >
                               <X className="w-3.5 h-3.5" />
@@ -347,7 +347,7 @@ export function TemplatesPanel({ t, expanded, onToggle, templates, currentBackgr
                             </button>
                             <button
                               onClick={() => startRenaming(template.id, template.name)}
-                              className="p-1 text-gray-300 hover:text-gray-500 rounded-lg hover:bg-gray-100 transition-colors"
+                              className="p-1 text-[rgba(34,48,52,0.25)] hover:text-(--app-accent-500) rounded-lg hover:bg-(--app-accent-50) transition-colors"
                               title="Rename template"
                               aria-label="Rename template"
                             >
@@ -355,7 +355,7 @@ export function TemplatesPanel({ t, expanded, onToggle, templates, currentBackgr
                             </button>
                             <button
                               onClick={() => setDeletingId(template.id)}
-                              className="p-1 text-gray-300 hover:text-red-400 rounded-lg hover:bg-red-50 transition-colors"
+                              className="p-1 text-[rgba(34,48,52,0.25)] hover:text-red-400 rounded-lg hover:bg-red-50 transition-colors"
                               aria-label={t('deleteTemplate')}
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -372,7 +372,7 @@ export function TemplatesPanel({ t, expanded, onToggle, templates, currentBackgr
 
           <div>
             <div className="mb-3 flex items-center justify-between gap-3">
-              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t('builtInTemplates')}</span>
+              <span className="text-xs font-semibold text-(--app-accent-500) uppercase tracking-wide">{t('builtInTemplates')}</span>
               <button
                 type="button"
                 onClick={() => setIsLibraryOpen(true)}
@@ -428,8 +428,8 @@ export function TemplatesPanel({ t, expanded, onToggle, templates, currentBackgr
                   <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-(--app-accent-500)">
                     {t('templates')}
                   </div>
-                  <h2 id="template-library-title" className="mt-2 text-2xl font-semibold text-gray-900">{t('builtInTemplates')}</h2>
-                  <p id="template-library-description" className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">{t('templatesHint')}</p>
+                  <h2 id="template-library-title" className="mt-2 text-2xl font-semibold text-(--app-ink)">{t('builtInTemplates')}</h2>
+                  <p id="template-library-description" className="mt-2 max-w-2xl text-sm leading-6 text-(--app-accent-500)">{t('templatesHint')}</p>
                 </div>
 
                 <button
@@ -447,8 +447,8 @@ export function TemplatesPanel({ t, expanded, onToggle, templates, currentBackgr
                   {templates.customTemplates.length > 0 && (
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">{t('myTemplates')}</span>
-                        <span className="text-[10px] text-gray-400">{templates.customTemplates.length}</span>
+                        <span className="text-[11px] font-semibold text-(--app-accent-500) uppercase tracking-wide">{t('myTemplates')}</span>
+                        <span className="text-[10px] text-[rgba(34,48,52,0.4)]">{templates.customTemplates.length}</span>
                       </div>
                       <div className="flex flex-wrap gap-3">
                         {templates.customTemplates.map((template) => {
@@ -475,8 +475,8 @@ export function TemplatesPanel({ t, expanded, onToggle, templates, currentBackgr
                               <div className="absolute inset-x-3 bottom-3 rounded-xl border border-[rgba(34,48,52,0.08)] bg-[rgba(255,253,249,0.92)] px-3 py-2.5 shadow-[0_10px_24px_rgba(26,44,46,0.1)]">
                                 <div className="flex items-start justify-between gap-3">
                                   <div className="min-w-0">
-                                    <div className="text-sm font-semibold text-gray-900 truncate">{template.name}</div>
-                                    <p className="mt-0.5 text-[11px] leading-4 text-gray-500">{t('myTemplates')}</p>
+                                    <div className="text-sm font-semibold text-(--app-ink) truncate">{template.name}</div>
+                                    <p className="mt-0.5 text-[11px] leading-4 text-(--app-accent-500)">{t('myTemplates')}</p>
                                   </div>
                                   <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold ${
                                     isActive ? 'bg-(--app-accent-700) text-white' : 'bg-(--app-accent-50) text-(--app-accent-700)'
@@ -494,8 +494,8 @@ export function TemplatesPanel({ t, expanded, onToggle, templates, currentBackgr
                   {groupedTemplates.map((group) => (
                     <div key={group.seriesKey} className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">{t(group.seriesKey)}</span>
-                        <span className="text-[10px] text-gray-400">{group.items.length}</span>
+                        <span className="text-[11px] font-semibold text-(--app-accent-500) uppercase tracking-wide">{t(group.seriesKey)}</span>
+                        <span className="text-[10px] text-[rgba(34,48,52,0.4)]">{group.items.length}</span>
                       </div>
                       <div className="flex flex-wrap gap-3">
                         {group.items.map((template) => (

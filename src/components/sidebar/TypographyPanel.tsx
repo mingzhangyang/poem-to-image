@@ -46,7 +46,7 @@ export function TypographyPanel({ language, t, expanded, onToggle, typography }:
     >
       <div className="space-y-3">
         <div>
-          <label className="block text-xs text-gray-500 mb-1">{t('fontFamily')}</label>
+          <label className="block text-xs text-(--app-accent-500) mb-1">{t('fontFamily')}</label>
           <select
             value={typography.fontFamily}
             onChange={(event) => typography.onFontFamilyChange(event.target.value)}
@@ -71,7 +71,7 @@ export function TypographyPanel({ language, t, expanded, onToggle, typography }:
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs text-gray-500 mb-1">{t('fontSize')} ({typography.fontSize}px)</label>
+            <label className="block text-xs text-(--app-accent-500) mb-1">{t('fontSize')} ({typography.fontSize}px)</label>
             <input
               type="range"
               min="12"
@@ -82,7 +82,7 @@ export function TypographyPanel({ language, t, expanded, onToggle, typography }:
             />
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">{t('textColor')}</label>
+            <label className="block text-xs text-(--app-accent-500) mb-1">{t('textColor')}</label>
             <div className="flex items-center gap-3 rounded-xl border border-[rgba(34,48,52,0.08)] bg-[rgba(255,253,249,0.94)] px-3 py-2">
               <input
                 type="color"
@@ -90,19 +90,19 @@ export function TypographyPanel({ language, t, expanded, onToggle, typography }:
                 onChange={(event) => typography.onTextColorChange(event.target.value)}
                 className="h-8 w-8 shrink-0 cursor-pointer rounded border-0 p-0"
               />
-              <span className="min-w-0 truncate text-sm text-gray-600 uppercase font-mono">{typography.textColor}</span>
+              <span className="min-w-0 truncate text-sm text-(--app-accent-700) uppercase font-mono">{typography.textColor}</span>
             </div>
           </div>
         </div>
 
-        <div className="flex gap-2 pt-2 border-t border-gray-100">
+        <div className="flex gap-2 pt-2 border-t border-[rgba(34,48,52,0.06)]">
           <div className="app-segment flex-1 p-1 rounded-lg flex">
             {(['left', 'center', 'right'] as TextAlign[]).map((align) => (
               <button
                 key={align}
                 onClick={() => typography.onTextAlignChange(align)}
                 className={`flex-1 py-1.5 flex justify-center items-center rounded-md transition-all ${
-                  typography.textAlign === align ? 'app-segment-button-active' : 'text-gray-500 hover:text-gray-700'
+                  typography.textAlign === align ? 'app-segment-button-active' : 'text-(--app-accent-500) hover:text-(--app-accent-700)'
                 }`}
               >
                 {align === 'left' ? <AlignLeft className="w-4 h-4" /> : null}
@@ -117,7 +117,7 @@ export function TypographyPanel({ language, t, expanded, onToggle, typography }:
                 key={mode}
                 onClick={() => typography.onWritingModeChange(mode)}
                 className={`flex-1 py-1.5 flex justify-center items-center rounded-md transition-all ${
-                  typography.writingMode === mode ? 'app-segment-button-active' : 'text-gray-500 hover:text-gray-700'
+                  typography.writingMode === mode ? 'app-segment-button-active' : 'text-(--app-accent-500) hover:text-(--app-accent-700)'
                 }`}
                 aria-label={mode === 'horizontal-tb' ? t('horizontal') : t('vertical')}
               >
@@ -127,7 +127,7 @@ export function TypographyPanel({ language, t, expanded, onToggle, typography }:
           </div>
         </div>
 
-        <div className="pt-2 border-t border-gray-100">
+        <div className="pt-2 border-t border-[rgba(34,48,52,0.06)]">
           <button
             type="button"
             onClick={() => setIsLayoutOpen((current) => !current)}
@@ -136,7 +136,7 @@ export function TypographyPanel({ language, t, expanded, onToggle, typography }:
           >
             <span className="min-w-0">
               <span className="block text-xs font-semibold uppercase tracking-[0.18em] text-(--app-accent-500)">{t('layout')}</span>
-              <span className="mt-1 block text-xs text-gray-500">
+              <span className="mt-1 block text-xs text-(--app-accent-500)">
                 {typography.padding}px · {typography.lineHeight} · {typography.columns} {t('columns')}
               </span>
             </span>
@@ -149,7 +149,7 @@ export function TypographyPanel({ language, t, expanded, onToggle, typography }:
             <div className="mt-3 space-y-3 rounded-2xl border border-[rgba(34,48,52,0.06)] bg-[rgba(255,250,242,0.6)] p-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">{t('padding')} ({typography.padding}px)</label>
+                  <label className="block text-xs text-(--app-accent-500) mb-1">{t('padding')} ({typography.padding}px)</label>
                   <input
                     type="range"
                     min="0"
@@ -160,7 +160,7 @@ export function TypographyPanel({ language, t, expanded, onToggle, typography }:
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">{t('lineHeight')} ({typography.lineHeight})</label>
+                  <label className="block text-xs text-(--app-accent-500) mb-1">{t('lineHeight')} ({typography.lineHeight})</label>
                   <input
                     type="range"
                     min="1"
@@ -175,7 +175,7 @@ export function TypographyPanel({ language, t, expanded, onToggle, typography }:
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">{t('letterSpacing')} ({typography.letterSpacing}px)</label>
+                  <label className="block text-xs text-(--app-accent-500) mb-1">{t('letterSpacing')} ({typography.letterSpacing}px)</label>
                   <input
                     type="range"
                     min="0"
@@ -186,7 +186,7 @@ export function TypographyPanel({ language, t, expanded, onToggle, typography }:
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">{t('columns')} ({typography.columns})</label>
+                  <label className="block text-xs text-(--app-accent-500) mb-1">{t('columns')} ({typography.columns})</label>
                   <input
                     type="range"
                     min="1"
@@ -199,7 +199,7 @@ export function TypographyPanel({ language, t, expanded, onToggle, typography }:
               </div>
 
               <div>
-                <label className="block text-xs text-gray-500 mb-1">{t('columnGap')} ({typography.columnGap}px)</label>
+                <label className="block text-xs text-(--app-accent-500) mb-1">{t('columnGap')} ({typography.columnGap}px)</label>
                 <input
                   type="range"
                   min="0"
@@ -213,9 +213,9 @@ export function TypographyPanel({ language, t, expanded, onToggle, typography }:
           ) : null}
         </div>
 
-        <div className="pt-2 border-t border-gray-100">
+        <div className="pt-2 border-t border-[rgba(34,48,52,0.06)]">
           <div className="flex items-center justify-between mb-2">
-            <label className="text-xs text-gray-600 flex items-center gap-2 font-medium">
+            <label className="text-xs text-(--app-accent-700) flex items-center gap-2 font-medium">
               <input
                 type="checkbox"
                 checked={typography.textShadowEnabled}
@@ -235,12 +235,12 @@ export function TypographyPanel({ language, t, expanded, onToggle, typography }:
                   onChange={(event) => typography.onTextShadowColorChange(event.target.value)}
                   className="w-8 h-8 rounded cursor-pointer border-0 p-0"
                 />
-                <span className="text-xs text-gray-500 uppercase font-mono">{typography.textShadowColor}</span>
+                <span className="text-xs text-(--app-accent-500) uppercase font-mono">{typography.textShadowColor}</span>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">{t('blur')} ({typography.textShadowBlur}px)</label>
+                  <label className="block text-xs text-(--app-accent-500) mb-1">{t('blur')} ({typography.textShadowBlur}px)</label>
                   <input
                     type="range"
                     min="0"
@@ -251,7 +251,7 @@ export function TypographyPanel({ language, t, expanded, onToggle, typography }:
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">{t('offsetX')} ({typography.textShadowOffsetX}px)</label>
+                  <label className="block text-xs text-(--app-accent-500) mb-1">{t('offsetX')} ({typography.textShadowOffsetX}px)</label>
                   <input
                     type="range"
                     min="-20"
@@ -262,7 +262,7 @@ export function TypographyPanel({ language, t, expanded, onToggle, typography }:
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">{t('offsetY')} ({typography.textShadowOffsetY}px)</label>
+                  <label className="block text-xs text-(--app-accent-500) mb-1">{t('offsetY')} ({typography.textShadowOffsetY}px)</label>
                   <input
                     type="range"
                     min="-20"

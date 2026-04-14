@@ -25,7 +25,7 @@ export function SidebarHeader({ t, isSheet = false, isSettingsOpen = false, onSe
           <span className="truncate">{t('appTitle')}</span>
         </h1>
         <p
-          className="text-sm text-gray-500 mt-1"
+          className="text-sm text-(--app-accent-500) mt-1"
           style={{ fontFamily: "'Cormorant Garamond', 'Noto Serif SC', Georgia, serif" }}
         >
           {t('subtitle')}
@@ -46,7 +46,7 @@ export function SidebarHeader({ t, isSheet = false, isSettingsOpen = false, onSe
           className={`shrink-0 mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-full border transition-colors ${
             isSettingsOpen
               ? 'border-(--app-accent-200) bg-(--app-accent-50) text-(--app-accent-600)'
-              : 'border-[rgba(34,48,52,0.08)] bg-[rgba(255,253,249,0.8)] text-gray-500 hover:bg-(--app-accent-50) hover:text-(--app-accent-700)'
+              : 'border-[rgba(34,48,52,0.08)] bg-[rgba(255,253,249,0.8)] text-(--app-accent-500) hover:bg-(--app-accent-50) hover:text-(--app-accent-700)'
           }`}
         >
           <Settings className="w-4 h-4" />

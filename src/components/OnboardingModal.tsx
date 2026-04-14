@@ -61,7 +61,7 @@ export function OnboardingModal({ isOpen, onClose, t, language, templates }: Onb
         >
           <button
             onClick={onClose}
-            className="absolute right-4 top-4 z-10 rounded-full bg-white/20 p-2 text-white/80 transition-colors hover:bg-white/30 hover:text-white md:bg-gray-100 md:text-gray-500 md:hover:bg-gray-200 md:hover:text-gray-700"
+            className="absolute right-4 top-4 z-10 rounded-full bg-white/20 p-2 text-white/80 transition-colors hover:bg-white/30 hover:text-white md:bg-[rgba(237,244,243,0.7)] md:text-(--app-accent-500) md:hover:bg-(--app-accent-100) md:hover:text-(--app-accent-800)"
             aria-label={t('closeControls')}
           >
             <X className="h-5 w-5" />
@@ -121,7 +121,7 @@ export function OnboardingModal({ isOpen, onClose, t, language, templates }: Onb
                 <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#0d9488]">
                   {t('appTitle')}
                 </div>
-                <h3 className="mt-2 text-xl font-bold text-gray-900">
+                <h3 className="mt-2 text-xl font-bold text-(--app-ink)">
                   {t('quickMore')}
                 </h3>
               </div>
@@ -130,19 +130,19 @@ export function OnboardingModal({ isOpen, onClose, t, language, templates }: Onb
                 {steps.map((step, index) => (
                   <div
                     key={step}
-                    className="flex items-center gap-4 rounded-2xl border border-gray-100 bg-gray-50/50 p-4 transition-colors hover:border-[#2dd4bf]/30 hover:bg-[#2dd4bf]/5"
+                    className="flex items-center gap-4 rounded-2xl border border-[rgba(34,48,52,0.06)] bg-[rgba(237,244,243,0.5)] p-4 transition-colors hover:border-[#2dd4bf]/30 hover:bg-[#2dd4bf]/5"
                   >
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#2dd4bf]/10 text-xs font-bold text-[#0d9488]">
                       {index + 1}
                     </div>
-                    <span className="flex-1 text-sm font-semibold text-gray-800">{step}</span>
-                    <ArrowRight className="h-4 w-4 text-gray-300" />
+                    <span className="flex-1 text-sm font-semibold text-(--app-accent-900)">{step}</span>
+                    <ArrowRight className="h-4 w-4 text-[rgba(34,48,52,0.25)]" />
                   </div>
                 ))}
               </div>
 
               <div className="mt-8">
-                <div className="mb-4 text-xs font-bold uppercase tracking-wider text-gray-400">
+                <div className="mb-4 text-xs font-bold uppercase tracking-wider text-[rgba(34,48,52,0.4)]">
                   {t('builtInTemplates')}
                 </div>
                 <div className="grid grid-cols-1 gap-3">
@@ -150,13 +150,13 @@ export function OnboardingModal({ isOpen, onClose, t, language, templates }: Onb
                     <button
                       key={template.id}
                       onClick={() => handleApplyTemplate(template.id)}
-                      className="group flex items-center gap-3 rounded-2xl border border-gray-100 p-3 transition-all hover:translate-y-[-1px] hover:border-[#2dd4bf] hover:shadow-md"
+                      className="group flex items-center gap-3 rounded-2xl border border-[rgba(34,48,52,0.06)] p-3 transition-all hover:translate-y-[-1px] hover:border-[#2dd4bf] hover:shadow-md"
                     >
                       <div
                         className="h-10 w-10 rounded-xl shadow-sm"
                         style={{ background: `linear-gradient(135deg, ${template.accentFrom}, ${template.accentTo})` }}
                       />
-                      <span className="flex-1 text-left text-sm font-medium text-gray-700 group-hover:text-gray-900">
+                      <span className="flex-1 text-left text-sm font-medium text-(--app-accent-800) group-hover:text-(--app-ink)">
                         {t(template.nameKey)}
                       </span>
                       <Check className="h-4 w-4 text-[#0d9488] opacity-0 transition-opacity group-hover:opacity-100" />
@@ -169,11 +169,11 @@ export function OnboardingModal({ isOpen, onClose, t, language, templates }: Onb
             <div className="mt-6 rounded-2xl border border-[#2dd4bf]/20 bg-[#f0fdfc] p-4 space-y-2">
               <div className="flex items-start gap-2.5">
                 <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#0d9488]" />
-                <p className="text-xs leading-relaxed text-gray-600">{t('onboardingFreemiumFree')}</p>
+                <p className="text-xs leading-relaxed text-(--app-accent-700)">{t('onboardingFreemiumFree')}</p>
               </div>
               <div className="flex items-start gap-2.5">
                 <Zap className="mt-0.5 h-4 w-4 shrink-0 text-[#0d9488]" />
-                <p className="text-xs leading-relaxed text-gray-600">{t('onboardingFreemiumPaid')}</p>
+                <p className="text-xs leading-relaxed text-(--app-accent-700)">{t('onboardingFreemiumPaid')}</p>
               </div>
             </div>
 
@@ -182,7 +182,7 @@ export function OnboardingModal({ isOpen, onClose, t, language, templates }: Onb
                 <div className="flex items-center justify-between">
                   <button
                     onClick={() => setMobilePage(1)}
-                    className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700"
+                    className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-(--app-accent-500) hover:text-(--app-accent-800)"
                   >
                     <ChevronLeft className="h-4 w-4" />
                     {t('onboardingPrevious')}

@@ -100,7 +100,7 @@ export function SidebarFooter({
       {title ? (
         <div className="mb-4">
           <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-(--app-accent-500)">{title}</p>
-          <p className="mt-2 text-sm text-gray-600">{getExportSummaryLabel(t, canvasWidth, canvasHeight, exportFormat, exportScale)}</p>
+          <p className="mt-2 text-sm text-(--app-accent-700)">{getExportSummaryLabel(t, canvasWidth, canvasHeight, exportFormat, exportScale)}</p>
         </div>
       ) : null}
 
@@ -130,7 +130,7 @@ export function SidebarFooter({
                       </svg>
                     ) : platform.symbol}
                   </span>
-                  <span className="text-[11px] font-medium leading-tight text-gray-700">{platform.label}</span>
+                  <span className="text-[11px] font-medium leading-tight text-(--app-accent-800)">{platform.label}</span>
                 </button>
               );
             })}
@@ -145,14 +145,14 @@ export function SidebarFooter({
 
           <div className="mt-5 flex items-center gap-3">
             <div className="h-px flex-1 bg-[rgba(34,48,52,0.08)]" />
-            <span className="text-[11px] text-gray-400">{t('shareSystemDivider')}</span>
+            <span className="text-[11px] text-[rgba(34,48,52,0.4)]">{t('shareSystemDivider')}</span>
             <div className="h-px flex-1 bg-[rgba(34,48,52,0.08)]" />
           </div>
         </div>
       ) : null}
 
       <label className="block mb-3">
-        <span className="block text-sm font-medium text-gray-700 mb-2">{t('exportFormat')}</span>
+        <span className="block text-sm font-medium text-(--app-accent-800) mb-2">{t('exportFormat')}</span>
         <select
           value={exportFormat}
           onChange={(event) => onExportFormatChange(event.target.value as ExportFormat)}
@@ -168,7 +168,7 @@ export function SidebarFooter({
       </label>
 
       <label className="block mb-3">
-        <span className="block text-sm font-medium text-gray-700 mb-2">{t('exportQuality')}</span>
+        <span className="block text-sm font-medium text-(--app-accent-800) mb-2">{t('exportQuality')}</span>
         <select
           value={exportScale}
           onChange={(event) => onExportScaleChange(Number(event.target.value) as ExportScale)}
@@ -228,7 +228,7 @@ export function SidebarFooter({
           </div>
 
           {!canShare && shouldShowShareAction ? (
-            <p className="text-xs leading-5 text-gray-500">{t('shareUnavailableHint')}</p>
+            <p className="text-xs leading-5 text-(--app-accent-500)">{t('shareUnavailableHint')}</p>
           ) : null}
         </div>
       ) : null}

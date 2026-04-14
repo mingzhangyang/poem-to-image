@@ -60,7 +60,7 @@ export function CanvasSizePanel({ t, expanded, onToggle, canvas }: CanvasSizePan
     >
       <div className="space-y-3">
         <div>
-          <label className="block text-xs text-gray-500 mb-1">Quick platform presets</label>
+          <label className="block text-xs text-(--app-accent-500) mb-1">Quick platform presets</label>
           <div className="flex flex-wrap gap-2">
             {QUICK_PRESET_IDS.map((presetId) => {
               const preset = getCanvasSizePresetById(presetId);
@@ -79,7 +79,7 @@ export function CanvasSizePanel({ t, expanded, onToggle, canvas }: CanvasSizePan
                   className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
                     isActive
                       ? 'border-(--app-accent-500) bg-(--app-accent-50) text-(--app-accent-700)'
-                      : 'border-[rgba(34,48,52,0.12)] bg-white text-gray-700 hover:border-(--app-accent-300)'
+                      : 'border-[rgba(34,48,52,0.12)] bg-white text-(--app-accent-800) hover:border-(--app-accent-300)'
                   }`}
                 >
                   {preset.sceneLabel}
@@ -90,7 +90,7 @@ export function CanvasSizePanel({ t, expanded, onToggle, canvas }: CanvasSizePan
         </div>
 
         <div>
-          <label className="block text-xs text-gray-500 mb-1">{t('presetSizes')}</label>
+          <label className="block text-xs text-(--app-accent-500) mb-1">{t('presetSizes')}</label>
           <select
             value={canvas.presetSize}
             onChange={(event) => canvas.onPresetChange(event.target.value)}
@@ -121,7 +121,7 @@ export function CanvasSizePanel({ t, expanded, onToggle, canvas }: CanvasSizePan
         {canvas.presetSize === 'custom' ? (
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-gray-500 mb-1">{t('width')} (px)</label>
+              <label className="block text-xs text-(--app-accent-500) mb-1">{t('width')} (px)</label>
               <input
                 type="number"
                 min="100"
@@ -132,7 +132,7 @@ export function CanvasSizePanel({ t, expanded, onToggle, canvas }: CanvasSizePan
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">{t('height')} (px)</label>
+              <label className="block text-xs text-(--app-accent-500) mb-1">{t('height')} (px)</label>
               <input
                 type="number"
                 min="100"

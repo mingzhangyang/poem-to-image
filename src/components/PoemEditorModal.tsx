@@ -54,7 +54,7 @@ function LayerControlCard({
   return (
     <div className="rounded-[1.35rem] border border-[rgba(34,48,52,0.08)] bg-[rgba(255,253,249,0.9)] p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
-        <h4 className="text-sm font-semibold text-gray-900">{title}</h4>
+        <h4 className="text-sm font-semibold text-(--app-ink)">{title}</h4>
         {scale !== undefined ? (
           <span className="rounded-full bg-[rgba(237,244,243,0.88)] px-2.5 py-1 text-[11px] font-medium text-(--app-accent-700)">
             {Math.round(scale * 100)}%
@@ -65,7 +65,7 @@ function LayerControlCard({
       <div className="space-y-3">
         {scale !== undefined && onScaleChange ? (
           <div>
-            <label className="mb-1 block text-xs text-gray-500">
+            <label className="mb-1 block text-xs text-(--app-accent-500)">
               {t('fontSize')} ({Math.round(scale * 100)}%)
             </label>
             <input
@@ -82,7 +82,7 @@ function LayerControlCard({
 
         {opacity !== undefined && onOpacityChange ? (
           <div>
-            <label className="mb-1 block text-xs text-gray-500">
+            <label className="mb-1 block text-xs text-(--app-accent-500)">
               {t('opacity')} ({Math.round(opacity * 100)}%)
             </label>
             <input
@@ -99,7 +99,7 @@ function LayerControlCard({
 
         {lineHeight !== undefined && onLineHeightChange ? (
           <div>
-            <label className="mb-1 block text-xs text-gray-500">
+            <label className="mb-1 block text-xs text-(--app-accent-500)">
               {t('lineHeight')} ({lineHeight.toFixed(2)})
             </label>
             <input
@@ -116,7 +116,7 @@ function LayerControlCard({
 
         {letterSpacing !== undefined && onLetterSpacingChange ? (
           <div>
-            <label className="mb-1 block text-xs text-gray-500">
+            <label className="mb-1 block text-xs text-(--app-accent-500)">
               {t('letterSpacing')} ({letterSpacing}px)
             </label>
             <input
@@ -133,7 +133,7 @@ function LayerControlCard({
 
         {bodyGap !== undefined && onBodyGapChange ? (
           <div>
-            <label className="mb-1 block text-xs text-gray-500">
+            <label className="mb-1 block text-xs text-(--app-accent-500)">
               {t('sectionGap')} ({bodyGap}px)
             </label>
             <input
@@ -150,7 +150,7 @@ function LayerControlCard({
 
         {align !== undefined && onAlignChange ? (
           <div>
-            <label className="mb-1.5 block text-xs text-gray-500">{t('alignment')}</label>
+            <label className="mb-1.5 block text-xs text-(--app-accent-500)">{t('alignment')}</label>
             <div className="app-segment flex p-1 rounded-lg">
               {([
                 { value: 'left', icon: <AlignLeft className="h-4 w-4" />, label: t('alignLeft') },
@@ -162,7 +162,7 @@ function LayerControlCard({
                   type="button"
                   onClick={() => onAlignChange(option.value)}
                   className={`flex-1 rounded-md py-1.5 flex items-center justify-center transition-all ${
-                    align === option.value ? 'app-segment-button-active' : 'text-gray-500 hover:text-gray-700'
+                    align === option.value ? 'app-segment-button-active' : 'text-(--app-accent-500) hover:text-(--app-accent-800)'
                   }`}
                   aria-label={option.label}
                 >
@@ -175,7 +175,7 @@ function LayerControlCard({
 
         {placement !== undefined && onPlacementChange && placementOptions ? (
           <div>
-            <label className="mb-1 block text-xs text-gray-500">{t('relativePosition')}</label>
+            <label className="mb-1 block text-xs text-(--app-accent-500)">{t('relativePosition')}</label>
             <select
               value={placement}
               onChange={(event) => onPlacementChange(event.target.value as typeof placement)}
@@ -250,8 +250,8 @@ export function PoemEditorModal({ isOpen, onClose, t, content }: PoemEditorModal
               <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-(--app-accent-500)">
                 {t('content')}
               </div>
-              <h2 id="poem-editor-title" className="mt-2 text-2xl font-semibold text-gray-900">{t('poemEditorTitle')}</h2>
-              <p id="poem-editor-description" className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">{t('poemEditorHint')}</p>
+              <h2 id="poem-editor-title" className="mt-2 text-2xl font-semibold text-(--app-ink)">{t('poemEditorTitle')}</h2>
+              <p id="poem-editor-description" className="mt-2 max-w-2xl text-sm leading-6 text-(--app-accent-500)">{t('poemEditorHint')}</p>
             </div>
 
             <button
@@ -275,18 +275,18 @@ export function PoemEditorModal({ isOpen, onClose, t, content }: PoemEditorModal
                 <div className="mb-4 rounded-[1.15rem] border border-[rgba(34,48,52,0.08)] bg-[rgba(237,244,243,0.75)] px-4 py-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-gray-900">
+                      <p className="text-sm font-semibold text-(--app-ink)">
                         {content.poemAutofillSuggestion.title} · {content.poemAutofillSuggestion.author}
                       </p>
                       {firstSuggestionLine ? (
-                        <p className="mt-1 truncate text-xs leading-5 text-gray-600">{firstSuggestionLine}</p>
+                        <p className="mt-1 truncate text-xs leading-5 text-(--app-accent-700)">{firstSuggestionLine}</p>
                       ) : null}
                     </div>
 
                     <button
                       type="button"
                       onClick={content.onDismissPoemAutofill}
-                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[rgba(34,48,52,0.08)] bg-white/70 text-gray-500 transition-colors hover:text-gray-700"
+                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[rgba(34,48,52,0.08)] bg-white/70 text-(--app-accent-500) transition-colors hover:text-(--app-accent-800)"
                       aria-label={t('closeControls')}
                     >
                       <X className="h-3.5 w-3.5" />
@@ -294,7 +294,7 @@ export function PoemEditorModal({ isOpen, onClose, t, content }: PoemEditorModal
                   </div>
 
                   <div className="mt-3 flex items-center justify-between gap-3">
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-(--app-accent-500)">
                       {Math.round(content.poemAutofillSuggestion.confidence * 100)}% match
                     </div>
                     <button
@@ -309,7 +309,7 @@ export function PoemEditorModal({ isOpen, onClose, t, content }: PoemEditorModal
               ) : null}
 
               {content.isPoemAutofillMatching ? (
-                <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[rgba(34,48,52,0.08)] bg-white/75 px-3 py-1.5 text-xs text-gray-500">
+                <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[rgba(34,48,52,0.08)] bg-white/75 px-3 py-1.5 text-xs text-(--app-accent-500)">
                   <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
                   <span>{t('poemFields')}</span>
                 </div>
@@ -318,7 +318,7 @@ export function PoemEditorModal({ isOpen, onClose, t, content }: PoemEditorModal
               <div className="space-y-4">
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
-                    <label className="mb-1.5 block text-xs text-gray-500">{t('poemTitle')}</label>
+                    <label className="mb-1.5 block text-xs text-(--app-accent-500)">{t('poemTitle')}</label>
                     <input
                       className="app-input text-sm"
                       value={content.poem.title}
@@ -328,7 +328,7 @@ export function PoemEditorModal({ isOpen, onClose, t, content }: PoemEditorModal
                   </div>
 
                   <div>
-                    <label className="mb-1.5 block text-xs text-gray-500">{t('poemAuthor')}</label>
+                    <label className="mb-1.5 block text-xs text-(--app-accent-500)">{t('poemAuthor')}</label>
                     <input
                       className="app-input text-sm"
                       value={content.poem.author}
@@ -339,7 +339,7 @@ export function PoemEditorModal({ isOpen, onClose, t, content }: PoemEditorModal
                 </div>
 
                 <div>
-                  <label className="mb-1.5 block text-xs text-gray-500">{t('poemBody')}</label>
+                  <label className="mb-1.5 block text-xs text-(--app-accent-500)">{t('poemBody')}</label>
                   <textarea
                     className="app-textarea h-[min(56vh,42rem)] resize-none text-sm leading-7"
                     value={content.poem.body}
@@ -349,7 +349,7 @@ export function PoemEditorModal({ isOpen, onClose, t, content }: PoemEditorModal
                 </div>
 
                 <div>
-                  <label className="mb-1.5 block text-xs text-gray-500">{t('poemSource')}</label>
+                  <label className="mb-1.5 block text-xs text-(--app-accent-500)">{t('poemSource')}</label>
                   <input
                     className="app-input text-sm"
                     value={content.poem.sourceNote}

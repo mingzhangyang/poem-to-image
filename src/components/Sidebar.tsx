@@ -378,7 +378,7 @@ export function Sidebar({
                     <button
                       type="button"
                       onClick={() => setActiveMobilePanel(null)}
-                      className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-gray-100/50 text-(--app-accent-700) active:scale-90 transition-transform"
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(237,244,243,0.5)] text-(--app-accent-700) active:scale-90 transition-transform"
                       aria-label={t('closeControls')}
                     >
                       <X className="h-5 w-5" />

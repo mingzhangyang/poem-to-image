@@ -1,3 +1,4 @@
+import { AnimatePresence, motion } from 'motion/react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import type { ControlSectionProps } from '../types';
 
@@ -17,24 +18,37 @@ export function ControlSection({ title, icon, expanded, onToggle, summary, highl
         >
           <span className="flex items-start justify-between gap-3">
             <span className="min-w-0">
-              <span className={`flex items-center gap-2 text-sm font-semibold ${expanded || highlighted ? 'text-gray-900' : 'text-gray-700'}`}>
-                <span className={expanded || highlighted ? 'text-[var(--app-accent-600)]' : 'text-gray-400'}>{icon}</span>
+              <span className={`flex items-center gap-2 text-sm font-semibold ${expanded || highlighted ? 'text-(--app-ink)' : 'text-(--app-accent-800)'}`}>
+                <span className={expanded || highlighted ? 'text-[var(--app-accent-600)]' : 'text-[rgba(34,48,52,0.38)]'}>{icon}</span>
                 <span>{title}</span>
               </span>
               {summary ? (
-                <span className={`mt-1.5 block text-xs leading-5 ${expanded ? 'text-[color:rgba(51,88,87,0.82)]' : 'text-gray-500'}`}>
+                <span className={`mt-1.5 block text-xs leading-5 ${expanded ? 'text-[color:rgba(51,88,87,0.82)]' : 'text-(--app-accent-500)'}`}>
                   {summary}
                 </span>
               ) : null}
             </span>
-            <span className={`mt-0.5 shrink-0 rounded-full border p-1.5 transition-colors ${expanded ? 'border-[var(--app-accent-200)] bg-[var(--app-accent-50)] text-[var(--app-accent-600)]' : 'border-gray-200 bg-white text-gray-400'}`}>
+            <span className={`mt-0.5 shrink-0 rounded-full border p-1.5 transition-colors ${expanded ? 'border-[var(--app-accent-200)] bg-[var(--app-accent-50)] text-[var(--app-accent-600)]' : 'border-[rgba(34,48,52,0.08)] bg-[rgba(255,253,249,0.92)] text-[rgba(34,48,52,0.38)]'}`}>
               {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
             </span>
           </span>
         </button>
         {action ? <div className="shrink-0">{action}</div> : null}
       </div>
-      {expanded ? <div className="border-t border-[rgba(34,48,52,0.06)] px-4 pb-4 pt-4 sm:px-5 sm:pb-5">{children}</div> : null}
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.div
+            key="content"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+            style={{ overflow: 'hidden' }}
+          >
+            <div className="border-t border-[rgba(34,48,52,0.06)] px-4 pb-4 pt-4 sm:px-5 sm:pb-5">{children}</div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   );
 }

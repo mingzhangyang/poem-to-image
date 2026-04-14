@@ -80,7 +80,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
       <div className="space-y-4">
         <div className="app-soft-surface p-3 rounded-lg space-y-3">
           <div className="flex items-start gap-3">
-            <label className="text-xs text-gray-600 flex items-center gap-2">
+            <label className="text-xs text-(--app-accent-700) flex items-center gap-2">
               <input
                 type="checkbox"
                 checked={decorations.showBorder}
@@ -94,7 +94,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
           {decorations.showBorder ? (
             <div className="rounded-xl border border-[rgba(34,48,52,0.08)] bg-white p-3 space-y-3">
               <div>
-                <label className="mb-1 block text-xs text-gray-500">{t('borderStyle')}</label>
+                <label className="mb-1 block text-xs text-(--app-accent-500)">{t('borderStyle')}</label>
                 <select
                   value={decorations.borderStyle}
                   onChange={(event) => decorations.onBorderStyleChange(event.target.value as BorderStyle)}
@@ -121,7 +121,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
 
               <div className="space-y-3">
                 <div>
-                  <label className="mb-1 block text-xs text-gray-500">{t('borderColor')}</label>
+                  <label className="mb-1 block text-xs text-(--app-accent-500)">{t('borderColor')}</label>
                   <div className="flex w-full items-center gap-3 rounded-xl border border-[rgba(34,48,52,0.08)] bg-[rgba(255,253,249,0.96)] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.82)]">
                     <input
                       type="color"
@@ -153,7 +153,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                 </div>
 
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs text-gray-500">
+                  <div className="flex items-center justify-between text-xs text-(--app-accent-500)">
                     <span>{t('borderWidth')}</span>
                     <span>{decorations.borderWidth}px</span>
                   </div>
@@ -172,7 +172,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
 
           {decorations.stampSupported ? (
           <div className="flex items-center justify-between">
-            <label className="text-xs text-gray-600 flex items-center gap-2">
+            <label className="text-xs text-(--app-accent-700) flex items-center gap-2">
               <input
                 type="checkbox"
                 checked={decorations.showStamp}
@@ -190,7 +190,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
           {decorations.showStamp && decorations.stampSupported ? (
             <div className="rounded-xl bg-white border border-[rgba(34,48,52,0.08)] p-3 space-y-3">
               <div className="grid grid-cols-[1fr_auto] gap-2 items-center">
-                <label className="text-xs text-gray-500">{t('stampText')}</label>
+                <label className="text-xs text-(--app-accent-500)">{t('stampText')}</label>
                 <button
                   type="button"
                   onClick={decorations.onResetStampPosition}
@@ -223,7 +223,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
               </div>
 
               <div>
-                <label className="block text-xs text-gray-500 mb-1">{t('stampStyle')}</label>
+                <label className="block text-xs text-(--app-accent-500) mb-1">{t('stampStyle')}</label>
                 <select
                   value={decorations.stamp.style}
                   onChange={(event) => decorations.onStampChange({ style: event.target.value as StampStyle })}
@@ -236,13 +236,13 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
               </div>
 
               <div>
-                <label className="block text-xs text-gray-500 mb-1">{t('stampColorScheme')}</label>
+                <label className="block text-xs text-(--app-accent-500) mb-1">{t('stampColorScheme')}</label>
                 <div className="app-segment flex gap-1 p-1 rounded">
                   <button
                     type="button"
                     onClick={() => decorations.onStampChange({ colorScheme: 'outline' })}
                     className={`flex-1 py-1 text-xs rounded transition-colors ${
-                      (decorations.stamp.colorScheme ?? 'filled') === 'outline' ? 'app-segment-button-active' : 'text-gray-500 hover:bg-gray-50'
+                      (decorations.stamp.colorScheme ?? 'filled') === 'outline' ? 'app-segment-button-active' : 'text-(--app-accent-500) hover:bg-(--app-accent-50)'
                     }`}
                   >
                     {t('stampColorOutline')}
@@ -251,7 +251,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                     type="button"
                     onClick={() => decorations.onStampChange({ colorScheme: 'filled' })}
                     className={`flex-1 py-1 text-xs rounded transition-colors ${
-                      decorations.stamp.colorScheme === 'filled' ? 'app-segment-button-active' : 'text-gray-500 hover:bg-gray-50'
+                      decorations.stamp.colorScheme === 'filled' ? 'app-segment-button-active' : 'text-(--app-accent-500) hover:bg-(--app-accent-50)'
                     }`}
                   >
                     {t('stampColorFilled')}
@@ -260,7 +260,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
               </div>
 
               <div>
-                <label className="block text-xs text-gray-500 mb-1">{t('stampInkColor')}</label>
+                <label className="block text-xs text-(--app-accent-500) mb-1">{t('stampInkColor')}</label>
                 <div className="flex w-full items-center gap-3 rounded-xl border border-[rgba(34,48,52,0.08)] bg-[rgba(255,253,249,0.96)] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.82)]">
                   <input
                     type="color"
@@ -301,7 +301,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
               </div>
 
               <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs text-gray-500">
+                <div className="flex items-center justify-between text-xs text-(--app-accent-500)">
                   <span>{t('stampWeathering')}</span>
                   <span>{decorations.stamp.weathering ?? 50}%</span>
                 </div>
@@ -317,7 +317,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
               </div>
 
               <div>
-                <label className="block text-xs text-gray-500 mb-1">{t('stampFont')}</label>
+                <label className="block text-xs text-(--app-accent-500) mb-1">{t('stampFont')}</label>
                 <select
                   value={decorations.stamp.fontFamily}
                   onChange={(event) => decorations.onStampChange({ fontFamily: event.target.value })}
@@ -336,7 +336,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
               </div>
 
               <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs text-gray-500">
+                <div className="flex items-center justify-between text-xs text-(--app-accent-500)">
                   <span>{t('stampSize')}</span>
                   <span>{decorations.stamp.size}px</span>
                 </div>
@@ -351,7 +351,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
               </div>
 
               <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs text-gray-500">
+                <div className="flex items-center justify-between text-xs text-(--app-accent-500)">
                   <span>{t('stampRotation')}</span>
                   <span>{decorations.stamp.rotation}°</span>
                 </div>
@@ -366,7 +366,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
               </div>
 
               <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs text-gray-500">
+                <div className="flex items-center justify-between text-xs text-(--app-accent-500)">
                   <span>{t('stampOpacity')}</span>
                   <span>{Math.round(decorations.stamp.opacity * 100)}%</span>
                 </div>
@@ -420,7 +420,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
 
         {decorations.customTexts.length > 0 ? (
           <div className="space-y-3">
-            <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">{t('customTexts')}</div>
+            <div className="text-xs font-medium text-(--app-accent-500) uppercase tracking-wider">{t('customTexts')}</div>
             {decorations.customTexts.map((customText) => (
               <div key={customText.id} className="app-soft-surface p-3 rounded-lg space-y-2">
                 <div className="flex items-center gap-2">
@@ -454,13 +454,13 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                     onChange={(event) => decorations.onCustomTextChange(customText.id, { fontSize: Number(event.target.value) })}
                     className="app-range flex-1"
                   />
-                  <span className="text-xs text-gray-500 w-8">{customText.fontSize}px</span>
+                  <span className="text-xs text-(--app-accent-500) w-8">{customText.fontSize}px</span>
                 </div>
                 <div className="app-segment flex gap-1 p-1 rounded">
                   <button
                     onClick={() => decorations.onCustomTextChange(customText.id, { writingMode: 'horizontal-tb' })}
                     className={`flex-1 py-1 flex justify-center items-center rounded transition-colors ${
-                      customText.writingMode === 'horizontal-tb' ? 'app-segment-button-active' : 'text-gray-500 hover:bg-gray-50'
+                      customText.writingMode === 'horizontal-tb' ? 'app-segment-button-active' : 'text-(--app-accent-500) hover:bg-(--app-accent-50)'
                     }`}
                     aria-label={t('horizontal')}
                   >
@@ -469,7 +469,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                   <button
                     onClick={() => decorations.onCustomTextChange(customText.id, { writingMode: 'vertical-rl' })}
                     className={`flex-1 py-1 flex justify-center items-center rounded transition-colors ${
-                      customText.writingMode === 'vertical-rl' ? 'app-segment-button-active' : 'text-gray-500 hover:bg-gray-50'
+                      customText.writingMode === 'vertical-rl' ? 'app-segment-button-active' : 'text-(--app-accent-500) hover:bg-(--app-accent-50)'
                     }`}
                     aria-label={t('vertical')}
                   >
@@ -477,7 +477,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                   </button>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500 w-8">{t('angle')}</span>
+                  <span className="text-xs text-(--app-accent-500) w-8">{t('angle')}</span>
                   <input
                     type="range"
                     min="-180"
@@ -486,14 +486,14 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                     onChange={(event) => decorations.onCustomTextChange(customText.id, { rotation: Number(event.target.value) })}
                     className="app-range flex-1"
                   />
-                  <span className="text-xs text-gray-500 w-8 text-right">{customText.rotation}°</span>
+                  <span className="text-xs text-(--app-accent-500) w-8 text-right">{customText.rotation}°</span>
                 </div>
                 <div className="flex items-center justify-between border-t border-[rgba(34,48,52,0.06)] pt-2 mt-1">
-                  <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">{t('layers')}</span>
+                  <span className="text-[10px] uppercase tracking-wider text-[rgba(34,48,52,0.4)] font-semibold">{t('layers')}</span>
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => decorations.onCustomTextReorder(customText.id, 'bottom')}
-                      className="p-1 px-1.5 text-gray-400 hover:text-(--app-accent-700) hover:bg-gray-50 rounded transition-colors"
+                      className="p-1 px-1.5 text-[rgba(34,48,52,0.4)] hover:text-(--app-accent-700) hover:bg-(--app-accent-50) rounded transition-colors"
                       title={t('sendToBack')}
                       aria-label={t('sendToBack')}
                     >
@@ -501,7 +501,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                     </button>
                     <button
                       onClick={() => decorations.onCustomTextReorder(customText.id, 'down')}
-                      className="p-1 px-1.5 text-gray-400 hover:text-(--app-accent-700) hover:bg-gray-50 rounded transition-colors"
+                      className="p-1 px-1.5 text-[rgba(34,48,52,0.4)] hover:text-(--app-accent-700) hover:bg-(--app-accent-50) rounded transition-colors"
                       title={t('moveDown')}
                       aria-label={t('moveDown')}
                     >
@@ -509,7 +509,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                     </button>
                     <button
                       onClick={() => decorations.onCustomTextReorder(customText.id, 'up')}
-                      className="p-1 px-1.5 text-gray-400 hover:text-(--app-accent-700) hover:bg-gray-50 rounded transition-colors"
+                      className="p-1 px-1.5 text-[rgba(34,48,52,0.4)] hover:text-(--app-accent-700) hover:bg-(--app-accent-50) rounded transition-colors"
                       title={t('moveUp')}
                       aria-label={t('moveUp')}
                     >
@@ -517,7 +517,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                     </button>
                     <button
                       onClick={() => decorations.onCustomTextReorder(customText.id, 'top')}
-                      className="p-1 px-1.5 text-gray-400 hover:text-(--app-accent-700) hover:bg-gray-50 rounded transition-colors"
+                      className="p-1 px-1.5 text-[rgba(34,48,52,0.4)] hover:text-(--app-accent-700) hover:bg-(--app-accent-50) rounded transition-colors"
                       title={t('bringToFront')}
                       aria-label={t('bringToFront')}
                     >
@@ -532,7 +532,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
 
         {decorations.logos.length > 0 ? (
           <div className="space-y-3">
-            <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">{t('logos')}</div>
+            <div className="text-xs font-medium text-(--app-accent-500) uppercase tracking-wider">{t('logos')}</div>
             {decorations.logos.map((logo) => (
               <div key={logo.id} className="app-soft-surface p-3 rounded-lg space-y-2">
                 <div className="flex items-center gap-2">
@@ -541,7 +541,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                     alt="Logo"
                     className="w-8 h-8 object-contain rounded"
                   />
-                  <span className="text-xs text-gray-500 flex-1 truncate">Logo {logo.id.slice(-4)}</span>
+                  <span className="text-xs text-(--app-accent-500) flex-1 truncate">Logo {logo.id.slice(-4)}</span>
                   <button
                     onClick={() => decorations.onLogoRemove(logo.id)}
                     className="p-1.5 text-[#8a523b] hover:bg-[rgba(155,95,67,0.12)] rounded transition-colors"
@@ -551,7 +551,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                   </button>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500 w-8">{t('size')}</span>
+                  <span className="text-xs text-(--app-accent-500) w-8">{t('size')}</span>
                   <input
                     type="range"
                     min="50"
@@ -560,10 +560,10 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                     onChange={(event) => decorations.onLogoChange(logo.id, { size: Number(event.target.value) })}
                     className="app-range flex-1"
                   />
-                  <span className="text-xs text-gray-500 w-8">{logo.size}px</span>
+                  <span className="text-xs text-(--app-accent-500) w-8">{logo.size}px</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500 w-8">{t('angle')}</span>
+                  <span className="text-xs text-(--app-accent-500) w-8">{t('angle')}</span>
                   <input
                     type="range"
                     min="-180"
@@ -572,10 +572,10 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                     onChange={(event) => decorations.onLogoChange(logo.id, { rotation: Number(event.target.value) })}
                     className="app-range flex-1"
                   />
-                  <span className="text-xs text-gray-500 w-8 text-right">{logo.rotation}°</span>
+                  <span className="text-xs text-(--app-accent-500) w-8 text-right">{logo.rotation}°</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500 w-8">{t('opacity')}</span>
+                  <span className="text-xs text-(--app-accent-500) w-8">{t('opacity')}</span>
                   <input
                     type="range"
                     min="0"
@@ -584,14 +584,14 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                     onChange={(event) => decorations.onLogoChange(logo.id, { opacity: Number(event.target.value) / 100 })}
                     className="app-range flex-1"
                   />
-                  <span className="text-xs text-gray-500 w-8 text-right">{Math.round(logo.opacity * 100)}%</span>
+                  <span className="text-xs text-(--app-accent-500) w-8 text-right">{Math.round(logo.opacity * 100)}%</span>
                 </div>
                 <div className="flex items-center justify-between border-t border-[rgba(34,48,52,0.06)] pt-2 mt-1">
-                  <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">{t('layers')}</span>
+                  <span className="text-[10px] uppercase tracking-wider text-[rgba(34,48,52,0.4)] font-semibold">{t('layers')}</span>
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => decorations.onLogoReorder(logo.id, 'bottom')}
-                      className="p-1 px-1.5 text-gray-400 hover:text-(--app-accent-700) hover:bg-gray-50 rounded transition-colors"
+                      className="p-1 px-1.5 text-[rgba(34,48,52,0.4)] hover:text-(--app-accent-700) hover:bg-(--app-accent-50) rounded transition-colors"
                       title={t('sendToBack')}
                       aria-label={t('sendToBack')}
                     >
@@ -599,7 +599,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                     </button>
                     <button
                       onClick={() => decorations.onLogoReorder(logo.id, 'down')}
-                      className="p-1 px-1.5 text-gray-400 hover:text-(--app-accent-700) hover:bg-gray-50 rounded transition-colors"
+                      className="p-1 px-1.5 text-[rgba(34,48,52,0.4)] hover:text-(--app-accent-700) hover:bg-(--app-accent-50) rounded transition-colors"
                       title={t('moveDown')}
                       aria-label={t('moveDown')}
                     >
@@ -607,7 +607,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                     </button>
                     <button
                       onClick={() => decorations.onLogoReorder(logo.id, 'up')}
-                      className="p-1 px-1.5 text-gray-400 hover:text-(--app-accent-700) hover:bg-gray-50 rounded transition-colors"
+                      className="p-1 px-1.5 text-[rgba(34,48,52,0.4)] hover:text-(--app-accent-700) hover:bg-(--app-accent-50) rounded transition-colors"
                       title={t('moveUp')}
                       aria-label={t('moveUp')}
                     >
@@ -615,7 +615,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                     </button>
                     <button
                       onClick={() => decorations.onLogoReorder(logo.id, 'top')}
-                      className="p-1 px-1.5 text-gray-400 hover:text-(--app-accent-700) hover:bg-gray-50 rounded transition-colors"
+                      className="p-1 px-1.5 text-[rgba(34,48,52,0.4)] hover:text-(--app-accent-700) hover:bg-(--app-accent-50) rounded transition-colors"
                       title={t('bringToFront')}
                       aria-label={t('bringToFront')}
                     >
@@ -630,7 +630,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
 
         {decorations.signatures.length > 0 ? (
           <div className="space-y-3">
-            <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">{t('signatures')}</div>
+            <div className="text-xs font-medium text-(--app-accent-500) uppercase tracking-wider">{t('signatures')}</div>
             {decorations.signatures.map((sig) => (
               <div key={sig.id} className="app-soft-surface p-3 rounded-lg space-y-2">
                 <div className="flex items-center gap-2">
@@ -652,7 +652,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                 </div>
 
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">{t('signatureFont')}</label>
+                  <label className="block text-xs text-(--app-accent-500) mb-1">{t('signatureFont')}</label>
                   <select
                     value={sig.font}
                     onChange={(e) => decorations.onSignatureChange(sig.id, { font: e.target.value })}
@@ -682,11 +682,11 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                     onChange={(e) => decorations.onSignatureChange(sig.id, { fontSize: Number(e.target.value) })}
                     className="app-range flex-1"
                   />
-                  <span className="text-xs text-gray-500 w-8">{sig.fontSize}px</span>
+                  <span className="text-xs text-(--app-accent-500) w-8">{sig.fontSize}px</span>
                 </div>
 
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">{t('signatureFlourish')}</label>
+                  <label className="block text-xs text-(--app-accent-500) mb-1">{t('signatureFlourish')}</label>
                   <select
                     value={sig.flourish}
                     onChange={(e) => decorations.onSignatureChange(sig.id, { flourish: e.target.value as SignatureFlourish })}
@@ -703,7 +703,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500 w-10">{t('signatureSlant')}</span>
+                  <span className="text-xs text-(--app-accent-500) w-10">{t('signatureSlant')}</span>
                   <input
                     type="range"
                     min="-30"
@@ -712,11 +712,11 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                     onChange={(e) => decorations.onSignatureChange(sig.id, { slant: Number(e.target.value) })}
                     className="app-range flex-1"
                   />
-                  <span className="text-xs text-gray-500 w-8 text-right">{sig.slant}°</span>
+                  <span className="text-xs text-(--app-accent-500) w-8 text-right">{sig.slant}°</span>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500 w-10">{t('signatureThickness')}</span>
+                  <span className="text-xs text-(--app-accent-500) w-10">{t('signatureThickness')}</span>
                   <input
                     type="range"
                     min="0"
@@ -725,11 +725,11 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                     onChange={(e) => decorations.onSignatureChange(sig.id, { thickness: Number(e.target.value) })}
                     className="app-range flex-1"
                   />
-                  <span className="text-xs text-gray-500 w-8 text-right">{sig.thickness}</span>
+                  <span className="text-xs text-(--app-accent-500) w-8 text-right">{sig.thickness}</span>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500 w-10">{t('signatureRotation')}</span>
+                  <span className="text-xs text-(--app-accent-500) w-10">{t('signatureRotation')}</span>
                   <input
                     type="range"
                     min="-180"
@@ -738,11 +738,11 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                     onChange={(e) => decorations.onSignatureChange(sig.id, { rotation: Number(e.target.value) })}
                     className="app-range flex-1"
                   />
-                  <span className="text-xs text-gray-500 w-8 text-right">{sig.rotation}°</span>
+                  <span className="text-xs text-(--app-accent-500) w-8 text-right">{sig.rotation}°</span>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500 w-10">{t('signatureOpacity')}</span>
+                  <span className="text-xs text-(--app-accent-500) w-10">{t('signatureOpacity')}</span>
                   <input
                     type="range"
                     min="0"
@@ -751,7 +751,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                     onChange={(e) => decorations.onSignatureChange(sig.id, { opacity: Number(e.target.value) / 100 })}
                     className="app-range flex-1"
                   />
-                  <span className="text-xs text-gray-500 w-8 text-right">{Math.round(sig.opacity * 100)}%</span>
+                  <span className="text-xs text-(--app-accent-500) w-8 text-right">{Math.round(sig.opacity * 100)}%</span>
                 </div>
 
                 <p className="text-[11px] font-medium rounded-full bg-[rgba(84,127,125,0.1)] px-2 py-1 text-[rgba(84,127,125,0.9)] text-center">

@@ -53,7 +53,7 @@ export function SettingsPanel({ t, language, onLanguageChange, billing }: Settin
               className={`text-left px-3 py-2 rounded-lg text-sm transition-colors ${
                 language === lang.value
                   ? 'bg-[var(--app-accent-50)] text-[var(--app-accent-700)] font-medium ring-1 ring-[var(--app-accent-200)]'
-                  : 'text-gray-700 hover:bg-[rgba(237,244,243,0.6)]'
+                  : 'text-(--app-accent-800) hover:bg-[rgba(237,244,243,0.6)]'
               }`}
             >
               {lang.label}
@@ -67,7 +67,7 @@ export function SettingsPanel({ t, language, onLanguageChange, billing }: Settin
         <SectionTitle icon={<CreditCard className="w-3.5 h-3.5" />} label={t('account')} />
         {!isSignedIn ? (
           <div className="app-soft-surface rounded-xl p-4 text-center space-y-3">
-            <p className="text-sm text-gray-500">{t('errSignInRequired')}</p>
+            <p className="text-sm text-(--app-accent-500)">{t('errSignInRequired')}</p>
             {CLERK_CONFIGURED ? (
               <AuthSignInButton mode="modal">
                 <button
@@ -78,7 +78,7 @@ export function SettingsPanel({ t, language, onLanguageChange, billing }: Settin
                 </button>
               </AuthSignInButton>
             ) : (
-              <p className="text-xs text-gray-400">Set VITE_CLERK_PUBLISHABLE_KEY to enable auth.</p>
+              <p className="text-xs text-[rgba(34,48,52,0.4)]">Set VITE_CLERK_PUBLISHABLE_KEY to enable auth.</p>
             )}
           </div>
         ) : (
@@ -88,7 +88,7 @@ export function SettingsPanel({ t, language, onLanguageChange, billing }: Settin
           >
             <div className="flex items-center gap-2 min-w-0">
               {CLERK_CONFIGURED && <AuthUserButton afterSignOutUrl={window.location.href} />}
-              {email && <span className="text-sm text-gray-700 truncate">{email}</span>}
+              {email && <span className="text-sm text-(--app-accent-800) truncate">{email}</span>}
             </div>
             <div className="shrink-0 flex items-center gap-2 text-sm font-semibold text-[var(--app-accent-700)]">
               {billing.isLoadingBalance ? (
@@ -96,7 +96,7 @@ export function SettingsPanel({ t, language, onLanguageChange, billing }: Settin
               ) : (
                 <span>{billing.balance !== null ? billing.balance : '—'} {t('credits')}</span>
               )}
-              <ChevronRight className="w-4 h-4 text-gray-400" />
+              <ChevronRight className="w-4 h-4 text-[rgba(34,48,52,0.4)]" />
             </div>
           </Link>
         )}
@@ -106,14 +106,14 @@ export function SettingsPanel({ t, language, onLanguageChange, billing }: Settin
       <section className="space-y-1">
         <Link
           to="/privacy"
-          className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[rgba(237,244,243,0.6)] transition-colors text-sm text-gray-700"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[rgba(237,244,243,0.6)] transition-colors text-sm text-(--app-accent-800)"
         >
           <Shield className="w-4 h-4 text-[var(--app-accent-500)] shrink-0" />
           <span>{t('privacyPolicy')}</span>
         </Link>
         <Link
           to="/about"
-          className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[rgba(237,244,243,0.6)] transition-colors text-sm text-gray-700"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[rgba(237,244,243,0.6)] transition-colors text-sm text-(--app-accent-800)"
         >
           <Info className="w-4 h-4 text-[var(--app-accent-500)] shrink-0" />
           <span>{t('about')}</span>

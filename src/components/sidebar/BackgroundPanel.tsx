@@ -86,7 +86,7 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
               className={`px-3 py-2 text-xs font-medium rounded-lg border transition-all ${
                 background.backgroundType === type
                   ? 'bg-(--app-accent-50) border-(--app-accent-200) text-(--app-accent-700)'
-                  : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                  : 'bg-[rgba(255,253,249,0.92)] border-[rgba(34,48,52,0.08)] text-(--app-accent-700) hover:bg-(--app-accent-50)'
               }`}
             >
               {t(backgroundTypeLabels[type])}
@@ -102,7 +102,7 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
               onChange={(event) => background.onBackgroundColorChange(event.target.value)}
               className="w-10 h-10 rounded cursor-pointer border-0 p-0"
             />
-            <span className="text-sm text-gray-600 uppercase font-mono">{background.backgroundColor}</span>
+            <span className="text-sm text-(--app-accent-700) uppercase font-mono">{background.backgroundColor}</span>
           </div>
         ) : null}
 
@@ -146,7 +146,7 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
             />
             <button
               onClick={() => background.fileInputRef.current?.click()}
-              className="w-full py-2 px-4 border border-dashed border-[rgba(34,48,52,0.14)] rounded-xl text-sm text-gray-600 hover:bg-(--app-accent-50) hover:border-(--app-accent-300) transition-all flex items-center justify-center gap-2"
+              className="w-full py-2 px-4 border border-dashed border-[rgba(34,48,52,0.14)] rounded-xl text-sm text-(--app-accent-700) hover:bg-(--app-accent-50) hover:border-(--app-accent-300) transition-all flex items-center justify-center gap-2"
             >
               <Upload className="w-4 h-4" /> {t('uploadImage')}
             </button>
@@ -195,7 +195,7 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
                           {CREDIT_COST[provider]} {CREDIT_COST[provider] === 1 ? t('creditsPerGen') : t('creditsPerGenMultiple')}
                         </span>
                       </div>
-                      <p className={`mt-2 text-[11px] leading-5 ${isActive ? 'text-[rgba(255,250,242,0.92)]' : 'text-gray-600'}`}>
+                      <p className={`mt-2 text-[11px] leading-5 ${isActive ? 'text-[rgba(255,250,242,0.92)]' : 'text-(--app-accent-700)'}`}>
                         {t(meta.detailKey)}
                       </p>
                     </button>
@@ -223,7 +223,7 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
               >
                 <span className="min-w-0">
                   <span className="block text-xs font-semibold uppercase tracking-[0.18em] text-(--app-accent-500)">{t('promptSuggestions')}</span>
-                  <span className="mt-1 block text-xs text-gray-500">
+                  <span className="mt-1 block text-xs text-(--app-accent-500)">
                     {t(background.aiProvider === 'gemini' ? 'geminiTip' : 'openaiTip')}
                   </span>
                 </span>
@@ -280,7 +280,7 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
         ) : null}
 
         {background.backgroundType === 'image' || background.backgroundType === 'ai' ? (
-          <div className="pt-3 border-t border-gray-100 space-y-3">
+          <div className="pt-3 border-t border-[rgba(34,48,52,0.06)] space-y-3">
             <div>
               <div className="mb-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-(--app-accent-500)">{t('bgFillMode')}</div>
               <div className="flex gap-1.5">
@@ -292,7 +292,7 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
                     className={`flex-1 rounded-lg border px-2 py-1.5 text-xs font-medium transition-colors ${
                       background.backgroundSize === mode
                         ? 'border-(--app-accent-400) bg-(--app-accent-50) text-(--app-accent-700)'
-                        : 'border-[rgba(34,48,52,0.08)] bg-white text-gray-600 hover:border-(--app-accent-200) hover:bg-(--app-accent-50)'
+                        : 'border-[rgba(34,48,52,0.08)] bg-white text-(--app-accent-700) hover:border-(--app-accent-200) hover:bg-(--app-accent-50)'
                     }`}
                   >
                     {t(mode === 'cover' ? 'bgFillCover' : mode === 'contain' ? 'bgFillContain' : 'bgFillStretch')}
@@ -308,7 +308,7 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
             >
               <span className="min-w-0">
                 <span className="block text-xs font-semibold uppercase tracking-[0.18em] text-(--app-accent-500)">{t('brightness')} / {t('blur')}</span>
-                <span className="mt-1 block text-xs text-gray-500">
+                <span className="mt-1 block text-xs text-(--app-accent-500)">
                   {background.bgBrightness}% · {background.bgBlur}px
                 </span>
               </span>
@@ -320,7 +320,7 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
             {isImageAdjustmentsOpen ? (
               <div className="mt-3 space-y-3 rounded-2xl border border-[rgba(34,48,52,0.06)] bg-[rgba(255,250,242,0.6)] p-3">
                 <div>
-                  <div className="flex justify-between text-xs text-gray-500 mb-1">
+                  <div className="flex justify-between text-xs text-(--app-accent-500) mb-1">
                     <span>{t('brightness')}</span>
                     <span>{background.bgBrightness}%</span>
                   </div>
@@ -334,7 +334,7 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
                   />
                 </div>
                 <div>
-                  <div className="flex justify-between text-xs text-gray-500 mb-1">
+                  <div className="flex justify-between text-xs text-(--app-accent-500) mb-1">
                     <span>{t('blur')}</span>
                     <span>{background.bgBlur}px</span>
                   </div>
