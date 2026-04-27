@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, CSSProperties } from 'react';
+import { logError } from '../logger';
 import type { AiProvider, BackgroundType, TemplateBackgroundConfig, TranslateFn } from '../types';
 import { useAiBackground } from './useAiBackground';
 
@@ -145,7 +146,7 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getTok
       setBackgroundPosition('center');
       setAiError('');
     } catch (error) {
-      console.error('Failed to process background image', error);
+      logError('Failed to process background image', error);
       setAiError(t('errGenFailed'));
     } finally {
       event.target.value = '';

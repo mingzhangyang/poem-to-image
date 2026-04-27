@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { logError } from '../logger';
 import type { AiProvider, BackgroundType, TranslateFn } from '../types';
 
 export const MAX_AI_PROMPT_LENGTH = 500;
@@ -113,7 +114,7 @@ export function useAiBackground({
       }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : t('errGenFailed');
-      console.error('AI Generation Error:', error);
+      logError('AI generation error', error);
       setAiError(message);
     } finally {
       setIsGeneratingAI(false);

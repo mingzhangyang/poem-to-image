@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
+import { logError } from '../logger';
 import { renderCanvasExport } from '../export/renderCanvasExport';
 import type { BorderStyle, CustomText, ExportFormat, ExportScale, LogoConfig, PoemContentData, PoemLayerStyle, PositionedElement, SignatureConfig, SocialPlatform, StampConfig, TextAlign, WritingMode } from '../types';
 
@@ -154,7 +155,7 @@ async function saveBlob(blob: Blob, format: ExportFormat): Promise<boolean> {
       if (error instanceof Error && error.name === 'AbortError') {
         return false;
       }
-      console.error('Failed to save via File System Access API, falling back to download:', error);
+      logError('Failed to save via File System Access API, falling back to download', error);
     }
   }
 
@@ -242,7 +243,7 @@ export function useImageExporter(
 
       return await saveBlob(blob, exportFormat);
     } catch (error) {
-      console.error('Failed to generate image', error);
+      logError('Failed to generate image', error);
       throw error;
     } finally {
       setIsExporting(false);
@@ -273,7 +274,7 @@ export function useImageExporter(
         return;
       }
 
-      console.error('Failed to share image', error);
+      logError('Failed to share image', error);
     } finally {
       setIsSharing(false);
     }
@@ -311,7 +312,7 @@ export function useImageExporter(
 
       return copied ? 'clipboard' : 'downloaded';
     } catch (error) {
-      console.error('Failed to share to social platform', error);
+      logError('Failed to share to social platform', error);
       return 'downloaded';
     } finally {
       setIsSharing(false);
@@ -349,7 +350,7 @@ export function useImageExporter(
 
       return completed;
     } catch (error) {
-      console.error('Failed to batch export images', error);
+      logError('Failed to batch export images', error);
       throw error;
     } finally {
       setIsExporting(false);

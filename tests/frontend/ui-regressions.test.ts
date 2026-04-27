@@ -60,7 +60,8 @@ test('critical files do not include hardcoded CJK labels', () => {
 });
 
 test('editor purchase flow surfaces checkout errors via toast', () => {
-  const content = readRepoFile('src/App.tsx');
+  // Billing logic lives in useBillingState after the App.tsx refactor.
+  const content = readRepoFile('src/hooks/useBillingState.ts');
   assert.match(content, /showToast\(data\.error \?\? t\('checkoutFailed'\), 'error'\)/);
   assert.match(content, /showToast\(t\('networkError'\), 'error'\)/);
 });

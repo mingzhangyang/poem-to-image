@@ -1,20 +1,14 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
-import { useUndoHistory } from './hooks/useUndoHistory';
 import { useAppAuth } from './context/auth';
 import { useToast } from './components/ToastProvider';
 import { getPlainPoemText, isSamePoemContent } from './poemContent';
 import { DEFAULT_POEM_STYLE } from './poemStyle';
-import { fallbackTranslations, loadTranslations, type Language, type TranslationKey } from './translations';
-import { LANGUAGE_STORAGE_KEY, readPreferredLanguage } from './hooks/useLang';
+import { type Language } from './translations';
 import { CanvasPreview } from './components/CanvasPreview';
 import { Sidebar } from './components/Sidebar';
 import { useBackgroundConfig } from './hooks/useBackgroundConfig';
-import { useBalance } from './hooks/useBalance';
-import { useBillingHistory } from './hooks/useBillingHistory';
-import { useBillingPackages } from './hooks/useBillingPackages';
 import { DEFAULT_CANVAS_PRESET_ID, getCanvasSizePresetById } from './canvasPresets';
 import { useCanvasScale } from './hooks/useCanvasScale';
-import { useCheckoutReturn } from './hooks/useCheckoutReturn';
 import { useDecorationsConfig } from './hooks/useDecorationsConfig';
 import { useEditorViewModels } from './hooks/useEditorViewModels';
 import { useImageExporter } from './hooks/useImageExporter';
@@ -22,11 +16,14 @@ import { useTypographyConfig } from './hooks/useTypographyConfig';
 import { useCustomTemplates } from './hooks/useCustomTemplates';
 import { useTemplateManager } from './hooks/useTemplateManager';
 import { usePoemAutofill } from './hooks/usePoemAutofill';
+import { useAppLanguage } from './hooks/useAppLanguage';
+import { useBillingState } from './hooks/useBillingState';
+import { useEditorHistory } from './hooks/useEditorHistory';
 import { DEFAULT_POEMS } from './defaultPoems';
 import { editorTemplates } from './templates';
 import { isCjkLanguage } from './fontOptions';
 import { usePageMetadata } from './hooks/usePageMetadata';
-import type { ExpandedSections, ExportFormat, ExportScale, PoemLayerStyle, TemplateBackgroundConfig, TemplateTypographyConfig, TemplateDecorationsConfig } from './types';
+import type { ExpandedSections, ExportFormat, ExportScale } from './types';
 
 const ONBOARDING_DISMISSED_STORAGE_KEY = 'poem-to-image.onboarding-dismissed';
 const OnboardingModal = lazy(async () => ({ default: (await import('./components/OnboardingModal')).OnboardingModal }));
@@ -34,11 +31,9 @@ const OnboardingModal = lazy(async () => ({ default: (await import('./components
 export default function App() {
   const { showToast } = useToast();
   const { getToken, isSignedIn } = useAppAuth();
-  const [previewZoom, setPreviewZoom] = useState(1);
-  const initialLanguageRef = useRef<Language>(readPreferredLanguage());
-  const [language, setLanguage] = useState<Language>(initialLanguageRef.current);
-  const [messages, setMessages] = useState(fallbackTranslations);
-  const t = (key: TranslationKey) => messages[key] ?? fallbackTranslations[key];
+
+  const { language, initialLanguageRef, t, changeLanguage } = useAppLanguage();
+
   usePageMetadata({
     title: 'InkPoem – Turn Poems into Beautiful Art with AI',
     description: 'Turn your poems into stunning visual art with AI. Customize typography, backgrounds, and styles. Export in high resolution. Free to start.',
@@ -48,29 +43,6 @@ export default function App() {
     ogUrl: 'https://inkpoem.com/',
     robots: 'index, follow',
   });
-
-  const handleLanguageChange = useCallback((newLang: Language) => {
-    setPoem((prev) => {
-      const isDefault = Object.values(DEFAULT_POEMS).some((poem) => isSamePoemContent(poem, prev));
-      return isDefault ? DEFAULT_POEMS[newLang] : prev;
-    });
-    try { window.localStorage.setItem(LANGUAGE_STORAGE_KEY, newLang); } catch { /* ignore */ }
-    setLanguage(newLang);
-  }, []);
-
-  useEffect(() => {
-    let ignore = false;
-
-    void loadTranslations(language).then((nextMessages) => {
-      if (!ignore) {
-        setMessages(nextMessages);
-      }
-    });
-
-    return () => {
-      ignore = true;
-    };
-  }, [language]);
 
   const [poem, setPoem] = useState(DEFAULT_POEMS[initialLanguageRef.current]);
   const [poemStyle, setPoemStyle] = useState({ ...DEFAULT_POEM_STYLE });
@@ -95,61 +67,35 @@ export default function App() {
   });
 
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
+  const [previewZoom, setPreviewZoom] = useState(1);
 
   const handleCloseOnboarding = () => {
     setIsOnboardingOpen(false);
     window.localStorage.setItem(ONBOARDING_DISMISSED_STORAGE_KEY, 'true');
   };
 
-  // Billing state
-  const { balance, isLoading: isLoadingBalance, refetch: refetchBalance } = useBalance();
-  const { packages, isLoading: isLoadingPackages } = useBillingPackages();
-  const { items: history, isLoading: isLoadingHistory, refetch: refetchHistory } = useBillingHistory();
-  const [isPurchasing, setIsPurchasing] = useState(false);
+  const billing = useBillingState({ getToken, t });
 
-  useCheckoutReturn({ getToken, refetchBalance, refetchHistory });
-
-  const handlePurchase = useCallback(
-    async (packageId: string) => {
-      setIsPurchasing(true);
-      try {
-        const token = await getToken();
-        const response = await fetch('/api/billing/checkout-session', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          body: JSON.stringify({ packageId, returnPath: window.location.pathname }),
-        });
-
-        const data = (await response.json()) as { checkoutUrl?: string; error?: string };
-        if (response.ok && data.checkoutUrl) {
-          window.location.href = data.checkoutUrl;
-          return;
-        }
-
-        showToast(data.error ?? t('checkoutFailed'), 'error');
-      } catch {
-        showToast(t('networkError'), 'error');
-      } finally {
-        setIsPurchasing(false);
-      }
+  const handleLanguageChange = useCallback(
+    (newLang: Language) => {
+      setPoem((prev) => {
+        const isDefault = Object.values(DEFAULT_POEMS).some((poem) => isSamePoemContent(poem, prev));
+        return isDefault ? DEFAULT_POEMS[newLang] : prev;
+      });
+      changeLanguage(newLang);
     },
-    [getToken, showToast, t],
+    [changeLanguage],
   );
 
   const handlePresetChange = (val: string) => {
     setPresetSize(val);
     if (val !== 'custom') {
       const preset = getCanvasSizePresetById(val);
-
       if (preset) {
         setCanvasWidth(preset.width);
         setCanvasHeight(preset.height);
         return;
       }
-
       // Backward compatibility for legacy ratio-based preset ids like "1080x1350".
       const [w, h] = val.split('x').map(Number);
       if (Number.isFinite(w) && Number.isFinite(h)) {
@@ -178,7 +124,7 @@ export default function App() {
     canvasHeight,
     t,
     getToken,
-    onBalanceChange: refetchBalance,
+    onBalanceChange: billing.refetchBalance,
   });
   const typography = useTypographyConfig(language);
   const decorations = useDecorationsConfig({
@@ -203,199 +149,25 @@ export default function App() {
       customTemplates,
     });
 
-  useEffect(() => {
-    const isDismissed = window.localStorage.getItem(ONBOARDING_DISMISSED_STORAGE_KEY) === 'true';
-    if (!isDismissed && !activeTemplateId) {
-      setIsOnboardingOpen(true);
-    }
-  }, [activeTemplateId]);
-
-  const onInteractionStart = useCallback(() => {
-    activeInteractionCountRef.current += 1;
-  }, []);
-
-  const onInteractionEnd = useCallback(() => {
-    activeInteractionCountRef.current = Math.max(0, activeInteractionCountRef.current - 1);
-
-    if (activeInteractionCountRef.current !== 0) {
-      return;
-    }
-
-    const resolvers = pendingSceneSettleResolversRef.current.splice(0);
-
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => {
-        resolvers.forEach((resolve) => resolve());
-      });
-    });
-  }, []);
-
-  const waitForSceneSettled = useCallback(async () => {
-    if (activeInteractionCountRef.current > 0) {
-      await new Promise<void>((resolve) => {
-        pendingSceneSettleResolversRef.current.push(resolve);
-      });
-      return;
-    }
-
-    await new Promise<void>((resolve) => {
-      window.requestAnimationFrame(() => {
-        window.requestAnimationFrame(() => resolve());
-      });
-    });
-  }, []);
-
-  const handleLogoUpload = useCallback((event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const imageUrl = e.target?.result as string;
-      decorations.addLogo(imageUrl);
-      setExpandedSections((prev) => ({ ...prev, decorations: true }));
-    };
-    reader.readAsDataURL(file);
-
-    // Reset the input
-    event.target.value = '';
-  }, [decorations]);
-
   const stampSupported = isCjkLanguage(language);
 
-  const scale = useCanvasScale(containerRef, canvasWidth, canvasHeight);
-  const exportScene = useMemo(() => ({
-    canvasWidth,
-    canvasHeight,
-    background: {
-      backgroundType: background.backgroundType,
-      backgroundColor: background.backgroundColor,
-      gradientColor1: background.gradientColor1,
-      gradientColor2: background.gradientColor2,
-      gradientDirection: background.gradientDirection,
-      backgroundImage: background.backgroundImage,
-      bgBrightness: background.bgBrightness,
-      bgBlur: background.bgBlur,
-    },
-    typography: {
-      poem,
-      poemStyle,
-      fontFamily: typography.fontFamily,
-      fontSize: typography.fontSize,
-      textColor: typography.textColor,
-      textAlign: typography.textAlign,
-      writingMode: typography.writingMode,
-      padding: typography.padding,
-      lineHeight: typography.lineHeight,
-      letterSpacing: typography.letterSpacing,
-      columns: typography.columns,
-      columnGap: typography.columnGap,
-      textShadowEnabled: typography.textShadowEnabled,
-      textShadowColor: typography.textShadowColor,
-      textShadowBlur: typography.textShadowBlur,
-      textShadowOffsetY: typography.textShadowOffsetY,
-      textShadowOffsetX: typography.textShadowOffsetX,
-      poemPosition: decorations.poemPosition,
-    },
-    decorations: {
-      showBorder: decorations.showBorder,
-      borderStyle: decorations.borderStyle,
-      borderColor: decorations.borderColor,
-      borderWidth: decorations.borderWidth,
-      showStamp: decorations.showStamp && stampSupported,
-      stamp: decorations.stamp,
-      customTexts: decorations.customTexts,
-      logos: decorations.logos,
-      signatures: decorations.signatures,
-    },
-  }), [
-    canvasWidth,
-    canvasHeight,
-    background.backgroundType,
-    background.backgroundColor,
-    background.gradientColor1,
-    background.gradientColor2,
-    background.gradientDirection,
-    background.backgroundImage,
-    background.bgBrightness,
-    background.bgBlur,
-    poem,
-    poemStyle,
-    typography.fontFamily,
-    typography.fontSize,
-    typography.textColor,
-    typography.textAlign,
-    typography.writingMode,
-    typography.padding,
-    typography.lineHeight,
-    typography.letterSpacing,
-    typography.columns,
-    typography.columnGap,
-    typography.textShadowEnabled,
-    typography.textShadowColor,
-    typography.textShadowBlur,
-    typography.textShadowOffsetY,
-    typography.textShadowOffsetX,
-    decorations.poemPosition,
-    decorations.showBorder,
-    decorations.borderStyle,
-    decorations.borderColor,
-    decorations.borderWidth,
-    decorations.showStamp,
-    stampSupported,
-    decorations.stamp,
-    decorations.customTexts,
-    decorations.logos,
-    decorations.signatures,
-  ]);
-  // --- Undo / Redo ---
-  interface EditorSnapshot {
-    poem: typeof poem;
-    poemStyle: PoemLayerStyle;
-    canvasWidth: number;
-    canvasHeight: number;
-    background: TemplateBackgroundConfig;
-    typography: TemplateTypographyConfig;
-    decorations: TemplateDecorationsConfig;
-  }
-
-  const { push: pushSnapshot, undo: undoHistory, redo: redoHistory, canUndo, canRedo } = useUndoHistory<EditorSnapshot>();
-
-  // Always-current ref: assigned during render so closures in timers always
-  // read the latest state without stale-closure issues.
-  const snapshotDataRef = useRef({ poem, poemStyle, canvasWidth, canvasHeight, background, typography, decorations });
-  snapshotDataRef.current = { poem, poemStyle, canvasWidth, canvasHeight, background, typography, decorations };
-
-  // Stable refs for the template-apply functions (they change identity each render)
-  const applyBackgroundTemplateRef = useRef(background.applyBackgroundTemplate);
-  const applyTypographyTemplateRef = useRef(typography.applyTypographyTemplate);
-  const applyDecorationsTemplateRef = useRef(decorations.applyDecorationsTemplate);
-  applyBackgroundTemplateRef.current = background.applyBackgroundTemplate;
-  applyTypographyTemplateRef.current = typography.applyTypographyTemplate;
-  applyDecorationsTemplateRef.current = decorations.applyDecorationsTemplate;
-
-  const isRestoringRef = useRef(false);
-  const snapshotTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const buildSnapshot = useCallback((): EditorSnapshot => {
-    const { poem, poemStyle, canvasWidth, canvasHeight, background, typography, decorations } = snapshotDataRef.current;
-    return {
-      poem,
-      poemStyle,
+  const exportScene = useMemo(
+    () => ({
       canvasWidth,
       canvasHeight,
       background: {
-        backgroundType: background.backgroundType === 'ai' ? 'image' : background.backgroundType,
+        backgroundType: background.backgroundType,
         backgroundColor: background.backgroundColor,
         gradientColor1: background.gradientColor1,
         gradientColor2: background.gradientColor2,
         gradientDirection: background.gradientDirection,
         backgroundImage: background.backgroundImage,
-        backgroundSize: background.backgroundSize,
         bgBrightness: background.bgBrightness,
         bgBlur: background.bgBlur,
       },
       typography: {
+        poem,
+        poemStyle,
         fontFamily: typography.fontFamily,
         fontSize: typography.fontSize,
         textColor: typography.textColor,
@@ -411,108 +183,147 @@ export default function App() {
         textShadowBlur: typography.textShadowBlur,
         textShadowOffsetY: typography.textShadowOffsetY,
         textShadowOffsetX: typography.textShadowOffsetX,
+        poemPosition: decorations.poemPosition,
       },
       decorations: {
         showBorder: decorations.showBorder,
         borderStyle: decorations.borderStyle,
         borderColor: decorations.borderColor,
         borderWidth: decorations.borderWidth,
-        showStamp: decorations.showStamp,
+        showStamp: decorations.showStamp && stampSupported,
         stamp: decorations.stamp,
-        poemPosition: decorations.poemPosition,
         customTexts: decorations.customTexts,
         logos: decorations.logos,
         signatures: decorations.signatures,
       },
-    };
-  }, []); // reads from refs — stable
+    }),
+    [
+      canvasWidth,
+      canvasHeight,
+      background.backgroundType,
+      background.backgroundColor,
+      background.gradientColor1,
+      background.gradientColor2,
+      background.gradientDirection,
+      background.backgroundImage,
+      background.bgBrightness,
+      background.bgBlur,
+      poem,
+      poemStyle,
+      typography.fontFamily,
+      typography.fontSize,
+      typography.textColor,
+      typography.textAlign,
+      typography.writingMode,
+      typography.padding,
+      typography.lineHeight,
+      typography.letterSpacing,
+      typography.columns,
+      typography.columnGap,
+      typography.textShadowEnabled,
+      typography.textShadowColor,
+      typography.textShadowBlur,
+      typography.textShadowOffsetY,
+      typography.textShadowOffsetX,
+      decorations.poemPosition,
+      decorations.showBorder,
+      decorations.borderStyle,
+      decorations.borderColor,
+      decorations.borderWidth,
+      decorations.showStamp,
+      stampSupported,
+      decorations.stamp,
+      decorations.customTexts,
+      decorations.logos,
+      decorations.signatures,
+    ],
+  );
 
-  // Snapshot on scene changes; first invocation pushes the initial state immediately.
-  const isFirstSnapshotRef = useRef(true);
-  useEffect(() => {
-    if (isRestoringRef.current) {
-      isRestoringRef.current = false;
-      return;
-    }
-    if (isFirstSnapshotRef.current) {
-      isFirstSnapshotRef.current = false;
-      pushSnapshot(buildSnapshot());
-      return;
-    }
-    if (snapshotTimerRef.current) clearTimeout(snapshotTimerRef.current);
-    snapshotTimerRef.current = setTimeout(() => {
-      if (!isRestoringRef.current) pushSnapshot(buildSnapshot());
-    }, 800);
-    return () => {
-      if (snapshotTimerRef.current) clearTimeout(snapshotTimerRef.current);
-    };
-  }, [exportScene]); // exportScene captures all meaningful visual state
+  const { canUndo, canRedo, handleUndo, handleRedo } = useEditorHistory({
+    exportScene,
+    poem,
+    poemStyle,
+    canvasWidth,
+    canvasHeight,
+    background,
+    typography,
+    decorations,
+    setPoem,
+    setPoemStyle,
+    setCanvasWidth,
+    setCanvasHeight,
+    setPresetSize,
+  });
 
-  const restoreSnapshot = useCallback((snapshot: EditorSnapshot) => {
-    isRestoringRef.current = true;
-    if (snapshotTimerRef.current) clearTimeout(snapshotTimerRef.current);
-    setPoem(snapshot.poem);
-    setPoemStyle(snapshot.poemStyle);
-    setCanvasWidth(snapshot.canvasWidth);
-    setCanvasHeight(snapshot.canvasHeight);
-    setPresetSize('custom');
-    applyBackgroundTemplateRef.current(snapshot.background);
-    applyTypographyTemplateRef.current(snapshot.typography);
-    applyDecorationsTemplateRef.current(snapshot.decorations);
-  }, []); // stable — reads from refs
-
-  const handleUndo = useCallback(() => {
-    const snapshot = undoHistory();
-    if (snapshot) restoreSnapshot(snapshot);
-  }, [undoHistory, restoreSnapshot]);
-
-  const handleRedo = useCallback(() => {
-    const snapshot = redoHistory();
-    if (snapshot) restoreSnapshot(snapshot);
-  }, [redoHistory, restoreSnapshot]);
-
-  // Stable refs for the keyboard handler so the listener is only added once
-  const handleUndoRef = useRef(handleUndo);
-  const handleRedoRef = useRef(handleRedo);
-  handleUndoRef.current = handleUndo;
-  handleRedoRef.current = handleRedo;
-
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (!(e.ctrlKey || e.metaKey)) return;
-      // Skip when typing in a text field
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      if (e.key === 'z' && !e.shiftKey) {
-        e.preventDefault();
-        handleUndoRef.current();
-      } else if (e.key === 'y' || (e.key === 'z' && e.shiftKey)) {
-        e.preventDefault();
-        handleRedoRef.current();
-      }
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+  const onInteractionStart = useCallback(() => {
+    activeInteractionCountRef.current += 1;
   }, []);
 
-  const { exportImage, shareImage: handleShare, shareToSocialPlatform: handleShareToSocial, isExporting, isSharing, canShare } = useImageExporter(
-    exportFormat,
-    exportScale,
-    exportScene,
-    waitForSceneSettled,
+  const onInteractionEnd = useCallback(() => {
+    activeInteractionCountRef.current = Math.max(0, activeInteractionCountRef.current - 1);
+    if (activeInteractionCountRef.current !== 0) return;
+    const resolvers = pendingSceneSettleResolversRef.current.splice(0);
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        resolvers.forEach((resolve) => resolve());
+      });
+    });
+  }, []);
+
+  const waitForSceneSettled = useCallback(async () => {
+    if (activeInteractionCountRef.current > 0) {
+      await new Promise<void>((resolve) => {
+        pendingSceneSettleResolversRef.current.push(resolve);
+      });
+      return;
+    }
+    await new Promise<void>((resolve) => {
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => resolve());
+      });
+    });
+  }, []);
+
+  const handleLogoUpload = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const imageUrl = e.target?.result as string;
+        decorations.addLogo(imageUrl);
+        setExpandedSections((prev) => ({ ...prev, decorations: true }));
+      };
+      reader.readAsDataURL(file);
+      event.target.value = '';
+    },
+    [decorations],
   );
-  // Wrap export action with toast feedback.
+
+  const scale = useCanvasScale(containerRef, canvasWidth, canvasHeight);
+
+  const {
+    exportImage,
+    shareImage: handleShare,
+    shareToSocialPlatform: handleShareToSocial,
+    isExporting,
+    isSharing,
+    canShare,
+  } = useImageExporter(exportFormat, exportScale, exportScene, waitForSceneSettled);
+
   const handleDownload = async () => {
     try {
       const success = await exportImage();
-      if (success) {
-        showToast(t('exportSuccess') || 'Image exported successfully.', 'success');
-      }
-    } catch (e) {
+      if (success) showToast(t('exportSuccess') || 'Image exported successfully.', 'success');
+    } catch {
       showToast(t('exportFailed') || 'Image export failed.', 'error');
     }
   };
 
-  const handlePreviewZoomReset = () => setPreviewZoom(1);
+  useEffect(() => {
+    const isDismissed = window.localStorage.getItem(ONBOARDING_DISMISSED_STORAGE_KEY) === 'true';
+    if (!isDismissed && !activeTemplateId) setIsOnboardingOpen(true);
+  }, [activeTemplateId]);
 
   const { sidebarProps, canvasPreviewProps } = useEditorViewModels({
     language,
@@ -551,9 +362,7 @@ export default function App() {
       onSourceNoteChange: (value) => setPoem((prev) => ({ ...prev, sourceNote: value })),
       onApplyPoemAutofill: () => {
         const suggestion = poemAutofill.applySuggestionToPoem();
-        if (!suggestion) {
-          return;
-        }
+        if (!suggestion) return;
         setPoem({
           title: suggestion.title,
           author: suggestion.author,
@@ -627,14 +436,14 @@ export default function App() {
       onSignatureRemove: decorations.removeSignature,
     },
     billing: {
-      balance,
-      isLoadingBalance,
-      packages,
-      isLoadingPackages,
-      history,
-      isLoadingHistory,
-      isPurchasing,
-      onPurchase: handlePurchase,
+      balance: billing.balance,
+      isLoadingBalance: billing.isLoadingBalance,
+      packages: billing.packages,
+      isLoadingPackages: billing.isLoadingPackages,
+      history: billing.history,
+      isLoadingHistory: billing.isLoadingHistory,
+      isPurchasing: billing.isPurchasing,
+      onPurchase: billing.handlePurchase,
     },
     exportFormat,
     onExportFormatChange: setExportFormat,
@@ -677,7 +486,7 @@ export default function App() {
     onInteractionEnd,
     previewZoom,
     onPreviewZoomChange: setPreviewZoom,
-    onPreviewZoomReset: handlePreviewZoomReset,
+    onPreviewZoomReset: () => setPreviewZoom(1),
     scale,
   });
 
