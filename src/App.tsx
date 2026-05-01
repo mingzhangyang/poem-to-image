@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { useAppAuth } from './context/auth';
 import { useToast } from './components/ToastProvider';
 import { getPlainPoemText, isSamePoemContent } from './poemContent';
@@ -19,6 +19,7 @@ import { usePoemAutofill } from './hooks/usePoemAutofill';
 import { useAppLanguage } from './hooks/useAppLanguage';
 import { useBillingState } from './hooks/useBillingState';
 import { useEditorHistory } from './hooks/useEditorHistory';
+import { useEditorPersistence, loadPersistedState } from './hooks/useEditorPersistence';
 import { DEFAULT_POEMS } from './defaultPoems';
 import { editorTemplates } from './templates';
 import { isCjkLanguage } from './fontOptions';
@@ -34,6 +35,9 @@ export default function App() {
 
   const { language, initialLanguageRef, t, changeLanguage } = useAppLanguage();
 
+  // Load once on first render; drives initial state for poem/canvas and a one-time layout effect for hooks.
+  const [initialState] = useState(() => loadPersistedState());
+
   usePageMetadata({
     title: 'InkPoem – Turn Poems into Beautiful Art with AI',
     description: 'Turn your poems into stunning visual art with AI. Customize typography, backgrounds, and styles. Export in high resolution. Free to start.',
@@ -44,12 +48,12 @@ export default function App() {
     robots: 'index, follow',
   });
 
-  const [poem, setPoem] = useState(DEFAULT_POEMS[initialLanguageRef.current]);
-  const [poemStyle, setPoemStyle] = useState({ ...DEFAULT_POEM_STYLE });
+  const [poem, setPoem] = useState(() => initialState?.poem ?? DEFAULT_POEMS[initialLanguageRef.current]);
+  const [poemStyle, setPoemStyle] = useState(() => initialState?.poemStyle ?? { ...DEFAULT_POEM_STYLE });
   const poemAutofill = usePoemAutofill({ poem, language });
 
-  const [canvasWidth, setCanvasWidth] = useState(1080);
-  const [canvasHeight, setCanvasHeight] = useState(1350);
+  const [canvasWidth, setCanvasWidth] = useState(() => initialState?.canvasWidth ?? 1080);
+  const [canvasHeight, setCanvasHeight] = useState(() => initialState?.canvasHeight ?? 1350);
   const [presetSize, setPresetSize] = useState(DEFAULT_CANVAS_PRESET_ID);
   const [exportFormat, setExportFormat] = useState<ExportFormat>('png');
   const [exportScale, setExportScale] = useState<ExportScale>(2);
@@ -150,6 +154,25 @@ export default function App() {
     });
 
   const stampSupported = isCjkLanguage(language);
+
+  // Restore persisted background/typography/decorations once after hooks initialize.
+  // Refs ensure we always call the latest version of each apply function.
+  const applyBgRef = useRef(background.applyBackgroundTemplate);
+  applyBgRef.current = background.applyBackgroundTemplate;
+  const applyTypoRef = useRef(typography.applyTypographyTemplate);
+  applyTypoRef.current = typography.applyTypographyTemplate;
+  const applyDecoRef = useRef(decorations.applyDecorationsTemplate);
+  applyDecoRef.current = decorations.applyDecorationsTemplate;
+
+  useLayoutEffect(() => {
+    if (!initialState) return;
+    applyBgRef.current(initialState.background);
+    applyTypoRef.current(initialState.typography);
+    applyDecoRef.current(initialState.decorations);
+    if (initialState.canvasWidth !== 1080 || initialState.canvasHeight !== 1350) {
+      setPresetSize('custom');
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const exportScene = useMemo(
     () => ({
@@ -255,6 +278,44 @@ export default function App() {
     setPresetSize,
   });
 
+  useEditorPersistence({
+    exportScene,
+    poem,
+    poemStyle,
+    canvasWidth,
+    canvasHeight,
+    background,
+    typography: {
+      fontFamily: typography.fontFamily,
+      fontSize: typography.fontSize,
+      textColor: typography.textColor,
+      textAlign: typography.textAlign,
+      writingMode: typography.writingMode,
+      padding: typography.padding,
+      lineHeight: typography.lineHeight,
+      letterSpacing: typography.letterSpacing,
+      columns: typography.columns,
+      columnGap: typography.columnGap,
+      textShadowEnabled: typography.textShadowEnabled,
+      textShadowColor: typography.textShadowColor,
+      textShadowBlur: typography.textShadowBlur,
+      textShadowOffsetY: typography.textShadowOffsetY,
+      textShadowOffsetX: typography.textShadowOffsetX,
+    },
+    decorations: {
+      showBorder: decorations.showBorder,
+      borderStyle: decorations.borderStyle,
+      borderColor: decorations.borderColor,
+      borderWidth: decorations.borderWidth,
+      showStamp: decorations.showStamp,
+      stamp: decorations.stamp,
+      poemPosition: decorations.poemPosition,
+      customTexts: decorations.customTexts,
+      logos: decorations.logos,
+      signatures: decorations.signatures,
+    },
+  });
+
   const onInteractionStart = useCallback(() => {
     activeInteractionCountRef.current += 1;
   }, []);
@@ -321,9 +382,10 @@ export default function App() {
   };
 
   useEffect(() => {
+    if (initialState) return; // Returning user — skip onboarding.
     const isDismissed = window.localStorage.getItem(ONBOARDING_DISMISSED_STORAGE_KEY) === 'true';
     if (!isDismissed && !activeTemplateId) setIsOnboardingOpen(true);
-  }, [activeTemplateId]);
+  }, [activeTemplateId, initialState]);
 
   const { sidebarProps, canvasPreviewProps } = useEditorViewModels({
     language,

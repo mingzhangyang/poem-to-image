@@ -51,18 +51,19 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getTok
   const fileInputRef = useRef<HTMLInputElement>(null);
   const backgroundUrlRef = useRef<string | null>(null);
   const imageRequestIdRef = useRef(0);
+  // All blob URLs ever set — kept alive so undo history can reference them.
+  // Revoked in bulk on unmount instead of eagerly on each image change.
+  const heldBlobUrlsRef = useRef<Set<string>>(new Set());
 
   const maxImageWidth = Math.min(Math.round(canvasWidth * MAX_EXPORT_SCALE * 1.1), MAX_BACKGROUND_EDGE);
   const maxImageHeight = Math.min(Math.round(canvasHeight * MAX_EXPORT_SCALE * 1.1), MAX_BACKGROUND_EDGE);
 
   const updateBackgroundImage = useCallback((nextUrl: string | null) => {
-    const previousUrl = backgroundUrlRef.current;
     backgroundUrlRef.current = nextUrl;
+    if (nextUrl?.startsWith('blob:')) heldBlobUrlsRef.current.add(nextUrl);
     setBackgroundImage(nextUrl);
-
-    if (previousUrl && previousUrl !== nextUrl) {
-      revokeObjectUrl(previousUrl);
-    }
+    // Don't revoke previous blob URL eagerly — undo history entries may still reference it.
+    // All held blob URLs are revoked together on unmount.
   }, []);
 
   const applyBackgroundImage = useCallback(async (source: Blob | string) => {
@@ -125,7 +126,9 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getTok
     }
   }, [maxImageHeight, maxImageWidth, updateBackgroundImage]);
 
-  useEffect(() => () => revokeObjectUrl(backgroundUrlRef.current), []);
+  useEffect(() => () => {
+    for (const url of heldBlobUrlsRef.current) revokeObjectUrl(url);
+  }, []);
 
   const onAiProviderChange = (value: AiProvider) => {
     setAiProvider(value);

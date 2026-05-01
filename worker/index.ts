@@ -30,6 +30,14 @@ export interface Env {
 const MAX_AI_PROMPT_LENGTH = 500;
 const HTML_CSP = "base-uri 'self'; frame-ancestors 'none'; object-src 'none'";
 
+async function withRetry<T>(fn: () => Promise<T>, maxAttempts = 2): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try { return await fn(); } catch (err) { lastError = err; }
+  }
+  throw lastError;
+}
+
 function applySecurityHeaders(response: Response, { noStore = false }: { noStore?: boolean } = {}): Response {
   const headers = new Headers(response.headers);
   headers.set('X-Content-Type-Options', 'nosniff');
@@ -211,18 +219,14 @@ async function handleGenerateAiBackground(request: Request, env: Env): Promise<R
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to generate AI background.';
 
-    // Mark as failed (no credit deduction), retry once if rollback path had a transient failure.
+    // Mark as failed (no credit deduction). Retry once on transient DB failure.
     try {
-      await finalizeGenerationFailure(db, userId, requestId, transactionId, costCredits, message);
+      await withRetry(() => finalizeGenerationFailure(db, userId, requestId, transactionId, costCredits, message));
     } catch {
-      try {
-        await finalizeGenerationFailure(db, userId, requestId, transactionId, costCredits, message);
-      } catch {
-        return badRequest(
-          'Failed to generate AI background and failed to restore reserved credits. Please retry later.',
-          502,
-        );
-      }
+      return badRequest(
+        'Failed to generate AI background and failed to restore reserved credits. Please retry later.',
+        502,
+      );
     }
 
     return badRequest(message, 502);
