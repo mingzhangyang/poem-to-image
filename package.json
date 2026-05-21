@@ -31,5 +31,8 @@
     "typescript": "~5.8.2",
     "vite": "^6.2.0",
     "wrangler": "^4.6.0"
+  },
+  "overrides": {
+    "ws": "^8.20.1"
   }
 }

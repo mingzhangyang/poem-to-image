@@ -1,6 +1,9 @@
 import { Suspense, lazy, type ReactNode } from 'react';
 
-const CLERK_CONFIGURED = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+const runtimeClerkKey = typeof window !== 'undefined'
+  ? (window as { __INKPOEM_CLERK_PUBLISHABLE_KEY?: string }).__INKPOEM_CLERK_PUBLISHABLE_KEY
+  : undefined;
+const CLERK_CONFIGURED = !!(runtimeClerkKey ?? import.meta.env.VITE_CLERK_PUBLISHABLE_KEY);
 const ClerkSignInButton = lazy(async () => ({ default: (await import('@clerk/react')).SignInButton }));
 const ClerkUserButton = lazy(async () => ({ default: (await import('@clerk/react')).UserButton }));
 

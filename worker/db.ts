@@ -59,6 +59,18 @@ export interface GenerationRequest {
   status: string;
 }
 
+export class DuplicateGenerationRequestError extends Error {
+  constructor(public readonly requestStatus: string) {
+    super('Duplicate generation request.');
+  }
+}
+
+export class InsufficientCreditsError extends Error {
+  constructor() {
+    super('Insufficient credits.');
+  }
+}
+
 function newId(): string {
   return crypto.randomUUID();
 }
@@ -90,10 +102,35 @@ export async function getBalance(db: D1Database, userId: string): Promise<number
 export async function reserveGeneration(
   db: D1Database,
   userId: string,
+  requestId: string,
   provider: string,
   promptLength: number,
   costCredits: number,
 ): Promise<{ requestId: string; transactionId: string; balance: number }> {
+  const existing = await db
+    .prepare('SELECT user_id, status FROM generation_requests WHERE id = ?')
+    .bind(requestId)
+    .first<{ user_id: string; status: string }>();
+
+  if (existing) {
+    throw new DuplicateGenerationRequestError(existing.user_id === userId ? existing.status : 'conflict');
+  }
+
+  const insertRequestResult = await db
+    .prepare(
+      'INSERT OR IGNORE INTO generation_requests (id, user_id, provider, prompt_length, cost_credits, status) VALUES (?, ?, ?, ?, ?, ?)',
+    )
+    .bind(requestId, userId, provider, promptLength, costCredits, 'pending')
+    .run();
+
+  if (insertRequestResult.meta.changes === 0) {
+    const duplicate = await db
+      .prepare('SELECT user_id, status FROM generation_requests WHERE id = ?')
+      .bind(requestId)
+      .first<{ user_id: string; status: string }>();
+    throw new DuplicateGenerationRequestError(duplicate?.user_id === userId ? duplicate.status : 'conflict');
+  }
+
   const deductResult = await db
     .prepare(
       'UPDATE credit_accounts SET balance = balance - ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ? AND balance >= ?',
@@ -102,42 +139,43 @@ export async function reserveGeneration(
     .run();
 
   if (deductResult.meta.changes === 0) {
-    throw new Error('Insufficient credits.');
+    await db
+      .prepare('UPDATE generation_requests SET status = ?, error_message = ?, completed_at = CURRENT_TIMESTAMP WHERE id = ?')
+      .bind('failed', 'Insufficient credits.', requestId)
+      .run();
+    throw new InsufficientCreditsError();
   }
 
   const newBalance = await getBalance(db, userId);
-  const requestId = newId();
   const transactionId = newId();
 
   try {
+    await db
+      .prepare(
+        'INSERT INTO credit_transactions (id, user_id, type, amount, balance_after, related_request_id, provider, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      )
+      .bind(
+        transactionId,
+        userId,
+        'generate_debit',
+        -costCredits,
+        newBalance,
+        requestId,
+        provider,
+        'pending',
+      )
+      .run();
+  } catch (error) {
     await db.batch([
       db
         .prepare(
-          'INSERT INTO generation_requests (id, user_id, provider, prompt_length, cost_credits, status) VALUES (?, ?, ?, ?, ?, ?)',
+          'UPDATE credit_accounts SET balance = balance + ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?',
         )
-        .bind(requestId, userId, provider, promptLength, costCredits, 'pending'),
+        .bind(costCredits, userId),
       db
-        .prepare(
-          'INSERT INTO credit_transactions (id, user_id, type, amount, balance_after, related_request_id, provider, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        )
-        .bind(
-          transactionId,
-          userId,
-          'generate_debit',
-          -costCredits,
-          newBalance,
-          requestId,
-          provider,
-          'pending',
-        ),
+        .prepare('UPDATE generation_requests SET status = ?, error_message = ?, completed_at = CURRENT_TIMESTAMP WHERE id = ?')
+        .bind('failed', 'Failed to reserve credits.', requestId),
     ]);
-  } catch (error) {
-    await db
-      .prepare(
-        'UPDATE credit_accounts SET balance = balance + ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?',
-      )
-      .bind(costCredits, userId)
-      .run();
     throw error;
   }
 

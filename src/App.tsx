@@ -28,6 +28,17 @@ import type { ExpandedSections, ExportFormat, ExportScale } from './types';
 
 const ONBOARDING_DISMISSED_STORAGE_KEY = 'poem-to-image.onboarding-dismissed';
 const OnboardingModal = lazy(async () => ({ default: (await import('./components/OnboardingModal')).OnboardingModal }));
+const MIN_CANVAS_SIZE = 100;
+const MAX_CANVAS_SIZE = 4000;
+
+function clampNumber(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function normalizeCanvasSize(value: number | undefined, fallback: number) {
+  if (!Number.isFinite(value)) return fallback;
+  return Math.round(clampNumber(value, MIN_CANVAS_SIZE, MAX_CANVAS_SIZE));
+}
 
 export default function App() {
   const { showToast } = useToast();
@@ -52,8 +63,8 @@ export default function App() {
   const [poemStyle, setPoemStyle] = useState(() => initialState?.poemStyle ?? { ...DEFAULT_POEM_STYLE });
   const poemAutofill = usePoemAutofill({ poem, language });
 
-  const [canvasWidth, setCanvasWidth] = useState(() => initialState?.canvasWidth ?? 1080);
-  const [canvasHeight, setCanvasHeight] = useState(() => initialState?.canvasHeight ?? 1350);
+  const [canvasWidth, setCanvasWidthState] = useState(() => normalizeCanvasSize(initialState?.canvasWidth, 1080));
+  const [canvasHeight, setCanvasHeightState] = useState(() => normalizeCanvasSize(initialState?.canvasHeight, 1350));
   const [presetSize, setPresetSize] = useState(DEFAULT_CANVAS_PRESET_ID);
   const [exportFormat, setExportFormat] = useState<ExportFormat>('png');
   const [exportScale, setExportScale] = useState<ExportScale>(2);
@@ -80,6 +91,14 @@ export default function App() {
 
   const billing = useBillingState({ getToken, t });
 
+  const setCanvasWidth = useCallback((value: number) => {
+    setCanvasWidthState((current) => normalizeCanvasSize(value, current));
+  }, []);
+
+  const setCanvasHeight = useCallback((value: number) => {
+    setCanvasHeightState((current) => normalizeCanvasSize(value, current));
+  }, []);
+
   const handleLanguageChange = useCallback(
     (newLang: Language) => {
       setPoem((prev) => {
@@ -96,15 +115,15 @@ export default function App() {
     if (val !== 'custom') {
       const preset = getCanvasSizePresetById(val);
       if (preset) {
-        setCanvasWidth(preset.width);
-        setCanvasHeight(preset.height);
+        setCanvasWidthState(normalizeCanvasSize(preset.width, 1080));
+        setCanvasHeightState(normalizeCanvasSize(preset.height, 1350));
         return;
       }
       // Backward compatibility for legacy ratio-based preset ids like "1080x1350".
       const [w, h] = val.split('x').map(Number);
       if (Number.isFinite(w) && Number.isFinite(h)) {
-        setCanvasWidth(w);
-        setCanvasHeight(h);
+        setCanvasWidthState(normalizeCanvasSize(w, 1080));
+        setCanvasHeightState(normalizeCanvasSize(h, 1350));
       }
     }
   };

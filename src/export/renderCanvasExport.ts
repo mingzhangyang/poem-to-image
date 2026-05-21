@@ -89,6 +89,31 @@ type DecorationLayer =
   | { kind: 'customText'; item: CustomText; zIndex: number; order: number }
   | { kind: 'logo'; item: LogoConfig; zIndex: number; order: number };
 
+function normalizePositiveNumber(value: number, fallback: number) {
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+function getSafePadding(width: number, height: number, padding: number) {
+  const maxPadding = Math.max(0, Math.min(width, height) / 2 - 1);
+  if (!Number.isFinite(padding)) return 0;
+  return Math.min(Math.max(0, padding), maxPadding);
+}
+
+function normalizeExportScene(scene: CanvasExportScene): CanvasExportScene {
+  const canvasWidth = normalizePositiveNumber(scene.canvasWidth, 1);
+  const canvasHeight = normalizePositiveNumber(scene.canvasHeight, 1);
+
+  return {
+    ...scene,
+    canvasWidth,
+    canvasHeight,
+    typography: {
+      ...scene.typography,
+      padding: getSafePadding(canvasWidth, canvasHeight, scene.typography.padding),
+    },
+  };
+}
+
 // --- Text drawing helpers ---
 
 function applyTextShadow(ctx: CanvasRenderingContext2D, typography: CanvasExportTypography) {
@@ -291,11 +316,15 @@ export function renderStampBodyToContext(ctx: CanvasRenderingContext2D, stamp: S
 }
 
 export function getCanvasContentRect(scene: CanvasExportScene): Rect {
+  const canvasWidth = normalizePositiveNumber(scene.canvasWidth, 1);
+  const canvasHeight = normalizePositiveNumber(scene.canvasHeight, 1);
+  const padding = getSafePadding(canvasWidth, canvasHeight, scene.typography.padding);
+
   return {
-    x: scene.typography.padding,
-    y: scene.typography.padding,
-    width: scene.canvasWidth - scene.typography.padding * 2,
-    height: scene.canvasHeight - scene.typography.padding * 2,
+    x: padding,
+    y: padding,
+    width: canvasWidth - padding * 2,
+    height: canvasHeight - padding * 2,
   };
 }
 
@@ -317,7 +346,8 @@ export function getOrderedDecorationLayers(scene: CanvasExportScene): Decoration
   return layers.sort((a, b) => a.zIndex - b.zIndex || a.order - b.order);
 }
 
-export async function renderCanvasExport(scene: CanvasExportScene, options: RenderCanvasExportOptions = {}) {
+export async function renderCanvasExport(inputScene: CanvasExportScene, options: RenderCanvasExportOptions = {}) {
+  const scene = normalizeExportScene(inputScene);
   const canvas = document.createElement('canvas');
   canvas.width = scene.canvasWidth * scene.exportScale;
   canvas.height = scene.canvasHeight * scene.exportScale;

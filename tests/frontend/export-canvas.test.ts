@@ -74,11 +74,22 @@ test('getCanvasContentRect: zero padding returns full canvas', () => {
   assert.equal(rect.height, 1350);
 });
 
-test('getCanvasContentRect: large padding does not clamp (caller responsibility)', () => {
+test('getCanvasContentRect: large padding clamps to a positive content area', () => {
   const scene = makeMinimalScene();
   scene.typography.padding = 600;
   const rect = getCanvasContentRect(scene);
-  assert.equal(rect.width, 1080 - 1200); // negative — caller handles degenerate case
+  assert.equal(rect.width, 2);
+  assert.equal(rect.height, 272);
+});
+
+test('getCanvasContentRect: invalid canvas dimensions fall back to a drawable area', () => {
+  const scene = makeMinimalScene({ canvasWidth: 0, canvasHeight: Number.NaN });
+  scene.typography.padding = 60;
+  const rect = getCanvasContentRect(scene);
+  assert.equal(rect.x, 0);
+  assert.equal(rect.y, 0);
+  assert.equal(rect.width, 1);
+  assert.equal(rect.height, 1);
 });
 
 // --- getOrderedDecorationLayers ---

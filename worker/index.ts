@@ -1,6 +1,6 @@
 import { getAuthenticatedUser, type AuthUser, type AuthValidationOptions } from './auth';
 import type { D1Database } from './db';
-import { ensureUser, getBalance, reserveGeneration, finalizeGenerationSuccess, finalizeGenerationFailure, listUserTemplates, createUserTemplate, deleteUserTemplate, renameUserTemplate } from './db';
+import { DuplicateGenerationRequestError, InsufficientCreditsError, ensureUser, getBalance, reserveGeneration, finalizeGenerationSuccess, finalizeGenerationFailure, listUserTemplates, createUserTemplate, deleteUserTemplate, renameUserTemplate } from './db';
 import {
   handleGetBalance,
   handleGetPackages,
@@ -28,6 +28,7 @@ export interface Env {
 }
 
 const MAX_AI_PROMPT_LENGTH = 500;
+const MAX_REQUEST_ID_LENGTH = 80;
 const HTML_CSP = "base-uri 'self'; frame-ancestors 'none'; object-src 'none'";
 
 async function withRetry<T>(fn: () => Promise<T>, maxAttempts = 2): Promise<T> {
@@ -102,6 +103,14 @@ function parseTemplateData(raw: string): Record<string, unknown> {
   return {};
 }
 
+function normalizeRequestId(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > MAX_REQUEST_ID_LENGTH) return null;
+  if (!/^[a-zA-Z0-9_-]+$/.test(trimmed)) return null;
+  return trimmed;
+}
+
 function getAuthValidationOptions(env: Env): AuthValidationOptions {
   return {
     expectedIssuer: env.CLERK_JWT_ISSUER,
@@ -150,6 +159,9 @@ async function handleGenerateAiBackground(request: Request, env: Env): Promise<R
   }
 
   const prompt = payload.prompt.trim();
+  const clientRequestId = normalizeRequestId(payload.requestId);
+  if (!clientRequestId) return badRequest('Valid requestId is required.');
+
   const aspectRatio = payload.aspectRatio || '1:1';
   const provider = normalizeProvider(payload.provider);
   const costCredits = CREDIT_COST[provider];
@@ -178,11 +190,11 @@ async function handleGenerateAiBackground(request: Request, env: Env): Promise<R
   let transactionId = '';
 
   try {
-    const reserved = await reserveGeneration(db, userId, provider, prompt.length, costCredits);
+    const reserved = await reserveGeneration(db, userId, clientRequestId, provider, prompt.length, costCredits);
     requestId = reserved.requestId;
     transactionId = reserved.transactionId;
   } catch (error) {
-    if (error instanceof Error && error.message === 'Insufficient credits.') {
+    if (error instanceof InsufficientCreditsError) {
       const latestBalance = await getBalance(db, userId);
       return json(
         {
@@ -192,6 +204,19 @@ async function handleGenerateAiBackground(request: Request, env: Env): Promise<R
           required: costCredits,
         },
         402,
+      );
+    }
+
+    if (error instanceof DuplicateGenerationRequestError) {
+      const latestBalance = await getBalance(db, userId);
+      return json(
+        {
+          error: 'Generation request has already been submitted.',
+          code: 'DUPLICATE_REQUEST',
+          status: error.requestStatus,
+          balance: latestBalance,
+        },
+        409,
       );
     }
 
@@ -213,6 +238,7 @@ async function handleGenerateAiBackground(request: Request, env: Env): Promise<R
 
     return json({
       imageDataUrl: result.imageDataUrl,
+      requestId,
       creditsCharged: costCredits,
       balance: newBalance,
     });

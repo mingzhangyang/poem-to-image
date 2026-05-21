@@ -34,6 +34,14 @@ function clampPrompt(value: string) {
   return value.trim().slice(0, MAX_AI_PROMPT_LENGTH);
 }
 
+function createRequestId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 interface AiBackgroundResponse {
   error?: string;
   code?: string;
@@ -83,6 +91,7 @@ export function useAiBackground({
         method: 'POST',
         headers,
         body: JSON.stringify({
+          requestId: createRequestId(),
           provider: aiProvider,
           prompt,
           aspectRatio: resolveAspectRatio(canvasWidth, canvasHeight),
@@ -97,6 +106,9 @@ export function useAiBackground({
         }
         if (payload.code === 'UNAUTHORIZED') {
           throw new Error(t('errSignInRequired'));
+        }
+        if (payload.code === 'DUPLICATE_REQUEST') {
+          throw new Error(payload.error || t('errGenFailed'));
         }
         throw new Error(payload.error || t('errGenFailed'));
       }
