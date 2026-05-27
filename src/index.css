@@ -1,5 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Cormorant+Garamond:wght@400;500;600;700&family=Gowun+Batang:wght@400;700&family=Liu+Jian+Mao+Cao&family=Long+Cang&family=Lora:wght@400;500;700&family=Ma+Shan+Zheng&family=Noto+Sans+JP:wght@400;500;700&family=Noto+Sans+KR:wght@400;500;700&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+JP:wght@400;500;700&family=Noto+Serif+KR:wght@400;500;700&family=Noto+Serif+SC:wght@400;500;700&family=Noto+Serif+TC:wght@400;500;700&family=Playfair+Display:wght@400;500;700&family=Shippori+Mincho:wght@400;500;700&family=Source+Sans+3:wght@400;500;700&family=Space+Mono:wght@400;700&family=Spectral:wght@400;500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Zhi+Mang+Xing&family=ZCOOL+QingKe+HuangYou&family=ZCOOL+XiaoWei&display=swap');
 @import "tailwindcss";
+
+/* Editor fonts are injected on demand by src/fontLoader.ts (poem/stamp) and
+   src/signatureRendering.ts (signatures), so no fonts are loaded up front. */
 
 :root {
 	--app-accent-50: #edf4f3;
@@ -125,6 +127,15 @@ body {
 	box-shadow: none;
 }
 
+/* Keyboard focus ring for bare icon buttons and primary/secondary buttons.
+   Uses outline (not box-shadow) so it stacks with existing drop shadows. */
+.app-icon-button:focus-visible,
+.app-button-primary:focus-visible,
+.app-button-secondary:focus-visible {
+	outline: 2px solid var(--app-accent-500);
+	outline-offset: 2px;
+}
+
 .app-button-secondary {
 	background: rgba(255, 253, 249, 0.96);
 	color: var(--app-accent-700);
@@ -215,4 +226,15 @@ body {
 	background: rgba(31, 52, 54, 0.12);
 	border-radius: 99px;
 	margin: 0.2rem auto 0.75rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
+	}
 }

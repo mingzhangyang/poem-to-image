@@ -23,6 +23,7 @@ import { useEditorPersistence, loadPersistedState } from './hooks/useEditorPersi
 import { DEFAULT_POEMS } from './defaultPoems';
 import { editorTemplates } from './templates';
 import { isCjkLanguage } from './fontOptions';
+import { ensureFontLoaded } from './fontLoader';
 import { usePageMetadata } from './hooks/usePageMetadata';
 import { useStructuralMemo } from './hooks/useStructuralMemo';
 import type { ExpandedSections, ExportFormat, ExportScale } from './types';
@@ -174,6 +175,18 @@ export default function App() {
     });
 
   const stampSupported = isCjkLanguage(language);
+
+  // Load Google Fonts on demand: the currently selected poem font, and the stamp
+  // font when a stamp is shown. Other families are never fetched.
+  useEffect(() => {
+    ensureFontLoaded(typography.fontFamily);
+  }, [typography.fontFamily]);
+
+  useEffect(() => {
+    if (decorations.showStamp && stampSupported) {
+      ensureFontLoaded(decorations.stamp.fontFamily);
+    }
+  }, [decorations.showStamp, stampSupported, decorations.stamp.fontFamily]);
 
   // Restore persisted background/typography/decorations once after hooks initialize.
   // Refs ensure we always call the latest version of each apply function.

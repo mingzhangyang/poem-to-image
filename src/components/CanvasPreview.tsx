@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { Download, Maximize2, Minus, Plus, Undo2, Redo2, X } from 'lucide-react';
 import type { CanvasPreviewProps } from '../types';
 import { SidebarFooter } from './sidebar/SidebarFooter';
@@ -79,6 +79,7 @@ export function CanvasPreview({
   onUndo,
   onRedo,
 }: CanvasPreviewProps) {
+  const reduceMotion = useReducedMotion();
   const viewportRef = useRef<HTMLDivElement>(null);
   const dragStartRef = useRef({ x: 0, y: 0 });
   const panStartRef = useRef({ x: 0, y: 0 });
@@ -291,7 +292,7 @@ export function CanvasPreview({
           type="button"
           onClick={onUndo}
           disabled={!canUndo}
-          className="flex items-center justify-center w-6 h-6 rounded-full text-(--app-accent-700) hover:bg-(--app-accent-50) hover:text-(--app-accent-900) transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          className="app-icon-button flex items-center justify-center w-6 h-6 rounded-full text-(--app-accent-700) hover:bg-(--app-accent-50) hover:text-(--app-accent-900) transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
           aria-label={t('undo')}
           title={`${t('undo')} (Ctrl+Z)`}
         >
@@ -301,7 +302,7 @@ export function CanvasPreview({
           type="button"
           onClick={onRedo}
           disabled={!canRedo}
-          className="flex items-center justify-center w-6 h-6 rounded-full text-(--app-accent-700) hover:bg-(--app-accent-50) hover:text-(--app-accent-900) transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          className="app-icon-button flex items-center justify-center w-6 h-6 rounded-full text-(--app-accent-700) hover:bg-(--app-accent-50) hover:text-(--app-accent-900) transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
           aria-label={t('redo')}
           title={`${t('redo')} (Ctrl+Y)`}
         >
@@ -313,7 +314,7 @@ export function CanvasPreview({
         <button
           type="button"
           onClick={() => onPreviewZoomChange(clamp(previewZoom - ZOOM_STEP, ZOOM_MIN, ZOOM_MAX))}
-          className="flex items-center justify-center w-5 h-5 rounded-full text-(--app-accent-700) hover:bg-(--app-accent-50) hover:text-(--app-accent-900) transition-colors"
+          className="app-icon-button flex items-center justify-center w-5 h-5 rounded-full text-(--app-accent-700) hover:bg-(--app-accent-50) hover:text-(--app-accent-900) transition-colors"
           aria-label="Zoom out"
         >
           <Minus size={11} />
@@ -336,7 +337,7 @@ export function CanvasPreview({
         <button
           type="button"
           onClick={() => onPreviewZoomChange(clamp(previewZoom + ZOOM_STEP, ZOOM_MIN, ZOOM_MAX))}
-          className="flex items-center justify-center w-5 h-5 rounded-full text-(--app-accent-700) hover:bg-(--app-accent-50) hover:text-(--app-accent-900) transition-colors"
+          className="app-icon-button flex items-center justify-center w-5 h-5 rounded-full text-(--app-accent-700) hover:bg-(--app-accent-50) hover:text-(--app-accent-900) transition-colors"
           aria-label="Zoom in"
         >
           <Plus size={11} />
@@ -347,7 +348,7 @@ export function CanvasPreview({
         <button
           type="button"
           onClick={handleFitViewport}
-          className="flex items-center justify-center w-5 h-5 rounded-full text-(--app-accent-700) hover:bg-(--app-accent-50) hover:text-(--app-accent-900) transition-colors"
+          className="app-icon-button flex items-center justify-center w-5 h-5 rounded-full text-(--app-accent-700) hover:bg-(--app-accent-50) hover:text-(--app-accent-900) transition-colors"
           aria-label={t('fitToViewport')}
           title={t('fitToViewport')}
         >
@@ -382,9 +383,9 @@ export function CanvasPreview({
 
             <motion.div
               className="hidden md:flex fixed inset-0 z-40 items-center justify-center p-6"
-              initial={{ opacity: 0, y: 12 }}
+              initial={{ opacity: 0, y: reduceMotion ? 0 : 12 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 12 }}
+              exit={{ opacity: 0, y: reduceMotion ? 0 : 12 }}
             >
               <div className="w-full max-w-md overflow-hidden rounded-[2rem] border border-white/75 bg-[linear-gradient(180deg,rgba(255,253,249,0.98),rgba(255,250,242,0.96))] shadow-[0_28px_80px_var(--app-accent-shadow)]">
                 <div className="flex items-start justify-between gap-4 border-b border-[rgba(34,48,52,0.06)] px-6 py-5">
@@ -395,7 +396,7 @@ export function CanvasPreview({
                   <button
                     type="button"
                     onClick={() => setIsExportModalOpen(false)}
-                    className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[rgba(34,48,52,0.08)] bg-white/80 p-0 text-(--app-accent-700) transition-colors hover:bg-(--app-accent-50)"
+                    className="app-icon-button inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[rgba(34,48,52,0.08)] bg-white/80 p-0 text-(--app-accent-700) transition-colors hover:bg-(--app-accent-50)"
                     aria-label={t('closeControls')}
                   >
                     <X className="h-4 w-4" />
