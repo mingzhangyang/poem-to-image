@@ -329,8 +329,23 @@ async function verifyStripeWebhookSignature(
       .map((b) => b.toString(16).padStart(2, '0'))
       .join('');
 
-    return expectedSignatures.some((expectedSignature) => expectedSignature === computedHex);
+    return expectedSignatures.some((expectedSignature) => timingSafeEqual(expectedSignature, computedHex));
   } catch {
     return false;
   }
+}
+
+/**
+ * Constant-time string comparison to avoid leaking how many leading characters
+ * of a candidate signature matched via response-time differences. Length is not
+ * secret here (both sides are fixed-width SHA-256 hex), so an early length
+ * mismatch is safe to short-circuit.
+ */
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < a.length; i++) {
+    mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return mismatch === 0;
 }

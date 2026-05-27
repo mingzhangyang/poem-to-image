@@ -183,9 +183,9 @@ export async function reserveGeneration(
 }
 
 /**
- * Finalize successful generation: deduct credits atomically (only if balance >= cost)
- * and mark records succeeded.
- * Throws if balance is insufficient (concurrent request race).
+ * Finalize a successful generation. Credits were already deducted at reservation
+ * time, so this only marks the generation request and its debit transaction as
+ * succeeded. Returns the current balance.
  */
 export async function finalizeGenerationSuccess(
   db: D1Database,

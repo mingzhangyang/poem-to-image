@@ -44,6 +44,7 @@ interface UseImageExporterBackgroundOptions {
   gradientColor2: string;
   gradientDirection: string;
   backgroundImage: string | null;
+  backgroundSize: 'cover' | 'contain' | 'stretch';
   bgBrightness: number;
   bgBlur: number;
 }

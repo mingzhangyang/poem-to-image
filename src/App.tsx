@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useRef, useState, type ChangeEvent } from 'react';
 import { useAppAuth } from './context/auth';
 import { useToast } from './components/ToastProvider';
 import { getPlainPoemText, isSamePoemContent } from './poemContent';
@@ -24,6 +24,7 @@ import { DEFAULT_POEMS } from './defaultPoems';
 import { editorTemplates } from './templates';
 import { isCjkLanguage } from './fontOptions';
 import { usePageMetadata } from './hooks/usePageMetadata';
+import { useStructuralMemo } from './hooks/useStructuralMemo';
 import type { ExpandedSections, ExportFormat, ExportScale } from './types';
 
 const ONBOARDING_DISMISSED_STORAGE_KEY = 'poem-to-image.onboarding-dismissed';
@@ -193,93 +194,54 @@ export default function App() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const exportScene = useMemo(
-    () => ({
-      canvasWidth,
-      canvasHeight,
-      background: {
-        backgroundType: background.backgroundType,
-        backgroundColor: background.backgroundColor,
-        gradientColor1: background.gradientColor1,
-        gradientColor2: background.gradientColor2,
-        gradientDirection: background.gradientDirection,
-        backgroundImage: background.backgroundImage,
-        bgBrightness: background.bgBrightness,
-        bgBlur: background.bgBlur,
-      },
-      typography: {
-        poem,
-        poemStyle,
-        fontFamily: typography.fontFamily,
-        fontSize: typography.fontSize,
-        textColor: typography.textColor,
-        textAlign: typography.textAlign,
-        writingMode: typography.writingMode,
-        padding: typography.padding,
-        lineHeight: typography.lineHeight,
-        letterSpacing: typography.letterSpacing,
-        columns: typography.columns,
-        columnGap: typography.columnGap,
-        textShadowEnabled: typography.textShadowEnabled,
-        textShadowColor: typography.textShadowColor,
-        textShadowBlur: typography.textShadowBlur,
-        textShadowOffsetY: typography.textShadowOffsetY,
-        textShadowOffsetX: typography.textShadowOffsetX,
-        poemPosition: decorations.poemPosition,
-      },
-      decorations: {
-        showBorder: decorations.showBorder,
-        borderStyle: decorations.borderStyle,
-        borderColor: decorations.borderColor,
-        borderWidth: decorations.borderWidth,
-        showStamp: decorations.showStamp && stampSupported,
-        stamp: decorations.stamp,
-        customTexts: decorations.customTexts,
-        logos: decorations.logos,
-        signatures: decorations.signatures,
-      },
-    }),
-    [
-      canvasWidth,
-      canvasHeight,
-      background.backgroundType,
-      background.backgroundColor,
-      background.gradientColor1,
-      background.gradientColor2,
-      background.gradientDirection,
-      background.backgroundImage,
-      background.bgBrightness,
-      background.bgBlur,
+  // Rebuilt every render from its source fields and stabilized by deep equality.
+  // No dependency array to keep in sync, so a new field can't silently go stale.
+  const exportScene = useStructuralMemo({
+    canvasWidth,
+    canvasHeight,
+    background: {
+      backgroundType: background.backgroundType,
+      backgroundColor: background.backgroundColor,
+      gradientColor1: background.gradientColor1,
+      gradientColor2: background.gradientColor2,
+      gradientDirection: background.gradientDirection,
+      backgroundImage: background.backgroundImage,
+      backgroundSize: background.backgroundSize,
+      bgBrightness: background.bgBrightness,
+      bgBlur: background.bgBlur,
+    },
+    typography: {
       poem,
       poemStyle,
-      typography.fontFamily,
-      typography.fontSize,
-      typography.textColor,
-      typography.textAlign,
-      typography.writingMode,
-      typography.padding,
-      typography.lineHeight,
-      typography.letterSpacing,
-      typography.columns,
-      typography.columnGap,
-      typography.textShadowEnabled,
-      typography.textShadowColor,
-      typography.textShadowBlur,
-      typography.textShadowOffsetY,
-      typography.textShadowOffsetX,
-      decorations.poemPosition,
-      decorations.showBorder,
-      decorations.borderStyle,
-      decorations.borderColor,
-      decorations.borderWidth,
-      decorations.showStamp,
-      stampSupported,
-      decorations.stamp,
-      decorations.customTexts,
-      decorations.logos,
-      decorations.signatures,
-    ],
-  );
+      fontFamily: typography.fontFamily,
+      fontSize: typography.fontSize,
+      textColor: typography.textColor,
+      textAlign: typography.textAlign,
+      writingMode: typography.writingMode,
+      padding: typography.padding,
+      lineHeight: typography.lineHeight,
+      letterSpacing: typography.letterSpacing,
+      columns: typography.columns,
+      columnGap: typography.columnGap,
+      textShadowEnabled: typography.textShadowEnabled,
+      textShadowColor: typography.textShadowColor,
+      textShadowBlur: typography.textShadowBlur,
+      textShadowOffsetY: typography.textShadowOffsetY,
+      textShadowOffsetX: typography.textShadowOffsetX,
+      poemPosition: decorations.poemPosition,
+    },
+    decorations: {
+      showBorder: decorations.showBorder,
+      borderStyle: decorations.borderStyle,
+      borderColor: decorations.borderColor,
+      borderWidth: decorations.borderWidth,
+      showStamp: decorations.showStamp && stampSupported,
+      stamp: decorations.stamp,
+      customTexts: decorations.customTexts,
+      logos: decorations.logos,
+      signatures: decorations.signatures,
+    },
+  });
 
   const { canUndo, canRedo, handleUndo, handleRedo } = useEditorHistory({
     exportScene,

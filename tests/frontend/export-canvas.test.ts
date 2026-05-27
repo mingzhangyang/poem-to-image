@@ -15,6 +15,7 @@ function makeMinimalScene(overrides: Partial<CanvasExportScene> = {}): CanvasExp
       gradientColor2: '#ffffff',
       gradientDirection: 'to bottom',
       backgroundImage: null,
+      backgroundSize: 'cover',
       bgBrightness: 100,
       bgBlur: 0,
     },
