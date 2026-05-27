@@ -4,28 +4,46 @@
    src/signatureRendering.ts (signatures), so no fonts are loaded up front. */
 
 :root {
-	--app-accent-50: #edf4f3;
-	--app-accent-100: #dcebea;
-	--app-accent-200: #bfd6d5;
-	--app-accent-300: #97b8b6;
-	--app-accent-500: #547f7d;
-	--app-accent-600: #406967;
-	--app-accent-700: #335857;
-	--app-accent-800: #294748;
-	--app-accent-900: #1f3436;
-	--app-accent-shadow: rgba(41, 71, 72, 0.16);
-	--app-surface: #fffdf9;
-	--app-surface-strong: #fffaf2;
-	--app-page: #f6f3ec;
-	--app-ink: #223034;
+	/* Primary accent — bright teal/cyan (replaces the muted sage green). */
+	--app-accent-50: #e9faf7;
+	--app-accent-100: #ccf3ec;
+	--app-accent-200: #a3e8dd;
+	--app-accent-300: #63d5c5;
+	--app-accent-400: #2ec2b1;
+	--app-accent-500: #14a99b;
+	--app-accent-600: #0d8d82;
+	--app-accent-700: #0c726b;
+	--app-accent-800: #0b5a55;
+	--app-accent-900: #0a4642;
+	--app-accent-shadow: rgba(13, 141, 130, 0.18);
+
+	/* Magenta — brand / primary call-to-action. */
+	--app-magenta-400: #f24fa0;
+	--app-magenta-500: #e5097f;
+	--app-magenta-600: #c20768;
+	--app-magenta-pink: #ff4f9e;
+
+	/* Per-section accent tints (the "multi-hue" playful palette). */
+	--app-cat-templates: #ff5c9d;
+	--app-cat-background: #3f8efc;
+	--app-cat-typography: #8a6bff;
+	--app-cat-decorations: #f7913a;
+	--app-cat-billing: #12c4a0;
+
+	--app-surface: #fffaf3;
+	--app-surface-strong: #fffdf8;
+	--app-page: #eef4fb;
+	--app-ink: #1f2a37;
 }
 
 html {
 	min-height: 100%;
 	background:
-		radial-gradient(circle at top left, rgba(191, 214, 213, 0.45), transparent 34%),
-		radial-gradient(circle at top right, rgba(255, 245, 228, 0.75), transparent 30%),
-		linear-gradient(180deg, #fbf8f2 0%, var(--app-page) 100%);
+		radial-gradient(circle at 8% 4%, rgba(236, 64, 152, 0.28), transparent 34%),
+		radial-gradient(circle at 92% 6%, rgba(77, 163, 255, 0.28), transparent 32%),
+		radial-gradient(circle at 84% 92%, rgba(255, 159, 67, 0.24), transparent 34%),
+		radial-gradient(circle at 12% 94%, rgba(43, 217, 168, 0.26), transparent 34%),
+		linear-gradient(180deg, #fdfbff 0%, var(--app-page) 100%);
 }
 
 body,
@@ -40,19 +58,23 @@ body {
 }
 
 ::selection {
-	background: rgba(84, 127, 125, 0.18);
+	background: rgba(229, 9, 127, 0.18);
 	color: var(--app-accent-900);
 }
 
 .app-panel-surface {
-	background: rgba(255, 253, 249, 0.9);
-	border: 1px solid rgba(34, 48, 52, 0.08);
-	box-shadow: 0 16px 40px rgba(31, 52, 54, 0.05);
+	background: rgba(255, 250, 242, 0.62);
+	border: 1px solid rgba(255, 255, 255, 0.55);
+	box-shadow: 0 16px 40px rgba(31, 52, 54, 0.08);
+	backdrop-filter: blur(16px) saturate(1.3);
+	-webkit-backdrop-filter: blur(16px) saturate(1.3);
 }
 
 .app-soft-surface {
-	background: linear-gradient(180deg, rgba(255, 250, 242, 0.95), rgba(255, 253, 249, 0.92));
-	border: 1px solid rgba(34, 48, 52, 0.06);
+	background: linear-gradient(180deg, rgba(255, 250, 242, 0.72), rgba(255, 247, 236, 0.62));
+	border: 1px solid rgba(255, 255, 255, 0.5);
+	backdrop-filter: blur(10px) saturate(1.2);
+	-webkit-backdrop-filter: blur(10px) saturate(1.2);
 }
 
 .app-input,
@@ -80,9 +102,9 @@ body {
 .app-input:focus,
 .app-select:focus,
 .app-textarea:focus {
-	border-color: var(--app-accent-300);
+	border-color: var(--app-accent-400);
 	background: #fff;
-	box-shadow: 0 0 0 3px rgba(84, 127, 125, 0.14);
+	box-shadow: 0 0 0 3px rgba(20, 169, 155, 0.18);
 }
 
 .app-range {
@@ -110,15 +132,15 @@ body {
 }
 
 .app-button-primary {
-	background: var(--app-accent-700);
+	background: linear-gradient(135deg, var(--app-magenta-500) 0%, var(--app-magenta-pink) 100%);
 	color: white;
-	box-shadow: 0 12px 28px rgba(31, 52, 54, 0.16);
-	transition: background-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+	box-shadow: 0 12px 28px rgba(229, 9, 127, 0.30);
+	transition: filter 160ms ease, box-shadow 160ms ease, transform 160ms ease;
 }
 
 .app-button-primary:hover {
-	background: var(--app-accent-800);
-	box-shadow: 0 16px 34px rgba(31, 52, 54, 0.18);
+	filter: brightness(1.05) saturate(1.05);
+	box-shadow: 0 16px 36px rgba(229, 9, 127, 0.38);
 }
 
 .app-button-primary:disabled {
@@ -177,7 +199,7 @@ body {
 
 .app-action-button:focus-visible {
 	border-color: var(--app-accent-300);
-	box-shadow: 0 0 0 3px rgba(84, 127, 125, 0.14);
+	box-shadow: 0 0 0 3px rgba(20, 169, 155, 0.18);
 }
 
 .app-accent-link {
@@ -190,13 +212,13 @@ body {
 }
 
 .app-status-positive {
-	color: #4f7563;
-	background: rgba(79, 117, 99, 0.12);
+	color: #0e9e80;
+	background: rgba(18, 196, 160, 0.14);
 }
 
 .app-status-warning {
-	color: #8a523b;
-	background: rgba(155, 95, 67, 0.12);
+	color: #c2611f;
+	background: rgba(247, 145, 58, 0.16);
 }
 @media (pointer: coarse) {
 	.app-button-primary,

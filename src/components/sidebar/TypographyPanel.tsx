@@ -40,6 +40,7 @@ export function TypographyPanel({ language, t, expanded, onToggle, typography }:
     <ControlSection
       title={t('typography')}
       icon={<LayoutTemplate className="w-4 h-4" />}
+      tint="var(--app-cat-typography)"
       expanded={expanded}
       onToggle={onToggle}
       summary={summary}

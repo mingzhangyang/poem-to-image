@@ -356,7 +356,7 @@ const DraggableCustomTextItem: FC<DraggableCustomTextItemProps> = ({
         onFocus={() => onCustomTextSelect(customText.id)}
         tabIndex={0}
         aria-label="Custom text element"
-        className="pointer-events-auto relative cursor-move touch-none select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(84,127,125,0.45)]"
+        className="pointer-events-auto relative cursor-move touch-none select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(20, 169, 155,0.45)]"
       >
         {(isSelected || isDragging || isResizing) ? (
           <div

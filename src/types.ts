@@ -499,4 +499,6 @@ export interface ControlSectionProps {
   highlighted?: boolean;
   action?: ReactNode;
   children: ReactNode;
+  /** Optional per-section accent color (CSS value), e.g. 'var(--app-cat-templates)'. */
+  tint?: string;
 }

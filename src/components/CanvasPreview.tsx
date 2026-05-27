@@ -287,7 +287,7 @@ export function CanvasPreview({
     >
       <TransparentGrid visible={backgroundType === 'transparent'} />
 
-      <div className="flex absolute left-4 top-4 z-20 items-center gap-1 rounded-full border border-[rgba(84,127,125,0.16)] bg-[rgba(255,253,249,0.72)] px-2 py-1.5 text-xs text-(--app-accent-700) shadow-[0_10px_24px_var(--app-accent-shadow)] backdrop-blur-sm opacity-70 transition-opacity duration-200 hover:opacity-100 focus-within:opacity-100 md:left-6 md:top-6">
+      <div className="flex absolute left-4 top-4 z-20 items-center gap-1 rounded-full border border-[rgba(20, 169, 155,0.16)] bg-[rgba(255,253,249,0.72)] px-2 py-1.5 text-xs text-(--app-accent-700) shadow-[0_10px_24px_var(--app-accent-shadow)] backdrop-blur-sm opacity-70 transition-opacity duration-200 hover:opacity-100 focus-within:opacity-100 md:left-6 md:top-6">
         <button
           type="button"
           onClick={onUndo}
@@ -310,7 +310,7 @@ export function CanvasPreview({
         </button>
       </div>
 
-      <div className="flex absolute right-4 top-4 z-20 items-center gap-1 rounded-full border border-[rgba(84,127,125,0.16)] bg-[rgba(255,253,249,0.72)] px-2.5 py-1.5 text-xs text-(--app-accent-700) shadow-[0_10px_24px_var(--app-accent-shadow)] backdrop-blur-sm opacity-70 transition-opacity duration-200 hover:opacity-100 focus-within:opacity-100 md:right-6 md:top-6">
+      <div className="flex absolute right-4 top-4 z-20 items-center gap-1 rounded-full border border-[rgba(20, 169, 155,0.16)] bg-[rgba(255,253,249,0.72)] px-2.5 py-1.5 text-xs text-(--app-accent-700) shadow-[0_10px_24px_var(--app-accent-shadow)] backdrop-blur-sm opacity-70 transition-opacity duration-200 hover:opacity-100 focus-within:opacity-100 md:right-6 md:top-6">
         <button
           type="button"
           onClick={() => onPreviewZoomChange(clamp(previewZoom - ZOOM_STEP, ZOOM_MIN, ZOOM_MAX))}
@@ -343,7 +343,7 @@ export function CanvasPreview({
           <Plus size={11} />
         </button>
 
-        <div className="w-px h-3 bg-[rgba(84,127,125,0.22)] mx-0.5" />
+        <div className="w-px h-3 bg-[rgba(20, 169, 155,0.22)] mx-0.5" />
 
         <button
           type="button"

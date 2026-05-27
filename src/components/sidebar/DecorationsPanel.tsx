@@ -73,6 +73,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
     <ControlSection
       title={t('decorations')}
       icon={<Stamp className="w-4 h-4" />}
+      tint="var(--app-cat-decorations)"
       expanded={expanded}
       onToggle={onToggle}
       summary={summaryParts.join(' · ')}
@@ -142,7 +143,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                           key={color}
                           type="button"
                           onClick={() => decorations.onBorderColorChange(color)}
-                          className={`h-6 w-6 rounded-full border transition-transform ${isActive ? 'scale-110 border-[rgba(34,48,52,0.36)] ring-2 ring-[rgba(84,127,125,0.18)]' : 'border-white/80 hover:scale-105'}`}
+                          className={`h-6 w-6 rounded-full border transition-transform ${isActive ? 'scale-110 border-[rgba(34,48,52,0.36)] ring-2 ring-[rgba(20, 169, 155,0.18)]' : 'border-white/80 hover:scale-105'}`}
                           style={{ backgroundColor: color }}
                           aria-label={`${t('borderColor')} ${color}`}
                           title={color}
@@ -290,7 +291,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                         key={color}
                         type="button"
                         onClick={() => decorations.onStampChange({ inkColor: color })}
-                        className={`h-6 w-6 rounded-full border transition-transform ${isActive ? 'scale-110 border-[rgba(34,48,52,0.36)] ring-2 ring-[rgba(84,127,125,0.18)]' : 'border-white/80 hover:scale-105'}`}
+                        className={`h-6 w-6 rounded-full border transition-transform ${isActive ? 'scale-110 border-[rgba(34,48,52,0.36)] ring-2 ring-[rgba(20, 169, 155,0.18)]' : 'border-white/80 hover:scale-105'}`}
                         style={{ backgroundColor: color }}
                         aria-label={label}
                         title={label}
@@ -754,7 +755,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                   <span className="text-xs text-(--app-accent-500) w-8 text-right">{Math.round(sig.opacity * 100)}%</span>
                 </div>
 
-                <p className="text-[11px] font-medium rounded-full bg-[rgba(84,127,125,0.1)] px-2 py-1 text-[rgba(84,127,125,0.9)] text-center">
+                <p className="text-[11px] font-medium rounded-full bg-[rgba(20, 169, 155,0.1)] px-2 py-1 text-[rgba(20, 169, 155,0.9)] text-center">
                   {t('dragSignatureHint')}
                 </p>
               </div>

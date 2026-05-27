@@ -172,7 +172,7 @@ export const SignatureOverlay: FC<SignatureOverlayProps> = ({
       onKeyDown={handleKeyboardMove}
       tabIndex={0}
       aria-label="Signature element"
-      className="absolute touch-none select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(84,127,125,0.45)]"
+      className="absolute touch-none select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(20, 169, 155,0.45)]"
     >
       <canvas
         ref={canvasRef}

@@ -40,6 +40,7 @@ export function BillingPanel({ t, expanded, onToggle, billing }: BillingPanelPro
     <ControlSection
       title={t('billing')}
       icon={<Wallet className="w-4 h-4" />}
+      tint="var(--app-cat-billing)"
       expanded={expanded}
       onToggle={onToggle}
     >

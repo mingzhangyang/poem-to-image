@@ -73,6 +73,7 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
     <ControlSection
       title={t('background')}
       icon={<Palette className="w-4 h-4" />}
+      tint="var(--app-cat-background)"
       expanded={expanded}
       onToggle={onToggle}
       summary={summary}

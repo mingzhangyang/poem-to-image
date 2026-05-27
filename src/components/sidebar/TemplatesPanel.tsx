@@ -217,6 +217,7 @@ export function TemplatesPanel({ t, expanded, onToggle, templates, currentBackgr
       <ControlSection
         title={t('templates')}
         icon={<Sparkles className="w-4 h-4" />}
+        tint="var(--app-cat-templates)"
         expanded={expanded}
         onToggle={onToggle}
         summary={activeName ?? t('templatesHint')}

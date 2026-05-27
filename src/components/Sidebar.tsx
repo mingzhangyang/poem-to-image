@@ -395,7 +395,7 @@ export function Sidebar({
       </AnimatePresence>
 
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex md:order-1 md:w-80 md:border-r md:border-[rgba(34,48,52,0.08)] md:h-screen md:overflow-y-auto shrink-0 bg-[rgba(255,253,249,0.86)] shadow-sm z-10 flex-col backdrop-blur">
+      <aside className="hidden md:flex md:order-1 md:w-80 md:border-r md:border-white/40 md:h-screen md:overflow-y-auto shrink-0 bg-[rgba(255,250,242,0.55)] shadow-sm z-10 flex-col backdrop-blur-xl">
         <SidebarHeader
           t={t}
           balance={billing.balance}

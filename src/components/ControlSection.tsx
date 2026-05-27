@@ -2,12 +2,14 @@ import { AnimatePresence, motion } from 'motion/react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import type { ControlSectionProps } from '../types';
 
-export function ControlSection({ title, icon, expanded, onToggle, summary, highlighted = false, action, children }: ControlSectionProps) {
+export function ControlSection({ title, icon, expanded, onToggle, summary, highlighted = false, action, children, tint }: ControlSectionProps) {
+  const tinted = expanded || highlighted;
+  const iconStyle = tinted && tint ? { color: tint } : undefined;
   const containerClassName = expanded
-    ? 'border-[var(--app-accent-200)] bg-[rgba(255,253,249,0.98)] shadow-[0_18px_45px_var(--app-accent-shadow)]'
+    ? 'border-white/60 bg-[rgba(255,250,242,0.72)] shadow-[0_18px_45px_var(--app-accent-shadow)] backdrop-blur-xl'
     : highlighted
-      ? 'border-[var(--app-accent-200)] bg-[rgba(237,244,243,0.72)] shadow-[0_12px_30px_var(--app-accent-shadow)]'
-      : 'border-[rgba(34,48,52,0.08)] bg-[rgba(255,253,249,0.92)] hover:border-[var(--app-accent-200)]';
+      ? 'border-white/60 bg-[rgba(255,248,238,0.6)] shadow-[0_12px_30px_var(--app-accent-shadow)] backdrop-blur-xl'
+      : 'border-white/45 bg-[rgba(255,250,242,0.5)] hover:border-white/70 backdrop-blur-xl';
 
   return (
     <section className={`overflow-hidden rounded-[1.5rem] border transition-all duration-200 ${containerClassName}`}>
@@ -19,7 +21,7 @@ export function ControlSection({ title, icon, expanded, onToggle, summary, highl
           <span className="flex items-start justify-between gap-3">
             <span className="min-w-0">
               <span className={`flex items-center gap-2 text-sm font-semibold ${expanded || highlighted ? 'text-(--app-ink)' : 'text-(--app-accent-800)'}`}>
-                <span className={expanded || highlighted ? 'text-[var(--app-accent-600)]' : 'text-[rgba(34,48,52,0.38)]'}>{icon}</span>
+                <span className={tinted ? (tint ? '' : 'text-[var(--app-accent-600)]') : 'text-[rgba(34,48,52,0.38)]'} style={iconStyle}>{icon}</span>
                 <span style={{ fontFamily: "'Cormorant Garamond', 'Noto Serif SC', Georgia, serif" }}>{title}</span>
               </span>
               {summary ? (

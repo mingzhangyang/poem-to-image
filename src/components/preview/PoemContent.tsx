@@ -491,7 +491,7 @@ export function PoemContent({
           onFocus={() => setActiveTextSelection({ kind: 'poem' })}
           tabIndex={0}
           aria-label={t('poemBody')}
-          className="pointer-events-auto relative flex cursor-move touch-none select-none flex-col items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(84,127,125,0.45)]"
+          className="pointer-events-auto relative flex cursor-move touch-none select-none flex-col items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(20, 169, 155,0.45)]"
         >
           {/* Hover/drag/resize border indicator — absolutely positioned, no effect on text layout */}
           {(activeTextSelection?.kind === 'poem' || isDragging || isResizing) && (
