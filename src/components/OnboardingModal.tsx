@@ -4,6 +4,7 @@ import { Sparkles, ArrowRight, Check, X, ChevronLeft, ChevronRight, Zap } from '
 import type { Language } from '../translations';
 import type { TemplateSectionProps, TranslateFn } from '../types';
 import { useDialogA11y } from '../hooks/useDialogA11y';
+import { getTemplatePreviewStyle } from '../templates/preview-style';
 
 interface OnboardingModalProps {
   isOpen: boolean;
@@ -154,7 +155,7 @@ export function OnboardingModal({ isOpen, onClose, t, language, templates }: Onb
                     >
                       <div
                         className="h-10 w-10 rounded-xl shadow-sm"
-                        style={{ background: `linear-gradient(135deg, ${template.accentFrom}, ${template.accentTo})` }}
+                        style={getTemplatePreviewStyle(template)}
                       />
                       <span className="flex-1 text-left text-sm font-medium text-(--app-accent-800) group-hover:text-(--app-ink)">
                         {t(template.nameKey)}

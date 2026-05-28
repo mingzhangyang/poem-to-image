@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import type { ExpandedSections, TemplateSectionProps, TranslateFn } from '../../types';
 import { ControlSection } from '../ControlSection';
 import { useDialogA11y } from '../../hooks/useDialogA11y';
+import { getTemplatePreviewStyle } from '../../templates/preview-style';
 
 const BUILT_IN_PREVIEW_LIMIT = 2;
 
@@ -33,15 +34,7 @@ interface BuiltInTemplateCardProps {
 }
 
 function BuiltInTemplateCard({ t, template, isActive, onApply, variant = 'compact' }: BuiltInTemplateCardProps) {
-  const previewStyle = template.usesBackgroundImage && template.background.backgroundImage
-    ? {
-        backgroundImage: `linear-gradient(135deg, rgba(10,17,28,0.14), rgba(255,255,255,0.06)), url(${template.background.backgroundImage})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-      }
-    : {
-        background: `linear-gradient(135deg, ${template.accentFrom}, ${template.accentTo})`,
-      };
+  const previewStyle = getTemplatePreviewStyle(template);
 
   if (variant === 'library') {
     return (
@@ -296,11 +289,7 @@ export function TemplatesPanel({ t, expanded, onToggle, templates, currentBackgr
                       <div className="flex items-center gap-3">
                         <div
                           className="w-10 h-10 rounded-lg shrink-0"
-                          style={{
-                            background: template.accentFrom === template.accentTo
-                              ? template.accentFrom
-                              : `linear-gradient(135deg, ${template.accentFrom}, ${template.accentTo})`,
-                          }}
+                          style={getTemplatePreviewStyle(template)}
                         />
                         <div className="flex-1 min-w-0">
                           {isRenaming ? (
@@ -454,9 +443,7 @@ export function TemplatesPanel({ t, expanded, onToggle, templates, currentBackgr
                       <div className="flex flex-wrap gap-3">
                         {templates.customTemplates.map((template) => {
                           const isActive = templates.activeCustomTemplateId === template.id;
-                          const previewStyle = template.accentFrom === template.accentTo
-                            ? { background: template.accentFrom }
-                            : { background: `linear-gradient(135deg, ${template.accentFrom}, ${template.accentTo})` };
+                          const previewStyle = getTemplatePreviewStyle(template);
 
                           return (
                             <button

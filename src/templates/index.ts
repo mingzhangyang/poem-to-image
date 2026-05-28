@@ -10,7 +10,6 @@ import { templateTypographyOverrides } from './typography-overrides';
 export { ALL_EDITOR_TEMPLATES } from './definitions';
 
 const CURATED_EDITOR_TEMPLATE_IDS: EditorTemplateId[] = [
-  'ink-wash',
   'parchment-scroll',
   'wax-sealed-letter',
   'illuminated-manuscript',

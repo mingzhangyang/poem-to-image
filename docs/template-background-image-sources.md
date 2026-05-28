@@ -1,36 +1,41 @@
 # Template Background Image Sources
 
-Selected on 2026-03-18 for poetic mood, traditional aesthetics, and bright-but-soft color balance.
+These are the active raster backgrounds used by curated templates. Earlier Pexels JPGs and classic-template SVGs were removed after the templates moved to generated or user-provided replacements.
 
-## License
+## Active images
 
-All images are from Pexels and may be used for free under the Pexels License:
-https://www.pexels.com/license/
+1. `mountain-waterfall-generated.png`
+- Used by `mountain-mist-photo`.
+- Generated on 2026-05-27 with the built-in image generation workflow.
+- Prompt summary: portrait misty mountain valley with an off-center waterfall, muted ink-wash photographic mood, pale negative space for vertical poem text; no buildings, roads, poles, wires, people, signs, or text.
 
-## Integrated images
+2. `sunrise-sea.png`
+- User-provided replacement for `ocean-dawn-photo`.
 
-1. `mountain-mist.jpg`
-- Source page: https://www.pexels.com/photo/foggy-landscape-at-dawn-18032972/
-- Direct file: https://images.pexels.com/photos/18032972/pexels-photo-18032972.jpeg
+3. `neon-city.png`
+- User-provided replacement for `city-night-photo`.
 
-2. `ocean-dawn.jpg`
-- Source page: https://www.pexels.com/photo/traditional-chinese-pavilion-with-lotus-pond-33214235/
-- Direct file: https://images.pexels.com/photos/33214235/pexels-photo-33214235.jpeg
+4. `ink-pine-mist-generated.png`
+- Used by `ink-pine-mist-photo`.
+- Generated on 2026-05-27 with the built-in image generation workflow.
+- Prompt summary: portrait misty pine-covered mountain ridges at dawn, muted ink-wash photographic mood, pale central negative space for vertical poem text; no buildings, roads, poles, wires, people, signs, or text.
 
-3. `city-night.jpg`
-- Source page: https://www.pexels.com/photo/traditional-chinese-architecture-by-lotus-pond-33550755/
-- Direct file: https://images.pexels.com/photos/33550755/pexels-photo-33550755.jpeg
+5. `parchment-scroll-generated.png`
+- Used by `parchment-scroll`.
+- Generated on 2026-05-27 with the built-in image generation workflow.
+- Prompt summary: realistic flat aged vellum/parchment poem sheet with irregular deckled edges, warm ivory paper texture, broad clean central writing area; no wooden rods, text, letters, symbols, logos, or watermark.
 
-## Added for ink-photo series
+6. `wax-sealed-letter-generated.png`
+- Used by `wax-sealed-letter`.
+- Generated on 2026-05-27 with the built-in image generation workflow.
+- Prompt summary: realistic aged handmade-paper family letter with peripheral folded envelope flap and muted red wax seal, broad clean central writing area; no text, monograms, symbols, logos, or watermark.
 
-4. `ink-pine-mist.jpg`
-- Source page: https://www.pexels.com/photo/beautiful-landscape-of-pine-forests-on-the-huangshan-mountains-in-china-34753689/
-- Direct file: https://images.pexels.com/photos/34753689/pexels-photo-34753689.jpeg
+7. `illuminated-manuscript-generated.png`
+- Used by `illuminated-manuscript`.
+- Generated on 2026-05-27 with the built-in image generation workflow.
+- Prompt summary: restrained antique vellum manuscript page with fine gold-leaf border and light jewel-tone corner ornaments, broad clean central writing area; no large panels, text, letters, figures, logos, or watermark.
 
-5. `ink-li-river.jpg`
-- Source page: https://www.pexels.com/photo/traditional-bamboo-raft-on-li-river-with-karst-mountains-and-clear-sky-36398296/
-- Direct file: https://images.pexels.com/photos/36398296/pexels-photo-36398296.jpeg
-
-6. `ink-lake-pavilion.jpg`
-- Source page: https://www.pexels.com/photo/traditional-chinese-pavilion-by-serene-lake-33575126/
-- Direct file: https://images.pexels.com/photos/33575126/pexels-photo-33575126.jpeg
+8. `bamboo-scroll-generated.png`
+- Used by `bamboo-scroll`.
+- Generated on 2026-05-27 with the built-in image generation workflow.
+- Prompt summary: realistic ancient Chinese bamboo slip book with 9-12 wide flat bamboo slips, uneven ends, dark binding cords through small holes, readable central area for vertical poem text; no round bamboo poles, text, calligraphy, symbols, logos, or watermark.

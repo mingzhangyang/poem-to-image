@@ -356,17 +356,15 @@ export function CanvasPreview({
         </button>
       </div>
 
-      <div className="hidden md:flex absolute bottom-6 right-6 z-20 items-center gap-3 rounded-[1.6rem] border border-white/70 bg-[rgba(255,253,249,0.86)] p-3 shadow-[0_22px_56px_var(--app-accent-shadow)] backdrop-blur-md">
-        <button
-          type="button"
-          onClick={handleOpenExportModal}
-          disabled={isOutputBusy}
-          className="app-button-primary rounded-2xl px-4 py-3 text-sm font-medium disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-        >
-          <Download className="h-4 w-4" />
-          {t('exportAndShare')}
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={handleOpenExportModal}
+        disabled={isOutputBusy}
+        className="app-button-primary hidden md:flex absolute bottom-6 right-6 z-20 items-center justify-center gap-2 rounded-2xl border border-white/70 px-5 py-3 text-sm font-semibold shadow-[0_20px_48px_var(--app-accent-shadow)] backdrop-blur-md disabled:cursor-not-allowed disabled:opacity-70"
+      >
+        <Download className="h-4 w-4" />
+        {t('exportAndShare')}
+      </button>
 
       <AnimatePresence>
         {isExportModalOpen ? (
