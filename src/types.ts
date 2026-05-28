@@ -2,6 +2,7 @@ import type { CSSProperties, ChangeEvent, ReactNode, RefObject } from 'react';
 import type { Language, TranslationKey } from './translations';
 
 export type AiProvider = 'gemini' | 'openai';
+export const CREDIT_COST: Record<AiProvider, number> = { gemini: 2, openai: 1 };
 export type BackgroundType = 'solid' | 'gradient' | 'transparent' | 'image' | 'ai';
 export type WritingMode = 'horizontal-tb' | 'vertical-rl';
 export type TextAlign = 'left' | 'center' | 'right';

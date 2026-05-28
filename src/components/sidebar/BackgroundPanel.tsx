@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ChevronDown, ChevronRight, Loader2, Palette, Sparkles, Upload } from 'lucide-react';
 import type { TranslationKey } from '../../translations';
+import { CREDIT_COST } from '../../types';
 import type { AiProvider, BackgroundType, BackgroundSectionProps, ExpandedSections, TranslateFn } from '../../types';
 import { ControlSection } from '../ControlSection';
 import { MAX_AI_PROMPT_LENGTH } from '../../hooks/useAiBackground';
@@ -14,8 +15,6 @@ const backgroundTypeLabels: Record<BackgroundType, TranslationKey> = {
 };
 
 const aiProviders: AiProvider[] = ['gemini', 'openai'];
-
-const CREDIT_COST: Record<'gemini' | 'openai', number> = { gemini: 2, openai: 1 };
 
 const PROVIDER_META: Record<AiProvider, { title: string; tradeoffKey: TranslationKey; detailKey: TranslationKey }> = {
   gemini: {

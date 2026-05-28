@@ -65,7 +65,7 @@ export async function generateWithOpenAi(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'gpt-image-1',
+      model: 'gpt-image-2',
       prompt,
       size: resolveOpenAiSize(aspectRatio),
       quality: 'medium',
@@ -80,7 +80,7 @@ export async function generateWithOpenAi(
   }
 
   if (!response.ok) {
-    badGenResult(payload?.error?.message || 'Failed to generate AI background.');
+    badGenResult(payload?.error?.message || `Failed to generate AI background (HTTP ${response.status}).`);
   }
 
   const imageBase64 = payload?.data?.[0]?.b64_json;

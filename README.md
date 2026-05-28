@@ -18,7 +18,7 @@ Turn poems into AI-generated images with precise text control. Built with React 
 | Model | Credits | Approx. API Cost |
 |---|---|---|
 | Gemini (NanoBanana 2) | 2 credits | ~$0.067 |
-| OpenAI (gpt-image-1 medium) | 1 credit | ~$0.042 |
+| OpenAI (gpt-image-2 medium) | 1 credit | Token-based: image output $30/1M tokens + text input $5/1M tokens |
 
 ## Credit Packages
 
