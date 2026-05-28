@@ -11,5 +11,6 @@ coverage/
 !.dev.vars.example
 
 .wrangler/
+.claude/
 
 screenshot*.png
