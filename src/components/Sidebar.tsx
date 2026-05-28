@@ -123,7 +123,7 @@ export function Sidebar({
   };
 
   const sections = () => (
-    <div className="p-4 sm:p-6 space-y-6 sm:space-y-8 flex-1 overflow-y-auto">
+    <div className="app-sidebar-scrollbar p-4 sm:p-6 space-y-6 sm:space-y-8 flex-1 overflow-y-auto">
       <div>
         <TemplatesPanel
           t={t}
@@ -192,7 +192,7 @@ export function Sidebar({
 
     if (activeMobilePanel === 'templates') {
       return (
-        <div className="p-4 sm:p-6 space-y-6 flex-1 overflow-y-auto">
+        <div className="app-sidebar-scrollbar p-4 sm:p-6 space-y-6 flex-1 overflow-y-auto">
           <CanvasSizePanel
             t={t}
             expanded={expandedSections.canvasSize}
@@ -212,7 +212,7 @@ export function Sidebar({
 
     if (activeMobilePanel === 'content') {
       return (
-        <div className="p-4 sm:p-6 space-y-6 flex-1 overflow-y-auto">
+        <div className="app-sidebar-scrollbar p-4 sm:p-6 space-y-6 flex-1 overflow-y-auto">
           <ContentPanel
             t={t}
             expanded={expandedSections.content}
@@ -232,7 +232,7 @@ export function Sidebar({
 
     if (activeMobilePanel === 'style') {
       return (
-        <div className="p-4 sm:p-6 space-y-6 flex-1 overflow-y-auto">
+        <div className="app-sidebar-scrollbar p-4 sm:p-6 space-y-6 flex-1 overflow-y-auto">
           <BackgroundPanel
             t={t}
             expanded={expandedSections.background}
@@ -395,7 +395,7 @@ export function Sidebar({
       </AnimatePresence>
 
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex md:order-1 md:w-[360px] md:border-r md:border-white/40 md:h-screen md:overflow-y-auto shrink-0 bg-[rgba(255,250,242,0.55)] shadow-sm z-10 flex-col backdrop-blur-xl">
+      <aside className="app-sidebar-scrollbar hidden md:flex md:order-1 md:w-[360px] md:border-r md:border-white/40 md:h-screen md:overflow-y-auto shrink-0 bg-[rgba(255,250,242,0.55)] shadow-sm z-10 flex-col backdrop-blur-xl">
         <SidebarHeader
           t={t}
           balance={billing.balance}

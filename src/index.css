@@ -220,6 +220,37 @@ body {
 	color: #c2611f;
 	background: rgba(247, 145, 58, 0.16);
 }
+
+.app-sidebar-scrollbar {
+	scrollbar-gutter: stable;
+	scrollbar-width: thin;
+	scrollbar-color: rgba(20, 169, 155, 0.42) transparent;
+}
+
+.app-sidebar-scrollbar::-webkit-scrollbar {
+	width: 0.7rem;
+	height: 0.7rem;
+}
+
+.app-sidebar-scrollbar::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.app-sidebar-scrollbar::-webkit-scrollbar-thumb {
+	border: 0.2rem solid transparent;
+	border-radius: 9999px;
+	background: linear-gradient(180deg, rgba(20, 169, 155, 0.62), rgba(229, 9, 127, 0.42)) border-box;
+	background-clip: padding-box;
+}
+
+.app-sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
+	background: linear-gradient(180deg, rgba(13, 141, 130, 0.82), rgba(229, 9, 127, 0.62)) border-box;
+	background-clip: padding-box;
+}
+
+.app-sidebar-scrollbar::-webkit-scrollbar-corner {
+	background: transparent;
+}
 @media (pointer: coarse) {
 	.app-button-primary,
 	.app-button-secondary,

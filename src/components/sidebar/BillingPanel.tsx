@@ -131,7 +131,7 @@ export function BillingPanel({ t, expanded, onToggle, billing }: BillingPanelPro
               ) : billing.history.length === 0 ? (
                 <p className="text-xs text-[rgba(34,48,52,0.4)] text-center py-2">{t('noTransactions')}</p>
               ) : (
-                <div className="space-y-1 max-h-48 overflow-y-auto pr-1">
+                <div className="app-sidebar-scrollbar space-y-1 max-h-48 overflow-y-auto pr-1">
                   {billing.history.map((item) => (
                     <div
                       key={item.id}
