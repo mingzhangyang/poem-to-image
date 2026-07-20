@@ -13,6 +13,7 @@ import type { CustomText } from '../../types';
 import { TextLayoutBlock } from './TextLayoutBlock';
 
 interface CustomTextItemsProps {
+  ariaLabel: string;
   frameRef: RefObject<HTMLDivElement | null>;
   frameWidth: number;
   customTexts: CustomText[];
@@ -45,6 +46,7 @@ function measureCustomTextGeometry(frameRect: PreviewPositioningRect, boxRect: D
 }
 
 interface DraggableCustomTextItemProps {
+  ariaLabel: string;
   frameRef: RefObject<HTMLDivElement | null>;
   frameWidth: number;
   customText: CustomText;
@@ -60,6 +62,7 @@ interface DraggableCustomTextItemProps {
 }
 
 const DraggableCustomTextItem: FC<DraggableCustomTextItemProps> = ({
+  ariaLabel,
   frameRef,
   frameWidth,
   customText,
@@ -269,7 +272,6 @@ const DraggableCustomTextItem: FC<DraggableCustomTextItemProps> = ({
     setLiveBoxWidth(undefined);
 
     window.requestAnimationFrame(() => {
-      const frameRect = frameRef.current?.getBoundingClientRect();
       const positioningRect = frameRef.current ? getPreviewPositioningRect(frameRef.current) : null;
       const textRect = textBoxRef.current?.getBoundingClientRect();
 
@@ -355,7 +357,7 @@ const DraggableCustomTextItem: FC<DraggableCustomTextItemProps> = ({
         onKeyDown={handleKeyboardMove}
         onFocus={() => onCustomTextSelect(customText.id)}
         tabIndex={0}
-        aria-label="Custom text element"
+        aria-label={ariaLabel}
         className="pointer-events-auto relative cursor-move touch-none select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(20, 169, 155,0.45)]"
       >
         {(isSelected || isDragging || isResizing) ? (
@@ -454,6 +456,7 @@ const DraggableCustomTextItem: FC<DraggableCustomTextItemProps> = ({
 }
 
 export function CustomTextItems({
+  ariaLabel,
   frameRef,
   frameWidth,
   customTexts,
@@ -474,6 +477,7 @@ export function CustomTextItems({
     <>
       {customTexts.map((customText) => (
         <DraggableCustomTextItem
+          ariaLabel={ariaLabel}
           key={customText.id}
           frameRef={frameRef}
           frameWidth={effectiveFrameWidth}

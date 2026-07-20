@@ -1,6 +1,5 @@
 import { getAuthenticatedUser, type AuthUser, type AuthValidationOptions } from './auth';
-import type { D1Database } from './db';
-import { DuplicateGenerationRequestError, InsufficientCreditsError, ensureUser, getBalance, reserveGeneration, finalizeGenerationSuccess, finalizeGenerationFailure, listUserTemplates, createUserTemplate, deleteUserTemplate, renameUserTemplate } from './db';
+import { DuplicateGenerationRequestError, InsufficientCreditsError, consumeRateLimit, ensureUser, getBalance, reserveGeneration, finalizeGenerationSuccess, finalizeGenerationFailure, listUserTemplates, createUserTemplate, deleteUserTemplate, renameUserTemplate } from './db';
 import {
   handleGetBalance,
   handleGetPackages,
@@ -10,26 +9,13 @@ import {
   handleGetHistory,
 } from './billing';
 import { generateWithGemini, generateWithOpenAi, normalizeProvider, CREDIT_COST } from './ai';
-
-export interface Env {
-  GEMINI_API_KEY?: string;
-  OPENAI_API_KEY?: string;
-  CLERK_SECRET_KEY?: string;
-  CLERK_JWT_ISSUER?: string;
-  CLERK_JWT_AUDIENCE?: string;
-  CLERK_ALLOWED_AUTHORIZED_PARTIES?: string;
-  CLERK_ALLOWED_TOKEN_USES?: string;
-  STRIPE_SECRET_KEY?: string;
-  STRIPE_WEBHOOK_SECRET?: string;
-  DB?: D1Database;
-  ASSETS: {
-    fetch(input: Request | string, init?: RequestInit): Promise<Response>;
-  };
-}
+import { applySecurityHeaders, bodyErrorResponse, jsonResponse, methodNotAllowed, readJsonBody, REQUEST_BODY_LIMITS } from './http';
+import { logError, logInfo, requestIdFor, withRequestId } from './observability';
+import type { WorkerEnv } from './env';
+import { runOperationalChecks } from './maintenance';
 
 const MAX_AI_PROMPT_LENGTH = 500;
 const MAX_REQUEST_ID_LENGTH = 80;
-const HTML_CSP = "base-uri 'self'; frame-ancestors 'none'; object-src 'none'";
 
 async function withRetry<T>(fn: () => Promise<T>, maxAttempts = 2): Promise<T> {
   let lastError: unknown;
@@ -39,32 +25,8 @@ async function withRetry<T>(fn: () => Promise<T>, maxAttempts = 2): Promise<T> {
   throw lastError;
 }
 
-function applySecurityHeaders(response: Response, { noStore = false }: { noStore?: boolean } = {}): Response {
-  const headers = new Headers(response.headers);
-  headers.set('X-Content-Type-Options', 'nosniff');
-  headers.set('X-Frame-Options', 'DENY');
-  headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-  headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-  headers.set('Cross-Origin-Opener-Policy', 'same-origin');
-
-  if (noStore) {
-    headers.set('Cache-Control', 'no-store');
-  }
-
-  const contentType = headers.get('content-type')?.toLowerCase() ?? '';
-  if (contentType.includes('text/html')) {
-    headers.set('Content-Security-Policy', HTML_CSP);
-  }
-
-  return new Response(response.body, {
-    status: response.status,
-    statusText: response.statusText,
-    headers,
-  });
-}
-
 function json(data: unknown, status = 200): Response {
-  return applySecurityHeaders(Response.json(data, { status }), { noStore: true });
+  return jsonResponse(data, status);
 }
 
 function badRequest(message: string, status = 400): Response {
@@ -86,9 +48,9 @@ function parseCsvEnv(raw?: string): string[] | undefined {
   return items.length > 0 ? items : undefined;
 }
 
-function hasRequiredAuthConfig(env: Env): boolean {
+function hasRequiredAuthConfig(env: WorkerEnv): boolean {
   const allowedAuthorizedParties = parseCsvEnv(env.CLERK_ALLOWED_AUTHORIZED_PARTIES);
-  return !!(env.CLERK_SECRET_KEY && env.CLERK_JWT_ISSUER && env.CLERK_JWT_AUDIENCE && allowedAuthorizedParties?.length);
+  return !!(env.CLERK_SECRET_KEY && env.CLERK_JWT_ISSUER && allowedAuthorizedParties?.length);
 }
 
 function parseTemplateData(raw: string): Record<string, unknown> {
@@ -111,18 +73,32 @@ function normalizeRequestId(value: unknown): string | null {
   return trimmed;
 }
 
-function getAuthValidationOptions(env: Env): AuthValidationOptions {
+function getAuthValidationOptions(env: WorkerEnv): AuthValidationOptions {
   return {
     expectedIssuer: env.CLERK_JWT_ISSUER,
     expectedAudience: env.CLERK_JWT_AUDIENCE,
     allowedAuthorizedParties: parseCsvEnv(env.CLERK_ALLOWED_AUTHORIZED_PARTIES),
-    allowedTokenUses: parseCsvEnv(env.CLERK_ALLOWED_TOKEN_USES),
   };
 }
 
-async function getAuthenticatedRequestUser(request: Request, env: Env): Promise<AuthUser | null> {
-  if (!hasRequiredAuthConfig(env)) return null;
-  return getAuthenticatedUser(request, env.CLERK_SECRET_KEY as string, getAuthValidationOptions(env));
+async function getAuthenticatedRequestUser(request: Request, env: WorkerEnv): Promise<AuthUser | null> {
+  const secretKey = env.CLERK_SECRET_KEY;
+  if (!secretKey || !hasRequiredAuthConfig(env)) return null;
+  return getAuthenticatedUser(request, secretKey, getAuthValidationOptions(env));
+}
+
+async function enforceRateLimit(
+  db: D1Database,
+  key: string,
+  limit: number,
+  windowSeconds: number,
+): Promise<Response | null> {
+  const result = await consumeRateLimit(db, key, limit, windowSeconds);
+  if (result.allowed) return null;
+  const response = json({ error: 'Too many requests.', code: 'RATE_LIMITED' }, 429);
+  response.headers.set('Retry-After', String(result.retryAfterSeconds));
+  response.headers.set('X-RateLimit-Remaining', String(result.remaining));
+  return response;
 }
 
 interface GenerateImageRequest {
@@ -132,7 +108,7 @@ interface GenerateImageRequest {
   requestId?: string;
 }
 
-async function handleGenerateAiBackground(request: Request, env: Env): Promise<Response> {
+async function handleGenerateAiBackground(request: Request, env: WorkerEnv): Promise<Response> {
   // Fail closed: AI generation must not be reachable without auth + billing state.
   if (!hasRequiredAuthConfig(env) || !env.DB) {
     return json({ error: 'AI generation is not configured.' }, 503);
@@ -145,13 +121,17 @@ async function handleGenerateAiBackground(request: Request, env: Env): Promise<R
   const userId = user.userId;
   const email = user.email;
   await ensureUser(db, userId, email);
+  const rateLimitResponse = await enforceRateLimit(db, `ai:${userId}`, 10, 60);
+  if (rateLimitResponse) return rateLimitResponse;
 
-  let payload: GenerateImageRequest;
+  let parsed: unknown;
   try {
-    payload = (await request.json()) as GenerateImageRequest;
-  } catch {
-    return badRequest('Request body must be valid JSON.');
+    parsed = await readJsonBody(request, REQUEST_BODY_LIMITS.aiGeneration);
+  } catch (error) {
+    return bodyErrorResponse(error) ?? badRequest('Request body must be valid JSON.');
   }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return badRequest('Invalid request body.');
+  const payload = parsed as GenerateImageRequest;
 
   if (!payload.prompt?.trim()) return badRequest('Prompt is required.');
   if (payload.prompt.trim().length > MAX_AI_PROMPT_LENGTH) {
@@ -227,14 +207,22 @@ async function handleGenerateAiBackground(request: Request, env: Env): Promise<R
   try {
     let result: { imageDataUrl: string };
 
+    const startedAt = Date.now();
     if (provider === 'openai') {
-      result = await generateWithOpenAi(prompt, aspectRatio, env.OPENAI_API_KEY as string);
+      result = await generateWithOpenAi(prompt, aspectRatio, env.OPENAI_API_KEY!);
     } else {
-      result = await generateWithGemini(prompt, aspectRatio, env.GEMINI_API_KEY as string);
+      result = await generateWithGemini(prompt, aspectRatio, env.GEMINI_API_KEY!);
     }
 
-    // Finalize: deduct credits
+    // Finalize the ledger records; credits were deducted by the reservation.
     const newBalance = await finalizeGenerationSuccess(db, userId, requestId, transactionId);
+
+    logInfo('ai.generation_succeeded', {
+      requestId,
+      provider,
+      latencyMs: Date.now() - startedAt,
+      creditsCharged: costCredits,
+    });
 
     return json({
       imageDataUrl: result.imageDataUrl,
@@ -245,9 +233,11 @@ async function handleGenerateAiBackground(request: Request, env: Env): Promise<R
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to generate AI background.';
 
+    logError('ai.generation_failed', error, { requestId, provider });
+
     // Mark as failed (no credit deduction). Retry once on transient DB failure.
     try {
-      await withRetry(() => finalizeGenerationFailure(db, userId, requestId, transactionId, costCredits, message));
+      await withRetry(() => finalizeGenerationFailure(db, userId, requestId, transactionId, message));
     } catch {
       return badRequest(
         'Failed to generate AI background and failed to restore reserved credits. Please retry later.',
@@ -262,7 +252,7 @@ async function handleGenerateAiBackground(request: Request, env: Env): Promise<R
 const MAX_TEMPLATE_NAME_LENGTH = 100;
 const MAX_TEMPLATE_DATA_BYTES = 32_000; // ~32 KB per template
 
-async function handleGetTemplates(request: Request, env: Env): Promise<Response> {
+async function handleGetTemplates(request: Request, env: WorkerEnv): Promise<Response> {
   if (!hasRequiredAuthConfig(env) || !env.DB) return json({ error: 'Not configured.' }, 503);
   const user = await getAuthenticatedRequestUser(request, env);
   if (!user) return unauthorized();
@@ -277,19 +267,26 @@ async function handleGetTemplates(request: Request, env: Env): Promise<Response>
   return json({ templates });
 }
 
-async function handleCreateTemplate(request: Request, env: Env): Promise<Response> {
+async function handleCreateTemplate(request: Request, env: WorkerEnv): Promise<Response> {
   if (!hasRequiredAuthConfig(env) || !env.DB) return json({ error: 'Not configured.' }, 503);
   const user = await getAuthenticatedRequestUser(request, env);
   if (!user) return unauthorized();
 
-  let payload: { name?: string; [key: string]: unknown };
-  try {
-    payload = (await request.json()) as { name?: string; [key: string]: unknown };
-  } catch {
-    return badRequest('Request body must be valid JSON.');
-  }
+  const rateLimitResponse = await enforceRateLimit(env.DB, `template:${user.userId}`, 30, 60);
+  if (rateLimitResponse) return rateLimitResponse;
 
-  const name = (payload.name ?? '').toString().trim().slice(0, MAX_TEMPLATE_NAME_LENGTH) || 'Custom Template';
+  let parsed: unknown;
+  try {
+    parsed = await readJsonBody(request, REQUEST_BODY_LIMITS.template);
+  } catch (error) {
+    return bodyErrorResponse(error) ?? badRequest('Request body must be valid JSON.');
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return badRequest('Invalid template body.');
+  const payload = parsed as { name?: unknown; [key: string]: unknown };
+
+  const name = (typeof payload.name === 'string' ? payload.name : '')
+    .trim()
+    .slice(0, MAX_TEMPLATE_NAME_LENGTH) || 'Custom Template';
   const { name: _n, ...rest } = payload;
   const dataStr = JSON.stringify(rest);
   const dataBytes = new TextEncoder().encode(dataStr).byteLength;
@@ -310,29 +307,38 @@ async function handleCreateTemplate(request: Request, env: Env): Promise<Respons
   }
 }
 
-async function handleDeleteTemplate(templateId: string, request: Request, env: Env): Promise<Response> {
+async function handleDeleteTemplate(templateId: string, request: Request, env: WorkerEnv): Promise<Response> {
   if (!hasRequiredAuthConfig(env) || !env.DB) return json({ error: 'Not configured.' }, 503);
   const user = await getAuthenticatedRequestUser(request, env);
   if (!user) return unauthorized();
+  const rateLimitResponse = await enforceRateLimit(env.DB, `template:${user.userId}`, 30, 60);
+  if (rateLimitResponse) return rateLimitResponse;
   await ensureUser(env.DB, user.userId, user.email);
   const deleted = await deleteUserTemplate(env.DB, user.userId, templateId);
   if (!deleted) return json({ error: 'Not found.' }, 404);
   return json({ success: true });
 }
 
-async function handleRenameTemplate(templateId: string, request: Request, env: Env): Promise<Response> {
+async function handleRenameTemplate(templateId: string, request: Request, env: WorkerEnv): Promise<Response> {
   if (!hasRequiredAuthConfig(env) || !env.DB) return json({ error: 'Not configured.' }, 503);
   const user = await getAuthenticatedRequestUser(request, env);
   if (!user) return unauthorized();
 
-  let payload: { name?: string };
-  try {
-    payload = (await request.json()) as { name?: string };
-  } catch {
-    return badRequest('Request body must be valid JSON.');
-  }
+  const rateLimitResponse = await enforceRateLimit(env.DB, `template:${user.userId}`, 30, 60);
+  if (rateLimitResponse) return rateLimitResponse;
 
-  const name = (payload.name ?? '').toString().trim().slice(0, MAX_TEMPLATE_NAME_LENGTH);
+  let parsed: unknown;
+  try {
+    parsed = await readJsonBody(request, REQUEST_BODY_LIMITS.checkout);
+  } catch (error) {
+    return bodyErrorResponse(error) ?? badRequest('Request body must be valid JSON.');
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return badRequest('Invalid rename body.');
+  const payload = parsed as { name?: unknown };
+
+  const name = typeof payload.name === 'string'
+    ? payload.name.trim().slice(0, MAX_TEMPLATE_NAME_LENGTH)
+    : '';
   if (!name) return badRequest('Name is required.');
 
   await ensureUser(env.DB, user.userId, user.email);
@@ -341,7 +347,7 @@ async function handleRenameTemplate(templateId: string, request: Request, env: E
   return json({ success: true, name });
 }
 
-async function handleMe(request: Request, env: Env): Promise<Response> {
+async function handleMe(request: Request, env: WorkerEnv): Promise<Response> {
   if (!hasRequiredAuthConfig(env) || !env.DB) {
     return json({ error: 'Auth not configured.' }, 503);
   }
@@ -355,14 +361,13 @@ async function handleMe(request: Request, env: Env): Promise<Response> {
   return json({ userId: user.userId, email: user.email, balance });
 }
 
-export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+async function routeRequest(request: Request, env: WorkerEnv): Promise<Response> {
     const url = new URL(request.url);
     const { pathname } = url;
 
     // ── AI generation ──────────────────────────────────────────────────
     if (pathname === '/api/ai-background') {
-      if (request.method !== 'POST') return badRequest('Method not allowed.', 405);
+      if (request.method !== 'POST') return methodNotAllowed(['POST']);
       return handleGenerateAiBackground(request, env);
     }
 
@@ -370,7 +375,7 @@ export default {
     if (pathname === '/api/templates') {
       if (request.method === 'GET') return handleGetTemplates(request, env);
       if (request.method === 'POST') return handleCreateTemplate(request, env);
-      return badRequest('Method not allowed.', 405);
+      return methodNotAllowed(['GET', 'POST']);
     }
 
     if (pathname.startsWith('/api/templates/')) {
@@ -378,18 +383,18 @@ export default {
       if (!templateId) return badRequest('Template ID required.', 400);
       if (request.method === 'DELETE') return handleDeleteTemplate(templateId, request, env);
       if (request.method === 'PATCH') return handleRenameTemplate(templateId, request, env);
-      return badRequest('Method not allowed.', 405);
+      return methodNotAllowed(['DELETE', 'PATCH']);
     }
 
     // ── Auth ────────────────────────────────────────────────────────────
     if (pathname === '/api/me') {
-      if (request.method !== 'GET') return badRequest('Method not allowed.', 405);
+      if (request.method !== 'GET') return methodNotAllowed(['GET']);
       return handleMe(request, env);
     }
 
     // ── Billing ─────────────────────────────────────────────────────────
     if (pathname === '/api/billing/balance') {
-      if (request.method !== 'GET') return badRequest('Method not allowed.', 405);
+      if (request.method !== 'GET') return methodNotAllowed(['GET']);
       if (!hasRequiredAuthConfig(env) || !env.DB) return json({ error: 'Billing not configured.' }, 503);
       const user = await getAuthenticatedRequestUser(request, env);
       if (!user) return unauthorized();
@@ -397,17 +402,19 @@ export default {
     }
 
     if (pathname === '/api/billing/packages') {
-      if (request.method !== 'GET') return badRequest('Method not allowed.', 405);
+      if (request.method !== 'GET') return methodNotAllowed(['GET']);
       return handleGetPackages();
     }
 
     if (pathname === '/api/billing/checkout-session') {
-      if (request.method !== 'POST') return badRequest('Method not allowed.', 405);
+      if (request.method !== 'POST') return methodNotAllowed(['POST']);
       if (!hasRequiredAuthConfig(env) || !env.DB || !env.STRIPE_SECRET_KEY) {
         return json({ error: 'Billing not configured.' }, 503);
       }
       const user = await getAuthenticatedRequestUser(request, env);
       if (!user) return unauthorized();
+      const rateLimitResponse = await enforceRateLimit(env.DB, `checkout:${user.userId}`, 5, 300);
+      if (rateLimitResponse) return rateLimitResponse;
       return handleCreateCheckoutSession(
         request,
         env.DB,
@@ -419,7 +426,7 @@ export default {
     }
 
     if (pathname === '/api/billing/checkout-status') {
-      if (request.method !== 'GET') return badRequest('Method not allowed.', 405);
+      if (request.method !== 'GET') return methodNotAllowed(['GET']);
       if (!hasRequiredAuthConfig(env) || !env.DB || !env.STRIPE_SECRET_KEY) {
         return json({ error: 'Billing not configured.' }, 503);
       }
@@ -429,21 +436,57 @@ export default {
     }
 
     if (pathname === '/api/billing/webhook/stripe') {
-      if (request.method !== 'POST') return badRequest('Method not allowed.', 405);
+      if (request.method !== 'POST') return methodNotAllowed(['POST']);
       if (!env.DB || !env.STRIPE_WEBHOOK_SECRET) return json({ error: 'Webhook not configured.' }, 503);
       return handleStripeWebhook(request, env.DB, env.STRIPE_WEBHOOK_SECRET);
     }
 
     if (pathname === '/api/billing/history') {
-      if (request.method !== 'GET') return badRequest('Method not allowed.', 405);
+      if (request.method !== 'GET') return methodNotAllowed(['GET']);
       if (!hasRequiredAuthConfig(env) || !env.DB) return json({ error: 'Billing not configured.' }, 503);
       const user = await getAuthenticatedRequestUser(request, env);
       if (!user) return unauthorized();
       return handleGetHistory(env.DB, user.userId, user.email);
     }
 
+    if (pathname.startsWith('/api/')) {
+      return json({ error: 'API route not found.', code: 'NOT_FOUND' }, 404);
+    }
+
     // ── Static assets ────────────────────────────────────────────────────
     const assetResponse = await env.ASSETS.fetch(request);
     return applySecurityHeaders(assetResponse);
+}
+
+export default {
+  async fetch(request: Request, env: WorkerEnv): Promise<Response> {
+    const requestId = requestIdFor(request);
+    const startedAt = Date.now();
+    const pathname = new URL(request.url).pathname;
+
+    try {
+      const response = await routeRequest(request, env);
+      if (pathname.startsWith('/api/')) {
+        logInfo('api.request_completed', {
+          requestId,
+          method: request.method,
+          path: pathname,
+          status: response.status,
+          latencyMs: Date.now() - startedAt,
+        });
+      }
+      return withRequestId(response, requestId);
+    } catch (error) {
+      logError('api.request_failed', error, {
+        requestId,
+        method: request.method,
+        path: pathname,
+        latencyMs: Date.now() - startedAt,
+      });
+      return withRequestId(json({ error: 'Internal server error.' }, 500), requestId);
+    }
   },
-} satisfies { fetch(request: Request, env: Env): Promise<Response> };
+  scheduled(_controller: ScheduledController, env: WorkerEnv, ctx: ExecutionContext): void {
+    ctx.waitUntil(runOperationalChecks(env));
+  },
+} satisfies ExportedHandler<WorkerEnv>;

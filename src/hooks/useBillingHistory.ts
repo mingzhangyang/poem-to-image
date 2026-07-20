@@ -46,7 +46,7 @@ export function useBillingHistory(): UseBillingHistoryResult {
   }, [isSignedIn, getToken]);
 
   useEffect(() => {
-    fetch_();
+    void fetch_();
   }, [fetch_]);
 
   return { items, isLoading, refetch: fetch_ };

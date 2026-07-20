@@ -37,7 +37,7 @@ export function useBalance(): UseBalanceResult {
   }, [isSignedIn, getToken]);
 
   useEffect(() => {
-    fetch_();
+    void fetch_();
   }, [fetch_]);
 
   return { balance, isLoading, refetch: fetch_ };

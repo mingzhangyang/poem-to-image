@@ -7,7 +7,6 @@ const strictOptions = {
   expectedIssuer: 'https://clerk.example.com',
   expectedAudience: 'poem-to-image',
   allowedAuthorizedParties: ['https://app.example.com'],
-  allowedTokenUses: ['session_token'],
 };
 
 function makePayload(overrides: Partial<Parameters<typeof validateAuthClaims>[0]> = {}) {
@@ -18,7 +17,7 @@ function makePayload(overrides: Partial<Parameters<typeof validateAuthClaims>[0]
     iss: 'https://clerk.example.com',
     aud: 'poem-to-image',
     azp: 'https://app.example.com',
-    token_use: 'session_token',
+    sid: 'sess_123',
     ...overrides,
   };
 }
@@ -29,7 +28,7 @@ function makeRequest(origin = 'https://app.example.com') {
   });
 }
 
-test('validateAuthClaims accepts valid issuer/audience/azp/token_use', () => {
+test('validateAuthClaims accepts a valid Clerk session token', () => {
   const valid = validateAuthClaims(
     makePayload(),
     makeRequest(),
@@ -73,9 +72,9 @@ test('validateAuthClaims rejects tokens without azp claim', () => {
   assert.equal(valid, false);
 });
 
-test('validateAuthClaims rejects disallowed token_use', () => {
+test('validateAuthClaims rejects a token without a session ID', () => {
   const valid = validateAuthClaims(
-    makePayload({ token_use: 'id_token' }),
+    makePayload({ sid: undefined }),
     makeRequest(),
     strictOptions,
     now,
@@ -106,15 +105,15 @@ test('validateAuthClaims rejects tokens without exp claim', () => {
   assert.equal(valid, false);
 });
 
-test('validateAuthClaims rejects tokens without token_use claim', () => {
+test('validateAuthClaims accepts the default Clerk token without a custom audience', () => {
   const valid = validateAuthClaims(
-    makePayload({ token_use: undefined }),
+    makePayload({ aud: undefined }),
     makeRequest(),
-    strictOptions,
+    { ...strictOptions, expectedAudience: undefined },
     now,
   );
 
-  assert.equal(valid, false);
+  assert.equal(valid, true);
 });
 
 test('validateAuthClaims rejects when expectedIssuer is missing', () => {
@@ -122,17 +121,6 @@ test('validateAuthClaims rejects when expectedIssuer is missing', () => {
     makePayload(),
     makeRequest(),
     { ...strictOptions, expectedIssuer: undefined },
-    now,
-  );
-
-  assert.equal(valid, false);
-});
-
-test('validateAuthClaims rejects when expectedAudience is missing', () => {
-  const valid = validateAuthClaims(
-    makePayload(),
-    makeRequest(),
-    { ...strictOptions, expectedAudience: undefined },
     now,
   );
 

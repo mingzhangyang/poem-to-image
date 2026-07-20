@@ -87,7 +87,7 @@ export function SettingsPanel({ t, language, onLanguageChange, billing }: Settin
             className="app-soft-surface flex items-center justify-between gap-3 p-3 rounded-xl hover:border-[var(--app-accent-200)] hover:bg-[rgba(237,244,243,0.6)] transition-colors"
           >
             <div className="flex items-center gap-2 min-w-0">
-              {CLERK_CONFIGURED && <AuthUserButton afterSignOutUrl={window.location.href} />}
+              {CLERK_CONFIGURED && <AuthUserButton />}
               {email && <span className="text-sm text-(--app-accent-800) truncate">{email}</span>}
             </div>
             <div className="shrink-0 flex items-center gap-2 text-sm font-semibold text-[var(--app-accent-700)]">

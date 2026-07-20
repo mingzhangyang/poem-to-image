@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { X } from 'lucide-react';
-import { createContext, useCallback, useContext, useState, React } from 'react';
+import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
 
 interface Toast {
   id: number;
@@ -18,7 +18,7 @@ export function useToast() {
   return useContext(ToastContext);
 }
 
-export function ToastProvider({ children }: { children: React.ReactNode }) {
+export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
     setToasts((prev) => [

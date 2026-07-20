@@ -6,6 +6,7 @@ import type { ExpandedSections, TemplateSectionProps, TranslateFn } from '../../
 import { ControlSection } from '../ControlSection';
 import { useDialogA11y } from '../../hooks/useDialogA11y';
 import { getTemplatePreviewStyle } from '../../templates/preview-style';
+import { TemplatePreview } from '../TemplatePreview';
 
 const BUILT_IN_PREVIEW_LIMIT = 2;
 
@@ -34,8 +35,6 @@ interface BuiltInTemplateCardProps {
 }
 
 function BuiltInTemplateCard({ t, template, isActive, onApply, variant = 'compact' }: BuiltInTemplateCardProps) {
-  const previewStyle = getTemplatePreviewStyle(template);
-
   if (variant === 'library') {
     return (
       <button
@@ -47,7 +46,7 @@ function BuiltInTemplateCard({ t, template, isActive, onApply, variant = 'compac
             : 'border-[rgba(34,48,52,0.08)] hover:border-(--app-accent-200)'
         }`}
       >
-        <div className="absolute inset-0" style={previewStyle} />
+        <TemplatePreview template={template} className="absolute inset-0" />
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(9,14,23,0.04)_0%,rgba(9,14,23,0.2)_100%)]" />
 
         <div className="absolute left-3 top-3 flex flex-wrap items-center gap-1.5">
@@ -92,9 +91,9 @@ function BuiltInTemplateCard({ t, template, isActive, onApply, variant = 'compac
           : 'border-[rgba(34,48,52,0.08)] bg-white hover:border-(--app-accent-200) hover:bg-(--app-accent-50)'
       }`}
     >
-      <div
+      <TemplatePreview
+        template={template}
         className="h-24 rounded-xl mb-3 border border-[rgba(34,48,52,0.06)]"
-        style={previewStyle}
       />
       <div className="flex items-start justify-between gap-3">
         <div>
@@ -338,8 +337,8 @@ export function TemplatesPanel({ t, expanded, onToggle, templates, currentBackgr
                             <button
                               onClick={() => startRenaming(template.id, template.name)}
                               className="p-1 text-[rgba(34,48,52,0.25)] hover:text-(--app-accent-500) rounded-lg hover:bg-(--app-accent-50) transition-colors"
-                              title="Rename template"
-                              aria-label="Rename template"
+                              title={t('renameTemplate')}
+                              aria-label={t('renameTemplate')}
                             >
                               <Pencil className="w-3.5 h-3.5" />
                             </button>

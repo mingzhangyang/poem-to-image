@@ -313,6 +313,13 @@ const en = {
     flourishWave: "Wavy",
     flourishUnderline: "Underline",
     dragSignatureHint: "Drag in preview",
+    zoomOut: "Zoom out",
+    zoomIn: "Zoom in",
+    stampElement: "Stamp element",
+    signatureElement: "Signature element",
+    logoElement: "Logo element",
+    customTextElement: "Custom text element",
+    renameTemplate: "Rename template",
     undo: "Undo",
     redo: "Redo",
   } as const;

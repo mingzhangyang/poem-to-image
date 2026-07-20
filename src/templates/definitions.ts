@@ -8,6 +8,7 @@ export const ALL_EDITOR_TEMPLATES: EditorTemplateDefinition[] = [
     descriptionKey: 'templateParchmentScrollDesc',
     seriesKey: 'templateSeriesClassic',
     usesBackgroundImage: true,
+    previewImage: '/template-previews/parchment-scroll-generated.c880ec04.webp',
     accentFrom: '#d6b57c',
     accentTo: '#7b5532',
     background: {
@@ -69,6 +70,7 @@ export const ALL_EDITOR_TEMPLATES: EditorTemplateDefinition[] = [
     descriptionKey: 'templateWaxSealedLetterDesc',
     seriesKey: 'templateSeriesClassic',
     usesBackgroundImage: true,
+    previewImage: '/template-previews/wax-sealed-letter-generated.aa438a8e.webp',
     accentFrom: '#b15a4d',
     accentTo: '#5b2f2a',
     background: {
@@ -130,6 +132,7 @@ export const ALL_EDITOR_TEMPLATES: EditorTemplateDefinition[] = [
     descriptionKey: 'templateIlluminatedManuscriptDesc',
     seriesKey: 'templateSeriesClassic',
     usesBackgroundImage: true,
+    previewImage: '/template-previews/illuminated-manuscript-generated.5e337c0e.webp',
     accentFrom: '#bfa15a',
     accentTo: '#5a4521',
     background: {
@@ -192,6 +195,7 @@ export const ALL_EDITOR_TEMPLATES: EditorTemplateDefinition[] = [
     descriptionKey: 'templateBambooScrollDesc',
     seriesKey: 'templateSeriesClassic',
     usesBackgroundImage: true,
+    previewImage: '/template-previews/bamboo-scroll-generated.196ecc5e.webp',
     accentFrom: '#7f8b4a',
     accentTo: '#3f4624',
     background: {
@@ -427,6 +431,7 @@ export const ALL_EDITOR_TEMPLATES: EditorTemplateDefinition[] = [
     descriptionKey: 'templateMountainMistPhotoDesc',
     seriesKey: 'templateSeriesPhoto',
     usesBackgroundImage: true,
+    previewImage: '/template-previews/mountain-waterfall-generated.2a88360b.webp',
     accentFrom: '#7c9485',
     accentTo: '#2f3a35',
     background: {
@@ -487,6 +492,7 @@ export const ALL_EDITOR_TEMPLATES: EditorTemplateDefinition[] = [
     descriptionKey: 'templateOceanDawnPhotoDesc',
     seriesKey: 'templateSeriesPhoto',
     usesBackgroundImage: true,
+    previewImage: '/template-previews/sunrise-sea.7e0f1044.webp',
     accentFrom: '#38bdf8',
     accentTo: '#f97316',
     background: {
@@ -547,6 +553,7 @@ export const ALL_EDITOR_TEMPLATES: EditorTemplateDefinition[] = [
     descriptionKey: 'templateCityNightPhotoDesc',
     seriesKey: 'templateSeriesPhoto',
     usesBackgroundImage: true,
+    previewImage: '/template-previews/neon-city.594c4342.webp',
     accentFrom: '#0ea5e9',
     accentTo: '#a855f7',
     background: {
@@ -607,6 +614,7 @@ export const ALL_EDITOR_TEMPLATES: EditorTemplateDefinition[] = [
     descriptionKey: 'templateInkPineMistPhotoDesc',
     seriesKey: 'templateSeriesPhoto',
     usesBackgroundImage: true,
+    previewImage: '/template-previews/ink-pine-mist-generated.43a5a867.webp',
     accentFrom: '#6f7c75',
     accentTo: '#26332f',
     background: {

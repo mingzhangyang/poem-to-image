@@ -116,7 +116,7 @@ export function AccountPage() {
             <section className="app-panel-surface rounded-2xl p-6">
               <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 mb-4">{t('profile')}</h2>
               <div className="flex items-center gap-4">
-                {CLERK_CONFIGURED && <AuthUserButton afterSignOutUrl="/account" />}
+                {CLERK_CONFIGURED && <AuthUserButton />}
                 <div>
                   <p className="text-sm text-gray-500">{t('manageProfileDesc')}</p>
                 </div>

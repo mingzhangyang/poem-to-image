@@ -18,7 +18,7 @@ import {
 import { useElementSize } from '../../hooks/useElementSize';
 import { createStructuredPoemLayout } from '../../poemContent';
 import { getPreviewDragBounds, getPreviewPositioningRect, type PreviewPositioningRect } from '../../positioningRect';
-import type { BorderStyle, CustomText, LogoConfig, PoemContentData, PoemLayerStyle, PositionedElement, SignatureConfig, StampConfig, TextAlign, TranslateFn, WritingMode } from '../../types';
+import type { BorderStyle, CustomText, LogoConfig, PoemContentData, PoemLayerStyle, PositionedElement, SignatureConfig, StampConfig, TranslateFn, WritingMode } from '../../types';
 import { CustomTextItems } from './CustomTextItems';
 import { LogoOverlay } from './LogoOverlay';
 import { SignatureOverlay } from './SignatureOverlay';
@@ -34,7 +34,6 @@ interface PoemContentProps {
   fontFamily: string;
   fontSize: number;
   textColor: string;
-  textAlign: TextAlign;
   writingMode: WritingMode;
   lineHeight: number;
   letterSpacing: number;
@@ -86,7 +85,6 @@ export function PoemContent({
   fontFamily,
   fontSize,
   textColor,
-  textAlign,
   writingMode,
   lineHeight,
   letterSpacing,
@@ -155,9 +153,6 @@ export function PoemContent({
       writingMode,
       fontFamily,
       fontSize,
-      lineHeight,
-      letterSpacing,
-      textAlign,
       columns: columnCount,
       columnGap,
       wrapWidth: poemWrapWidth,
@@ -169,9 +164,6 @@ export function PoemContent({
       writingMode,
       fontFamily,
       fontSize,
-      lineHeight,
-      letterSpacing,
-      textAlign,
       columnCount,
       columnGap,
       poemWrapWidth,
@@ -363,7 +355,6 @@ export function PoemContent({
     setActiveTextSelection({ kind: 'poem' });
     setLiveBoxWidth(undefined);
     window.requestAnimationFrame(() => {
-      const frameRect = poemFrameRef.current?.getBoundingClientRect();
       const positioningRect = poemFrameRef.current ? getPreviewPositioningRect(poemFrameRef.current) : null;
       const poemRect = poemBoxRef.current?.getBoundingClientRect();
 
@@ -608,6 +599,7 @@ export function PoemContent({
 
       {showStamp ? (
         <StampOverlay
+          ariaLabel={t('stampElement')}
           frameRef={poemFrameRef}
           stamp={stamp}
           onStampChange={onStampChange}
@@ -617,6 +609,7 @@ export function PoemContent({
       ) : null}
 
       <CustomTextItems
+        ariaLabel={t('customTextElement')}
         frameRef={poemFrameRef}
         frameWidth={frameSize.width}
         customTexts={customTexts}
@@ -633,6 +626,7 @@ export function PoemContent({
 
       {logos.map((logo) => (
         <LogoOverlay
+          ariaLabel={t('logoElement')}
           key={logo.id}
           frameRef={poemFrameRef}
           logo={logo}
@@ -644,6 +638,7 @@ export function PoemContent({
 
       {signatures.map((sig) => (
         <SignatureOverlay
+          ariaLabel={t('signatureElement')}
           key={sig.id}
           frameRef={poemFrameRef}
           signature={sig}

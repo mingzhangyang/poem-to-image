@@ -26,18 +26,17 @@ export function AuthSignInButton({ children, mode = 'modal', fallback = null }: 
 }
 
 interface AuthUserButtonProps {
-  afterSignOutUrl?: string;
   fallback?: ReactNode;
 }
 
-export function AuthUserButton({ afterSignOutUrl, fallback = null }: AuthUserButtonProps) {
+export function AuthUserButton({ fallback = null }: AuthUserButtonProps) {
   if (!CLERK_CONFIGURED) {
     return <>{fallback}</>;
   }
 
   return (
     <Suspense fallback={fallback}>
-      <ClerkUserButton afterSignOutUrl={afterSignOutUrl} />
+      <ClerkUserButton />
     </Suspense>
   );
 }

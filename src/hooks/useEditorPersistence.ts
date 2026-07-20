@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type {
+  BackgroundSectionProps,
   PoemContentData,
   PoemLayerStyle,
   TemplateBackgroundConfig,
@@ -51,7 +52,7 @@ interface UseEditorPersistenceParams {
   canvasWidth: number;
   canvasHeight: number;
   background: Pick<
-    TemplateBackgroundConfig,
+    BackgroundSectionProps,
     | 'backgroundType'
     | 'backgroundColor'
     | 'gradientColor1'
@@ -126,5 +127,5 @@ export function useEditorPersistence({
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [exportScene]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [exportScene]);
 }

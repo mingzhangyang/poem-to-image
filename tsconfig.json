@@ -10,10 +10,15 @@
       "DOM.Iterable"
     ],
     "skipLibCheck": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
     "moduleResolution": "bundler",
     "isolatedModules": true,
     "moduleDetection": "force",
     "allowJs": true,
+    "types": [
+      "@cloudflare/vitest-pool-workers/types"
+    ],
     "jsx": "react-jsx",
     "paths": {
       "@/*": [

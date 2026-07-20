@@ -10,6 +10,7 @@ import { getPreviewDragBounds, getPreviewPositioningRect } from '../../positioni
 import type { LogoConfig } from '../../types';
 
 interface LogoOverlayProps {
+  ariaLabel: string;
   frameRef: RefObject<HTMLDivElement | null>;
   logo: LogoConfig;
   onLogoChange: (updates: Partial<LogoConfig>) => void;
@@ -24,7 +25,7 @@ function clamp(value: number, min: number, max: number) {
 const KEYBOARD_MOVE_STEP = 1;
 const KEYBOARD_MOVE_STEP_FAST = 3;
 
-export const LogoOverlay: FC<LogoOverlayProps> = ({ frameRef, logo, onLogoChange, onInteractionStart, onInteractionEnd }) => {
+export const LogoOverlay: FC<LogoOverlayProps> = ({ ariaLabel, frameRef, logo, onLogoChange, onInteractionStart, onInteractionEnd }) => {
   const [livePosition, setLivePosition] = useState({ positionX: logo.positionX, positionY: logo.positionY });
   const isDraggingRef = useRef(false);
   const logoRef = useRef<HTMLDivElement>(null);
@@ -155,7 +156,7 @@ export const LogoOverlay: FC<LogoOverlayProps> = ({ frameRef, logo, onLogoChange
       onPointerDown={handlePointerDown}
       onKeyDown={handleKeyboardMove}
       tabIndex={0}
-      aria-label="Logo element"
+      aria-label={ariaLabel}
       className="absolute touch-none select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(20, 169, 155,0.45)]"
     >
       <img

@@ -180,7 +180,7 @@ function measureHorizontalVisualBounds(measurer: TextLayoutMeasurer, text: strin
 }
 
 function isHorizontalRunGlyph(text: string) {
-  return /[\p{Script=Latin}\p{Number}\s.,!?;:'"()\[\]{}\-–—/&]/u.test(text);
+  return /[\p{Script=Latin}\p{Number}\s.,!?;:'"()[\]{}\-–—/&]/u.test(text);
 }
 
 interface VerticalLineSegment {

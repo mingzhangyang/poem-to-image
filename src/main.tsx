@@ -44,7 +44,7 @@ createRoot(document.getElementById('root')!).render(
       <ToastProvider>
         {clerkPublishableKey ? (
           <Suspense fallback={<RouteFallback />}>
-            <ClerkProvider publishableKey={clerkPublishableKey}>
+            <ClerkProvider publishableKey={clerkPublishableKey} afterSignOutUrl="/">
               <ClerkAuthBridge>
                 <AppRoutes />
               </ClerkAuthBridge>

@@ -110,7 +110,7 @@ export function usePoemAutofill({ poem, language }: UsePoemAutofillParams): UseP
     if (suggestionKey && dismissedSuggestionKey === suggestionKey) {
       setSuggestion(null);
     }
-  }, [dismissedSuggestionKey, poem.author, poem.body, poem.sourceNote, poem.title, suggestion]);
+  }, [dismissedSuggestionKey, poem, suggestion]);
 
   const applySuggestionToPoem = useCallback(() => {
     if (!suggestion) {

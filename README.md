@@ -30,7 +30,7 @@ Turn poems into AI-generated images with precise text control. Built with React 
 
 ## Run Locally
 
-**Prerequisites:** Node.js and a Cloudflare account with Wrangler access.
+**Prerequisites:** Node.js 24 and a Cloudflare account with Wrangler access.
 
 1. Install dependencies:
    ```
@@ -50,13 +50,13 @@ Turn poems into AI-generated images with precise text control. Built with React 
    OPENAI_API_KEY=your_key_here
    CLERK_SECRET_KEY=your_key_here
    CLERK_JWT_ISSUER=https://your-clerk-issuer
-   CLERK_JWT_AUDIENCE=your-clerk-audience
    CLERK_ALLOWED_AUTHORIZED_PARTIES=https://your-app-origin
-   CLERK_ALLOWED_TOKEN_USES=session_token,access_token
+   # Optional, only for a custom aud claim:
+   CLERK_JWT_AUDIENCE=your-clerk-audience
    STRIPE_SECRET_KEY=your_key_here
    STRIPE_WEBHOOK_SECRET=your_key_here
    ```
-5. Create a `.env` file for the frontend:
+5. Copy `.env.example` to `.env` for the frontend and set the public Clerk key:
    ```
    VITE_CLERK_PUBLISHABLE_KEY=your_publishable_key_here
    ```
@@ -81,10 +81,10 @@ The Vite dev server proxies `/api/*` requests to the local Worker on port `8787`
    ```
    wrangler d1 create poem-to-image
    ```
-4. Copy the `database_id` into `wrangler.toml`.
-5. Run the database migration:
+4. Copy the `database_id` into `wrangler.jsonc`.
+5. Apply the numbered database migrations:
    ```
-   wrangler d1 execute poem-to-image --file=worker/schema.sql
+   wrangler d1 migrations apply DB --remote --config wrangler.jsonc
    ```
 6. Set Worker secrets:
    ```
@@ -94,13 +94,13 @@ The Vite dev server proxies `/api/*` requests to the local Worker on port `8787`
    npx wrangler secret put GEMINI_API_KEY
    npx wrangler secret put OPENAI_API_KEY
    ```
-7. Set Worker auth validation variables (must match your Clerk JWT template and frontend origins):
+7. Set Worker auth validation variables (must match your Clerk instance and frontend origins):
    ```
-   # wrangler.toml [vars] (recommended) or equivalent dashboard env vars
+   # Wrangler vars or equivalent dashboard environment variables
    CLERK_JWT_ISSUER=https://your-clerk-issuer
-   CLERK_JWT_AUDIENCE=your-clerk-audience
    CLERK_ALLOWED_AUTHORIZED_PARTIES=https://your-app-origin
-   CLERK_ALLOWED_TOKEN_USES=session_token,access_token
+   # Optional, only if the session token has a custom aud claim:
+   CLERK_JWT_AUDIENCE=your-clerk-audience
    ```
 8. Set the Stripe webhook endpoint to:
    ```
@@ -110,8 +110,26 @@ The Vite dev server proxies `/api/*` requests to the local Worker on port `8787`
 ### Deploy
 
 ```
+npm run verify
+npm run audit:production
+npm run deploy:dry-run
 npm run deploy
 ```
+
+Production uses `wrangler.jsonc`. Staging must be created from `wrangler.staging.example.jsonc` with a separate D1 database plus Clerk/Stripe test credentials; the real `wrangler.staging.jsonc` is intentionally ignored. See [docs/operations-runbook.md](docs/operations-runbook.md) for migration, recovery, reconciliation, rollback, and refund procedures.
+
+## Verification
+
+```sh
+npm run typecheck
+npm run lint
+npm run test:unit
+npm run test:worker
+npm run test:e2e
+npm run build
+```
+
+Worker tests run inside the Cloudflare Workers runtime against a real local D1 binding. The CI workflow also runs a Wrangler deployment dry run and the production dependency audit gate.
 
 ## Architecture
 
@@ -120,4 +138,5 @@ npm run deploy
 - API keys and billing logic run only inside the Worker — never shipped to the browser.
 - Auth: Clerk JWT verified in the Worker via JWKS.
 - Payments: Stripe Checkout with HMAC-SHA256 webhook verification (Web Crypto API).
-- Database: Cloudflare D1 (5 tables: `users`, `credit_accounts`, `orders`, `credit_transactions`, `generation_requests`).
+- Database: Cloudflare D1 with numbered migrations for users, credits, orders, generation requests, custom templates, reconciliation events, and rate-limit buckets.
+- Operations: structured request/billing logs, a 15-minute reconciliation schedule, and read-only diagnostic queries in `worker/queries/`.

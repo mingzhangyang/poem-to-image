@@ -134,10 +134,24 @@ function exportCanvasToBlob(canvas: HTMLCanvasElement, format: ExportFormat) {
   });
 }
 
+interface SaveFileHandle {
+  createWritable: () => Promise<{
+    write: (data: Blob) => Promise<void>;
+    close: () => Promise<void>;
+  }>;
+}
+
+interface WindowWithSaveFilePicker extends Window {
+  showSaveFilePicker: (options: {
+    suggestedName: string;
+    types: Array<{ description: string; accept: Record<string, string[]> }>;
+  }) => Promise<SaveFileHandle>;
+}
+
 async function saveBlob(blob: Blob, format: ExportFormat): Promise<boolean> {
   if (typeof window !== 'undefined' && 'showSaveFilePicker' in window) {
     try {
-      const handle = await (window as any).showSaveFilePicker({
+      const handle = await (window as WindowWithSaveFilePicker).showSaveFilePicker({
         suggestedName: getExportFilename(format),
         types: [
           {

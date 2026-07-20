@@ -63,7 +63,7 @@ export function BillingPanel({ t, expanded, onToggle, billing }: BillingPanelPro
             {/* User + balance */}
             <div className="app-soft-surface flex items-center justify-between gap-3 p-3 rounded-xl">
               <div className="flex items-center gap-2 min-w-0">
-                {CLERK_CONFIGURED && <AuthUserButton afterSignOutUrl={window.location.href} />}
+                {CLERK_CONFIGURED && <AuthUserButton />}
                 {email && <span className="text-sm text-(--app-accent-800) truncate">{email}</span>}
               </div>
               <div className="shrink-0 flex items-center gap-1.5 text-sm font-semibold text-[var(--app-accent-700)]">

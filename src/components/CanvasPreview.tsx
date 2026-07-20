@@ -24,13 +24,13 @@ export function CanvasPreview({
   poem,
   poemStyle,
   backgroundType,
+  backgroundImage,
   backgroundStyle,
   bgBrightness,
   bgBlur,
   fontFamily,
   fontSize,
   textColor,
-  textAlign,
   writingMode,
   padding,
   lineHeight,
@@ -131,7 +131,9 @@ export function CanvasPreview({
       ? null
       : new ResizeObserver(() => updateViewportSize());
 
-    resizeObserver?.observe(viewport);
+    if (resizeObserver && viewport) {
+      resizeObserver.observe(viewport);
+    }
 
     return () => {
       window.removeEventListener('resize', updateViewportSize);
@@ -315,7 +317,7 @@ export function CanvasPreview({
           type="button"
           onClick={() => onPreviewZoomChange(clamp(previewZoom - ZOOM_STEP, ZOOM_MIN, ZOOM_MAX))}
           className="app-icon-button flex items-center justify-center w-5 h-5 rounded-full text-(--app-accent-700) hover:bg-(--app-accent-50) hover:text-(--app-accent-900) transition-colors"
-          aria-label="Zoom out"
+          aria-label={t('zoomOut')}
         >
           <Minus size={11} />
         </button>
@@ -338,7 +340,7 @@ export function CanvasPreview({
           type="button"
           onClick={() => onPreviewZoomChange(clamp(previewZoom + ZOOM_STEP, ZOOM_MIN, ZOOM_MAX))}
           className="app-icon-button flex items-center justify-center w-5 h-5 rounded-full text-(--app-accent-700) hover:bg-(--app-accent-50) hover:text-(--app-accent-900) transition-colors"
-          aria-label="Zoom in"
+          aria-label={t('zoomIn')}
         >
           <Plus size={11} />
         </button>
@@ -474,9 +476,11 @@ export function CanvasPreview({
               >
                 <BackgroundLayer
                   backgroundType={backgroundType}
+                  backgroundImage={backgroundImage}
                   backgroundStyle={backgroundStyle}
                   bgBrightness={bgBrightness}
                   bgBlur={bgBlur}
+                  loadingLabel={t('loadingBalance')}
                 />
 
                 <PoemContent
@@ -488,7 +492,6 @@ export function CanvasPreview({
                   fontFamily={fontFamily}
                   fontSize={fontSize}
                   textColor={textColor}
-                  textAlign={textAlign}
                   writingMode={writingMode}
                   lineHeight={lineHeight}
                   letterSpacing={letterSpacing}

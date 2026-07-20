@@ -3,6 +3,10 @@ OPENAI_API_KEY=your_openai_api_key_here
 
 # Clerk — https://clerk.com
 CLERK_SECRET_KEY=sk_test_...
+CLERK_JWT_ISSUER=https://your-clerk-issuer
+CLERK_ALLOWED_AUTHORIZED_PARTIES=http://localhost:3000
+# Optional: only set this if the Clerk session token includes a custom aud claim.
+# CLERK_JWT_AUDIENCE=your-clerk-audience
 
 # Stripe — https://stripe.com
 STRIPE_SECRET_KEY=sk_test_...

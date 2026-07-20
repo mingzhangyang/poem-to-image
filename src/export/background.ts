@@ -97,8 +97,8 @@ export async function drawBackground(ctx: CanvasRenderingContext2D, scene: Canva
   const image = await loadImage(background.backgroundImage);
   const canvasRatio = canvasWidth / canvasHeight;
   const imageRatio = image.naturalWidth / image.naturalHeight;
-  let drawWidth = canvasWidth;
-  let drawHeight = canvasHeight;
+  let drawWidth: number;
+  let drawHeight: number;
 
   if (background.backgroundSize === 'stretch') {
     drawWidth = canvasWidth;

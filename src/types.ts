@@ -172,6 +172,7 @@ export interface EditorTemplateDefinition {
   descriptionKey: TranslationKey;
   seriesKey: TranslationKey;
   usesBackgroundImage?: boolean;
+  previewImage?: string;
   accentFrom: string;
   accentTo: string;
   background: TemplateBackgroundConfig;
@@ -406,13 +407,13 @@ export interface CanvasPreviewProps {
   poem: PoemContentData;
   poemStyle: PoemLayerStyle;
   backgroundType: BackgroundType;
+  backgroundImage: string | null;
   backgroundStyle: CSSProperties;
   bgBrightness: number;
   bgBlur: number;
   fontFamily: string;
   fontSize: number;
   textColor: string;
-  textAlign: TextAlign;
   writingMode: WritingMode;
   padding: number;
   lineHeight: number;

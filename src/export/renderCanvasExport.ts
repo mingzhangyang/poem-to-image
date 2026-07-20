@@ -130,15 +130,6 @@ function applyTextShadow(ctx: CanvasRenderingContext2D, typography: CanvasExport
   ctx.shadowOffsetY = typography.textShadowOffsetY;
 }
 
-function measureTextWidth(ctx: CanvasRenderingContext2D, text: string, letterSpacing: number) {
-  const characters = Array.from(text || ' ');
-  if (characters.length === 0) return 0;
-  return characters.reduce((width, character, index) => {
-    const nextWidth = width + ctx.measureText(character).width;
-    return index === characters.length - 1 ? nextWidth : nextWidth + letterSpacing;
-  }, 0);
-}
-
 function drawHorizontalLine(
   ctx: CanvasRenderingContext2D,
   text: string,
@@ -194,9 +185,6 @@ function drawStructuredPoem(ctx: CanvasRenderingContext2D, scene: CanvasExportSc
     writingMode: typography.writingMode,
     fontFamily: typography.fontFamily,
     fontSize: typography.fontSize,
-    lineHeight: typography.lineHeight,
-    letterSpacing: typography.letterSpacing,
-    textAlign: typography.textAlign,
     columns: typography.columns,
     columnGap: typography.columnGap,
     wrapWidth:

@@ -1,20 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles, ArrowRight, Check, X, ChevronLeft, ChevronRight, Zap } from 'lucide-react';
-import type { Language } from '../translations';
-import type { TemplateSectionProps, TranslateFn } from '../types';
+import type { EditorTemplateId, TemplateSectionProps, TranslateFn } from '../types';
 import { useDialogA11y } from '../hooks/useDialogA11y';
-import { getTemplatePreviewStyle } from '../templates/preview-style';
+import { TemplatePreview } from './TemplatePreview';
 
 interface OnboardingModalProps {
   isOpen: boolean;
   onClose: () => void;
   t: TranslateFn;
-  language: Language;
   templates: TemplateSectionProps;
 }
 
-export function OnboardingModal({ isOpen, onClose, t, language, templates }: OnboardingModalProps) {
+export function OnboardingModal({ isOpen, onClose, t, templates }: OnboardingModalProps) {
   const [mobilePage, setMobilePage] = useState(1);
   const [isMobile, setIsMobile] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -28,7 +26,7 @@ export function OnboardingModal({ isOpen, onClose, t, language, templates }: Onb
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  const handleApplyTemplate = (id: any) => {
+  const handleApplyTemplate = (id: EditorTemplateId) => {
     templates.onApplyTemplate(id);
     onClose();
   };
@@ -153,10 +151,7 @@ export function OnboardingModal({ isOpen, onClose, t, language, templates }: Onb
                       onClick={() => handleApplyTemplate(template.id)}
                       className="group flex items-center gap-3 rounded-2xl border border-[rgba(34,48,52,0.06)] p-3 transition-all hover:translate-y-[-1px] hover:border-[#2dd4bf] hover:shadow-md"
                     >
-                      <div
-                        className="h-10 w-10 rounded-xl shadow-sm"
-                        style={getTemplatePreviewStyle(template)}
-                      />
+                      <TemplatePreview template={template} className="h-10 w-10 rounded-xl shadow-sm" />
                       <span className="flex-1 text-left text-sm font-medium text-(--app-accent-800) group-hover:text-(--app-ink)">
                         {t(template.nameKey)}
                       </span>

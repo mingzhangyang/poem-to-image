@@ -10,7 +10,6 @@ import type {
   PoemLayerStyle,
   CustomText,
   DecorationsSectionProps,
-  SocialPlatform,
   TemplateSectionProps,
   ExpandedSections,
   SidebarProps,
@@ -38,7 +37,7 @@ interface UseEditorViewModelsParams {
   onExportScaleChange: SidebarProps['onExportScaleChange'];
   onDownload: () => void;
   onShare: () => void;
-  onShareToSocial: (platform: SocialPlatform) => Promise<'clipboard' | 'downloaded'>;
+  onShareToSocial: CanvasPreviewProps['onShareToSocial'];
   isExporting: boolean;
   isSharing: boolean;
   canShare: boolean;
@@ -189,7 +188,7 @@ export function useEditorViewModels({
     canShare,
   ]);
 
-  const canvasPreviewProps = useMemo<CanvasPreviewProps>(() => ({
+  const canvasPreviewProps = useMemo<Omit<CanvasPreviewProps, 'canUndo' | 'canRedo' | 'onUndo' | 'onRedo'>>(() => ({
     containerRef,
     previewRef,
     poemFrameRef,
@@ -198,13 +197,13 @@ export function useEditorViewModels({
     poem,
     poemStyle,
     backgroundType,
+    backgroundImage: background.backgroundImage,
     backgroundStyle,
     bgBrightness,
     bgBlur,
     fontFamily: typography.fontFamily,
     fontSize: typography.fontSize,
     textColor: typography.textColor,
-    textAlign: typography.textAlign,
     writingMode: typography.writingMode,
     padding: typography.padding,
     lineHeight: typography.lineHeight,
@@ -258,13 +257,13 @@ export function useEditorViewModels({
     poem,
     poemStyle,
     backgroundType,
+    background.backgroundImage,
     backgroundStyle,
     bgBrightness,
     bgBlur,
     typography.fontFamily,
     typography.fontSize,
     typography.textColor,
-    typography.textAlign,
     typography.writingMode,
     typography.padding,
     typography.lineHeight,

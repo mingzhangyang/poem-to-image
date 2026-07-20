@@ -7,7 +7,6 @@ export interface AuthValidationOptions {
   expectedIssuer?: string;
   expectedAudience?: string;
   allowedAuthorizedParties?: string[];
-  allowedTokenUses?: string[];
 }
 
 interface JwkKey {
@@ -74,10 +73,6 @@ function parseAudience(aud: string | string[] | undefined): string[] {
   return Array.isArray(aud) ? aud : [aud];
 }
 
-function isValidTokenUse(tokenUse: string, allowedTokenUses: string[]): boolean {
-  return allowedTokenUses.some((allowed) => allowed === tokenUse);
-}
-
 function isValidIssuer(issuer: string, expectedIssuer?: string): boolean {
   if (!expectedIssuer) return false;
 
@@ -110,7 +105,7 @@ function isValidAudience(
   aud: string | string[] | undefined,
   expectedAudience?: string,
 ): boolean {
-  if (!expectedAudience) return false;
+  if (!expectedAudience) return true;
 
   const audiences = parseAudience(aud);
   if (audiences.length === 0) return false;
@@ -125,7 +120,7 @@ interface JwtPayload {
   iss?: string;
   aud?: string | string[];
   azp?: string;
-  token_use?: string;
+  sid?: string;
 }
 
 export function validateAuthClaims(
@@ -137,11 +132,9 @@ export function validateAuthClaims(
   if (typeof payload.exp !== 'number' || Number.isNaN(payload.exp) || payload.exp < nowSeconds) return false;
   if (payload.nbf && payload.nbf > nowSeconds) return false;
   if (!payload.sub) return false;
+  if (!payload.sid) return false;
   if (!payload.iss || !isValidIssuer(payload.iss, options.expectedIssuer)) return false;
   if (!isValidAudience(payload.aud, options.expectedAudience)) return false;
-
-  const allowedTokenUses = options.allowedTokenUses?.filter(Boolean) ?? ['session_token', 'access_token'];
-  if (!payload.token_use || !isValidTokenUse(payload.token_use, allowedTokenUses)) return false;
 
   const allowedAuthorizedParties = options.allowedAuthorizedParties?.filter(Boolean) ?? [];
   if (!isValidAuthorizedParty(payload.azp, allowedAuthorizedParties)) return false;
@@ -161,7 +154,9 @@ export async function getAuthenticatedUser(
   const parts = token.split('.');
   if (parts.length !== 3) return null;
 
-  const [headerB64, payloadB64, signatureB64] = parts;
+  const headerB64 = parts[0]!;
+  const payloadB64 = parts[1]!;
+  const signatureB64 = parts[2]!;
 
   try {
     const header = JSON.parse(base64urlDecode(headerB64)) as { kid?: string };
@@ -183,12 +178,14 @@ export async function getAuthenticatedUser(
     );
 
     const data = new TextEncoder().encode(`${headerB64}.${payloadB64}`);
-    const sig = base64urlToUint8Array(signatureB64);
+    const sig = new Uint8Array(base64urlToUint8Array(signatureB64)).buffer;
     const valid = await crypto.subtle.verify('RSASSA-PKCS1-v1_5', cryptoKey, sig, data);
 
     if (!valid) return null;
 
-    return { userId: payload.sub, email: payload.email ?? '' };
+    const userId = payload.sub;
+    if (!userId) return null;
+    return { userId, email: payload.email ?? '' };
   } catch {
     return null;
   }

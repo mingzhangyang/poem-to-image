@@ -1,5 +1,5 @@
 import { createCanvasTextMeasurer, createTextLayout, type TextLayoutMeasurer, type TextLayoutResult } from './textLayout';
-import type { PoemContentData, PoemLayerStyle, PoemSectionPlacement, TextAlign, WritingMode } from './types';
+import type { PoemContentData, PoemLayerStyle, TextAlign, WritingMode } from './types';
 
 export interface StructuredPoemSectionLayout {
   key: 'title' | 'body' | 'author' | 'sourceNote';
@@ -26,9 +26,6 @@ interface CreateStructuredPoemLayoutParams {
   writingMode: WritingMode;
   fontFamily: string;
   fontSize: number;
-  lineHeight: number;
-  letterSpacing: number;
-  textAlign: TextAlign;
   columns: number;
   columnGap: number;
   wrapWidth?: number;
@@ -68,8 +65,6 @@ function createSectionSpecs(
   placeholder: string,
   writingMode: WritingMode,
   fontSize: number,
-  lineHeight: number,
-  letterSpacing: number,
 ) {
   const title = poem.title.trim();
   const author = poem.author.trim();
@@ -78,11 +73,6 @@ function createSectionSpecs(
   const bodyText = body || placeholder;
   const titleScale = writingMode === 'vertical-rl' ? 1.12 : 1.18;
   const metaScale = writingMode === 'vertical-rl' ? 0.74 : 0.72;
-  const metaLineHeight = Math.max(1.2, lineHeight - 0.15);
-  const metaLetterSpacing = writingMode === 'vertical-rl'
-    ? Math.max(letterSpacing, Math.round(fontSize * 0.08))
-    : letterSpacing;
-
   const titleSection = title ? {
     key: 'title' as const,
     text: title,
@@ -270,15 +260,12 @@ export function createStructuredPoemLayout({
   writingMode,
   fontFamily,
   fontSize,
-  lineHeight,
-  letterSpacing,
-  textAlign,
   columns,
   columnGap,
   wrapWidth,
   measurerFactory,
 }: CreateStructuredPoemLayoutParams): StructuredPoemLayout {
-  const sections = createSectionSpecs(poem, poemStyle, placeholder, writingMode, fontSize, lineHeight, letterSpacing).map((section) => {
+  const sections = createSectionSpecs(poem, poemStyle, placeholder, writingMode, fontSize).map((section) => {
     const layout = createTextLayout(
       {
         text: section.text,

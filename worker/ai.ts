@@ -72,7 +72,7 @@ export async function generateWithOpenAi(
     }),
   });
 
-  let payload: OpenAiImageResponse | null = null;
+  let payload: OpenAiImageResponse | null;
   try {
     payload = (await response.json()) as OpenAiImageResponse;
   } catch {

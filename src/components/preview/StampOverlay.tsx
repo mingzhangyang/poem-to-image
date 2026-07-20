@@ -9,6 +9,7 @@ import { renderStampBodyToContext } from '../../export/renderCanvasExport';
 import type { StampConfig } from '../../types';
 
 interface StampOverlayProps {
+  ariaLabel: string;
   frameRef: RefObject<HTMLDivElement | null>;
   stamp: StampConfig;
   onStampChange: (updates: Partial<StampConfig>) => void;
@@ -44,7 +45,7 @@ function getFrameStyle(stamp: StampConfig): CSSProperties {
   };
 }
 
-export function StampOverlay({ frameRef, stamp, onStampChange, onInteractionStart, onInteractionEnd }: StampOverlayProps) {
+export function StampOverlay({ ariaLabel, frameRef, stamp, onStampChange, onInteractionStart, onInteractionEnd }: StampOverlayProps) {
   const [livePosition, setLivePosition] = useState({ positionX: stamp.positionX, positionY: stamp.positionY });
   const isDraggingRef = useRef(false);
   const stampRef = useRef<HTMLDivElement>(null);
@@ -183,7 +184,7 @@ export function StampOverlay({ frameRef, stamp, onStampChange, onInteractionStar
         onPointerDown={handlePointerDown}
         onKeyDown={handleKeyboardMove}
         tabIndex={0}
-        aria-label="Stamp element"
+        aria-label={ariaLabel}
         className="pointer-events-auto relative cursor-move touch-none select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(20, 169, 155,0.45)]"
         style={{
           ...getFrameStyle(stamp),

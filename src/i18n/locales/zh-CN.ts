@@ -315,6 +315,13 @@ const zhCN: TranslationMessages = {
     flourishWave: "波浪线",
     flourishUnderline: "下划线",
     dragSignatureHint: "可在预览中拖曳签名",
+    zoomOut: "缩小",
+    zoomIn: "放大",
+    stampElement: "印章元素",
+    signatureElement: "签名元素",
+    logoElement: "标志元素",
+    customTextElement: "自定义文本元素",
+    renameTemplate: "重命名模板",
     undo: "撤销",
     redo: "重做",
   };

@@ -11,6 +11,7 @@ import { drawSignatureToCanvas, getSignatureCanvasSize } from '../../signatureRe
 import type { SignatureConfig } from '../../types';
 
 interface SignatureOverlayProps {
+  ariaLabel: string;
   frameRef: RefObject<HTMLDivElement | null>;
   signature: SignatureConfig;
   onSignatureChange: (updates: Partial<SignatureConfig>) => void;
@@ -26,6 +27,7 @@ const KEYBOARD_MOVE_STEP = 1;
 const KEYBOARD_MOVE_STEP_FAST = 3;
 
 export const SignatureOverlay: FC<SignatureOverlayProps> = ({
+  ariaLabel,
   frameRef,
   signature,
   onSignatureChange,
@@ -59,7 +61,7 @@ export const SignatureOverlay: FC<SignatureOverlayProps> = ({
     ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
-    document.fonts.ready.then(() => {
+    void document.fonts.ready.then(() => {
       ctx.clearRect(0, 0, canvasWidth, canvasHeight);
       drawSignatureToCanvas(ctx, signature, canvasWidth, canvasHeight);
     });
@@ -171,7 +173,7 @@ export const SignatureOverlay: FC<SignatureOverlayProps> = ({
       onPointerDown={handlePointerDown}
       onKeyDown={handleKeyboardMove}
       tabIndex={0}
-      aria-label="Signature element"
+      aria-label={ariaLabel}
       className="absolute touch-none select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(20, 169, 155,0.45)]"
     >
       <canvas

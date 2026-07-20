@@ -118,7 +118,6 @@ function matchesDecorations(
   templateId: EditorTemplateId,
   lang: Language,
   decorations: DecorationsState,
-  typography: TypographyState,
 ): boolean {
   const resolved = resolveTemplateForLanguage(templateId, lang);
   if (!resolved) return false;
@@ -322,7 +321,6 @@ export function useTemplateManager({
       activeTemplateId,
       previousLanguage,
       decorations,
-      typography,
     );
     const shouldSyncPoemStyle = matchesPoemStyle(activeTemplateId, previousLanguage, poemStyle);
 

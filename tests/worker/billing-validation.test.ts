@@ -1,66 +1,62 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { PACKAGES, validateFulfillmentSession } from '../../worker/billing';
+import { validateFulfillmentSession, type StripeCheckoutSession } from '../../worker/billing';
+import type { Order } from '../../worker/db';
 
-test('validateFulfillmentSession accepts a package with matching amount and currency', () => {
-  const pkg = PACKAGES[0];
-  const result = validateFulfillmentSession({
-    id: 'cs_test_1',
-    amount_total: pkg.priceCents,
-    currency: pkg.currency,
-    metadata: {
-      packageId: pkg.id,
-      creditsGranted: '999999',
-    },
-  });
+const order: Order = {
+  id: 'order_1',
+  user_id: 'user_1',
+  stripe_session_id: 'cs_test_1',
+  stripe_payment_intent_id: null,
+  package_id: 'starter_20',
+  amount_paid_cents: 199,
+  currency: 'usd',
+  credits_granted: 20,
+  status: 'pending',
+  fulfilled_at: null,
+  fulfillment_attempted_at: null,
+  fulfillment_token: null,
+  failure_reason: null,
+  payment_confirmed_at: null,
+  created_at: '2026-07-20 00:00:00',
+  updated_at: '2026-07-20 00:00:00',
+};
 
-  assert.equal(result.ok, true);
-  if (result.ok) {
-    // credits are derived from server package config, not metadata.
-    assert.equal(result.pkg.credits, pkg.credits);
-  }
+function session(overrides: Partial<StripeCheckoutSession> = {}): StripeCheckoutSession {
+  return {
+    id: order.stripe_session_id,
+    amount_total: order.amount_paid_cents,
+    currency: order.currency,
+    metadata: { userId: order.user_id, packageId: order.package_id },
+    ...overrides,
+  };
+}
+
+test('validateFulfillmentSession accepts the immutable stored order snapshot', () => {
+  assert.deepEqual(validateFulfillmentSession(order, session()), { ok: true });
 });
 
-test('validateFulfillmentSession rejects unknown package IDs', () => {
-  const result = validateFulfillmentSession({
-    id: 'cs_test_2',
-    amount_total: 199,
-    currency: 'usd',
-    metadata: { packageId: 'does_not_exist' },
-  });
-
-  assert.equal(result.ok, false);
-  if (!result.ok) {
-    assert.match(result.error, /Unknown package/i);
-  }
+test('validateFulfillmentSession ignores credits metadata and trusts the order snapshot', () => {
+  const value = session({ metadata: {
+    userId: order.user_id,
+    packageId: order.package_id,
+    creditsGranted: '999999',
+  } });
+  assert.deepEqual(validateFulfillmentSession(order, value), { ok: true });
 });
 
-test('validateFulfillmentSession rejects amount mismatches', () => {
-  const pkg = PACKAGES[1];
-  const result = validateFulfillmentSession({
-    id: 'cs_test_3',
-    amount_total: pkg.priceCents + 1,
-    currency: pkg.currency,
-    metadata: { packageId: pkg.id },
-  });
+test('validateFulfillmentSession rejects session, user, package, amount, and currency mismatches', () => {
+  const mismatches: StripeCheckoutSession[] = [
+    session({ id: 'cs_other' }),
+    session({ metadata: { userId: 'user_other', packageId: order.package_id } }),
+    session({ metadata: { userId: order.user_id, packageId: 'other_package' } }),
+    session({ amount_total: order.amount_paid_cents + 1 }),
+    session({ currency: 'eur' }),
+  ];
 
-  assert.equal(result.ok, false);
-  if (!result.ok) {
-    assert.match(result.error, /amount/i);
-  }
-});
-
-test('validateFulfillmentSession rejects currency mismatches', () => {
-  const pkg = PACKAGES[2];
-  const result = validateFulfillmentSession({
-    id: 'cs_test_4',
-    amount_total: pkg.priceCents,
-    currency: 'eur',
-    metadata: { packageId: pkg.id },
-  });
-
-  assert.equal(result.ok, false);
-  if (!result.ok) {
-    assert.match(result.error, /currency/i);
+  for (const value of mismatches) {
+    const result = validateFulfillmentSession(order, value);
+    assert.equal(result.ok, false);
+    if (!result.ok) assert.ok(result.error.length > 0);
   }
 });

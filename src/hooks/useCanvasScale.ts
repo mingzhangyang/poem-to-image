@@ -35,7 +35,9 @@ export function useCanvasScale(
       ? null
       : new ResizeObserver(() => updateScale());
 
-    resizeObserver?.observe(container);
+    if (resizeObserver && container) {
+      resizeObserver.observe(container);
+    }
 
     return () => {
       window.removeEventListener('resize', updateScale);

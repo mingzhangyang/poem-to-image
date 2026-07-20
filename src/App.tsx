@@ -38,7 +38,7 @@ function clampNumber(value: number, min: number, max: number) {
 }
 
 function normalizeCanvasSize(value: number | undefined, fallback: number) {
-  if (!Number.isFinite(value)) return fallback;
+  if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
   return Math.round(clampNumber(value, MIN_CANVAS_SIZE, MAX_CANVAS_SIZE));
 }
 
@@ -557,7 +557,6 @@ export default function App() {
           isOpen={isOnboardingOpen}
           onClose={handleCloseOnboarding}
           t={t}
-          language={language}
           templates={sidebarProps.templates}
         />
       </Suspense>
