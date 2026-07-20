@@ -15,7 +15,7 @@ test.beforeEach(async ({ page }) => {
 
 test('edits a poem and preserves it across a reload', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  if ((page.viewportSize()?.width ?? 0) < 768) {
+  if ((page.viewportSize()?.width ?? 0) < 1024) {
     await page.getByRole('button', { name: 'Content', exact: true }).click();
   }
   await page.getByRole('button', { name: 'Open Editor' }).click();
@@ -55,8 +55,10 @@ test('uses thumbnails until an image template is applied', async ({ page }) => {
   });
 
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  if ((page.viewportSize()?.width ?? 0) < 768) {
+  if ((page.viewportSize()?.width ?? 0) < 1024) {
     await page.getByRole('button', { name: 'Templates', exact: true }).click();
+  } else {
+    await page.getByRole('button', { name: /^Templates/ }).click();
   }
 
   await page.getByRole('button', { name: /^More \(/ }).click();
@@ -72,4 +74,45 @@ test('uses thumbnails until an image template is applied', async ({ page }) => {
   await fullBackgroundRequest;
 
   expect(originalRequests).toEqual(['/template-backgrounds/parchment-scroll-generated.png']);
+});
+
+test('keeps drawer controls and a readable canvas at the tablet breakpoint', async ({ page }) => {
+  await page.setViewportSize({ width: 768, height: 1024 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+
+  await expect(page.getByRole('button', { name: 'Settings' })).toBeVisible();
+  await expect(page.locator('aside').last()).toBeHidden();
+
+  const scaleLabel = page.getByText(/^\d+%$/).first();
+  await expect(scaleLabel).toBeVisible();
+  const scale = Number.parseInt((await scaleLabel.textContent()) ?? '0', 10);
+  expect(scale).toBeGreaterThanOrEqual(50);
+});
+
+test('separates poem fields and layer styles into mobile editor tabs', async ({ page }) => {
+  await page.setViewportSize({ width: 412, height: 915 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: 'Content', exact: true }).click();
+  await page.getByRole('button', { name: 'Open Editor' }).click();
+
+  const textTab = page.getByRole('tab', { name: 'Poem Text' });
+  const stylesTab = page.getByRole('tab', { name: 'Layer Styles' });
+  await expect(textTab).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('tabpanel', { name: 'Poem Text' })).toBeVisible();
+
+  await stylesTab.click();
+  await expect(stylesTab).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('tabpanel', { name: 'Layer Styles' })).toBeVisible();
+  await expect(page.getByRole('tabpanel', { name: 'Poem Text' })).toBeHidden();
+});
+
+test('uses truthful export copy and exposes export dialog semantics', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: 'Export Image' }).click();
+
+  const dialog = page.getByRole('dialog', { name: 'Export Image' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByText('poem-image.png')).toBeVisible();
+  await expect(dialog.getByText('PNG · 2160 x 2700 px', { exact: true })).toBeVisible();
 });

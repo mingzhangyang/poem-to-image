@@ -33,6 +33,8 @@ test('major dialogs expose semantic dialog attributes', () => {
     'src/components/OnboardingModal.tsx',
     'src/components/PoemEditorModal.tsx',
     'src/components/sidebar/TemplatesPanel.tsx',
+    'src/components/CanvasPreview.tsx',
+    'src/components/Sidebar.tsx',
   ];
 
   for (const file of files) {
@@ -41,6 +43,21 @@ test('major dialogs expose semantic dialog attributes', () => {
     assert.match(content, /aria-modal="true"/, `${file} should include aria-modal="true"`);
     assert.match(content, /aria-labelledby=/, `${file} should include aria-labelledby`);
   }
+});
+
+test('tablet layout keeps permanent sidebar behind the large breakpoint', () => {
+  const sidebar = readRepoFile('src/components/Sidebar.tsx');
+  const app = readRepoFile('src/App.tsx');
+
+  assert.match(sidebar, /min-width: 1024px/);
+  assert.match(sidebar, /hidden lg:flex/);
+  assert.match(app, /lg:flex-row/);
+});
+
+test('onboarding does not reuse the generic More label as its heading', () => {
+  const content = readRepoFile('src/components/OnboardingModal.tsx');
+  assert.equal(content.includes("t('quickMore')"), false);
+  assert.match(content, /t\('onboardingWorkflowTitle'\)/);
 });
 
 test('critical files do not include hardcoded CJK labels', () => {

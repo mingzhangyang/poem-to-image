@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import type {
   BackgroundSectionProps,
   PoemContentData,
@@ -83,6 +83,55 @@ export function useEditorPersistence({
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isFirstRef = useRef(true);
 
+  const persistSnapshot = useCallback(() => {
+    try {
+      const { poem, poemStyle, canvasWidth, canvasHeight, background, typography, decorations } =
+        snapshotRef.current;
+
+      const state: PersistedState = stripBlobUrls({
+        poem,
+        poemStyle,
+        canvasWidth,
+        canvasHeight,
+        background: {
+          backgroundType: background.backgroundType === 'ai' ? 'image' : background.backgroundType,
+          backgroundColor: background.backgroundColor,
+          gradientColor1: background.gradientColor1,
+          gradientColor2: background.gradientColor2,
+          gradientDirection: background.gradientDirection,
+          backgroundImage: background.backgroundImage ?? null,
+          backgroundSize: background.backgroundSize,
+          bgBrightness: background.bgBrightness,
+          bgBlur: background.bgBlur,
+        },
+        typography,
+        decorations,
+      });
+
+      const serialized = JSON.stringify(state);
+      if (new TextEncoder().encode(serialized).byteLength <= MAX_STORAGE_BYTES) {
+        window.localStorage.setItem(STORAGE_KEY, serialized);
+      }
+    } catch {
+      // Ignore — storage quota exceeded or serialization error
+    }
+  }, []);
+
+  useEffect(() => {
+    const persistBeforeLeaving = () => persistSnapshot();
+    const persistWhenHidden = () => {
+      if (document.visibilityState === 'hidden') persistSnapshot();
+    };
+
+    window.addEventListener('pagehide', persistBeforeLeaving);
+    document.addEventListener('visibilitychange', persistWhenHidden);
+
+    return () => {
+      window.removeEventListener('pagehide', persistBeforeLeaving);
+      document.removeEventListener('visibilitychange', persistWhenHidden);
+    };
+  }, [persistSnapshot]);
+
   useEffect(() => {
     if (isFirstRef.current) {
       isFirstRef.current = false;
@@ -90,42 +139,10 @@ export function useEditorPersistence({
     }
 
     if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => {
-      try {
-        const { poem, poemStyle, canvasWidth, canvasHeight, background, typography, decorations } =
-          snapshotRef.current;
-
-        const state: PersistedState = stripBlobUrls({
-          poem,
-          poemStyle,
-          canvasWidth,
-          canvasHeight,
-          background: {
-            backgroundType: background.backgroundType === 'ai' ? 'image' : background.backgroundType,
-            backgroundColor: background.backgroundColor,
-            gradientColor1: background.gradientColor1,
-            gradientColor2: background.gradientColor2,
-            gradientDirection: background.gradientDirection,
-            backgroundImage: background.backgroundImage ?? null,
-            backgroundSize: background.backgroundSize,
-            bgBrightness: background.bgBrightness,
-            bgBlur: background.bgBlur,
-          },
-          typography,
-          decorations,
-        });
-
-        const serialized = JSON.stringify(state);
-        if (new TextEncoder().encode(serialized).byteLength <= MAX_STORAGE_BYTES) {
-          window.localStorage.setItem(STORAGE_KEY, serialized);
-        }
-      } catch {
-        // Ignore — storage quota exceeded or serialization error
-      }
-    }, SAVE_DEBOUNCE_MS);
+    timerRef.current = setTimeout(persistSnapshot, SAVE_DEBOUNCE_MS);
 
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [exportScene]);
+  }, [exportScene, persistSnapshot]);
 }

@@ -261,6 +261,8 @@ export interface PoemLayerStyle {
 export interface ContentSectionProps {
   poem: PoemContentData;
   poemStyle: PoemLayerStyle;
+  editorOpenRequestId?: number;
+  onEditorOpenRequestHandled?: () => void;
   poemAutofillSuggestion: PoemAutofillSuggestion | null;
   isPoemAutofillMatching: boolean;
   onTitleChange: (value: string) => void;
@@ -274,6 +276,7 @@ export interface ContentSectionProps {
 }
 
 export interface BackgroundSectionProps {
+  hasPoemText: boolean;
   backgroundType: BackgroundType;
   backgroundColor: string;
   gradientColor1: string;

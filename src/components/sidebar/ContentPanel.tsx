@@ -1,4 +1,4 @@
-import { Suspense, lazy, useMemo, useState } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { Expand, ScrollText, Type } from 'lucide-react';
 import type { ContentSectionProps, ExpandedSections, TranslateFn } from '../../types';
 import { ControlSection } from '../ControlSection';
@@ -14,6 +14,13 @@ interface ContentPanelProps {
 
 export function ContentPanel({ t, expanded, onToggle, content }: ContentPanelProps) {
   const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const { editorOpenRequestId = 0, onEditorOpenRequestHandled } = content;
+
+  useEffect(() => {
+    if (editorOpenRequestId <= 0) return;
+    setIsEditorOpen(true);
+    onEditorOpenRequestHandled?.();
+  }, [editorOpenRequestId, onEditorOpenRequestHandled]);
   const trimmedLines = content.poem.body
     .split('\n')
     .map((line) => line.trim())
@@ -42,20 +49,20 @@ export function ContentPanel({ t, expanded, onToggle, content }: ContentPanelPro
           <div className="space-y-3">
             <div className="rounded-2xl border border-[rgba(34,48,52,0.06)] bg-[rgba(255,253,249,0.94)] px-4 py-3">
               <div className="flex items-center justify-between gap-4">
-                <div className="text-[11px] uppercase tracking-[0.18em] text-[rgba(34,48,52,0.4)]">{t('poemFields')}</div>
+                <div className="text-xs uppercase tracking-[0.16em] text-(--app-accent-600)">{t('poemFields')}</div>
                 <div className="text-base font-semibold text-(--app-ink)">{filledFields}/4</div>
               </div>
             </div>
 
             <div className="rounded-2xl border border-[rgba(34,48,52,0.06)] bg-[rgba(255,253,249,0.94)] px-4 py-3">
               <div className="flex items-center justify-between gap-4">
-                <div className="text-[11px] uppercase tracking-[0.18em] text-[rgba(34,48,52,0.4)]">{t('poemLines')}</div>
+                <div className="text-xs uppercase tracking-[0.16em] text-(--app-accent-600)">{t('poemLines')}</div>
                 <div className="text-base font-semibold text-(--app-ink)">{trimmedLines.length}</div>
               </div>
             </div>
 
             <div className="rounded-2xl border border-[rgba(34,48,52,0.06)] bg-[rgba(255,250,242,0.72)] px-4 py-3">
-              <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-(--app-accent-500)">
+              <div className="flex items-center gap-2 text-xs uppercase tracking-[0.16em] text-(--app-accent-600)">
                 <ScrollText className="h-3.5 w-3.5" />
                 <span>{t('poemEditorTitle')}</span>
               </div>

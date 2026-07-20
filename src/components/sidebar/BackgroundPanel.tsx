@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react';
-import { ChevronDown, ChevronRight, Loader2, Palette, Sparkles, Upload } from 'lucide-react';
+import { ChevronDown, ChevronRight, Loader2, LogIn, Palette, Sparkles, Upload } from 'lucide-react';
 import type { TranslationKey } from '../../translations';
 import { CREDIT_COST } from '../../types';
 import type { AiProvider, BackgroundType, BackgroundSectionProps, ExpandedSections, TranslateFn } from '../../types';
 import { ControlSection } from '../ControlSection';
 import { MAX_AI_PROMPT_LENGTH } from '../../hooks/useAiBackground';
+import { useAppAuth } from '../../context/auth';
+import { AuthSignInButton } from '../auth/ClerkUi';
+
+const CLERK_CONFIGURED = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
 const backgroundTypeLabels: Record<BackgroundType, TranslationKey> = {
   solid: 'bgSolid',
@@ -43,13 +47,28 @@ interface BackgroundPanelProps {
   expanded: ExpandedSections['background'];
   onToggle: () => void;
   background: BackgroundSectionProps;
-  balance?: number | null;
+  balance: number | null;
 }
 
 export function BackgroundPanel({ t, expanded, onToggle, background, balance }: BackgroundPanelProps) {
+  const { isSignedIn } = useAppAuth();
   const [isPromptHelpOpen, setIsPromptHelpOpen] = useState(false);
   const hasImageAdjustments = background.bgBrightness !== 100 || background.bgBlur !== 0;
   const [isImageAdjustmentsOpen, setIsImageAdjustmentsOpen] = useState(hasImageAdjustments);
+  const requiredCredits = CREDIT_COST[background.aiProvider];
+  const hasPromptSource = background.aiPrompt.trim().length > 0 || background.hasPoemText;
+  const isBalanceLoading = isSignedIn && balance === null;
+  const hasEnoughCredits = balance !== null && balance >= requiredCredits;
+  const canGenerate = isSignedIn && hasPromptSource && hasEnoughCredits && !background.isGeneratingAI;
+  const generationHint = !isSignedIn
+    ? t('errSignInRequired')
+    : !hasPromptSource
+      ? t('errNoPrompt')
+      : isBalanceLoading
+        ? t('loadingBalance')
+        : !hasEnoughCredits
+          ? t('errInsufficientCredits')
+          : null;
   const summary = (() => {
     if (background.backgroundType === 'ai') {
       return `AI · ${background.aiProvider === 'gemini' ? 'Gemini' : 'OpenAI'}`;
@@ -82,7 +101,9 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
           {(['solid', 'gradient', 'transparent', 'image', 'ai'] as BackgroundType[]).map((type) => (
             <button
               key={type}
+              type="button"
               onClick={() => background.onBackgroundTypeChange(type)}
+              aria-pressed={background.backgroundType === type}
               className={`px-3 py-2 text-xs font-medium rounded-lg border transition-all ${
                 background.backgroundType === type
                   ? 'bg-(--app-accent-50) border-(--app-accent-200) text-(--app-accent-700)'
@@ -98,6 +119,7 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
           <div className="flex items-center gap-3">
             <input
               type="color"
+              aria-label={t('bgSolid')}
               value={background.backgroundColor}
               onChange={(event) => background.onBackgroundColorChange(event.target.value)}
               className="w-10 h-10 rounded cursor-pointer border-0 p-0"
@@ -111,18 +133,21 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
             <div className="flex items-center gap-3">
               <input
                 type="color"
+                aria-label={`${t('bgGradient')} 1`}
                 value={background.gradientColor1}
                 onChange={(event) => background.onGradientColor1Change(event.target.value)}
                 className="w-8 h-8 rounded cursor-pointer border-0 p-0"
               />
               <input
                 type="color"
+                aria-label={`${t('bgGradient')} 2`}
                 value={background.gradientColor2}
                 onChange={(event) => background.onGradientColor2Change(event.target.value)}
                 className="w-8 h-8 rounded cursor-pointer border-0 p-0"
               />
             </div>
             <select
+              aria-label={t('bgGradient')}
               value={background.gradientDirection}
               onChange={(event) => background.onGradientDirectionChange(event.target.value)}
               className="app-select text-sm"
@@ -139,6 +164,7 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
           <div>
             <input
               type="file"
+              aria-label={t('uploadImage')}
               accept="image/*"
               onChange={background.onImageUpload}
               ref={background.fileInputRef}
@@ -177,7 +203,9 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
                   return (
                     <button
                       key={provider}
+                      type="button"
                       onClick={() => background.onAiProviderChange(provider)}
+                      aria-pressed={isActive}
                       className={`rounded-2xl border p-3 text-left transition-all ${
                         isActive
                           ? 'border-(--app-accent-500) bg-(--app-accent-700) text-white shadow-[0_14px_30px_var(--app-accent-shadow)]'
@@ -187,15 +215,15 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <div className="text-sm font-semibold">{meta.title}</div>
-                          <div className={`mt-1 text-[11px] font-medium ${isActive ? 'text-[rgba(237,244,243,0.92)]' : 'text-(--app-accent-600)'}`}> 
+                          <div className={`mt-1 text-xs font-medium ${isActive ? 'text-[rgba(237,244,243,0.92)]' : 'text-(--app-accent-600)'}`}>
                             {t(meta.tradeoffKey)}
                           </div>
                         </div>
-                        <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold ${isActive ? 'bg-white/15 text-white' : 'bg-(--app-accent-100) text-(--app-accent-700)'}`}>
+                        <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-semibold ${isActive ? 'bg-white/15 text-white' : 'bg-(--app-accent-100) text-(--app-accent-700)'}`}>
                           {CREDIT_COST[provider]} {CREDIT_COST[provider] === 1 ? t('creditsPerGen') : t('creditsPerGenMultiple')}
                         </span>
                       </div>
-                      <p className={`mt-2 text-[11px] leading-5 ${isActive ? 'text-[rgba(255,250,242,0.92)]' : 'text-(--app-accent-700)'}`}>
+                      <p className={`mt-2 text-xs leading-5 ${isActive ? 'text-[rgba(255,250,242,0.92)]' : 'text-(--app-accent-700)'}`}>
                         {t(meta.detailKey)}
                       </p>
                     </button>
@@ -205,6 +233,7 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
             </div>
 
             <textarea
+              aria-label={t('aiPromptPlaceholder')}
               className="app-textarea h-20 text-sm resize-none"
               value={background.aiPrompt}
               onChange={(event) => background.onAiPromptChange(event.target.value)}
@@ -243,6 +272,7 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
                           key={suggestion}
                           type="button"
                           onClick={() => background.onAiPromptChange(suggestion)}
+                          aria-pressed={isSelected}
                           className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
                             isSelected
                               ? 'border-(--app-accent-500) bg-(--app-accent-700) text-white'
@@ -262,7 +292,7 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
             </div>
             <button
               onClick={background.onGenerateAiBackground}
-              disabled={background.isGeneratingAI}
+              disabled={!canGenerate}
               className="app-button-primary w-full py-2 px-4 text-white rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {background.isGeneratingAI ? (
@@ -271,11 +301,28 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
                 </>
               ) : (
                 <>
-                  <Sparkles className="w-4 h-4" /> {t('generateAIBg')}
+                  <Sparkles className="w-4 h-4" /> {t('generateAIBg')} · {requiredCredits} {t('credits')}
                 </>
               )}
             </button>
-            {background.aiError ? <p className="text-xs text-red-500 mt-2">{background.aiError}</p> : null}
+            {balance !== null && hasEnoughCredits ? (
+              <p className="text-xs text-(--app-accent-600)">
+                {t('creditBalance')}: {balance} → {balance - requiredCredits}
+              </p>
+            ) : null}
+            {generationHint ? (
+              <div className="space-y-2" role="status" aria-live="polite">
+                <p className="text-xs leading-5 text-(--app-accent-700)">{generationHint}</p>
+                {!isSignedIn && CLERK_CONFIGURED ? (
+                  <AuthSignInButton mode="modal">
+                    <button type="button" className="app-button-secondary inline-flex min-h-11 items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold">
+                      <LogIn className="h-4 w-4" /> {t('signIn')}
+                    </button>
+                  </AuthSignInButton>
+                ) : null}
+              </div>
+            ) : null}
+            {background.aiError ? <p className="mt-2 text-xs text-red-600" role="alert">{background.aiError}</p> : null}
           </div>
         ) : null}
 
@@ -289,6 +336,7 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
                     key={mode}
                     type="button"
                     onClick={() => background.onBackgroundSizeChange(mode)}
+                    aria-pressed={background.backgroundSize === mode}
                     className={`flex-1 rounded-lg border px-2 py-1.5 text-xs font-medium transition-colors ${
                       background.backgroundSize === mode
                         ? 'border-(--app-accent-400) bg-(--app-accent-50) text-(--app-accent-700)'
@@ -326,6 +374,8 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
                   </div>
                   <input
                     type="range"
+                    aria-label={t('brightness')}
+                    aria-valuetext={`${background.bgBrightness}%`}
                     min="0"
                     max="200"
                     value={background.bgBrightness}
@@ -340,6 +390,8 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
                   </div>
                   <input
                     type="range"
+                    aria-label={t('blur')}
+                    aria-valuetext={`${background.bgBlur}px`}
                     min="0"
                     max="20"
                     value={background.bgBlur}

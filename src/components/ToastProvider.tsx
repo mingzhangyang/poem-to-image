@@ -37,7 +37,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
-      <div className="fixed z-50 left-1/2 top-6 -translate-x-1/2 flex flex-col gap-2 items-center pointer-events-none">
+      <div className="fixed z-50 left-1/2 top-6 -translate-x-1/2 flex flex-col gap-2 items-center pointer-events-none" aria-live="polite" aria-atomic="false">
         <AnimatePresence>
           {toasts.map((toast) => (
             <motion.div
@@ -47,9 +47,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               exit={{ opacity: 0, y: -30 }}
               transition={{ duration: 0.22 }}
               className={`pointer-events-auto flex items-center gap-2 px-4 py-2 rounded-xl shadow-lg text-sm font-medium ${toast.type === 'error' ? 'bg-red-500 text-white' : 'bg-green-500 text-white'}`}
+              role={toast.type === 'error' ? 'alert' : 'status'}
             >
               <span>{toast.message}</span>
-              <button onClick={() => removeToast(toast.id)} className="ml-2 p-1 rounded hover:bg-white/10">
+              <button type="button" onClick={() => removeToast(toast.id)} className="ml-2 inline-flex h-9 w-9 items-center justify-center rounded hover:bg-white/10" aria-label="Dismiss notification">
                 <X className="w-4 h-4" />
               </button>
             </motion.div>

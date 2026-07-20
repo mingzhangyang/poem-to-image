@@ -38,8 +38,10 @@ function BuiltInTemplateCard({ t, template, isActive, onApply, variant = 'compac
   if (variant === 'library') {
     return (
       <button
+        type="button"
         key={template.id}
         onClick={() => onApply(template.id)}
+        aria-pressed={isActive}
         className={`group relative h-[300px] w-[240px] overflow-hidden rounded-2xl border text-left transition-all ${
           isActive
             ? 'border-(--app-accent-300) shadow-[0_16px_36px_var(--app-accent-shadow)]'
@@ -50,11 +52,11 @@ function BuiltInTemplateCard({ t, template, isActive, onApply, variant = 'compac
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(9,14,23,0.04)_0%,rgba(9,14,23,0.2)_100%)]" />
 
         <div className="absolute left-3 top-3 flex flex-wrap items-center gap-1.5">
-          <span className="rounded-full border border-[rgba(255,255,255,0.35)] bg-[rgba(255,255,255,0.88)] px-2 py-0.5 text-[10px] font-semibold text-(--app-accent-700)">
+          <span className="rounded-full border border-[rgba(255,255,255,0.35)] bg-[rgba(255,255,255,0.88)] px-2 py-0.5 text-xs font-semibold text-(--app-accent-700)">
             {t(template.seriesKey)}
           </span>
           {template.usesBackgroundImage ? (
-            <span className="rounded-full border border-[rgba(37,99,235,0.22)] bg-[rgba(219,234,254,0.9)] px-2 py-0.5 text-[10px] font-semibold text-[#1d4ed8]">
+            <span className="rounded-full border border-[rgba(37,99,235,0.22)] bg-[rgba(219,234,254,0.9)] px-2 py-0.5 text-xs font-semibold text-[#1d4ed8]">
               {t('templateImageBadge')}
             </span>
           ) : null}
@@ -64,12 +66,12 @@ function BuiltInTemplateCard({ t, template, isActive, onApply, variant = 'compac
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <div className="text-sm font-semibold text-(--app-ink)">{t(template.nameKey)}</div>
-              <p className="mt-0.5 text-[11px] leading-4 text-(--app-accent-500)">
+              <p className="mt-0.5 text-xs leading-5 text-(--app-accent-600)">
                 {t(template.descriptionKey)}
               </p>
             </div>
             <span
-              className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold ${
+              className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${
                 isActive ? 'bg-(--app-accent-700) text-white' : 'bg-(--app-accent-50) text-(--app-accent-700)'
               }`}
             >
@@ -83,9 +85,11 @@ function BuiltInTemplateCard({ t, template, isActive, onApply, variant = 'compac
 
   return (
     <button
+      type="button"
       key={template.id}
       onClick={() => onApply(template.id)}
-      className={`text-left rounded-2xl border p-4 transition-all ${
+      aria-pressed={isActive}
+      className={`flex min-h-28 w-full items-stretch gap-3 rounded-2xl border p-3 text-left transition-all ${
         isActive
           ? 'border-(--app-accent-300) bg-(--app-accent-50) shadow-[0_10px_24px_var(--app-accent-shadow)]'
           : 'border-[rgba(34,48,52,0.08)] bg-white hover:border-(--app-accent-200) hover:bg-(--app-accent-50)'
@@ -93,30 +97,27 @@ function BuiltInTemplateCard({ t, template, isActive, onApply, variant = 'compac
     >
       <TemplatePreview
         template={template}
-        className="h-24 rounded-xl mb-3 border border-[rgba(34,48,52,0.06)]"
+        className="h-auto w-20 shrink-0 rounded-xl border border-[rgba(34,48,52,0.06)]"
       />
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
-            <span className="rounded-full border border-[rgba(34,48,52,0.08)] bg-white px-2 py-0.5 text-[10px] font-semibold text-(--app-accent-500)">
-              {t(template.seriesKey)}
+      <div className="flex min-w-0 flex-1 flex-col justify-between gap-2 py-0.5">
+        <div className="min-w-0">
+          <div className="flex items-start justify-between gap-2">
+            <div className="text-sm font-semibold leading-5 text-(--app-ink)">{t(template.nameKey)}</div>
+            <span
+              className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${
+                isActive ? 'bg-(--app-accent-700) text-white' : 'bg-(--app-accent-50) text-(--app-accent-700)'
+              }`}
+            >
+              {isActive ? t('templateApplied') : t('applyTemplate')}
             </span>
-            {template.usesBackgroundImage ? (
-              <span className="rounded-full border border-[rgba(37,99,235,0.24)] bg-[rgba(59,130,246,0.08)] px-2 py-0.5 text-[10px] font-semibold text-[#1d4ed8]">
-                {t('templateImageBadge')}
-              </span>
-            ) : null}
           </div>
-          <div className="text-sm font-semibold text-(--app-ink)">{t(template.nameKey)}</div>
-          <p className="mt-1 text-xs leading-5 text-(--app-accent-500)">{t(template.descriptionKey)}</p>
+          <p className="mt-1 line-clamp-2 text-xs leading-5 text-(--app-accent-600)">{t(template.descriptionKey)}</p>
         </div>
-        <span
-          className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-            isActive ? 'bg-(--app-accent-700) text-white' : 'bg-(--app-accent-50) text-(--app-accent-700)'
-          }`}
-        >
-          {isActive ? t('templateApplied') : t('applyTemplate')}
-        </span>
+        {template.usesBackgroundImage ? (
+          <span className="w-fit rounded-full border border-[rgba(37,99,235,0.24)] bg-[rgba(59,130,246,0.08)] px-2 py-0.5 text-xs font-semibold text-[#1d4ed8]">
+            {t('templateImageBadge')}
+          </span>
+        ) : null}
       </div>
     </button>
   );
@@ -216,8 +217,6 @@ export function TemplatesPanel({ t, expanded, onToggle, templates, currentBackgr
         highlighted={!templates.activeTemplateId && !templates.activeCustomTemplateId}
       >
         <div className="space-y-4">
-          <p className="text-xs leading-5 text-(--app-accent-500)">{t('templatesHint')}</p>
-
           <div>
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-semibold text-(--app-accent-500) uppercase tracking-wide">{t('myTemplates')}</span>
@@ -365,7 +364,7 @@ export function TemplatesPanel({ t, expanded, onToggle, templates, currentBackgr
               <button
                 type="button"
                 onClick={() => setIsLibraryOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-full bg-(--app-accent-600) px-3 py-1 text-[11px] font-semibold text-white shadow-sm transition-all hover:bg-(--app-accent-700) hover:shadow-md active:scale-95"
+                className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-(--app-accent-600) px-3 py-1 text-xs font-semibold text-white shadow-sm transition-all hover:bg-(--app-accent-700) hover:shadow-md active:scale-95"
               >
                 <Expand className="h-3.5 w-3.5" />
                 {t('quickMore')} ({templates.templates.length})

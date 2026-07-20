@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import { AlignCenter, AlignLeft, AlignRight, BookOpenText, LoaderCircle, SlidersHorizontal, X } from 'lucide-react';
@@ -51,6 +51,8 @@ function LayerControlCard({
   placementOptions,
   t,
 }: LayerControlCardProps) {
+  const controlId = useId();
+
   return (
     <div className="rounded-[1.35rem] border border-[rgba(34,48,52,0.08)] bg-[rgba(255,253,249,0.9)] p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
@@ -65,15 +67,17 @@ function LayerControlCard({
       <div className="space-y-3">
         {scale !== undefined && onScaleChange ? (
           <div>
-            <label className="mb-1 block text-xs text-(--app-accent-500)">
+            <label htmlFor={`${controlId}-scale`} className="mb-1 block text-xs text-(--app-accent-600)">
               {t('fontSize')} ({Math.round(scale * 100)}%)
             </label>
             <input
+              id={`${controlId}-scale`}
               type="range"
               min="70"
               max="160"
               step="1"
               value={Math.round(scale * 100)}
+              aria-valuetext={`${Math.round(scale * 100)}%`}
               onChange={(event) => onScaleChange(Number(event.target.value) / 100)}
               className="app-range"
             />
@@ -82,15 +86,17 @@ function LayerControlCard({
 
         {opacity !== undefined && onOpacityChange ? (
           <div>
-            <label className="mb-1 block text-xs text-(--app-accent-500)">
+            <label htmlFor={`${controlId}-opacity`} className="mb-1 block text-xs text-(--app-accent-600)">
               {t('opacity')} ({Math.round(opacity * 100)}%)
             </label>
             <input
+              id={`${controlId}-opacity`}
               type="range"
               min="0"
               max="100"
               step="1"
               value={Math.round(opacity * 100)}
+              aria-valuetext={`${Math.round(opacity * 100)}%`}
               onChange={(event) => onOpacityChange(Number(event.target.value) / 100)}
               className="app-range"
             />
@@ -99,15 +105,17 @@ function LayerControlCard({
 
         {lineHeight !== undefined && onLineHeightChange ? (
           <div>
-            <label className="mb-1 block text-xs text-(--app-accent-500)">
+            <label htmlFor={`${controlId}-line-height`} className="mb-1 block text-xs text-(--app-accent-600)">
               {t('lineHeight')} ({lineHeight.toFixed(2)})
             </label>
             <input
+              id={`${controlId}-line-height`}
               type="range"
               min="1"
               max="3"
               step="0.05"
               value={lineHeight}
+              aria-valuetext={lineHeight.toFixed(2)}
               onChange={(event) => onLineHeightChange(Number(event.target.value))}
               className="app-range"
             />
@@ -116,15 +124,17 @@ function LayerControlCard({
 
         {letterSpacing !== undefined && onLetterSpacingChange ? (
           <div>
-            <label className="mb-1 block text-xs text-(--app-accent-500)">
+            <label htmlFor={`${controlId}-letter-spacing`} className="mb-1 block text-xs text-(--app-accent-600)">
               {t('letterSpacing')} ({letterSpacing}px)
             </label>
             <input
+              id={`${controlId}-letter-spacing`}
               type="range"
               min="0"
               max="20"
               step="1"
               value={letterSpacing}
+              aria-valuetext={`${letterSpacing}px`}
               onChange={(event) => onLetterSpacingChange(Number(event.target.value))}
               className="app-range"
             />
@@ -133,15 +143,17 @@ function LayerControlCard({
 
         {bodyGap !== undefined && onBodyGapChange ? (
           <div>
-            <label className="mb-1 block text-xs text-(--app-accent-500)">
+            <label htmlFor={`${controlId}-section-gap`} className="mb-1 block text-xs text-(--app-accent-600)">
               {t('sectionGap')} ({bodyGap}px)
             </label>
             <input
+              id={`${controlId}-section-gap`}
               type="range"
               min="0"
               max="120"
               step="1"
               value={bodyGap}
+              aria-valuetext={`${bodyGap}px`}
               onChange={(event) => onBodyGapChange(Number(event.target.value))}
               className="app-range"
             />
@@ -165,6 +177,7 @@ function LayerControlCard({
                     align === option.value ? 'app-segment-button-active' : 'text-(--app-accent-500) hover:text-(--app-accent-800)'
                   }`}
                   aria-label={option.label}
+                  aria-pressed={align === option.value}
                 >
                   {option.icon}
                 </button>
@@ -175,8 +188,9 @@ function LayerControlCard({
 
         {placement !== undefined && onPlacementChange && placementOptions ? (
           <div>
-            <label className="mb-1 block text-xs text-(--app-accent-500)">{t('relativePosition')}</label>
+            <label htmlFor={`${controlId}-placement`} className="mb-1 block text-xs text-(--app-accent-600)">{t('relativePosition')}</label>
             <select
+              id={`${controlId}-placement`}
               value={placement}
               onChange={(event) => onPlacementChange(event.target.value as typeof placement)}
               className="app-select text-sm"
@@ -196,6 +210,7 @@ function LayerControlCard({
 
 export function PoemEditorModal({ isOpen, onClose, t, content }: PoemEditorModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
+  const [activeMobileTab, setActiveMobileTab] = useState<'text' | 'styles'>('text');
   const firstSuggestionLine = content.poemAutofillSuggestion?.body
     .split('\n')
     .map((line) => line.trim())
@@ -215,6 +230,10 @@ export function PoemEditorModal({ isOpen, onClose, t, content }: PoemEditorModal
   ];
 
   useDialogA11y({ isOpen, dialogRef, onClose });
+
+  useEffect(() => {
+    if (isOpen) setActiveMobileTab('text');
+  }, [isOpen]);
 
   if (!isOpen) {
     return null;
@@ -264,8 +283,46 @@ export function PoemEditorModal({ isOpen, onClose, t, content }: PoemEditorModal
             </button>
           </div>
 
+          <div
+            className="app-segment mx-5 mt-4 grid grid-cols-2 rounded-xl p-1 sm:mx-7 lg:hidden"
+            role="tablist"
+            aria-label={t('poemEditorTitle')}
+          >
+            <button
+              type="button"
+              role="tab"
+              id="poem-editor-text-tab"
+              aria-selected={activeMobileTab === 'text'}
+              aria-controls="poem-editor-text-panel"
+              onClick={() => setActiveMobileTab('text')}
+              className={`min-h-11 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
+                activeMobileTab === 'text' ? 'app-segment-button-active' : 'text-(--app-accent-700)'
+              }`}
+            >
+              {t('poemEditorTextSection')}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              id="poem-editor-styles-tab"
+              aria-selected={activeMobileTab === 'styles'}
+              aria-controls="poem-editor-styles-panel"
+              onClick={() => setActiveMobileTab('styles')}
+              className={`min-h-11 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
+                activeMobileTab === 'styles' ? 'app-segment-button-active' : 'text-(--app-accent-700)'
+              }`}
+            >
+              {t('poemLayerStyles')}
+            </button>
+          </div>
+
           <div className="grid flex-1 gap-0 overflow-hidden lg:grid-cols-[minmax(0,1.55fr)_minmax(360px,0.95fr)]">
-            <div className="min-h-0 overflow-y-auto px-5 py-5 sm:px-7 lg:px-10">
+            <div
+              id="poem-editor-text-panel"
+              role="tabpanel"
+              aria-labelledby="poem-editor-text-tab"
+              className={`${activeMobileTab === 'text' ? 'block' : 'hidden'} min-h-0 overflow-y-auto px-5 py-5 sm:px-7 lg:block lg:px-10`}
+            >
               <div className="mb-5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-(--app-accent-500)">
                 <BookOpenText className="h-4 w-4" />
                 <span>{t('poemEditorTextSection')}</span>
@@ -318,8 +375,9 @@ export function PoemEditorModal({ isOpen, onClose, t, content }: PoemEditorModal
               <div className="space-y-4">
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
-                    <label className="mb-1.5 block text-xs text-(--app-accent-500)">{t('poemTitle')}</label>
+                    <label htmlFor="poem-editor-title-input" className="mb-1.5 block text-xs text-(--app-accent-600)">{t('poemTitle')}</label>
                     <input
+                      id="poem-editor-title-input"
                       className="app-input text-sm"
                       value={content.poem.title}
                       onChange={(event) => content.onTitleChange(event.target.value)}
@@ -328,8 +386,9 @@ export function PoemEditorModal({ isOpen, onClose, t, content }: PoemEditorModal
                   </div>
 
                   <div>
-                    <label className="mb-1.5 block text-xs text-(--app-accent-500)">{t('poemAuthor')}</label>
+                    <label htmlFor="poem-editor-author-input" className="mb-1.5 block text-xs text-(--app-accent-600)">{t('poemAuthor')}</label>
                     <input
+                      id="poem-editor-author-input"
                       className="app-input text-sm"
                       value={content.poem.author}
                       onChange={(event) => content.onAuthorChange(event.target.value)}
@@ -339,8 +398,9 @@ export function PoemEditorModal({ isOpen, onClose, t, content }: PoemEditorModal
                 </div>
 
                 <div>
-                  <label className="mb-1.5 block text-xs text-(--app-accent-500)">{t('poemBody')}</label>
+                  <label htmlFor="poem-editor-body-input" className="mb-1.5 block text-xs text-(--app-accent-600)">{t('poemBody')}</label>
                   <textarea
+                    id="poem-editor-body-input"
                     className="app-textarea h-[min(56vh,42rem)] resize-none text-sm leading-7"
                     value={content.poem.body}
                     onChange={(event) => content.onBodyChange(event.target.value)}
@@ -349,8 +409,9 @@ export function PoemEditorModal({ isOpen, onClose, t, content }: PoemEditorModal
                 </div>
 
                 <div>
-                  <label className="mb-1.5 block text-xs text-(--app-accent-500)">{t('poemSource')}</label>
+                  <label htmlFor="poem-editor-source-input" className="mb-1.5 block text-xs text-(--app-accent-600)">{t('poemSource')}</label>
                   <input
+                    id="poem-editor-source-input"
                     className="app-input text-sm"
                     value={content.poem.sourceNote}
                     onChange={(event) => content.onSourceNoteChange(event.target.value)}
@@ -360,7 +421,12 @@ export function PoemEditorModal({ isOpen, onClose, t, content }: PoemEditorModal
               </div>
             </div>
 
-            <div className="min-h-0 overflow-y-auto border-t border-[rgba(34,48,52,0.06)] bg-[rgba(245,241,232,0.52)] px-5 py-5 sm:px-7 lg:border-l lg:border-t-0 lg:px-8">
+            <div
+              id="poem-editor-styles-panel"
+              role="tabpanel"
+              aria-labelledby="poem-editor-styles-tab"
+              className={`${activeMobileTab === 'styles' ? 'block' : 'hidden'} min-h-0 overflow-y-auto border-t border-[rgba(34,48,52,0.06)] bg-[rgba(245,241,232,0.52)] px-5 py-5 sm:px-7 lg:block lg:border-l lg:border-t-0 lg:px-8`}
+            >
               <div className="mb-5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-(--app-accent-500)">
                 <SlidersHorizontal className="h-4 w-4" />
                 <span>{t('poemLayerStyles')}</span>

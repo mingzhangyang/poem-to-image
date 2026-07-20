@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { Download, Maximize2, Minus, Plus, Undo2, Redo2, X } from 'lucide-react';
 import type { CanvasPreviewProps } from '../types';
@@ -6,6 +6,7 @@ import { SidebarFooter } from './sidebar/SidebarFooter';
 import { BackgroundLayer } from './preview/BackgroundLayer';
 import { PoemContent } from './preview/PoemContent';
 import { TransparentGrid } from './preview/TransparentGrid';
+import { useDialogA11y } from '../hooks/useDialogA11y';
 
 const ZOOM_MIN = 0.7;
 const ZOOM_MAX = 2.0;
@@ -87,6 +88,10 @@ export function CanvasPreview({
   const [isDraggingPreview, setIsDraggingPreview] = useState(false);
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const exportDialogRef = useRef<HTMLDivElement>(null);
+  const closeExportModal = useCallback(() => setIsExportModalOpen(false), []);
+
+  useDialogA11y({ isOpen: isExportModalOpen, dialogRef: exportDialogRef, onClose: closeExportModal });
 
   // Refs for pinch-to-zoom
   const activePointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
@@ -148,27 +153,6 @@ export function CanvasPreview({
     }));
   }, [maxPanX, maxPanY]);
 
-  useEffect(() => {
-    if (!isExportModalOpen) {
-      return;
-    }
-
-    const previousOverflow = document.body.style.overflow;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setIsExportModalOpen(false);
-      }
-    };
-
-    document.body.style.overflow = 'hidden';
-    window.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isExportModalOpen]);
-
   // Ctrl+scroll (or Cmd+scroll on Mac) wheel zoom — non-passive so we can preventDefault
   useEffect(() => {
     const viewport = viewportRef.current;
@@ -202,12 +186,12 @@ export function CanvasPreview({
 
   const handleSaveFromModal = () => {
     onDownload();
-    setIsExportModalOpen(false);
+    closeExportModal();
   };
 
   const handleShareFromModal = () => {
     onShare();
-    setIsExportModalOpen(false);
+    closeExportModal();
   };
 
   const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -285,41 +269,41 @@ export function CanvasPreview({
   return (
     <section
       ref={containerRef}
-      className="order-1 flex items-center justify-center bg-[radial-gradient(circle_at_top,rgba(191,214,213,0.34),transparent_34%),linear-gradient(180deg,rgba(255,250,242,0.6),rgba(246,243,236,0.92))] overflow-hidden relative h-dvh min-h-105 p-4 pt-6 pb-24 sm:p-6 md:order-2 md:flex-1 md:h-screen md:min-h-screen md:max-h-screen md:px-8 md:pb-8 md:pt-24"
+      className="order-1 flex items-center justify-center bg-[radial-gradient(circle_at_top,rgba(191,214,213,0.34),transparent_34%),linear-gradient(180deg,rgba(255,250,242,0.6),rgba(246,243,236,0.92))] overflow-hidden relative h-dvh min-h-105 p-4 pt-6 pb-24 sm:p-6 lg:order-2 lg:flex-1 lg:h-screen lg:min-h-screen lg:max-h-screen lg:px-8 lg:pb-8 lg:pt-24"
     >
       <TransparentGrid visible={backgroundType === 'transparent'} />
 
-      <div className="flex absolute left-[calc(4.25rem+env(safe-area-inset-left))] top-4 z-20 items-center gap-1 rounded-full border border-[rgba(20, 169, 155,0.16)] bg-[rgba(255,253,249,0.72)] px-2 py-1.5 text-xs text-(--app-accent-700) shadow-[0_10px_24px_var(--app-accent-shadow)] backdrop-blur-sm opacity-70 transition-opacity duration-200 hover:opacity-100 focus-within:opacity-100 md:left-6 md:top-6">
+      <div className="flex absolute left-[calc(4.25rem+env(safe-area-inset-left))] top-4 z-20 items-center gap-1 rounded-full border border-[rgba(20,169,155,0.16)] bg-[rgba(255,253,249,0.72)] px-1.5 py-1 text-xs text-(--app-accent-700) shadow-[0_10px_24px_var(--app-accent-shadow)] backdrop-blur-sm opacity-80 transition-opacity duration-200 hover:opacity-100 focus-within:opacity-100 lg:left-6 lg:top-6">
         <button
           type="button"
           onClick={onUndo}
           disabled={!canUndo}
-          className="app-icon-button flex items-center justify-center w-6 h-6 rounded-full text-(--app-accent-700) hover:bg-(--app-accent-50) hover:text-(--app-accent-900) transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          className="app-icon-button flex items-center justify-center w-9 h-9 rounded-full text-(--app-accent-700) hover:bg-(--app-accent-50) hover:text-(--app-accent-900) transition-colors disabled:opacity-30 disabled:cursor-not-allowed lg:w-10 lg:h-10"
           aria-label={t('undo')}
           title={`${t('undo')} (Ctrl+Z)`}
         >
-          <Undo2 size={13} />
+          <Undo2 size={16} />
         </button>
         <button
           type="button"
           onClick={onRedo}
           disabled={!canRedo}
-          className="app-icon-button flex items-center justify-center w-6 h-6 rounded-full text-(--app-accent-700) hover:bg-(--app-accent-50) hover:text-(--app-accent-900) transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          className="app-icon-button flex items-center justify-center w-9 h-9 rounded-full text-(--app-accent-700) hover:bg-(--app-accent-50) hover:text-(--app-accent-900) transition-colors disabled:opacity-30 disabled:cursor-not-allowed lg:w-10 lg:h-10"
           aria-label={t('redo')}
           title={`${t('redo')} (Ctrl+Y)`}
         >
-          <Redo2 size={13} />
+          <Redo2 size={16} />
         </button>
       </div>
 
-      <div className="flex absolute right-4 top-4 z-20 items-center gap-1 rounded-full border border-[rgba(20, 169, 155,0.16)] bg-[rgba(255,253,249,0.72)] px-2.5 py-1.5 text-xs text-(--app-accent-700) shadow-[0_10px_24px_var(--app-accent-shadow)] backdrop-blur-sm opacity-70 transition-opacity duration-200 hover:opacity-100 focus-within:opacity-100 md:right-6 md:top-6">
+      <div className="flex absolute right-4 top-4 z-20 items-center gap-0.5 rounded-full border border-[rgba(20,169,155,0.16)] bg-[rgba(255,253,249,0.72)] px-1.5 py-1 text-xs text-(--app-accent-700) shadow-[0_10px_24px_var(--app-accent-shadow)] backdrop-blur-sm opacity-80 transition-opacity duration-200 hover:opacity-100 focus-within:opacity-100 lg:right-6 lg:top-6">
         <button
           type="button"
           onClick={() => onPreviewZoomChange(clamp(previewZoom - ZOOM_STEP, ZOOM_MIN, ZOOM_MAX))}
-          className="app-icon-button flex items-center justify-center w-5 h-5 rounded-full text-(--app-accent-700) hover:bg-(--app-accent-50) hover:text-(--app-accent-900) transition-colors"
+          className="app-icon-button flex items-center justify-center w-9 h-9 rounded-full text-(--app-accent-700) hover:bg-(--app-accent-50) hover:text-(--app-accent-900) transition-colors lg:w-10 lg:h-10"
           aria-label={t('zoomOut')}
         >
-          <Minus size={11} />
+          <Minus size={14} />
         </button>
 
         <span className="min-w-8 text-center font-medium text-(--app-accent-900) tabular-nums">{previewScalePercent}%</span>
@@ -331,7 +315,7 @@ export function CanvasPreview({
           step="1"
           value={Math.round(previewZoom * 100)}
           onChange={(event) => onPreviewZoomChange(Number(event.target.value) / 100)}
-          className="hidden md:block h-1.5 w-20 cursor-pointer accent-(--app-accent-700)"
+          className="hidden lg:block h-1.5 w-20 cursor-pointer accent-(--app-accent-700)"
           aria-label={t('previewZoom')}
           title={t('previewZoom')}
         />
@@ -339,10 +323,10 @@ export function CanvasPreview({
         <button
           type="button"
           onClick={() => onPreviewZoomChange(clamp(previewZoom + ZOOM_STEP, ZOOM_MIN, ZOOM_MAX))}
-          className="app-icon-button flex items-center justify-center w-5 h-5 rounded-full text-(--app-accent-700) hover:bg-(--app-accent-50) hover:text-(--app-accent-900) transition-colors"
+          className="app-icon-button flex items-center justify-center w-9 h-9 rounded-full text-(--app-accent-700) hover:bg-(--app-accent-50) hover:text-(--app-accent-900) transition-colors lg:w-10 lg:h-10"
           aria-label={t('zoomIn')}
         >
-          <Plus size={11} />
+          <Plus size={14} />
         </button>
 
         <div className="w-px h-3 bg-[rgba(20, 169, 155,0.22)] mx-0.5" />
@@ -350,11 +334,11 @@ export function CanvasPreview({
         <button
           type="button"
           onClick={handleFitViewport}
-          className="app-icon-button flex items-center justify-center w-5 h-5 rounded-full text-(--app-accent-700) hover:bg-(--app-accent-50) hover:text-(--app-accent-900) transition-colors"
+          className="app-icon-button flex items-center justify-center w-9 h-9 rounded-full text-(--app-accent-700) hover:bg-(--app-accent-50) hover:text-(--app-accent-900) transition-colors lg:w-10 lg:h-10"
           aria-label={t('fitToViewport')}
           title={t('fitToViewport')}
         >
-          <Maximize2 size={11} />
+          <Maximize2 size={14} />
         </button>
       </div>
 
@@ -362,10 +346,10 @@ export function CanvasPreview({
         type="button"
         onClick={handleOpenExportModal}
         disabled={isOutputBusy}
-        className="app-button-primary hidden md:flex absolute bottom-6 right-6 z-20 items-center justify-center gap-2 rounded-2xl border border-white/70 px-5 py-3 text-sm font-semibold shadow-[0_20px_48px_var(--app-accent-shadow)] backdrop-blur-md disabled:cursor-not-allowed disabled:opacity-70"
+        className="app-button-primary hidden lg:flex absolute bottom-6 right-6 z-20 items-center justify-center gap-2 rounded-2xl border border-white/70 px-5 py-3 text-sm font-semibold shadow-[0_20px_48px_var(--app-accent-shadow)] backdrop-blur-md disabled:cursor-not-allowed disabled:opacity-70"
       >
         <Download className="h-4 w-4" />
-        {t('exportAndShare')}
+        {t(canShare ? 'exportAndShare' : 'exportImage')}
       </button>
 
       <AnimatePresence>
@@ -373,29 +357,42 @@ export function CanvasPreview({
           <>
             <motion.button
               type="button"
-              className="hidden md:block fixed inset-0 z-30 bg-[rgba(31,52,54,0.36)] backdrop-blur-[3px]"
+              className="hidden lg:block fixed inset-0 z-30 bg-[rgba(31,52,54,0.36)] backdrop-blur-[3px]"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setIsExportModalOpen(false)}
+              onClick={closeExportModal}
               aria-label={t('closeControls')}
             />
 
             <motion.div
-              className="hidden md:flex fixed inset-0 z-40 items-center justify-center p-6"
+              className="hidden lg:flex fixed inset-0 z-40 items-center justify-center p-6"
               initial={{ opacity: 0, y: reduceMotion ? 0 : 12 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: reduceMotion ? 0 : 12 }}
             >
-              <div className="w-full max-w-md overflow-hidden rounded-[2rem] border border-white/75 bg-[linear-gradient(180deg,rgba(255,253,249,0.98),rgba(255,250,242,0.96))] shadow-[0_28px_80px_var(--app-accent-shadow)]">
+              <div
+                ref={exportDialogRef}
+                className="w-full max-w-md overflow-hidden rounded-[2rem] border border-white/75 bg-[linear-gradient(180deg,rgba(255,253,249,0.98),rgba(255,250,242,0.96))] shadow-[0_28px_80px_var(--app-accent-shadow)]"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="export-dialog-title"
+                aria-describedby="export-dialog-description"
+                tabIndex={-1}
+              >
                 <div className="flex items-start justify-between gap-4 border-b border-[rgba(34,48,52,0.06)] px-6 py-5">
                   <div className="min-w-0">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-(--app-accent-500)">{t('exportAndShare')}</p>
+                    <p id="export-dialog-title" className="text-xs font-semibold uppercase tracking-[0.24em] text-(--app-accent-500)">
+                      {t(canShare ? 'exportAndShare' : 'exportImage')}
+                    </p>
+                    <p id="export-dialog-description" className="mt-2 text-sm leading-5 text-(--app-accent-700)">
+                      {t('saveImageModalDescription')}
+                    </p>
                   </div>
 
                   <button
                     type="button"
-                    onClick={() => setIsExportModalOpen(false)}
+                    onClick={closeExportModal}
                     className="app-icon-button inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[rgba(34,48,52,0.08)] bg-white/80 p-0 text-(--app-accent-700) transition-colors hover:bg-(--app-accent-50)"
                     aria-label={t('closeControls')}
                   >

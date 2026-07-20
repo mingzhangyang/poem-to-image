@@ -97,6 +97,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
               <div>
                 <label className="mb-1 block text-xs text-(--app-accent-500)">{t('borderStyle')}</label>
                 <select
+                  aria-label={t('borderStyle')}
                   value={decorations.borderStyle}
                   onChange={(event) => decorations.onBorderStyleChange(event.target.value as BorderStyle)}
                   className="app-select text-sm"
@@ -126,6 +127,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                   <div className="flex w-full items-center gap-3 rounded-xl border border-[rgba(34,48,52,0.08)] bg-[rgba(255,253,249,0.96)] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.82)]">
                     <input
                       type="color"
+                      aria-label={t('borderColor')}
                       value={decorations.borderColor}
                       onChange={(event) => decorations.onBorderColorChange(event.target.value)}
                       className="h-9 w-9 shrink-0 cursor-pointer rounded-lg border-0 bg-transparent p-0"
@@ -160,6 +162,8 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                   </div>
                   <input
                     type="range"
+                    aria-label={t('borderWidth')}
+                    aria-valuetext={`${decorations.borderWidth}px`}
                     min="2"
                     max="16"
                     value={decorations.borderWidth}
@@ -202,6 +206,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                 </button>
                 <input
                   type="text"
+                  aria-label={t('stampText')}
                   value={stampInputText}
                   onChange={(event) => {
                     const newValue = event.target.value;
@@ -226,6 +231,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
               <div>
                 <label className="block text-xs text-(--app-accent-500) mb-1">{t('stampStyle')}</label>
                 <select
+                  aria-label={t('stampStyle')}
                   value={decorations.stamp.style}
                   onChange={(event) => decorations.onStampChange({ style: event.target.value as StampStyle })}
                   className="app-select text-sm"
@@ -242,6 +248,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                   <button
                     type="button"
                     onClick={() => decorations.onStampChange({ colorScheme: 'outline' })}
+                    aria-pressed={(decorations.stamp.colorScheme ?? 'filled') === 'outline'}
                     className={`flex-1 py-1 text-xs rounded transition-colors ${
                       (decorations.stamp.colorScheme ?? 'filled') === 'outline' ? 'app-segment-button-active' : 'text-(--app-accent-500) hover:bg-(--app-accent-50)'
                     }`}
@@ -251,6 +258,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                   <button
                     type="button"
                     onClick={() => decorations.onStampChange({ colorScheme: 'filled' })}
+                    aria-pressed={decorations.stamp.colorScheme === 'filled'}
                     className={`flex-1 py-1 text-xs rounded transition-colors ${
                       decorations.stamp.colorScheme === 'filled' ? 'app-segment-button-active' : 'text-(--app-accent-500) hover:bg-(--app-accent-50)'
                     }`}
@@ -265,6 +273,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                 <div className="flex w-full items-center gap-3 rounded-xl border border-[rgba(34,48,52,0.08)] bg-[rgba(255,253,249,0.96)] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.82)]">
                   <input
                     type="color"
+                    aria-label={t('stampInkColor')}
                     value={decorations.stamp.inkColor ?? '#c82829'}
                     onChange={(event) => decorations.onStampChange({ inkColor: event.target.value })}
                     className="h-9 w-9 shrink-0 cursor-pointer rounded-lg border-0 bg-transparent p-0"
@@ -308,6 +317,8 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                 </div>
                 <input
                   type="range"
+                  aria-label={t('stampWeathering')}
+                  aria-valuetext={`${decorations.stamp.weathering ?? 50}%`}
                   min="0"
                   max="100"
                   step="5"
@@ -320,6 +331,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
               <div>
                 <label className="block text-xs text-(--app-accent-500) mb-1">{t('stampFont')}</label>
                 <select
+                  aria-label={t('stampFont')}
                   value={decorations.stamp.fontFamily}
                   onChange={(event) => decorations.onStampChange({ fontFamily: event.target.value })}
                   className="app-select text-sm"
@@ -343,6 +355,8 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                 </div>
                 <input
                   type="range"
+                  aria-label={t('stampSize')}
+                  aria-valuetext={`${decorations.stamp.size}px`}
                   min="56"
                   max="180"
                   value={decorations.stamp.size}
@@ -358,6 +372,8 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                 </div>
                 <input
                   type="range"
+                  aria-label={t('stampRotation')}
+                  aria-valuetext={`${decorations.stamp.rotation}°`}
                   min="-45"
                   max="45"
                   value={decorations.stamp.rotation}
@@ -373,6 +389,8 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                 </div>
                 <input
                   type="range"
+                  aria-label={t('stampOpacity')}
+                  aria-valuetext={`${Math.round(decorations.stamp.opacity * 100)}%`}
                   min="35"
                   max="100"
                   value={Math.round(decorations.stamp.opacity * 100)}
@@ -412,6 +430,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
             <Upload className="h-3.5 w-3.5 shrink-0" />
             <input
               type="file"
+              aria-label={t('uploadLogo')}
               accept="image/*"
               onChange={decorations.onLogoUpload}
               className="hidden"
@@ -443,12 +462,15 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                 <div className="flex items-center gap-2">
                   <input
                     type="color"
+                    aria-label={t('textColor')}
                     value={customText.color}
                     onChange={(event) => decorations.onCustomTextChange(customText.id, { color: event.target.value })}
                     className="w-6 h-6 rounded cursor-pointer border-0 p-0"
                   />
                   <input
                     type="range"
+                    aria-label={t('fontSize')}
+                    aria-valuetext={`${customText.fontSize}px`}
                     min="12"
                     max="120"
                     value={customText.fontSize}
@@ -459,20 +481,24 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                 </div>
                 <div className="app-segment flex gap-1 p-1 rounded">
                   <button
+                    type="button"
                     onClick={() => decorations.onCustomTextChange(customText.id, { writingMode: 'horizontal-tb' })}
                     className={`flex-1 py-1 flex justify-center items-center rounded transition-colors ${
                       customText.writingMode === 'horizontal-tb' ? 'app-segment-button-active' : 'text-(--app-accent-500) hover:bg-(--app-accent-50)'
                     }`}
                     aria-label={t('horizontal')}
+                    aria-pressed={customText.writingMode === 'horizontal-tb'}
                   >
                     <Text className="w-4 h-4" />
                   </button>
                   <button
+                    type="button"
                     onClick={() => decorations.onCustomTextChange(customText.id, { writingMode: 'vertical-rl' })}
                     className={`flex-1 py-1 flex justify-center items-center rounded transition-colors ${
                       customText.writingMode === 'vertical-rl' ? 'app-segment-button-active' : 'text-(--app-accent-500) hover:bg-(--app-accent-50)'
                     }`}
                     aria-label={t('vertical')}
+                    aria-pressed={customText.writingMode === 'vertical-rl'}
                   >
                     <TextCursorInput className="w-4 h-4 rotate-90" />
                   </button>
@@ -481,6 +507,8 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                   <span className="text-xs text-(--app-accent-500) w-8">{t('angle')}</span>
                   <input
                     type="range"
+                    aria-label={t('angle')}
+                    aria-valuetext={`${customText.rotation}°`}
                     min="-180"
                     max="180"
                     value={customText.rotation}
@@ -555,6 +583,8 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                   <span className="text-xs text-(--app-accent-500) w-8">{t('size')}</span>
                   <input
                     type="range"
+                    aria-label={t('size')}
+                    aria-valuetext={`${logo.size}px`}
                     min="50"
                     max="300"
                     value={logo.size}
@@ -567,6 +597,8 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                   <span className="text-xs text-(--app-accent-500) w-8">{t('angle')}</span>
                   <input
                     type="range"
+                    aria-label={t('angle')}
+                    aria-valuetext={`${logo.rotation}°`}
                     min="-180"
                     max="180"
                     value={logo.rotation}
@@ -579,6 +611,8 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                   <span className="text-xs text-(--app-accent-500) w-8">{t('opacity')}</span>
                   <input
                     type="range"
+                    aria-label={t('opacity')}
+                    aria-valuetext={`${Math.round(logo.opacity * 100)}%`}
                     min="0"
                     max="100"
                     value={Math.round(logo.opacity * 100)}
@@ -655,6 +689,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                 <div>
                   <label className="block text-xs text-(--app-accent-500) mb-1">{t('signatureFont')}</label>
                   <select
+                    aria-label={t('signatureFont')}
                     value={sig.font}
                     onChange={(e) => decorations.onSignatureChange(sig.id, { font: e.target.value })}
                     className="app-select text-sm"
@@ -671,12 +706,15 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                 <div className="flex items-center gap-2">
                   <input
                     type="color"
+                    aria-label={t('signatureColor')}
                     value={sig.color}
                     onChange={(e) => decorations.onSignatureChange(sig.id, { color: e.target.value })}
                     className="w-6 h-6 rounded cursor-pointer border-0 p-0 shrink-0"
                   />
                   <input
                     type="range"
+                    aria-label={t('signatureSize')}
+                    aria-valuetext={`${sig.fontSize}px`}
                     min="30"
                     max="160"
                     value={sig.fontSize}
@@ -689,6 +727,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                 <div>
                   <label className="block text-xs text-(--app-accent-500) mb-1">{t('signatureFlourish')}</label>
                   <select
+                    aria-label={t('signatureFlourish')}
                     value={sig.flourish}
                     onChange={(e) => decorations.onSignatureChange(sig.id, { flourish: e.target.value as SignatureFlourish })}
                     className="app-select text-sm"
@@ -707,6 +746,8 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                   <span className="text-xs text-(--app-accent-500) w-10">{t('signatureSlant')}</span>
                   <input
                     type="range"
+                    aria-label={t('signatureSlant')}
+                    aria-valuetext={`${sig.slant}°`}
                     min="-30"
                     max="30"
                     value={sig.slant}
@@ -720,6 +761,8 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                   <span className="text-xs text-(--app-accent-500) w-10">{t('signatureThickness')}</span>
                   <input
                     type="range"
+                    aria-label={t('signatureThickness')}
+                    aria-valuetext={String(sig.thickness)}
                     min="0"
                     max="5"
                     value={sig.thickness}
@@ -733,6 +776,8 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                   <span className="text-xs text-(--app-accent-500) w-10">{t('signatureRotation')}</span>
                   <input
                     type="range"
+                    aria-label={t('signatureRotation')}
+                    aria-valuetext={`${sig.rotation}°`}
                     min="-180"
                     max="180"
                     value={sig.rotation}
@@ -746,6 +791,8 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                   <span className="text-xs text-(--app-accent-500) w-10">{t('signatureOpacity')}</span>
                   <input
                     type="range"
+                    aria-label={t('signatureOpacity')}
+                    aria-valuetext={`${Math.round(sig.opacity * 100)}%`}
                     min="0"
                     max="100"
                     value={Math.round(sig.opacity * 100)}

@@ -1,8 +1,10 @@
 import { AnimatePresence, motion } from 'motion/react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
+import { useId } from 'react';
 import type { ControlSectionProps } from '../types';
 
 export function ControlSection({ title, icon, expanded, onToggle, summary, highlighted = false, action, children, tint }: ControlSectionProps) {
+  const contentId = useId();
   const tinted = expanded || highlighted;
   const iconStyle = tinted && tint ? { color: tint } : undefined;
   const containerClassName = expanded
@@ -15,8 +17,11 @@ export function ControlSection({ title, icon, expanded, onToggle, summary, highl
     <section className={`overflow-hidden rounded-[1.5rem] border transition-all duration-200 ${containerClassName}`}>
       <div className="flex items-start justify-between gap-3 px-4 py-4 sm:px-5">
         <button
+          type="button"
           onClick={onToggle}
           className="flex-1 text-left transition-colors"
+          aria-expanded={expanded}
+          aria-controls={contentId}
         >
           <span className="flex items-start justify-between gap-3">
             <span className="min-w-0">
@@ -47,7 +52,7 @@ export function ControlSection({ title, icon, expanded, onToggle, summary, highl
             transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
             style={{ overflow: 'hidden' }}
           >
-            <div className="border-t border-[rgba(34,48,52,0.06)] px-4 pb-4 pt-4 sm:px-5 sm:pb-5">{children}</div>
+            <div id={contentId} className="border-t border-[rgba(34,48,52,0.06)] px-4 pb-4 pt-4 sm:px-5 sm:pb-5">{children}</div>
           </motion.div>
         )}
       </AnimatePresence>

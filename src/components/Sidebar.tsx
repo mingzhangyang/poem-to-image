@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Download, Palette, Settings, Sparkles, Type, X } from 'lucide-react';
 import type { SidebarProps, SocialPlatform } from '../types';
@@ -11,6 +11,8 @@ import { SidebarFooter } from './sidebar/SidebarFooter';
 import { SidebarHeader } from './sidebar/SidebarHeader';
 import { TemplatesPanel } from './sidebar/TemplatesPanel';
 import { TypographyPanel } from './sidebar/TypographyPanel';
+import { useDialogA11y } from '../hooks/useDialogA11y';
+import { Logo } from './logo';
 
 type MobilePanel = 'templates' | 'content' | 'style' | 'export' | 'settings';
 
@@ -54,9 +56,13 @@ export function Sidebar({
   const [socialFeedback, setSocialFeedback] = useState<'clipboard' | 'downloaded' | null>(null);
   const [activeSocialPlatform, setActiveSocialPlatform] = useState<SocialPlatform | null>(null);
   const isMobileControlsOpen = activeMobilePanel !== null;
+  const mobileDialogRef = useRef<HTMLElement>(null);
+  const closeMobilePanel = useCallback(() => setActiveMobilePanel(null), []);
+
+  useDialogA11y({ isOpen: isMobileControlsOpen, dialogRef: mobileDialogRef, onClose: closeMobilePanel });
 
   useEffect(() => {
-    const mediaQuery = window.matchMedia('(min-width: 768px)');
+    const mediaQuery = window.matchMedia('(min-width: 1024px)');
     const handleChange = (event: MediaQueryListEvent) => {
       if (event.matches) {
         setActiveMobilePanel(null);
@@ -68,35 +74,15 @@ export function Sidebar({
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
 
-  useEffect(() => {
-    if (!isMobileControlsOpen) return;
-
-    const previousOverflow = document.body.style.overflow;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setActiveMobilePanel(null);
-    };
-
-    document.body.style.overflow = 'hidden';
-    window.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isMobileControlsOpen]);
-
   const openMobilePanel = (panel: MobilePanel) => {
     if (panel === 'templates') {
       onExpandSection('templates');
-      onExpandSection('canvasSize');
     }
     if (panel === 'content') {
       onExpandSection('content');
-      onExpandSection('typography');
     }
     if (panel === 'style') {
       onExpandSection('background');
-      onExpandSection('decorations');
     }
     setActiveMobilePanel(panel);
   };
@@ -119,11 +105,19 @@ export function Sidebar({
 
   const mobileButtonClassName = (panel: MobilePanel) => {
     const isActive = activeMobilePanel === panel;
-    return `flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2.5 text-[11px] font-medium transition-colors ${isActive ? 'bg-(--app-accent-700) text-white shadow-[0_10px_22px_var(--app-accent-shadow)]' : 'text-(--app-accent-800) hover:bg-[rgba(237,244,243,0.8)]'}`;
+    return `flex min-w-0 min-h-12 flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2.5 text-xs font-medium transition-colors ${isActive ? 'bg-(--app-accent-700) text-white shadow-[0_10px_22px_var(--app-accent-shadow)]' : 'text-(--app-accent-800) hover:bg-[rgba(237,244,243,0.8)]'}`;
   };
 
   const sections = () => (
     <div className="app-sidebar-scrollbar p-4 sm:p-6 space-y-6 sm:space-y-8 flex-1 overflow-y-auto">
+      <div>
+        <ContentPanel
+          t={t}
+          expanded={expandedSections.content}
+          onToggle={() => onToggleSection('content')}
+          content={content}
+        />
+      </div>
       <div>
         <TemplatesPanel
           t={t}
@@ -139,14 +133,6 @@ export function Sidebar({
           expanded={expandedSections.canvasSize}
           onToggle={() => onToggleSection('canvasSize')}
           canvas={canvas}
-        />
-      </div>
-      <div>
-        <ContentPanel
-          t={t}
-          expanded={expandedSections.content}
-          onToggle={() => onToggleSection('content')}
-          content={content}
         />
       </div>
       <div>
@@ -265,7 +251,7 @@ export function Sidebar({
           isExporting={isExporting}
           isSharing={isSharing}
           canShare={canShare}
-          title={t('exportAndShare')}
+          title={t(canShare ? 'exportAndShare' : 'exportImage')}
           showSocialActions
           onShareToSocial={handleShareToSocial}
           activeSocialPlatform={activeSocialPlatform}
@@ -280,7 +266,7 @@ export function Sidebar({
   return (
     <>
       {/* Mobile settings shortcut */}
-      <div className="md:hidden fixed left-4 top-[calc(1rem+env(safe-area-inset-top))] z-20">
+      <div className="lg:hidden fixed left-4 top-[calc(1rem+env(safe-area-inset-top))] z-20">
         <button
           type="button"
           onClick={() => setActiveMobilePanel('settings')}
@@ -297,8 +283,13 @@ export function Sidebar({
         </button>
       </div>
 
+      <div className="pointer-events-none fixed left-1/2 top-[calc(1rem+env(safe-area-inset-top))] z-10 hidden min-[360px]:flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-white/70 bg-[rgba(255,253,249,0.72)] px-2.5 py-2 text-xs font-semibold text-(--app-accent-900) shadow-[0_10px_24px_var(--app-accent-shadow)] backdrop-blur lg:hidden">
+        <Logo className="h-5 w-5" />
+        <span className="hidden min-[400px]:inline">{t('appTitle')}</span>
+      </div>
+
       {/* Mobile bottom bar */}
-      <div className="md:hidden fixed inset-x-0 bottom-0 z-20 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pointer-events-none">
+      <div className="lg:hidden fixed inset-x-0 bottom-0 z-20 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pointer-events-none">
         <div className="pointer-events-auto mx-auto grid max-w-md grid-cols-4 items-stretch gap-2 rounded-[1.75rem] border border-white/70 bg-[rgba(255,253,249,0.92)] p-2 shadow-[0_18px_50px_var(--app-accent-shadow)] backdrop-blur">
           <button
             type="button"
@@ -349,8 +340,8 @@ export function Sidebar({
           <>
             <motion.button
               type="button"
-              className="md:hidden fixed inset-0 z-30 bg-[rgba(31,52,54,0.32)] backdrop-blur-[2px]"
-              onClick={() => setActiveMobilePanel(null)}
+              className="lg:hidden fixed inset-0 z-30 bg-[rgba(31,52,54,0.32)] backdrop-blur-[2px]"
+              onClick={closeMobilePanel}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -358,26 +349,32 @@ export function Sidebar({
             />
 
             <motion.aside
+              ref={mobileDialogRef}
               id="mobile-controls-drawer"
-              className="md:hidden fixed inset-x-0 bottom-0 z-40 max-h-[85dvh] overflow-hidden rounded-t-[2.5rem] bg-(--app-surface) shadow-[0_-12px_60px_rgba(0,0,0,0.15)] flex flex-col"
+              className="lg:hidden fixed inset-x-0 bottom-0 z-40 max-h-[85dvh] overflow-hidden rounded-t-[2.5rem] bg-(--app-surface) shadow-[0_-12px_60px_rgba(0,0,0,0.15)] flex flex-col"
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', stiffness: 350, damping: 35 }}
               role="dialog"
               aria-modal="true"
-              aria-label={activeMobilePanel === 'export' ? t('exportAndShare') : t('controlsPanelTitle')}
+              aria-labelledby="mobile-controls-title"
+              tabIndex={-1}
             >
               <div className="px-5 pt-2 pb-1 border-b border-[rgba(34,48,52,0.04)] sticky top-0 z-10 bg-(--app-surface)/80 backdrop-blur-md">
                 <div className="mobile-drawer-handle" />
                 <div className="flex items-center justify-between gap-4 mb-2">
-                  <h3 className="text-sm font-bold text-(--app-accent-900)">
-                    {activeMobilePanel ? t(MOBILE_PANEL_TITLE_KEYS[activeMobilePanel]) : t('controlsPanelTitle')}
+                  <h3 id="mobile-controls-title" className="text-sm font-bold text-(--app-accent-900)">
+                    {activeMobilePanel === 'export'
+                      ? t(canShare ? 'exportAndShare' : 'exportImage')
+                      : activeMobilePanel
+                        ? t(MOBILE_PANEL_TITLE_KEYS[activeMobilePanel])
+                        : t('controlsPanelTitle')}
                   </h3>
                   <div className="flex items-center">
                     <button
                       type="button"
-                      onClick={() => setActiveMobilePanel(null)}
+                      onClick={closeMobilePanel}
                       className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(237,244,243,0.5)] text-(--app-accent-700) active:scale-90 transition-transform"
                       aria-label={t('closeControls')}
                     >
@@ -395,7 +392,7 @@ export function Sidebar({
       </AnimatePresence>
 
       {/* Desktop sidebar */}
-      <aside className="app-sidebar-scrollbar hidden md:flex md:order-1 md:w-[360px] md:border-r md:border-white/40 md:h-screen md:overflow-y-auto shrink-0 bg-[rgba(255,250,242,0.55)] shadow-sm z-10 flex-col backdrop-blur-xl">
+      <aside className="app-sidebar-scrollbar hidden lg:flex lg:order-1 lg:w-[320px] xl:w-[360px] lg:border-r lg:border-white/40 lg:h-screen lg:overflow-y-auto shrink-0 bg-[rgba(255,250,242,0.55)] shadow-sm z-10 flex-col backdrop-blur-xl">
         <SidebarHeader
           t={t}
           balance={billing.balance}

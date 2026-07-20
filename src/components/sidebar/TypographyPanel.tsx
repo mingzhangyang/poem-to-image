@@ -49,6 +49,7 @@ export function TypographyPanel({ language, t, expanded, onToggle, typography }:
         <div>
           <label className="block text-xs text-(--app-accent-500) mb-1">{t('fontFamily')}</label>
           <select
+            aria-label={t('fontFamily')}
             value={typography.fontFamily}
             onChange={(event) => typography.onFontFamilyChange(event.target.value)}
             className="app-select text-sm"
@@ -75,6 +76,8 @@ export function TypographyPanel({ language, t, expanded, onToggle, typography }:
             <label className="block text-xs text-(--app-accent-500) mb-1">{t('fontSize')} ({typography.fontSize}px)</label>
             <input
               type="range"
+              aria-label={t('fontSize')}
+              aria-valuetext={`${typography.fontSize}px`}
               min="12"
               max="120"
               value={typography.fontSize}
@@ -87,6 +90,7 @@ export function TypographyPanel({ language, t, expanded, onToggle, typography }:
             <div className="flex items-center gap-3 rounded-xl border border-[rgba(34,48,52,0.08)] bg-[rgba(255,253,249,0.94)] px-3 py-2">
               <input
                 type="color"
+                aria-label={t('textColor')}
                 value={typography.textColor}
                 onChange={(event) => typography.onTextColorChange(event.target.value)}
                 className="h-8 w-8 shrink-0 cursor-pointer rounded border-0 p-0"
@@ -101,7 +105,10 @@ export function TypographyPanel({ language, t, expanded, onToggle, typography }:
             {(['left', 'center', 'right'] as TextAlign[]).map((align) => (
               <button
                 key={align}
+                type="button"
                 onClick={() => typography.onTextAlignChange(align)}
+                aria-label={align === 'left' ? t('alignLeft') : align === 'center' ? t('alignCenter') : t('alignRight')}
+                aria-pressed={typography.textAlign === align}
                 className={`flex-1 py-1.5 flex justify-center items-center rounded-md transition-all ${
                   typography.textAlign === align ? 'app-segment-button-active' : 'text-(--app-accent-500) hover:text-(--app-accent-700)'
                 }`}
@@ -116,11 +123,13 @@ export function TypographyPanel({ language, t, expanded, onToggle, typography }:
             {(['horizontal-tb', 'vertical-rl'] as WritingMode[]).map((mode) => (
               <button
                 key={mode}
+                type="button"
                 onClick={() => typography.onWritingModeChange(mode)}
                 className={`flex-1 py-1.5 flex justify-center items-center rounded-md transition-all ${
                   typography.writingMode === mode ? 'app-segment-button-active' : 'text-(--app-accent-500) hover:text-(--app-accent-700)'
                 }`}
                 aria-label={mode === 'horizontal-tb' ? t('horizontal') : t('vertical')}
+                aria-pressed={typography.writingMode === mode}
               >
                 {mode === 'horizontal-tb' ? <Text className="w-4 h-4" /> : <TextCursorInput className="w-4 h-4 rotate-90" />}
               </button>
@@ -153,6 +162,8 @@ export function TypographyPanel({ language, t, expanded, onToggle, typography }:
                   <label className="block text-xs text-(--app-accent-500) mb-1">{t('padding')} ({typography.padding}px)</label>
                   <input
                     type="range"
+                    aria-label={t('padding')}
+                    aria-valuetext={`${typography.padding}px`}
                     min="0"
                     max="200"
                     value={typography.padding}
@@ -164,6 +175,8 @@ export function TypographyPanel({ language, t, expanded, onToggle, typography }:
                   <label className="block text-xs text-(--app-accent-500) mb-1">{t('lineHeight')} ({typography.lineHeight})</label>
                   <input
                     type="range"
+                    aria-label={t('lineHeight')}
+                    aria-valuetext={String(typography.lineHeight)}
                     min="1"
                     max="3"
                     step="0.1"
@@ -179,6 +192,8 @@ export function TypographyPanel({ language, t, expanded, onToggle, typography }:
                   <label className="block text-xs text-(--app-accent-500) mb-1">{t('letterSpacing')} ({typography.letterSpacing}px)</label>
                   <input
                     type="range"
+                    aria-label={t('letterSpacing')}
+                    aria-valuetext={`${typography.letterSpacing}px`}
                     min="0"
                     max="20"
                     value={typography.letterSpacing}
@@ -190,6 +205,8 @@ export function TypographyPanel({ language, t, expanded, onToggle, typography }:
                   <label className="block text-xs text-(--app-accent-500) mb-1">{t('columns')} ({typography.columns})</label>
                   <input
                     type="range"
+                    aria-label={t('columns')}
+                    aria-valuetext={String(typography.columns)}
                     min="1"
                     max="4"
                     value={typography.columns}
@@ -203,6 +220,8 @@ export function TypographyPanel({ language, t, expanded, onToggle, typography }:
                 <label className="block text-xs text-(--app-accent-500) mb-1">{t('columnGap')} ({typography.columnGap}px)</label>
                 <input
                   type="range"
+                  aria-label={t('columnGap')}
+                  aria-valuetext={`${typography.columnGap}px`}
                   min="0"
                   max="100"
                   value={typography.columnGap}
@@ -232,6 +251,7 @@ export function TypographyPanel({ language, t, expanded, onToggle, typography }:
               <div className="flex items-center gap-3">
                 <input
                   type="color"
+                  aria-label={t('shadowColor')}
                   value={typography.textShadowColor}
                   onChange={(event) => typography.onTextShadowColorChange(event.target.value)}
                   className="w-8 h-8 rounded cursor-pointer border-0 p-0"
@@ -244,6 +264,8 @@ export function TypographyPanel({ language, t, expanded, onToggle, typography }:
                   <label className="block text-xs text-(--app-accent-500) mb-1">{t('blur')} ({typography.textShadowBlur}px)</label>
                   <input
                     type="range"
+                    aria-label={t('blur')}
+                    aria-valuetext={`${typography.textShadowBlur}px`}
                     min="0"
                     max="30"
                     value={typography.textShadowBlur}
@@ -255,6 +277,8 @@ export function TypographyPanel({ language, t, expanded, onToggle, typography }:
                   <label className="block text-xs text-(--app-accent-500) mb-1">{t('offsetX')} ({typography.textShadowOffsetX}px)</label>
                   <input
                     type="range"
+                    aria-label={t('offsetX')}
+                    aria-valuetext={`${typography.textShadowOffsetX}px`}
                     min="-20"
                     max="20"
                     value={typography.textShadowOffsetX}
@@ -266,6 +290,8 @@ export function TypographyPanel({ language, t, expanded, onToggle, typography }:
                   <label className="block text-xs text-(--app-accent-500) mb-1">{t('offsetY')} ({typography.textShadowOffsetY}px)</label>
                   <input
                     type="range"
+                    aria-label={t('offsetY')}
+                    aria-valuetext={`${typography.textShadowOffsetY}px`}
                     min="-20"
                     max="20"
                     value={typography.textShadowOffsetY}

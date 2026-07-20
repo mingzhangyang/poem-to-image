@@ -92,6 +92,7 @@ export function CanvasSizePanel({ t, expanded, onToggle, canvas }: CanvasSizePan
         <div>
           <label className="block text-xs text-(--app-accent-500) mb-1">{t('presetSizes')}</label>
           <select
+            aria-label={t('presetSizes')}
             value={canvas.presetSize}
             onChange={(event) => canvas.onPresetChange(event.target.value)}
             className="app-select text-sm"
@@ -124,6 +125,7 @@ export function CanvasSizePanel({ t, expanded, onToggle, canvas }: CanvasSizePan
               <label className="block text-xs text-(--app-accent-500) mb-1">{t('width')} (px)</label>
               <input
                 type="number"
+                aria-label={`${t('width')} (px)`}
                 min="100"
                 max="4000"
                 value={canvas.canvasWidth}
@@ -135,6 +137,7 @@ export function CanvasSizePanel({ t, expanded, onToggle, canvas }: CanvasSizePan
               <label className="block text-xs text-(--app-accent-500) mb-1">{t('height')} (px)</label>
               <input
                 type="number"
+                aria-label={`${t('height')} (px)`}
                 min="100"
                 max="4000"
                 value={canvas.canvasHeight}

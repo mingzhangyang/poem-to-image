@@ -135,7 +135,7 @@ export function SidebarFooter({
     <div className={containerClassName}>
       {title ? (
         <div className="mb-4">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-(--app-accent-500)">{title}</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-(--app-accent-600)">{title}</p>
           <p className="mt-2 text-sm text-(--app-accent-700)">{getExportSummaryLabel(t, canvasWidth, canvasHeight, exportFormat, exportScale)}</p>
         </div>
       ) : null}
@@ -166,7 +166,7 @@ export function SidebarFooter({
                       </svg>
                     ) : <PlatformIcon id={platform.id} />}
                   </span>
-                  <span className="text-[11px] font-medium leading-tight text-(--app-accent-800)">{platform.label}</span>
+                  <span className="text-xs font-medium leading-tight text-(--app-accent-800)">{platform.label}</span>
                 </button>
               );
             })}
@@ -181,7 +181,7 @@ export function SidebarFooter({
 
           <div className="mt-5 flex items-center gap-3">
             <div className="h-px flex-1 bg-[rgba(34,48,52,0.08)]" />
-            <span className="text-[11px] text-[rgba(34,48,52,0.4)]">{t('shareSystemDivider')}</span>
+            <span className="text-xs text-(--app-accent-600)">{t('shareSystemDivider')}</span>
             <div className="h-px flex-1 bg-[rgba(34,48,52,0.08)]" />
           </div>
         </div>
@@ -218,6 +218,13 @@ export function SidebarFooter({
           ))}
         </select>
       </label>
+
+      {surface === 'modal' ? (
+        <div className="mb-4 rounded-xl border border-[rgba(34,48,52,0.08)] bg-white/70 px-3 py-2.5" aria-live="polite">
+          <p className="text-xs font-semibold text-(--app-accent-800)">{getExportSummaryLabel(t, canvasWidth, canvasHeight, exportFormat, exportScale)}</p>
+          <p className="mt-1 text-xs text-(--app-accent-600)">poem-image.{exportFormat}</p>
+        </div>
+      ) : null}
 
       {showActionButtons ? (
         <div className="space-y-2">

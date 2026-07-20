@@ -74,7 +74,7 @@ export default function App() {
   const pendingSceneSettleResolversRef = useRef<Array<() => void>>([]);
 
   const [expandedSections, setExpandedSections] = useState<ExpandedSections>({
-    templates: true,
+    templates: false,
     canvasSize: false,
     content: true,
     background: false,
@@ -84,11 +84,18 @@ export default function App() {
   });
 
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
+  const [editorOpenRequestId, setEditorOpenRequestId] = useState(0);
   const [previewZoom, setPreviewZoom] = useState(1);
 
   const handleCloseOnboarding = () => {
     setIsOnboardingOpen(false);
     window.localStorage.setItem(ONBOARDING_DISMISSED_STORAGE_KEY, 'true');
+  };
+
+  const handleStartFromOnboarding = () => {
+    handleCloseOnboarding();
+    setExpandedSections((current) => ({ ...current, content: true, templates: false }));
+    setEditorOpenRequestId((current) => current + 1);
   };
 
   const billing = useBillingState({ getToken, t });
@@ -410,6 +417,8 @@ export default function App() {
     content: {
       poem,
       poemStyle,
+      editorOpenRequestId,
+      onEditorOpenRequestHandled: () => setEditorOpenRequestId(0),
       poemAutofillSuggestion: poemAutofill.suggestion,
       isPoemAutofillMatching: poemAutofill.isMatching,
       onTitleChange: (value) => setPoem((prev) => ({ ...prev, title: value })),
@@ -431,6 +440,7 @@ export default function App() {
       onResetPoemStyle: () => setPoemStyle({ ...DEFAULT_POEM_STYLE }),
     },
     background: {
+      hasPoemText: getPlainPoemText(poem).trim().length > 0,
       backgroundType: background.backgroundType,
       backgroundColor: background.backgroundColor,
       gradientColor1: background.gradientColor1,
@@ -547,7 +557,7 @@ export default function App() {
   });
 
   return (
-    <div className="min-h-dvh bg-transparent flex flex-col md:flex-row font-sans text-(--app-ink)">
+    <div className="min-h-dvh bg-transparent flex flex-col lg:flex-row font-sans text-(--app-ink)">
       <Sidebar {...sidebarProps} />
 
       <CanvasPreview {...canvasPreviewProps} canUndo={canUndo} canRedo={canRedo} onUndo={handleUndo} onRedo={handleRedo} />
@@ -556,6 +566,7 @@ export default function App() {
         <OnboardingModal
           isOpen={isOnboardingOpen}
           onClose={handleCloseOnboarding}
+          onStartEditing={handleStartFromOnboarding}
           t={t}
           templates={sidebarProps.templates}
         />
