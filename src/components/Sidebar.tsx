@@ -12,7 +12,6 @@ import { SidebarHeader } from './sidebar/SidebarHeader';
 import { TemplatesPanel } from './sidebar/TemplatesPanel';
 import { TypographyPanel } from './sidebar/TypographyPanel';
 import { useDialogA11y } from '../hooks/useDialogA11y';
-import { Logo } from './logo';
 
 type MobilePanel = 'templates' | 'content' | 'style' | 'export' | 'settings';
 
@@ -281,11 +280,6 @@ export function Sidebar({
         >
           <Settings className="h-4 w-4" />
         </button>
-      </div>
-
-      <div className="pointer-events-none fixed left-1/2 top-[calc(1rem+env(safe-area-inset-top))] z-10 hidden min-[360px]:flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-white/70 bg-[rgba(255,253,249,0.72)] px-2.5 py-2 text-xs font-semibold text-(--app-accent-900) shadow-[0_10px_24px_var(--app-accent-shadow)] backdrop-blur lg:hidden">
-        <Logo className="h-5 w-5" />
-        <span className="hidden min-[400px]:inline">{t('appTitle')}</span>
       </div>
 
       {/* Mobile bottom bar */}
