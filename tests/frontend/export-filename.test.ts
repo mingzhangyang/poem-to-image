@@ -29,3 +29,20 @@ test('supplementary Han code points are never truncated halfway', () => {
   assert.ok(new TextEncoder().encode(filename).byteLength <= 255);
   assert.match(filename, /^𠀀+-20261024-143022-083\.webp$/u);
 });
+
+test('batch filenames reserve preset ID and dimensions even with long titles', () => {
+  for (const title of ['A'.repeat(100), '夜'.repeat(100), '𠀀'.repeat(100)]) {
+    for (const format of ['png', 'jpg', 'webp'] as const) {
+      const filename = createExportFilename(title, format, fixed, 'print-card-1240x1754');
+      assert.ok(new TextEncoder().encode(filename).byteLength <= 255, filename);
+      assert.ok(filename.startsWith(title[0] === 'A' ? 'A' : title[0] === '夜' ? '夜' : '𠀀'), filename);
+      assert.ok(filename.endsWith(`-print-card-1240x1754-20261024-143022-083.${format}`), filename);
+    }
+  }
+});
+
+test('unusually long batch suffixes still honor the filesystem filename limit', () => {
+  const filename = createExportFilename('夜雨', 'webp', fixed, 'a'.repeat(400));
+  assert.ok(new TextEncoder().encode(filename).byteLength <= 255);
+  assert.ok(filename.startsWith('夜雨-'));
+});
