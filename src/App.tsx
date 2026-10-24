@@ -375,6 +375,7 @@ export default function App() {
   const {
     exportImage,
     shareImage: handleShare,
+    copyImage,
     shareToSocialPlatform: handleShareToSocial,
     isExporting,
     isSharing,
@@ -387,6 +388,17 @@ export default function App() {
       if (success) showToast(t('exportSuccess') || 'Image exported successfully.', 'success');
     } catch {
       showToast(t('exportFailed') || 'Image export failed.', 'error');
+    }
+  };
+
+  const handleCopy = async () => {
+    const result = await copyImage();
+    if (result === 'clipboard') {
+      showToast(t('shareImageCopiedHint'), 'success');
+    } else if (result === 'downloaded') {
+      showToast(t('copyImageFallback'), 'success');
+    } else {
+      showToast(t('exportFailed'), 'error');
     }
   };
 
@@ -525,6 +537,7 @@ export default function App() {
     onExportScaleChange: setExportScale,
     onDownload: handleDownload,
     onShare: handleShare,
+    onCopy: handleCopy,
     onShareToSocial: handleShareToSocial,
     isExporting,
     isSharing,

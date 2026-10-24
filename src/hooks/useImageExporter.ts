@@ -267,6 +267,52 @@ export function useImageExporter(
     }
   }, [createOutputBlob, exportFormat, isExporting, isSharing, scene.typography.poem.title]);
 
+  const copyImage = useCallback(async (): Promise<'clipboard' | 'downloaded' | 'cancelled'> => {
+    if (isExporting || isSharing) {
+      return 'cancelled';
+    }
+
+    setIsSharing(true);
+    let pendingBlob: Promise<Blob | null> | null = null;
+    const getPngBlob = () => {
+      pendingBlob ??= createOutputBlob('png');
+      return pendingBlob;
+    };
+
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.write && typeof ClipboardItem !== 'undefined') {
+        try {
+          // Supply a pending PNG blob to ClipboardItem synchronously, while the
+          // button's user activation is available (notably on Safari).
+          const item = new ClipboardItem({
+            'image/png': getPngBlob().then((blob) => {
+              if (!blob) throw new Error('Unable to render PNG for clipboard');
+              return blob;
+            }),
+          });
+          await navigator.clipboard.write([item]);
+          return 'clipboard';
+        } catch (error) {
+          logError('Clipboard copy unavailable, saving PNG instead', error);
+        }
+      }
+
+      const blob = await getPngBlob();
+      if (!blob) {
+        return 'cancelled';
+      }
+      // A clipboard fallback must not open the File System Access picker:
+      // it may lose user activation while the PNG is being rendered.
+      downloadBlob(blob, getExportFilename('png', scene.typography.poem.title.trim() || 'poem-image'));
+      return 'downloaded';
+    } catch (error) {
+      logError('Failed to copy or download image', error);
+      return 'cancelled';
+    } finally {
+      setIsSharing(false);
+    }
+  }, [createOutputBlob, isExporting, isSharing, scene.typography.poem.title]);
+
   const shareImage = useCallback(async () => {
     if (!canShare || isExporting || isSharing) {
       return;
@@ -374,5 +420,5 @@ export function useImageExporter(
     }
   }, [createOutputBlob, exportFormat, exportScale, isExporting, isSharing, scene.typography.poem.title]);
 
-  return { exportImage, exportBatchImages, shareImage, shareToSocialPlatform, isExporting, isSharing, canShare };
+  return { exportImage, exportBatchImages, shareImage, copyImage, shareToSocialPlatform, isExporting, isSharing, canShare };
 }

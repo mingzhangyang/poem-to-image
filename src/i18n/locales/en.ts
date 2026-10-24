@@ -341,6 +341,8 @@ const en = {
     canvasLegacyLandscape16x9: "Landscape 16:9",
     canvasLegacyPrintA4: "A4 Print",
     aiEnglishPromptHint: "English prompts are recommended for consistent results across image models.",
+    copyImage: "Copy image",
+    copyImageFallback: "Clipboard unavailable; downloaded a PNG instead.",
     exportFilenameHint: "The filename includes the poem title and export time.",
   } as const;
 

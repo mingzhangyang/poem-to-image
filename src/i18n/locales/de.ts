@@ -343,6 +343,8 @@ const de: TranslationMessages = {
     canvasLegacyLandscape16x9: "Querformat 16:9",
     canvasLegacyPrintA4: "A4-Druck",
     aiEnglishPromptHint: "Englische Prompts werden für konsistente Ergebnisse mit Bildmodellen empfohlen.",
+    copyImage: "Bild kopieren",
+    copyImageFallback: "Zwischenablage nicht verfügbar; stattdessen wurde eine PNG-Datei heruntergeladen.",
     exportFilenameHint: "Der Dateiname enthält den Gedichttitel und die Exportzeit.",
   };
 

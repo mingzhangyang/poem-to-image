@@ -343,6 +343,8 @@ const fr: TranslationMessages = {
     canvasLegacyLandscape16x9: "Paysage 16:9",
     canvasLegacyPrintA4: "Impression A4",
     aiEnglishPromptHint: "Les prompts en anglais sont recommandés pour des résultats cohérents entre modèles d'image.",
+    copyImage: "Copier l’image",
+    copyImageFallback: "Presse-papiers indisponible ; un fichier PNG a été téléchargé à la place.",
     exportFilenameHint: "Le nom du fichier contient le titre du poème et l'heure d'exportation.",
   };
 

@@ -343,6 +343,8 @@ const ja: TranslationMessages = {
     canvasLegacyLandscape16x9: "横長 16:9",
     canvasLegacyPrintA4: "A4 印刷",
     aiEnglishPromptHint: "画像モデル間で安定した結果を得るため、英語のプロンプトをおすすめします。",
+    copyImage: "画像をコピー",
+    copyImageFallback: "クリップボードを利用できないため、代わりに PNG をダウンロードしました。",
     exportFilenameHint: "ファイル名には詩の題名と書き出し日時が含まれます。",
   };
 

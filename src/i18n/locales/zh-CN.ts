@@ -343,6 +343,8 @@ const zhCN: TranslationMessages = {
     canvasLegacyLandscape16x9: "横版 16:9",
     canvasLegacyPrintA4: "A4 打印",
     aiEnglishPromptHint: "建议使用英文提示词，以获得不同图像模型间更稳定的效果。",
+    copyImage: "复制图片",
+    copyImageFallback: "剪贴板不可用，已改为下载 PNG 图片。",
     exportFilenameHint: "文件名包含诗歌标题与导出时间。",
   };
 

@@ -1,4 +1,4 @@
-import { CheckCircle2, Download, Loader2, Share2 } from 'lucide-react';
+import { CheckCircle2, Copy, Download, Loader2, Share2 } from 'lucide-react';
 import type { ExportFormat, ExportScale, SocialPlatform, TranslateFn } from '../../types';
 
 const exportFormatLabelKeys = {
@@ -17,6 +17,7 @@ interface SidebarFooterProps {
   onExportScaleChange: (value: ExportScale) => void;
   onDownload: () => void;
   onShare: () => void;
+  onCopy: () => void;
   isExporting: boolean;
   isSharing: boolean;
   canShare: boolean;
@@ -111,6 +112,7 @@ export function SidebarFooter({
   onExportScaleChange,
   onDownload,
   onShare,
+  onCopy,
   isExporting,
   isSharing,
   canShare,
@@ -269,6 +271,15 @@ export function SidebarFooter({
             </button>
           ) : null}
           </div>
+          <button
+            type="button"
+            onClick={onCopy}
+            disabled={isBusy}
+            className="app-button-secondary flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 font-medium transition-all disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <Copy className="h-5 w-5" />
+            {t('copyImage')}
+          </button>
 
           {!canShare && shouldShowShareAction ? (
             <p className="text-xs leading-5 text-(--app-accent-500)">{t('shareUnavailableHint')}</p>

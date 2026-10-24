@@ -395,6 +395,7 @@ export interface SidebarProps {
   onExportScaleChange: (value: ExportScale) => void;
   onDownload: () => void;
   onShare: () => void;
+  onCopy: () => void;
   onShareToSocial: (platform: SocialPlatform) => Promise<'clipboard' | 'downloaded' | 'cancelled'>;
   isExporting: boolean;
   isSharing: boolean;
@@ -451,6 +452,7 @@ export interface CanvasPreviewProps {
   onExportScaleChange: (value: ExportScale) => void;
   onDownload: () => void;
   onShare: () => void;
+  onCopy: () => void;
   onShareToSocial: (platform: SocialPlatform) => Promise<'clipboard' | 'downloaded' | 'cancelled'>;
   isExporting: boolean;
   isSharing: boolean;

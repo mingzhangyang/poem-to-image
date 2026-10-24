@@ -343,6 +343,8 @@ const ko: TranslationMessages = {
     canvasLegacyLandscape16x9: "가로 16:9",
     canvasLegacyPrintA4: "A4 인쇄",
     aiEnglishPromptHint: "이미지 모델에서 일관된 결과를 얻으려면 영어 프롬프트 사용을 권장합니다.",
+    copyImage: "이미지 복사",
+    copyImageFallback: "클립보드를 사용할 수 없어 PNG 파일을 대신 다운로드했습니다.",
     exportFilenameHint: "파일 이름에 시 제목과 내보낸 시간이 포함됩니다.",
   };
 

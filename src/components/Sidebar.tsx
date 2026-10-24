@@ -45,6 +45,7 @@ export function Sidebar({
   onExportScaleChange,
   onDownload,
   onShare,
+  onCopy,
   onShareToSocial,
   isExporting,
   isSharing,
@@ -237,25 +238,28 @@ export function Sidebar({
 
     if (activeMobilePanel === 'export') {
       return (
-        <SidebarFooter
-          t={t}
-          canvasWidth={canvasWidth}
-          canvasHeight={canvasHeight}
-          exportFormat={exportFormat}
-          onExportFormatChange={onExportFormatChange}
-          exportScale={exportScale}
-          onExportScaleChange={onExportScaleChange}
-          onDownload={onDownload}
-          onShare={onShare}
-          isExporting={isExporting}
-          isSharing={isSharing}
-          canShare={canShare}
-          title={t(canShare ? 'exportAndShare' : 'exportImage')}
-          showSocialActions
-          onShareToSocial={handleShareToSocial}
-          activeSocialPlatform={activeSocialPlatform}
-          socialFeedback={socialFeedback}
-        />
+        <div className="app-sidebar-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          <SidebarFooter
+            t={t}
+            canvasWidth={canvasWidth}
+            canvasHeight={canvasHeight}
+            exportFormat={exportFormat}
+            onExportFormatChange={onExportFormatChange}
+            exportScale={exportScale}
+            onExportScaleChange={onExportScaleChange}
+            onDownload={onDownload}
+            onShare={onShare}
+            onCopy={onCopy}
+            isExporting={isExporting}
+            isSharing={isSharing}
+            canShare={canShare}
+            title={t(canShare ? 'exportAndShare' : 'exportImage')}
+            showSocialActions
+            onShareToSocial={handleShareToSocial}
+            activeSocialPlatform={activeSocialPlatform}
+            socialFeedback={socialFeedback}
+          />
+        </div>
       );
     }
 

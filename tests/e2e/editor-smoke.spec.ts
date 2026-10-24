@@ -117,6 +117,62 @@ test('uses truthful export copy and exposes export dialog semantics', async ({ p
   await expect(dialog.getByText('PNG · 2160 x 2700 px', { exact: true })).toBeVisible();
 });
 
+test('copies a rendered PNG to the clipboard for anonymous users', async ({ page }) => {
+  test.setTimeout(60_000);
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'share', { configurable: true, value: undefined });
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        write: async (items: ClipboardItem[]) => {
+          const blob = await items[0]!.getType('image/png');
+          const bytes = new Uint8Array(await blob.slice(0, 8).arrayBuffer());
+          if (bytes.join(',') !== '137,80,78,71,13,10,26,10') {
+            throw new Error('Clipboard payload is not an actual PNG');
+          }
+          (window as typeof window & { __copiedPngSize?: number }).__copiedPngSize = blob.size;
+        },
+      },
+    });
+  });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: 'Export Image' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Export Image' });
+  await dialog.getByRole('button', { name: 'Copy image' }).click();
+  await expect(page.getByRole('status').getByText('Image copied to clipboard — paste it when posting.')).toBeVisible();
+  await expect.poll(
+    () => page.evaluate(() => (window as typeof window & { __copiedPngSize?: number }).__copiedPngSize ?? 0),
+    { timeout: 20_000 },
+  ).toBeGreaterThan(0);
+});
+
+for (const mode of ['missing', 'rejected'] as const) {
+  test(`downloads a PNG when clipboard write is ${mode}`, async ({ page }) => {
+    test.setTimeout(60_000);
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.addInitScript((variant: 'missing' | 'rejected') => {
+      Object.defineProperty(navigator, 'share', { configurable: true, value: undefined });
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: variant === 'missing' ? undefined : {
+          write: async () => { throw new DOMException('Permission denied', 'NotAllowedError'); },
+        },
+      });
+    }, mode);
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.getByRole('button', { name: 'Export Image' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Export Image' });
+    await expect(dialog.getByRole('button', { name: 'Copy image' })).toBeEnabled();
+
+    const downloadPromise = page.waitForEvent('download', { timeout: 30_000 });
+    await dialog.getByRole('button', { name: 'Copy image' }).click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toMatch(/\.png$/);
+    await expect(page.getByRole('status').getByText('Clipboard unavailable; downloaded a PNG instead.')).toBeVisible();
+  });
+}
+
 test('keeps the poem editor focused and open while typing rapidly', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   if ((page.viewportSize()?.width ?? 0) < 1024) {
@@ -203,4 +259,51 @@ test('clearing a title removes stale identification but body-only edits can rema
   await body.fill('An unrelated temporary line');
   await body.fill(sonnet);
   await expect(recognized).toBeVisible({ timeout: 15_000 });
+});
+
+test('keeps Copy image reachable in the short mobile export drawer', async ({ page }) => {
+  test.setTimeout(60_000);
+  await page.setViewportSize({ width: 320, height: 480 });
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'share', { configurable: true, value: undefined });
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: undefined });
+  });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: 'Export', exact: true }).click();
+  const drawer = page.getByRole('dialog', { name: 'Export Image' });
+  await expect(drawer).toBeVisible();
+
+  const scrollArea = drawer.locator('.app-sidebar-scrollbar');
+  await expect.poll(() => scrollArea.evaluate((node) => node.scrollHeight > node.clientHeight)).toBe(true);
+  const copy = drawer.getByRole('button', { name: 'Copy image' });
+  await copy.scrollIntoViewIfNeeded();
+  await expect(copy).toBeInViewport();
+
+  const downloadPromise = page.waitForEvent('download', { timeout: 30_000 });
+  await copy.click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/\.png$/);
+  await expect(page.getByRole('status').getByText('Clipboard unavailable; downloaded a PNG instead.')).toBeVisible();
+});
+
+test('downloads a named PNG for an untitled poem when clipboard is unavailable', async ({ page }) => {
+  test.setTimeout(60_000);
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: undefined });
+    Object.defineProperty(navigator, 'share', { configurable: true, value: undefined });
+  });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: 'Open Editor' }).click();
+  const editor = page.getByRole('dialog', { name: 'Poem Editor' });
+  await editor.getByPlaceholder('Title').fill('');
+  await editor.getByRole('button', { name: 'Done' }).click();
+
+  await page.getByRole('button', { name: 'Export Image' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Export Image' });
+  const downloadPromise = page.waitForEvent('download', { timeout: 30_000 });
+  await dialog.getByRole('button', { name: 'Copy image' }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/^poem-image-\d{8}-\d{6}-\d{3}\.png$/);
+  await expect(page.getByRole('status').getByText('Clipboard unavailable; downloaded a PNG instead.')).toBeVisible();
 });
