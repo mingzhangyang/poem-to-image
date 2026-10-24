@@ -224,7 +224,7 @@ export function SidebarFooter({
       {surface === 'modal' ? (
         <div className="mb-4 rounded-xl border border-[rgba(34,48,52,0.08)] bg-white/70 px-3 py-2.5" aria-live="polite">
           <p className="text-xs font-semibold text-(--app-accent-800)">{getExportSummaryLabel(t, canvasWidth, canvasHeight, exportFormat, exportScale)}</p>
-          <p className="mt-1 text-xs text-(--app-accent-600)">poem-image.{exportFormat}</p>
+          <p className="mt-1 text-xs text-(--app-accent-600)">{t('exportFilenameHint')}</p>
         </div>
       ) : null}
 
