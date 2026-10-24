@@ -181,3 +181,26 @@ test('restores a legacy ratio preset identity after reload', async ({ page }) =>
   await page.getByRole('button', { name: /^Canvas Size/ }).click();
   await expect(page.getByRole('combobox', { name: 'Preset Sizes' })).toHaveValue('1080x1350');
 });
+
+test('clearing a title removes stale identification but body-only edits can rematch', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: 'Open Editor' }).click();
+
+  const dialog = page.getByRole('dialog', { name: 'Poem Editor' });
+  const title = dialog.getByPlaceholder('Title');
+  const body = dialog.getByPlaceholder('Enter your poem here...');
+  const recognized = dialog.getByText('Sonnet 18 · William Shakespeare');
+  const sonnet = "Shall I compare thee to a summer's day?\\nThou art more lovely and more temperate.";
+
+  await title.fill('Draft title');
+  await body.fill(sonnet);
+  await expect(recognized).toBeVisible({ timeout: 15_000 });
+
+  await title.fill('');
+  await expect(recognized).toBeHidden();
+
+  await body.fill('An unrelated temporary line');
+  await body.fill(sonnet);
+  await expect(recognized).toBeVisible({ timeout: 15_000 });
+});
