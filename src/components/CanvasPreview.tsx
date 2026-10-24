@@ -108,7 +108,8 @@ export function CanvasPreview({
     ? `${textShadowOffsetX}px ${textShadowOffsetY}px ${textShadowBlur}px ${textShadowColor}`
     : 'none';
   const effectiveScale = scale * previewZoom;
-  const previewScalePercent = Math.round(effectiveScale * 100);
+  // The slider controls zoom relative to the fitted canvas, not its pixel-to-CSS scale.
+  const previewScalePercent = Math.round(previewZoom * 100);
   const scaledWidth = canvasWidth * effectiveScale;
   const scaledHeight = canvasHeight * effectiveScale;
   const isOutputBusy = isExporting || isSharing;
