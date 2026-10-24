@@ -17,6 +17,7 @@ interface PersistedState {
   poemStyle: PoemLayerStyle;
   canvasWidth: number;
   canvasHeight: number;
+  presetSize?: string; // older saved drafts did not include a preset identity
   background: TemplateBackgroundConfig;
   typography: TemplateTypographyConfig;
   decorations: TemplateDecorationsConfig;
@@ -51,6 +52,7 @@ interface UseEditorPersistenceParams {
   poemStyle: PoemLayerStyle;
   canvasWidth: number;
   canvasHeight: number;
+  presetSize: string;
   background: Pick<
     BackgroundSectionProps,
     | 'backgroundType'
@@ -73,19 +75,20 @@ export function useEditorPersistence({
   poemStyle,
   canvasWidth,
   canvasHeight,
+  presetSize,
   background,
   typography,
   decorations,
 }: UseEditorPersistenceParams) {
-  const snapshotRef = useRef({ poem, poemStyle, canvasWidth, canvasHeight, background, typography, decorations });
-  snapshotRef.current = { poem, poemStyle, canvasWidth, canvasHeight, background, typography, decorations };
+  const snapshotRef = useRef({ poem, poemStyle, canvasWidth, canvasHeight, presetSize, background, typography, decorations });
+  snapshotRef.current = { poem, poemStyle, canvasWidth, canvasHeight, presetSize, background, typography, decorations };
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isFirstRef = useRef(true);
 
   const persistSnapshot = useCallback(() => {
     try {
-      const { poem, poemStyle, canvasWidth, canvasHeight, background, typography, decorations } =
+      const { poem, poemStyle, canvasWidth, canvasHeight, presetSize, background, typography, decorations } =
         snapshotRef.current;
 
       const state: PersistedState = stripBlobUrls({
@@ -93,6 +96,7 @@ export function useEditorPersistence({
         poemStyle,
         canvasWidth,
         canvasHeight,
+        presetSize,
         background: {
           backgroundType: background.backgroundType === 'ai' ? 'image' : background.backgroundType,
           backgroundColor: background.backgroundColor,
@@ -144,5 +148,5 @@ export function useEditorPersistence({
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [exportScene, persistSnapshot]);
+  }, [exportScene, presetSize, persistSnapshot]);
 }

@@ -58,13 +58,23 @@ export function usePoemAutofill({ poem, language }: UsePoemAutofillParams): UseP
     };
   }, []);
 
+  const hasTitle = poem.title.trim().length > 0;
+  const previousDraftRef = useRef({ title: poem.title, body: poem.body });
+
   useEffect(() => {
+    const previous = previousDraftRef.current;
+    const titleJustCleared = previous.title.trim().length > 0 && !hasTitle;
+    const bodyChanged = previous.body !== poem.body;
+    previousDraftRef.current = { title: poem.title, body: poem.body };
     const query = poem.body.trim();
     const requestId = currentRequestIdRef.current + 1;
     currentRequestIdRef.current = requestId;
+    // Invalidate previous matches immediately, including responses still in flight.
+    setSuggestion(null);
 
-    if (query.length < 4) {
-      setSuggestion(null);
+    // Clearing the title alone must remove old matches. Later edits to a
+    // title-less body must still run identification to refill the metadata.
+    if (query.length < 4 || (titleJustCleared && !bodyChanged)) {
       setIsMatching(false);
       return;
     }
@@ -94,7 +104,7 @@ export function usePoemAutofill({ poem, language }: UsePoemAutofillParams): UseP
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [language, poem.body]);
+  }, [hasTitle, language, poem.body]);
 
   useEffect(() => {
     if (!suggestion) {
