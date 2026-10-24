@@ -141,6 +141,8 @@ test('keeps the poem editor focused and open while typing rapidly', async ({ pag
 });
 
 test('uses the slider value as the preview zoom readout', async ({ page }) => {
+  // The zoom slider is intentionally a desktop-only control.
+  await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   const slider = page.getByRole('slider', { name: 'Preview Zoom' });
   await expect(slider).toHaveValue('100');
