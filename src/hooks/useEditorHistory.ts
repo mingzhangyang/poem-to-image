@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useUndoHistory } from './useUndoHistory';
 import type {
+  BackgroundImageSource,
   BackgroundType,
   BorderStyle,
   CustomText,
@@ -24,6 +25,7 @@ interface HistoryBackgroundSource {
   gradientColor2: string;
   gradientDirection: string;
   backgroundImage: string | null;
+  backgroundImageSource: BackgroundImageSource;
   backgroundSize?: 'cover' | 'contain' | 'stretch';
   bgBrightness: number;
   bgBlur: number;
@@ -140,6 +142,7 @@ export function useEditorHistory({
         gradientColor2: background.gradientColor2,
         gradientDirection: background.gradientDirection,
         backgroundImage: background.backgroundImage,
+        backgroundImageSource: background.backgroundImageSource,
         backgroundSize: background.backgroundSize,
         bgBrightness: background.bgBrightness,
         bgBlur: background.bgBlur,

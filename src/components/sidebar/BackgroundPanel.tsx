@@ -75,6 +75,9 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
     }
 
     if (background.backgroundType === 'image') {
+      if (!background.backgroundImage) return t('bgImage');
+      if (background.backgroundImageSource === 'template') return t('templates');
+      if (background.backgroundImageSource === 'ai') return t('bgAI');
       return t('uploadImage');
     }
 

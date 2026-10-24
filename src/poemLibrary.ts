@@ -220,17 +220,12 @@ function scoreEntry(query: string, entry: IndexedPoemLibraryEntry): number {
 }
 
 function getCandidateEntries(language: Language): IndexedPoemLibraryEntry[] {
-  const exactMatch = INDEXED_POEM_LIBRARY.filter((entry) => entry.language === language);
-
-  if (exactMatch.length > 0) {
-    return exactMatch;
-  }
-
-  if (language === 'zh-CN' || language === 'zh-TW') {
-    return INDEXED_POEM_LIBRARY.filter((entry) => entry.language === 'zh-CN' || entry.language === 'zh-TW');
-  }
-
-  return INDEXED_POEM_LIBRARY;
+  // UI language ranks ties (e.g. 简/繁 variants), but never filters out poems.
+  // An English poem pasted while using the Chinese UI must still be identified.
+  return [
+    ...INDEXED_POEM_LIBRARY.filter((entry) => entry.language === language),
+    ...INDEXED_POEM_LIBRARY.filter((entry) => entry.language !== language),
+  ];
 }
 
 function toSuggestion(entry: IndexedPoemLibraryEntry, confidence: number): PoemAutofillSuggestion {
