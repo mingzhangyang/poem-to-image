@@ -72,7 +72,7 @@ export default function App() {
     const savedPreset = getCanvasSizePresetById(savedPresetId);
     // Legacy selectors persist their dimensions as a ratio ID (e.g. 1080x1350).
     // Accept those IDs only when their recorded dimensions still match.
-    const legacySize = /^(\\d+)x(\\d+)$/.exec(savedPresetId);
+    const legacySize = /^(\d+)x(\d+)$/.exec(savedPresetId);
     const savedWidth = savedPreset?.width ?? (legacySize ? Number(legacySize[1]) : null);
     const savedHeight = savedPreset?.height ?? (legacySize ? Number(legacySize[2]) : null);
     return savedWidth === canvasWidth && savedHeight === canvasHeight ? savedPresetId : 'custom';
