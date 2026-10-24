@@ -299,15 +299,17 @@ export function useImageExporter(
       if (!blob) {
         return 'cancelled';
       }
-      const saved = await saveBlob(blob, 'png');
-      return saved ? 'downloaded' : 'cancelled';
+      // A clipboard fallback must not open the File System Access picker:
+      // it may lose user activation while the PNG is being rendered.
+      downloadBlob(blob, getExportFilename('png', scene.typography.poem.title));
+      return 'downloaded';
     } catch (error) {
       logError('Failed to copy or download image', error);
       return 'cancelled';
     } finally {
       setIsSharing(false);
     }
-  }, [createOutputBlob, isExporting, isSharing]);
+  }, [createOutputBlob, isExporting, isSharing, scene.typography.poem.title]);
 
   const shareImage = useCallback(async () => {
     if (!canShare || isExporting || isSharing) {
