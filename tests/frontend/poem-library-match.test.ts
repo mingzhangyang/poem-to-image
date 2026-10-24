@@ -57,3 +57,18 @@ test('isAppliedPoemSuggestion becomes true when metadata also matches', () => {
 
   assert.equal(applied, true);
 });
+
+test('recognizes Shakespeare in both English and Chinese UI', () => {
+  const query = "Shall I compare thee to a summer's day?\nThou art more lovely and more temperate.";
+  const english = findBestPoemMatch(query, 'en');
+  const chinese = findBestPoemMatch(query, 'zh-CN');
+
+  assert.equal(english?.id, 'en-sonnet-18');
+  assert.equal(chinese?.id, english?.id);
+  assert.equal(chinese?.confidence, english?.confidence);
+});
+
+test('recognizes Chinese poems in an English interface', () => {
+  const suggestion = findBestPoemMatch('床前明月光', 'en');
+  assert.equal(suggestion?.id, 'zhcn-jing-ye-si');
+});

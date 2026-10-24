@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, CSSProperties } from 'react';
 import { logError } from '../logger';
-import type { AiProvider, BackgroundType, TemplateBackgroundConfig, TranslateFn } from '../types';
+import type { AiProvider, BackgroundImageSource, BackgroundType, TemplateBackgroundConfig, TranslateFn } from '../types';
+import { inferBackgroundImageSource } from '../backgroundImageSource';
 import { useAiBackground } from './useAiBackground';
 
 const MAX_EXPORT_SCALE = 3;
@@ -40,6 +41,7 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getTok
   const [gradientColor2, setGradientColor2] = useState('#ede9fe');
   const [gradientDirection, setGradientDirection] = useState('to bottom right');
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
+  const [backgroundImageSource, setBackgroundImageSource] = useState<BackgroundImageSource>(null);
   const [backgroundSize, setBackgroundSize] = useState<'cover' | 'contain' | 'stretch'>('cover');
   const [backgroundPosition, setBackgroundPosition] = useState<string>('center');
   const [bgBrightness, setBgBrightness] = useState(100);
@@ -66,7 +68,7 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getTok
     // All held blob URLs are revoked together on unmount.
   }, []);
 
-  const applyBackgroundImage = useCallback(async (source: Blob | string) => {
+  const applyBackgroundImage = useCallback(async (source: Blob | string, origin: 'upload' | 'ai' = 'upload') => {
     const requestId = ++imageRequestIdRef.current;
     const sourceBlob = source instanceof Blob ? source : await fetch(source).then((response) => response.blob());
     const sourceUrl = URL.createObjectURL(sourceBlob);
@@ -107,6 +109,7 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getTok
 
       if (imageRequestIdRef.current === requestId) {
         updateBackgroundImage(nextUrl);
+        setBackgroundImageSource(origin);
 
         if (nextUrl !== sourceUrl) {
           revokeObjectUrl(sourceUrl);
@@ -179,7 +182,9 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getTok
     setGradientDirection(template.gradientDirection);
     setBgBrightness(template.bgBrightness);
     setBgBlur(template.bgBlur);
-    updateBackgroundImage(template.backgroundType === 'image' ? (template.backgroundImage ?? null) : null);
+    const imageUrl = template.backgroundType === 'image' ? (template.backgroundImage ?? null) : null;
+    updateBackgroundImage(imageUrl);
+    setBackgroundImageSource(imageUrl ? (template.backgroundImageSource ?? inferBackgroundImageSource(imageUrl)) : null);
     setBackgroundSize(template.backgroundSize ?? 'cover');
     setBackgroundPosition(template.backgroundPosition ?? 'center');
     setAiPrompt('');
@@ -216,6 +221,7 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getTok
     gradientColor2,
     gradientDirection,
     backgroundImage,
+    backgroundImageSource,
     backgroundSize,
     backgroundPosition,
     bgBrightness,

@@ -4,6 +4,7 @@ import type { Language, TranslationKey } from './translations';
 export type AiProvider = 'gemini' | 'openai';
 export const CREDIT_COST: Record<AiProvider, number> = { gemini: 2, openai: 1 };
 export type BackgroundType = 'solid' | 'gradient' | 'transparent' | 'image' | 'ai';
+export type BackgroundImageSource = 'template' | 'upload' | 'ai' | null;
 export type WritingMode = 'horizontal-tb' | 'vertical-rl';
 export type TextAlign = 'left' | 'center' | 'right';
 export type BorderStyle =
@@ -129,6 +130,7 @@ export interface TemplateBackgroundConfig {
   gradientColor2: string;
   gradientDirection: string;
   backgroundImage?: string | null;
+  backgroundImageSource?: BackgroundImageSource;
   backgroundSize?: 'cover' | 'contain' | 'stretch';
   backgroundPosition?: string;
   bgBrightness: number;
@@ -283,6 +285,7 @@ export interface BackgroundSectionProps {
   gradientColor2: string;
   gradientDirection: string;
   backgroundImage: string | null;
+  backgroundImageSource: BackgroundImageSource;
   backgroundSize: 'cover' | 'contain' | 'stretch';
   bgBrightness: number;
   bgBlur: number;

@@ -181,6 +181,7 @@ export default function App() {
   const { activeTemplateId, handleApplyTemplate, handleApplyCustomTemplate, handleSaveCustomTemplate } =
     useTemplateManager({
       language,
+      hasPersistedEditorState: initialState !== null,
       background,
       typography,
       decorations,
@@ -232,6 +233,7 @@ export default function App() {
       gradientColor2: background.gradientColor2,
       gradientDirection: background.gradientDirection,
       backgroundImage: background.backgroundImage,
+      backgroundImageSource: background.backgroundImageSource,
       backgroundSize: background.backgroundSize,
       bgBrightness: background.bgBrightness,
       bgBlur: background.bgBlur,
@@ -467,6 +469,7 @@ export default function App() {
       gradientColor2: background.gradientColor2,
       gradientDirection: background.gradientDirection,
       backgroundImage: background.backgroundImage,
+      backgroundImageSource: background.backgroundImageSource,
       bgBrightness: background.bgBrightness,
       bgBlur: background.bgBlur,
       aiProvider: background.aiProvider,

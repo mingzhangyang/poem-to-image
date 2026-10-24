@@ -31,7 +31,7 @@ function stripBlobUrls(state: PersistedState): PersistedState {
 
   return {
     ...state,
-    background: { ...state.background, backgroundImage },
+    background: { ...state.background, backgroundImage, backgroundImageSource: backgroundImage ? state.background.backgroundImageSource : null },
     decorations: { ...state.decorations, logos },
   };
 }
@@ -61,6 +61,7 @@ interface UseEditorPersistenceParams {
     | 'gradientColor2'
     | 'gradientDirection'
     | 'backgroundImage'
+    | 'backgroundImageSource'
     | 'backgroundSize'
     | 'bgBrightness'
     | 'bgBlur'
@@ -104,6 +105,7 @@ export function useEditorPersistence({
           gradientColor2: background.gradientColor2,
           gradientDirection: background.gradientDirection,
           backgroundImage: background.backgroundImage ?? null,
+          backgroundImageSource: background.backgroundImageSource,
           backgroundSize: background.backgroundSize,
           bgBrightness: background.bgBrightness,
           bgBlur: background.bgBlur,

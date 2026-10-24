@@ -78,6 +78,7 @@ interface CustomTemplatesState {
 
 interface UseTemplateManagerParams {
   language: Language;
+  hasPersistedEditorState: boolean;
   background: BackgroundState;
   typography: TypographyState;
   decorations: DecorationsState;
@@ -153,6 +154,7 @@ function matchesPoemStyle(
 
 export function useTemplateManager({
   language,
+  hasPersistedEditorState,
   background,
   typography,
   decorations,
@@ -287,10 +289,14 @@ export function useTemplateManager({
       return;
     }
 
-    background.applyBackgroundTemplate(template.background);
-    typography.applyTypographyTemplate(template.typography);
-    decorations.applyDecorationsTemplate(template.decorations);
-    setPoemStyle(template.poemStyle ?? { ...DEFAULT_POEM_STYLE });
+    // A saved editor draft takes precedence over the template selection marker.
+    // Applying the template again on mount would erase custom fonts/backgrounds.
+    if (!hasPersistedEditorState) {
+      background.applyBackgroundTemplate(template.background);
+      typography.applyTypographyTemplate(template.typography);
+      decorations.applyDecorationsTemplate(template.decorations);
+      setPoemStyle(template.poemStyle ?? { ...DEFAULT_POEM_STYLE });
+    }
     setActiveTemplateId(storedTemplateId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

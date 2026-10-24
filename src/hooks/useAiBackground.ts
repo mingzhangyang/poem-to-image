@@ -14,7 +14,7 @@ interface UseAiBackgroundParams {
   getToken?: () => Promise<string | null>;
   setAiError: (value: string) => void;
   setIsGeneratingAI: (value: boolean) => void;
-  applyBackgroundImage: (value: Blob | string) => Promise<void>;
+  applyBackgroundImage: (value: Blob | string, origin?: 'upload' | 'ai') => Promise<void>;
   setBackgroundType: (value: BackgroundType) => void;
   onBalanceChange?: (newBalance: number) => void;
 }
@@ -118,7 +118,7 @@ export function useAiBackground({
         return;
       }
 
-      await applyBackgroundImage(payload.imageDataUrl);
+      await applyBackgroundImage(payload.imageDataUrl, 'ai');
       setBackgroundType('ai');
 
       if (typeof payload.balance === 'number' && onBalanceChange) {

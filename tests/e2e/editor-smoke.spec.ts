@@ -307,3 +307,85 @@ test('downloads a named PNG for an untitled poem when clipboard is unavailable',
   expect(download.suggestedFilename()).toMatch(/^poem-image-\d{8}-\d{6}-\d{3}\.png$/);
   await expect(page.getByRole('status').getByText('Clipboard unavailable; downloaded a PNG instead.')).toBeVisible();
 });
+
+
+test('preserves a customized template font and solid background after reload', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: /^Templates/ }).click();
+  await page.getByRole('button', { name: /^More \(/ }).click();
+  const library = page.getByRole('dialog', { name: 'Built-in Templates' });
+  await library.getByRole('button', { name: /Parchment Scroll/ }).click();
+
+  const backgroundSection = page.getByRole('button', { name: /^Background/ });
+  await expect(backgroundSection).toContainText('Templates');
+  await expect(backgroundSection).not.toContainText('Upload Image');
+  await expect.poll(() => page.evaluate(() => {
+    const state = JSON.parse(localStorage.getItem('inkpoem.editor-state.v1') || 'null');
+    return state?.background?.backgroundImageSource;
+  })).toBe('template');
+
+  // Template image and its origin both survive a reload.
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await expect(page.getByRole('button', { name: /^Background/ })).toContainText('Templates');
+
+  await page.getByRole('button', { name: /^Background/ }).click();
+  await page.getByRole('button', { name: 'Solid', exact: true }).click();
+  await page.getByRole('button', { name: /^Typography/ }).click();
+  const font = page.getByRole('combobox', { name: 'Font Family' });
+  await font.selectOption('"Playfair Display", serif');
+
+  await expect.poll(() => page.evaluate(() => {
+    const state = JSON.parse(localStorage.getItem('inkpoem.editor-state.v1') || 'null');
+    return [state?.background?.backgroundType, state?.typography?.fontFamily];
+  })).toEqual(['solid', '"Playfair Display", serif']);
+
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await expect(page.getByRole('button', { name: /^Background/ })).toContainText('Solid');
+  await expect(page.getByRole('button', { name: /^Typography/ })).toContainText('Playfair Display');
+  await page.getByRole('button', { name: /^Typography/ }).click();
+  await expect(page.getByRole('combobox', { name: 'Font Family' })).toHaveValue('"Playfair Display", serif');
+});
+
+test('recognizes English poetry while the interface is Chinese', async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  try {
+    await context.addInitScript(() => {
+      localStorage.setItem('poem-to-image.language', 'zh-CN');
+      localStorage.setItem('poem-to-image.onboarding-dismissed', 'true');
+    });
+    const page = await context.newPage();
+    await page.route('**/api/billing/packages', route => route.fulfill({
+      contentType: 'application/json', body: JSON.stringify({ packages: [] }),
+    }));
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.getByRole('button', { name: '打开编辑器' }).click();
+    const editor = page.getByRole('dialog', { name: '诗歌编辑器' });
+    await editor.getByPlaceholder('在此输入您的诗词...').fill(
+      "Shall I compare thee to a summer's day?\nThou art more lovely and more temperate.",
+    );
+    await expect(editor.getByText('Sonnet 18 · William Shakespeare')).toBeVisible({ timeout: 15_000 });
+  } finally {
+    await context.close();
+  }
+});
+
+test('first-visit onboarding CTA opens the editor once in a clean browser context', async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  try {
+    const page = await context.newPage();
+    await page.route('**/api/billing/packages', route => route.fulfill({
+      contentType: 'application/json', body: JSON.stringify({ packages: [] }),
+    }));
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    const welcome = page.getByRole('dialog', { name: 'Every word, exactly right.' });
+    await expect(welcome).toBeVisible();
+    await welcome.getByRole('button', { name: "Got it, let's start" }).click();
+    await expect(page.getByRole('dialog', { name: 'Poem Editor' })).toBeVisible();
+    await expect.poll(() => page.evaluate(() => localStorage.getItem('poem-to-image.onboarding-dismissed'))).toBe('true');
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await expect(page.getByRole('dialog', { name: 'Every word, exactly right.' })).toHaveCount(0);
+  } finally {
+    await context.close();
+  }
+});
