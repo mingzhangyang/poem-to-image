@@ -113,7 +113,7 @@ export function SidebarFooter({
   onDownload,
   onShare,
   onCopy,
-  isExporting:
+  isExporting,
   isSharing,
   canShare,
   showActionButtons = true,
