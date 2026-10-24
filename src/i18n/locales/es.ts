@@ -325,6 +325,8 @@ const es: TranslationMessages = {
     renameTemplate: "Renombrar plantilla",
     undo: "Deshacer",
     redo: "Rehacer",
+    copyImage: "Copiar imagen",
+    copyImageFallback: "Portapapeles no disponible; se descargó un PNG en su lugar.",
   };
 
 export default es;

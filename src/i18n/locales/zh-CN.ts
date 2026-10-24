@@ -325,6 +325,8 @@ const zhCN: TranslationMessages = {
     renameTemplate: "重命名模板",
     undo: "撤销",
     redo: "重做",
+    copyImage: "复制图片",
+    copyImageFallback: "剪贴板不可用，已改为下载 PNG 图片。",
   };
 
 export default zhCN;

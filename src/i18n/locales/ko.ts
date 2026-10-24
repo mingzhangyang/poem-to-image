@@ -325,6 +325,8 @@ const ko: TranslationMessages = {
     renameTemplate: "템플릿 이름 바꾸기",
     undo: "실행 취소",
     redo: "다시 실행",
+    copyImage: "이미지 복사",
+    copyImageFallback: "클립보드를 사용할 수 없어 PNG 파일을 대신 다운로드했습니다.",
   };
 
 export default ko;

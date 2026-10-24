@@ -325,6 +325,8 @@ const fr: TranslationMessages = {
     renameTemplate: "Renommer le modèle",
     undo: "Annuler",
     redo: "Rétablir",
+    copyImage: "Copier l’image",
+    copyImageFallback: "Presse-papiers indisponible ; un fichier PNG a été téléchargé à la place.",
   };
 
 export default fr;

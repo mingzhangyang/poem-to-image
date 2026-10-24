@@ -323,6 +323,8 @@ const en = {
     renameTemplate: "Rename template",
     undo: "Undo",
     redo: "Redo",
+    copyImage: "Copy image",
+    copyImageFallback: "Clipboard unavailable; downloaded a PNG instead.",
   } as const;
 
 export default en;

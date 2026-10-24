@@ -37,6 +37,7 @@ interface UseEditorViewModelsParams {
   onExportScaleChange: SidebarProps['onExportScaleChange'];
   onDownload: () => void;
   onShare: () => void;
+  onCopy: () => void;
   onShareToSocial: CanvasPreviewProps['onShareToSocial'];
   isExporting: boolean;
   isSharing: boolean;
@@ -96,6 +97,7 @@ export function useEditorViewModels({
   onExportScaleChange,
   onDownload,
   onShare,
+  onCopy,
   onShareToSocial,
   isExporting,
   isSharing,
@@ -156,6 +158,7 @@ export function useEditorViewModels({
     onExportScaleChange,
     onDownload,
     onShare,
+    onCopy,
     onShareToSocial,
     isExporting,
     isSharing,
@@ -182,6 +185,7 @@ export function useEditorViewModels({
     onExportScaleChange,
     onDownload,
     onShare,
+    onCopy,
     onShareToSocial,
     isExporting,
     isSharing,
@@ -238,6 +242,7 @@ export function useEditorViewModels({
     onExportScaleChange,
     onDownload,
     onShare,
+    onCopy,
     onShareToSocial,
     isExporting,
     isSharing,
@@ -298,6 +303,7 @@ export function useEditorViewModels({
     onExportScaleChange,
     onDownload,
     onShare,
+    onCopy,
     onShareToSocial,
     isExporting,
     isSharing,

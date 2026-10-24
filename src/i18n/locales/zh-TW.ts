@@ -325,6 +325,8 @@ const zhTW: TranslationMessages = {
     renameTemplate: "重新命名範本",
     undo: "復原",
     redo: "重做",
+    copyImage: "複製圖片",
+    copyImageFallback: "無法使用剪貼簿，已改為下載 PNG 圖片。",
   };
 
 export default zhTW;

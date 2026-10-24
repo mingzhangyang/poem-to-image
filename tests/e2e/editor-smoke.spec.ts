@@ -116,3 +116,20 @@ test('uses truthful export copy and exposes export dialog semantics', async ({ p
   await expect(dialog.getByText('poem-image.png')).toBeVisible();
   await expect(dialog.getByText('PNG · 2160 x 2700 px', { exact: true })).toBeVisible();
 });
+
+test('offers clipboard copy of an exported PNG to anonymous users', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: 'Export Image' }).click();
+
+  const dialog = page.getByRole('dialog', { name: 'Export Image' });
+  const copy = dialog.getByRole('button', { name: 'Copy image' });
+  await expect(copy).toBeVisible();
+  await expect(copy).toBeEnabled();
+
+  // The button must work even without the native file-sharing API.
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, 'share', { configurable: true, value: undefined });
+  });
+  await expect(copy).toBeEnabled();
+});

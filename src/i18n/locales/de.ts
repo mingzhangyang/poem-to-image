@@ -325,6 +325,8 @@ const de: TranslationMessages = {
     renameTemplate: "Vorlage umbenennen",
     undo: "Rückgängig",
     redo: "Wiederholen",
+    copyImage: "Bild kopieren",
+    copyImageFallback: "Zwischenablage nicht verfügbar; stattdessen wurde eine PNG-Datei heruntergeladen.",
   };
 
 export default de;

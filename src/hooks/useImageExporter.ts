@@ -265,6 +265,50 @@ export function useImageExporter(
     }
   }, [createOutputBlob, exportFormat, isExporting, isSharing]);
 
+  const copyImage = useCallback(async (): Promise<'clipboard' | 'downloaded' | 'cancelled'> => {
+    if (isExporting || isSharing) {
+      return 'cancelled';
+    }
+
+    setIsSharing(true);
+    let pendingBlob: Promise<Blob | null> | null = null;
+    const getPngBlob = () => {
+      pendingBlob ??= createOutputBlob('png');
+      return pendingBlob;
+    };
+
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.write && typeof ClipboardItem !== 'undefined') {
+        try {
+          // Supply a pending PNG blob to ClipboardItem synchronously, while the
+          // button's user activation is available (notably on Safari).
+          const item = new ClipboardItem({
+            'image/png': getPngBlob().then((blob) => {
+              if (!blob) throw new Error('Unable to render PNG for clipboard');
+              return blob;
+            }),
+          });
+          await navigator.clipboard.write([item]);
+          return 'clipboard';
+        } catch (error) {
+          logError('Clipboard copy unavailable, saving PNG instead', error);
+        }
+      }
+
+      const blob = await getPngBlob();
+      if (!blob) {
+        return 'cancelled';
+      }
+      const saved = await saveBlob(blob, 'png');
+      return saved ? 'downloaded' : 'cancelled';
+    } catch (error) {
+      logError('Failed to copy or download image', error);
+      return 'cancelled';
+    } finally {
+      setIsSharing(false);
+    }
+  }, [createOutputBlob, isExporting, isSharing]);
+
   const shareImage = useCallback(async () => {
     if (!canShare || isExporting || isSharing) {
       return;
@@ -372,5 +416,5 @@ export function useImageExporter(
     }
   }, [createOutputBlob, exportFormat, exportScale, isExporting, isSharing]);
 
-  return { exportImage, exportBatchImages, shareImage, shareToSocialPlatform, isExporting, isSharing, canShare };
+  return { exportImage, exportBatchImages, shareImage, copyImage, shareToSocialPlatform, isExporting, isSharing, canShare };
 }

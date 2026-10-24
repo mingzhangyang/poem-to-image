@@ -66,6 +66,7 @@ export function CanvasPreview({
   onExportScaleChange,
   onDownload,
   onShare,
+  onCopy,
   isExporting,
   isSharing,
   canShare,
@@ -191,6 +192,11 @@ export function CanvasPreview({
 
   const handleShareFromModal = () => {
     onShare();
+    closeExportModal();
+  };
+
+  const handleCopyFromModal = () => {
+    void onCopy();
     closeExportModal();
   };
 
@@ -411,6 +417,7 @@ export function CanvasPreview({
                     onExportScaleChange={onExportScaleChange}
                     onDownload={handleSaveFromModal}
                     onShare={handleShareFromModal}
+                    onCopy={handleCopyFromModal}
                     isExporting={isExporting}
                     isSharing={isSharing}
                     canShare={canShare}

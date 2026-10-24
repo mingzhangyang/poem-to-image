@@ -325,6 +325,8 @@ const ja: TranslationMessages = {
     renameTemplate: "テンプレート名を変更",
     undo: "元に戻す",
     redo: "やり直す",
+    copyImage: "画像をコピー",
+    copyImageFallback: "クリップボードを利用できないため、代わりに PNG をダウンロードしました。",
   };
 
 export default ja;
