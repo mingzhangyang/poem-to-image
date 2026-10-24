@@ -113,6 +113,6 @@ test('uses truthful export copy and exposes export dialog semantics', async ({ p
 
   const dialog = page.getByRole('dialog', { name: 'Export Image' });
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByText('poem-image.png')).toBeVisible();
+  await expect(dialog.getByText('The filename includes the poem title and export time.')).toBeVisible();
   await expect(dialog.getByText('PNG · 2160 x 2700 px', { exact: true })).toBeVisible();
 });

@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { logError } from '../logger';
 import { renderCanvasExport } from '../export/renderCanvasExport';
+import { createExportFilename } from '../export/exportFilename';
 import type { BorderStyle, CustomText, ExportFormat, ExportScale, LogoConfig, PoemContentData, PoemLayerStyle, PositionedElement, SignatureConfig, SocialPlatform, StampConfig, TextAlign, WritingMode } from '../types';
 
 interface SocialPlatformConfig {
@@ -102,8 +103,8 @@ function getExportMimeType(format: ExportFormat) {
   return 'image/png';
 }
 
-function getExportFilename(format: ExportFormat, basename = 'poem-image') {
-  return `${basename}.${format}`;
+function getExportFilename(format: ExportFormat, title = '', suffix = '') {
+  return createExportFilename(title, format, new Date(), suffix);
 }
 
 function createOpaqueCanvasCopy(sourceCanvas: HTMLCanvasElement, fillStyle: string) {
@@ -148,11 +149,12 @@ interface WindowWithSaveFilePicker extends Window {
   }) => Promise<SaveFileHandle>;
 }
 
-async function saveBlob(blob: Blob, format: ExportFormat): Promise<boolean> {
+async function saveBlob(blob: Blob, format: ExportFormat, title: string): Promise<boolean> {
+  const filename = getExportFilename(format, title);
   if (typeof window !== 'undefined' && 'showSaveFilePicker' in window) {
     try {
       const handle = await (window as WindowWithSaveFilePicker).showSaveFilePicker({
-        suggestedName: getExportFilename(format),
+        suggestedName: filename,
         types: [
           {
             description: 'Image',
@@ -176,7 +178,7 @@ async function saveBlob(blob: Blob, format: ExportFormat): Promise<boolean> {
 
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
-  link.download = getExportFilename(format);
+  link.download = filename;
   link.href = url;
   link.click();
   URL.revokeObjectURL(url);
@@ -256,14 +258,14 @@ export function useImageExporter(
         return false;
       }
 
-      return await saveBlob(blob, exportFormat);
+      return await saveBlob(blob, exportFormat, scene.typography.poem.title);
     } catch (error) {
       logError('Failed to generate image', error);
       throw error;
     } finally {
       setIsExporting(false);
     }
-  }, [createOutputBlob, exportFormat, isExporting, isSharing]);
+  }, [createOutputBlob, exportFormat, isExporting, isSharing, scene.typography.poem.title]);
 
   const shareImage = useCallback(async () => {
     if (!canShare || isExporting || isSharing) {
@@ -279,7 +281,7 @@ export function useImageExporter(
         return;
       }
 
-      const file = new File([blob], getExportFilename(exportFormat), { type: getExportMimeType(exportFormat) });
+      const file = new File([blob], getExportFilename(exportFormat, scene.typography.poem.title), { type: getExportMimeType(exportFormat) });
       await navigator.share({
         files: [file],
         title: document.title,
@@ -293,7 +295,7 @@ export function useImageExporter(
     } finally {
       setIsSharing(false);
     }
-  }, [canShare, createOutputBlob, exportFormat, isExporting, isSharing]);
+  }, [canShare, createOutputBlob, exportFormat, isExporting, isSharing, scene.typography.poem.title]);
 
   const shareToSocialPlatform = useCallback(async (platform: SocialPlatform): Promise<'clipboard' | 'downloaded' | 'cancelled'> => {
     if (isExporting || isSharing) {
@@ -313,7 +315,7 @@ export function useImageExporter(
       const copied = await copyImageToClipboard(blob);
 
       if (!copied) {
-        const saved = await saveBlob(blob, format);
+        const saved = await saveBlob(blob, format, scene.typography.poem.title);
         if (!saved) {
           return 'cancelled';
         }
@@ -332,7 +334,7 @@ export function useImageExporter(
     } finally {
       setIsSharing(false);
     }
-  }, [createOutputBlob, isExporting, isSharing]);
+  }, [createOutputBlob, isExporting, isSharing, scene.typography.poem.title]);
 
   const exportBatchImages = useCallback(async (presets: BatchExportPreset[]): Promise<number> => {
     if (isExporting || isSharing || presets.length === 0) {
@@ -356,7 +358,7 @@ export function useImageExporter(
         }
 
         const safePresetId = preset.id.replace(/[^a-z0-9-]/gi, '-').toLowerCase();
-        downloadBlob(blob, getExportFilename(exportFormat, `poem-${safePresetId}-${preset.width}x${preset.height}`));
+        downloadBlob(blob, getExportFilename(exportFormat, scene.typography.poem.title, `${safePresetId}-${preset.width}x${preset.height}`));
         completed += 1;
 
         // Stagger file downloads to reduce browser drop-off on large batches.
@@ -370,7 +372,7 @@ export function useImageExporter(
     } finally {
       setIsExporting(false);
     }
-  }, [createOutputBlob, exportFormat, exportScale, isExporting, isSharing]);
+  }, [createOutputBlob, exportFormat, exportScale, isExporting, isSharing, scene.typography.poem.title]);
 
   return { exportImage, exportBatchImages, shareImage, shareToSocialPlatform, isExporting, isSharing, canShare };
 }
