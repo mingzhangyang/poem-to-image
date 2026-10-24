@@ -1,6 +1,7 @@
 import { Maximize } from 'lucide-react';
 import { CANVAS_SIZE_PRESETS, getCanvasSizePresetById } from '../../canvasPresets';
 import type { CanvasSizeSectionProps, ExpandedSections, TranslateFn } from '../../types';
+import type { TranslationKey } from '../../translations';
 import { ControlSection } from '../ControlSection';
 
 interface CanvasSizePanelProps {
@@ -10,21 +11,32 @@ interface CanvasSizePanelProps {
   canvas: CanvasSizeSectionProps;
 }
 
-const LEGACY_PRESET_LABELS: Record<string, string> = {
-  '1080x1080': 'Square 1:1',
-  '1080x1350': 'Portrait 4:5',
-  '1440x1080': 'Landscape 4:3',
-  '1080x1920': 'Story 9:16',
-  '1920x1080': 'Landscape 16:9',
-  '1240x1754': 'A4 Print',
+const PRESET_LABEL_KEYS: Record<string, TranslationKey> = {
+  'xiaohongshu-cover': 'canvasPresetXiaohongshuCover',
+  'xiaohongshu-square': 'canvasPresetXiaohongshuSquare',
+  'instagram-portrait': 'canvasPresetInstagramPortrait',
+  'instagram-story': 'canvasPresetInstagramStory',
+  'wechat-moments-long': 'canvasPresetWechatLong',
+  'print-card': 'canvasPresetPrintCard',
+  'classic-4x3': 'canvasPresetLandscape4x3',
+  'classic-16x9': 'canvasPresetLandscape16x9',
+};
+
+const LEGACY_PRESET_LABEL_KEYS: Record<string, TranslationKey> = {
+  '1080x1080': 'canvasLegacySquare',
+  '1080x1350': 'canvasLegacyPortrait',
+  '1440x1080': 'canvasLegacyLandscape4x3',
+  '1080x1920': 'canvasLegacyStory',
+  '1920x1080': 'canvasLegacyLandscape16x9',
+  '1240x1754': 'canvasLegacyPrintA4',
 };
 
 const PRESET_GROUPS = [
   { id: 'xiaohongshu', label: 'Xiaohongshu' },
   { id: 'instagram', label: 'Instagram' },
   { id: 'wechat', label: 'WeChat' },
-  { id: 'print', label: 'Print' },
-  { id: 'general', label: 'General' },
+  { id: 'print', labelKey: 'canvasGroupPrint' },
+  { id: 'general', labelKey: 'canvasGroupGeneral' },
 ] as const;
 
 const QUICK_PRESET_IDS = [
@@ -42,12 +54,11 @@ function getRatioLabel(width: number, height: number) {
 }
 
 export function CanvasSizePanel({ t, expanded, onToggle, canvas }: CanvasSizePanelProps) {
-  const activePreset = getCanvasSizePresetById(canvas.presetSize);
-  const presetLabel = canvas.presetSize === 'custom'
-    ? t('customSize')
-    : activePreset?.sceneLabel
-      ?? LEGACY_PRESET_LABELS[canvas.presetSize]
-      ?? canvas.presetSize;
+  const presetName = (id: string) => {
+    const key = PRESET_LABEL_KEYS[id] ?? LEGACY_PRESET_LABEL_KEYS[id];
+    return key ? t(key) : id;
+  };
+  const presetLabel = canvas.presetSize === 'custom' ? t('customSize') : presetName(canvas.presetSize);
   const summary = `${presetLabel} · ${canvas.canvasWidth}×${canvas.canvasHeight}`;
 
   return (
@@ -60,7 +71,7 @@ export function CanvasSizePanel({ t, expanded, onToggle, canvas }: CanvasSizePan
     >
       <div className="space-y-3">
         <div>
-          <label className="block text-xs text-(--app-accent-500) mb-1">Quick platform presets</label>
+          <label className="block text-xs text-(--app-accent-500) mb-1">{t('canvasQuickPresets')}</label>
           <div className="flex flex-wrap gap-2">
             {QUICK_PRESET_IDS.map((presetId) => {
               const preset = getCanvasSizePresetById(presetId);
@@ -82,7 +93,7 @@ export function CanvasSizePanel({ t, expanded, onToggle, canvas }: CanvasSizePan
                       : 'border-[rgba(34,48,52,0.12)] bg-white text-(--app-accent-800) hover:border-(--app-accent-300)'
                   }`}
                 >
-                  {preset.sceneLabel}
+                  {presetName(preset.id)}
                 </button>
               );
             })}
@@ -101,18 +112,18 @@ export function CanvasSizePanel({ t, expanded, onToggle, canvas }: CanvasSizePan
               const groupedPresets = CANVAS_SIZE_PRESETS.filter((preset) => preset.platform === group.id);
 
               return (
-                <optgroup key={group.id} label={group.label}>
+                <optgroup key={group.id} label={'labelKey' in group ? t(group.labelKey) : group.label}>
                   {groupedPresets.map((preset) => (
                     <option key={preset.id} value={preset.id}>
-                      {`${preset.sceneLabel} (${getRatioLabel(preset.width, preset.height)} · ${preset.width}x${preset.height})`}
+                      {`${presetName(preset.id)} (${getRatioLabel(preset.width, preset.height)} · ${preset.width}x${preset.height})`}
                     </option>
                   ))}
                 </optgroup>
               );
             })}
-            {Object.entries(LEGACY_PRESET_LABELS).map(([presetId, label]) => (
+            {Object.keys(LEGACY_PRESET_LABEL_KEYS).map((presetId) => (
               <option key={presetId} value={presetId}>
-                {`${label} (${presetId})`}
+                {`${presetName(presetId)} (${presetId})`}
               </option>
             ))}
             <option value="custom">{t('customSize')}</option>

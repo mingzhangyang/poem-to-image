@@ -284,6 +284,7 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
                       );
                     })}
                   </div>
+                  <p className="text-xs leading-5 text-(--app-accent-500)">{t('aiEnglishPromptHint')}</p>
                   <div className="rounded-xl border border-(--app-accent-200) bg-white/85 px-3 py-2 text-xs text-[rgba(51,88,87,0.82)]">
                     {t(background.aiProvider === 'gemini' ? 'geminiTip' : 'openaiTip')}
                   </div>
