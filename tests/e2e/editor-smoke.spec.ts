@@ -168,3 +168,16 @@ test('undo and reload preserve the canvas preset identity', async ({ page }) => 
   await page.getByRole('button', { name: /^Canvas Size/ }).click();
   await expect(page.getByRole('combobox', { name: 'Preset Sizes' })).toHaveValue('wechat-moments-long');
 });
+
+test('restores a legacy ratio preset identity after reload', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: /^Canvas Size/ }).click();
+  const presets = page.getByRole('combobox', { name: 'Preset Sizes' });
+  await presets.selectOption('1080x1350');
+  await expect(presets).toHaveValue('1080x1350');
+  await page.waitForTimeout(950);
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: /^Canvas Size/ }).click();
+  await expect(page.getByRole('combobox', { name: 'Preset Sizes' })).toHaveValue('1080x1350');
+});

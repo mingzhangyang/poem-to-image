@@ -70,7 +70,12 @@ export default function App() {
   const [presetSize, setPresetSize] = useState(() => {
     const savedPresetId = initialState?.presetSize ?? DEFAULT_CANVAS_PRESET_ID;
     const savedPreset = getCanvasSizePresetById(savedPresetId);
-    return savedPreset?.width === canvasWidth && savedPreset.height === canvasHeight ? savedPresetId : 'custom';
+    // Legacy selectors persist their dimensions as a ratio ID (e.g. 1080x1350).
+    // Accept those IDs only when their recorded dimensions still match.
+    const legacySize = /^(\\d+)x(\\d+)$/.exec(savedPresetId);
+    const savedWidth = savedPreset?.width ?? (legacySize ? Number(legacySize[1]) : null);
+    const savedHeight = savedPreset?.height ?? (legacySize ? Number(legacySize[2]) : null);
+    return savedWidth === canvasWidth && savedHeight === canvasHeight ? savedPresetId : 'custom';
   });
   const [exportFormat, setExportFormat] = useState<ExportFormat>('png');
   const [exportScale, setExportScale] = useState<ExportScale>(2);
