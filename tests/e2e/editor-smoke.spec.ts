@@ -191,7 +191,7 @@ test('clearing a title removes stale identification but body-only edits can rema
   const title = dialog.getByPlaceholder('Title');
   const body = dialog.getByPlaceholder('Enter your poem here...');
   const recognized = dialog.getByText('Sonnet 18 · William Shakespeare');
-  const sonnet = "Shall I compare thee to a summer's day?\\nThou art more lovely and more temperate.";
+  const sonnet = "Shall I compare thee to a summer's day?\nThou art more lovely and more temperate.";
 
   await title.fill('Draft title');
   await body.fill(sonnet);
