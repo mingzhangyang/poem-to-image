@@ -190,7 +190,7 @@ test('applied template appearance and poem content survive reload', async ({ pag
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.getByRole('button', { name: /^Templates/ }).click();
-  const template = page.getByRole('button', { name: /Parchment Scroll/ }).first();
+  const template = page.locator('button[aria-pressed]').filter({ hasText: 'Parchment Scroll' }).first();
   await template.click();
   await expect(template).toHaveAttribute('aria-pressed', 'true');
   await expect.poll(() => page.evaluate(() => window.localStorage.getItem('poem-to-image.active-template')))
@@ -219,5 +219,5 @@ test('applied template appearance and poem content survive reload', async ({ pag
   await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(page.getByLabel('Body').getByText('Q0 Persisted Poem')).toBeVisible();
   await page.getByRole('button', { name: /^Templates/ }).click();
-  await expect(page.getByRole('button', { name: /Parchment Scroll/ }).first()).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('button[aria-pressed]').filter({ hasText: 'Parchment Scroll' }).first()).toHaveAttribute('aria-pressed', 'true');
 });
