@@ -8,7 +8,7 @@ test.beforeEach(async ({ page }) => {
   });
   await page.addInitScript(() => {
     window.localStorage.setItem('poem-to-image.onboarding-dismissed', 'true');
-    window.localStorage.setItem('poem-to-image.language', 'en');
+    if (!window.localStorage.getItem('poem-to-image.language')) window.localStorage.setItem('poem-to-image.language', 'en');
   });
 });
 
@@ -16,7 +16,19 @@ test('all nine export format and scale combinations produce correctly sized, uni
   test.skip(testInfo.project.name !== 'chromium-desktop', 'Run the full export matrix once per CI run');
   test.setTimeout(180_000);
   await page.setViewportSize({ width: 1440, height: 1000 });
+  // Chromium exposes a native file picker; disable it for the download-path
+  // matrix so the test checks the actual fallback file, not a headless picker.
+  await page.addInitScript(() => {
+    let current: object | null = window;
+    while (current) {
+      if (Object.prototype.hasOwnProperty.call(current, 'showSaveFilePicker')) {
+        Reflect.deleteProperty(current, 'showSaveFilePicker');
+      }
+      current = Object.getPrototypeOf(current);
+    }
+  });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
+  expect(await page.evaluate(() => 'showSaveFilePicker' in window)).toBe(false);
 
   await page.getByRole('button', { name: 'Open Editor' }).click();
   const editor = page.getByRole('dialog', { name: 'Poem Editor' });
@@ -172,3 +184,40 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 1440, height: 900 
     }
   });
 }
+
+test('applied template appearance and poem content survive reload', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium-desktop', 'Run built-in template persistence once');
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: /^Templates/ }).click();
+  const template = page.getByRole('button', { name: /Parchment Scroll/ }).first();
+  await template.click();
+  await expect(template).toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(() => page.evaluate(() => window.localStorage.getItem('poem-to-image.active-template')))
+    .toBe('parchment-scroll');
+
+  await page.getByRole('button', { name: 'Open Editor' }).click();
+  const editor = page.getByRole('dialog', { name: 'Poem Editor' });
+  await editor.getByPlaceholder('Title').fill('Q0 Persisted Poem');
+  await editor.getByPlaceholder('Enter your poem here...').fill('A paper sky\nA careful line');
+  await editor.getByRole('button', { name: 'Done' }).click();
+
+  await expect.poll(() => page.evaluate(() => {
+    const raw = window.localStorage.getItem('inkpoem.editor-state.v1');
+    const state = raw ? JSON.parse(raw) : null;
+    return {
+      title: state?.poem?.title,
+      body: state?.poem?.body,
+      backgroundImage: state?.background?.backgroundImage,
+    };
+  })).toEqual({
+    title: 'Q0 Persisted Poem',
+    body: 'A paper sky\nA careful line',
+    backgroundImage: '/template-backgrounds/parchment-scroll-generated.png',
+  });
+
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await expect(page.getByLabel('Body').getByText('Q0 Persisted Poem')).toBeVisible();
+  await page.getByRole('button', { name: /^Templates/ }).click();
+  await expect(page.getByRole('button', { name: /Parchment Scroll/ }).first()).toHaveAttribute('aria-pressed', 'true');
+});
