@@ -1,4 +1,5 @@
 name: Temporary dependency lock refresh
+# Refresh patched indirect Cloudflare dependencies
 
 on:
   push:
