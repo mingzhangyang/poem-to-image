@@ -117,19 +117,58 @@ test('uses truthful export copy and exposes export dialog semantics', async ({ p
   await expect(dialog.getByText('PNG · 2160 x 2700 px', { exact: true })).toBeVisible();
 });
 
-test('offers clipboard copy of an exported PNG to anonymous users', async ({ page }) => {
+test('copies a rendered PNG to the clipboard for anonymous users', async ({ page }) => {
+  test.setTimeout(60_000);
   await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'share', { configurable: true, value: undefined });
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        write: async (items: ClipboardItem[]) => {
+          const blob = await items[0]!.getType('image/png');
+          const bytes = new Uint8Array(await blob.slice(0, 8).arrayBuffer());
+          if (bytes.join(',') !== '137,80,78,71,13,10,26,10') {
+            throw new Error('Clipboard payload is not an actual PNG');
+          }
+          (window as typeof window & { __copiedPngSize?: number }).__copiedPngSize = blob.size;
+        },
+      },
+    });
+  });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.getByRole('button', { name: 'Export Image' }).click();
-
   const dialog = page.getByRole('dialog', { name: 'Export Image' });
-  const copy = dialog.getByRole('button', { name: 'Copy image' });
-  await expect(copy).toBeVisible();
-  await expect(copy).toBeEnabled();
-
-  // The button must work even without the native file-sharing API.
-  await page.evaluate(() => {
-    Object.defineProperty(navigator, 'share', { configurable: true, value: undefined });
-  });
-  await expect(copy).toBeEnabled();
+  await dialog.getByRole('button', { name: 'Copy image' }).click();
+  await expect(page.getByRole('status').getByText('Image copied to clipboard — paste it when posting.')).toBeVisible();
+  await expect.poll(
+    () => page.evaluate(() => (window as typeof window & { __copiedPngSize?: number }).__copiedPngSize ?? 0),
+    { timeout: 20_000 },
+  ).toBeGreaterThan(0);
 });
+
+for (const mode of ['missing', 'rejected'] as const) {
+  test(`downloads a PNG when clipboard write is ${mode}`, async ({ page }) => {
+    test.setTimeout(60_000);
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.addInitScript((variant: 'missing' | 'rejected') => {
+      Object.defineProperty(navigator, 'share', { configurable: true, value: undefined });
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: variant === 'missing' ? undefined : {
+          write: async () => { throw new DOMException('Permission denied', 'NotAllowedError'); },
+        },
+      });
+    }, mode);
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.getByRole('button', { name: 'Export Image' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Export Image' });
+    await expect(dialog.getByRole('button', { name: 'Copy image' })).toBeEnabled();
+
+    const downloadPromise = page.waitForEvent('download', { timeout: 30_000 });
+    await dialog.getByRole('button', { name: 'Copy image' }).click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toMatch(/\.png$/);
+    await expect(page.getByRole('status').getByText('Clipboard unavailable; downloaded a PNG instead.')).toBeVisible();
+  });
+}
