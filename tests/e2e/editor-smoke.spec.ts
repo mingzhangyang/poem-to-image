@@ -116,3 +116,53 @@ test('uses truthful export copy and exposes export dialog semantics', async ({ p
   await expect(dialog.getByText('poem-image.png')).toBeVisible();
   await expect(dialog.getByText('PNG · 2160 x 2700 px', { exact: true })).toBeVisible();
 });
+
+test('keeps the poem editor focused and open while typing rapidly', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  if ((page.viewportSize()?.width ?? 0) < 1024) {
+    await page.getByRole('button', { name: 'Content', exact: true }).click();
+  }
+  await page.getByRole('button', { name: 'Open Editor' }).click();
+
+  const dialog = page.getByRole('dialog', { name: 'Poem Editor' });
+  const title = dialog.getByPlaceholder('Title');
+  const rapidText = 'Midnight Rain under City Lights and a Thousand Quiet Stars';
+  await title.fill('');
+  await title.pressSequentially(rapidText, { delay: 0 });
+  await expect(title).toHaveValue(rapidText);
+  await expect(title).toBeFocused();
+  await expect(dialog).toBeVisible();
+
+  // Insert multi-byte text through the keyboard path, not only React's fill helper.
+  await title.fill('');
+  await page.keyboard.insertText('夜雨落在旧街巷，灯光映照着安静的诗行');
+  await expect(title).toHaveValue('夜雨落在旧街巷，灯光映照着安静的诗行');
+  await expect(dialog).toBeVisible();
+});
+
+test('uses the slider value as the preview zoom readout', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  const slider = page.getByRole('slider', { name: 'Preview Zoom' });
+  await expect(slider).toHaveValue('100');
+  await expect(page.getByText('100%', { exact: true })).toBeVisible();
+  await slider.focus();
+  await slider.press('End');
+  await expect(slider).toHaveValue('200');
+  await expect(page.getByText('200%', { exact: true })).toBeVisible();
+});
+
+test('undo and reload preserve the canvas preset identity', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: /^Canvas Size/ }).click();
+  const presets = page.getByRole('combobox', { name: 'Preset Sizes' });
+  await presets.selectOption('wechat-moments-long');
+  await page.waitForTimeout(950);
+  await presets.selectOption('print-card');
+  await page.waitForTimeout(950);
+  await page.getByRole('button', { name: 'Undo' }).click();
+  await expect(presets).toHaveValue('wechat-moments-long');
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: /^Canvas Size/ }).click();
+  await expect(page.getByRole('combobox', { name: 'Preset Sizes' })).toHaveValue('wechat-moments-long');
+});

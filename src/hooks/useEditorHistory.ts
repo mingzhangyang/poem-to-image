@@ -68,6 +68,7 @@ interface EditorSnapshot {
   poemStyle: PoemLayerStyle;
   canvasWidth: number;
   canvasHeight: number;
+  presetSize: string;
   background: TemplateBackgroundConfig;
   typography: TemplateTypographyConfig;
   decorations: TemplateDecorationsConfig;
@@ -80,6 +81,7 @@ interface UseEditorHistoryParams {
   poemStyle: PoemLayerStyle;
   canvasWidth: number;
   canvasHeight: number;
+  presetSize: string;
   background: HistoryBackgroundSource;
   typography: HistoryTypographySource;
   decorations: HistoryDecorationsSource;
@@ -96,6 +98,7 @@ export function useEditorHistory({
   poemStyle,
   canvasWidth,
   canvasHeight,
+  presetSize,
   background,
   typography,
   decorations,
@@ -108,8 +111,8 @@ export function useEditorHistory({
   const { push: pushSnapshot, undo: undoHistory, redo: redoHistory, canUndo, canRedo } = useUndoHistory<EditorSnapshot>();
 
   // Always-current snapshot data — closures in timers read from here to avoid stale values.
-  const snapshotDataRef = useRef({ poem, poemStyle, canvasWidth, canvasHeight, background, typography, decorations });
-  snapshotDataRef.current = { poem, poemStyle, canvasWidth, canvasHeight, background, typography, decorations };
+  const snapshotDataRef = useRef({ poem, poemStyle, canvasWidth, canvasHeight, presetSize, background, typography, decorations });
+  snapshotDataRef.current = { poem, poemStyle, canvasWidth, canvasHeight, presetSize, background, typography, decorations };
 
   // Stable refs for apply functions whose identities change every render.
   const applyBackgroundRef = useRef(background.applyBackgroundTemplate);
@@ -123,12 +126,13 @@ export function useEditorHistory({
   const snapshotTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const buildSnapshot = useCallback((): EditorSnapshot => {
-    const { poem, poemStyle, canvasWidth, canvasHeight, background, typography, decorations } = snapshotDataRef.current;
+    const { poem, poemStyle, canvasWidth, canvasHeight, presetSize, background, typography, decorations } = snapshotDataRef.current;
     return {
       poem,
       poemStyle,
       canvasWidth,
       canvasHeight,
+      presetSize,
       background: {
         backgroundType: background.backgroundType === 'ai' ? 'image' : background.backgroundType,
         backgroundColor: background.backgroundColor,
@@ -180,7 +184,7 @@ export function useEditorHistory({
       setPoemStyle(snapshot.poemStyle);
       setCanvasWidth(snapshot.canvasWidth);
       setCanvasHeight(snapshot.canvasHeight);
-      setPresetSize('custom');
+      setPresetSize(snapshot.presetSize);
       applyBackgroundRef.current(snapshot.background);
       applyTypographyRef.current(snapshot.typography);
       applyDecorationsRef.current(snapshot.decorations);
@@ -206,7 +210,7 @@ export function useEditorHistory({
     return () => {
       if (snapshotTimerRef.current) clearTimeout(snapshotTimerRef.current);
     };
-  }, [exportScene]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [exportScene, presetSize]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleUndo = useCallback(() => {
     const snapshot = undoHistory();

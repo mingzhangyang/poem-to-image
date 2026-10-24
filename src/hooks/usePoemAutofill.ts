@@ -58,13 +58,16 @@ export function usePoemAutofill({ poem, language }: UsePoemAutofillParams): UseP
     };
   }, []);
 
+  const hasTitle = poem.title.trim().length > 0;
+
   useEffect(() => {
     const query = poem.body.trim();
     const requestId = currentRequestIdRef.current + 1;
     currentRequestIdRef.current = requestId;
+    // Invalidate previous matches immediately, including responses still in flight.
+    setSuggestion(null);
 
-    if (query.length < 4) {
-      setSuggestion(null);
+    if (!hasTitle || query.length < 4) {
       setIsMatching(false);
       return;
     }
@@ -94,7 +97,7 @@ export function usePoemAutofill({ poem, language }: UsePoemAutofillParams): UseP
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [language, poem.body]);
+  }, [hasTitle, language, poem.body]);
 
   useEffect(() => {
     if (!suggestion) {

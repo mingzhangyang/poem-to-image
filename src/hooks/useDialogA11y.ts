@@ -1,4 +1,4 @@
-import { useEffect, type RefObject } from 'react';
+import { useEffect, useRef, type RefObject } from 'react';
 
 const FOCUSABLE_SELECTOR = [
   'a[href]',
@@ -22,6 +22,10 @@ interface UseDialogA11yOptions {
 }
 
 export function useDialogA11y({ isOpen, dialogRef, onClose }: UseDialogA11yOptions) {
+  // Keep a current callback without restarting the focus trap on every parent render.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
   useEffect(() => {
     if (!isOpen) {
       return;
@@ -48,7 +52,7 @@ export function useDialogA11y({ isOpen, dialogRef, onClose }: UseDialogA11yOptio
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
-        onClose();
+        onCloseRef.current();
         return;
       }
 
@@ -90,5 +94,5 @@ export function useDialogA11y({ isOpen, dialogRef, onClose }: UseDialogA11yOptio
       document.body.style.overflow = previousOverflow;
       previousActiveElement?.focus();
     };
-  }, [dialogRef, isOpen, onClose]);
+  }, [dialogRef, isOpen]);
 }

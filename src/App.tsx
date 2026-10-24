@@ -67,7 +67,11 @@ export default function App() {
 
   const [canvasWidth, setCanvasWidthState] = useState(() => normalizeCanvasSize(initialState?.canvasWidth, 1080));
   const [canvasHeight, setCanvasHeightState] = useState(() => normalizeCanvasSize(initialState?.canvasHeight, 1350));
-  const [presetSize, setPresetSize] = useState(DEFAULT_CANVAS_PRESET_ID);
+  const [presetSize, setPresetSize] = useState(() => {
+    const savedPresetId = initialState?.presetSize ?? DEFAULT_CANVAS_PRESET_ID;
+    const savedPreset = getCanvasSizePresetById(savedPresetId);
+    return savedPreset?.width === canvasWidth && savedPreset.height === canvasHeight ? savedPresetId : 'custom';
+  });
   const [exportFormat, setExportFormat] = useState<ExportFormat>('png');
   const [exportScale, setExportScale] = useState<ExportScale>(2);
   const activeInteractionCountRef = useRef(0);
@@ -209,9 +213,6 @@ export default function App() {
     applyBgRef.current(initialState.background);
     applyTypoRef.current(initialState.typography);
     applyDecoRef.current(initialState.decorations);
-    if (initialState.canvasWidth !== 1080 || initialState.canvasHeight !== 1350) {
-      setPresetSize('custom');
-    }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Rebuilt every render from its source fields and stabilized by deep equality.
@@ -269,6 +270,7 @@ export default function App() {
     poemStyle,
     canvasWidth,
     canvasHeight,
+    presetSize,
     background,
     typography,
     decorations,
@@ -285,6 +287,7 @@ export default function App() {
     poemStyle,
     canvasWidth,
     canvasHeight,
+    presetSize,
     background,
     typography: {
       fontFamily: typography.fontFamily,
