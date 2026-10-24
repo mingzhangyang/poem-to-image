@@ -37,7 +37,7 @@ For staging, use the same commands with `--config wrangler.staging.jsonc`. Stagi
 
 ## Billing reconciliation
 
-The scheduled Worker check runs every 15 minutes. It emits `ops.reconciliation_healthy` or `ops.reconciliation_alert` with counts only; it does not log poems, tokens, webhook bodies, or image data.
+The scheduled Worker check runs **hourly in production** (`0 * * * *` in `wrangler.jsonc`) and every **15 minutes in the staging example** (`*/15 * * * *` in `wrangler.staging.example.jsonc`). It emits `ops.reconciliation_healthy` or `ops.reconciliation_alert` with counts only; it does not log poems, tokens, webhook bodies, or image data.
 
 Run the detailed read-only report with:
 
