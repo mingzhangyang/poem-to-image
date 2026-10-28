@@ -1,5 +1,6 @@
 import type { CanvasExportScene } from './renderCanvasExport';
 import { getPaperStyle, paperTextureUrl } from '../paperStyles';
+import { getPaperStyle, paperTextureUrl } from '../paperStyles';
 
 const IMAGE_CACHE_LIMIT = 32;
 const imageLoadCache = new Map<string, Promise<HTMLImageElement>>();
@@ -90,6 +91,18 @@ export async function drawBackground(ctx: CanvasRenderingContext2D, scene: Canva
     const tile = await loadImage(paperTextureUrl(paper.id));
     const pattern = ctx.createPattern(tile, 'repeat');
     if (!pattern) throw new Error('Could not render paper texture');
+    ctx.fillStyle = pattern;
+    ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
+    return;
+  }
+
+  if (background.backgroundType === 'paper') {
+    const paper = getPaperStyle(background.paperId);
+    ctx.fillStyle = paper.base;
+    ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
+    const tile = await loadImage(paperTextureUrl(paper.id));
+    const pattern = ctx.createPattern(tile, 'repeat');
+    if (!pattern) throw new Error('Failed to render paper texture');
     ctx.fillStyle = pattern;
     ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
     return;
