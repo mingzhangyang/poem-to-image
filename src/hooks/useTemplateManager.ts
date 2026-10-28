@@ -230,7 +230,6 @@ export function useTemplateManager({
   const handleSaveCustomTemplate = useCallback(
     (name: string) => {
       const bgConfig: TemplateBackgroundConfig = {
-        paperId: background.paperId,
         backgroundType:
           background.backgroundType === 'image' || background.backgroundType === 'ai'
             ? 'solid'
