@@ -235,6 +235,7 @@ export function useTemplateManager({
           background.backgroundType === 'image' || background.backgroundType === 'ai'
             ? 'solid'
             : (background.backgroundType as TemplateBackgroundConfig['backgroundType']),
+        paperId: background.paperId,
         backgroundColor: background.backgroundColor,
         gradientColor1: background.gradientColor1,
         gradientColor2: background.gradientColor2,
