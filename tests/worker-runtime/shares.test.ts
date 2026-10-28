@@ -16,8 +16,20 @@ function jpeg() {
   return new Uint8Array([255, 216, 255, 224, 0, 16, 74, 70, 73, 70, 0, 1, 1, 1, 0, 96, 0, 96, 255, 217]);
 }
 
-function form(title = 'Moon & <Stars>', author = 'An author') {
+interface TestCredentials { id: string; deleteToken: string }
+
+function makeCredentials(): TestCredentials {
+  const bytes = crypto.getRandomValues(new Uint8Array(9));
+  const id = btoa(String.fromCharCode(...bytes)).replace(/\\+/g, '-').replace(/\\//g, '_');
+  const deleteToken = Array.from(crypto.getRandomValues(new Uint8Array(32)), (b) =>
+    b.toString(16).padStart(2, '0')).join('');
+  return { id, deleteToken };
+}
+
+function form(title = 'Moon & <Stars>', author = 'An author', creds = makeCredentials()) {
   const body = new FormData();
+  body.append('id', creds.id);
+  body.append('deleteToken', creds.deleteToken);
   body.append('artwork', new File([png()], 'artwork.png', { type: 'image/png' }));
   body.append('card', new File([jpeg()], 'card.jpg', { type: 'image/jpeg' }));
   body.append('title', title);
@@ -25,11 +37,11 @@ function form(title = 'Moon & <Stars>', author = 'An author') {
   return body;
 }
 
-async function publish(title?: string, author?: string) {
+async function publish(title?: string, author?: string, creds?: TestCredentials) {
   return SELF.fetch(ORIGIN + '/api/shares', {
     method: 'POST',
     headers: { Origin: ORIGIN },
-    body: form(title, author),
+    body: form(title, author, creds),
   });
 }
 
@@ -42,6 +54,11 @@ describe('anonymous artwork sharing', () => {
     expect(id).toMatch(/^[A-Za-z0-9_-]{12}$/);
     expect(url).toBe(ORIGIN + '/s/' + id);
     expect(deleteToken).toMatch(/^[a-f0-9]{64}$/);
+    // The deletion credential originates on the client, not in the Worker.
+    const rowOwner = await env.DB.prepare('SELECT delete_token_hash, content_fingerprint FROM shared_artworks WHERE id = ?')
+      .bind(id).first<{ delete_token_hash: string; content_fingerprint: string }>();
+    expect(rowOwner?.delete_token_hash).toMatch(/^[a-f0-9]{64}$/);
+    expect(rowOwner?.content_fingerprint).toMatch(/^[a-f0-9]{64}$/);
 
     const publicResponse = await SELF.fetch(ORIGIN + '/api/shares/' + id);
     expect(publicResponse.status).toBe(200);
@@ -98,6 +115,57 @@ describe('anonymous artwork sharing', () => {
     expect(row?.title).toBe('');
     expect(row?.author).toBe('');
     expect(row?.delete_token_hash).toBe('');
+  });
+
+  it('safely recovers a lost publication response using the same client credentials', async () => {
+    const credentials = makeCredentials();
+    const first = await publish('Response was dropped', 'Poet', credentials);
+    expect(first.status).toBe(201);
+    // Simulate a lost response: never read its body before retrying.
+    const second = await publish('Response was dropped', 'Poet', credentials);
+    expect(second.status).toBe(200);
+    const result = await second.json() as TestCredentials & { url: string };
+    expect(result.id).toBe(credentials.id);
+    expect(result.deleteToken).toBe(credentials.deleteToken);
+    const rows = await env.DB.prepare('SELECT id FROM shared_artworks WHERE id = ?')
+      .bind(credentials.id).all();
+    expect(rows.results).toHaveLength(1);
+    expect((await SELF.fetch(result.url)).status).toBe(200);
+  });
+
+  it('rejects mismatched publication content/credentials instead of overwriting snapshots', async () => {
+    const credentials = makeCredentials();
+    expect((await publish('Original', 'Poet', credentials)).status).toBe(201);
+    const otherBody = await publish('Changed', 'Poet', credentials);
+    expect(otherBody.status).toBe(409);
+    const otherToken = await publish('Original', 'Poet', { id: credentials.id, deleteToken: makeCredentials().deleteToken });
+    expect(otherToken.status).toBe(409);
+    const publicMetadata = await SELF.fetch(ORIGIN + '/api/shares/' + credentials.id);
+    expect(await publicMetadata.json()).toMatchObject({ title: 'Original' });
+  });
+
+  it('concurrent replays preserve the first immutable image without an orphaned public record', async () => {
+    const credentials = makeCredentials();
+    const [a, b] = await Promise.all([
+      publish('Concurrent', 'Poet', credentials),
+      publish('Concurrent', 'Poet', credentials),
+    ]);
+    expect([a.status, b.status].sort()).toEqual([200, 201]);
+    const rows = await env.DB.prepare('SELECT id, image_key FROM shared_artworks WHERE id = ?')
+      .bind(credentials.id).all<{ id: string; image_key: string }>();
+    expect(rows.results).toHaveLength(1);
+    expect(await env.ARTWORKS.head(rows.results[0].image_key)).not.toBeNull();
+  });
+
+  it('refuses an already revoked publication identifier on retry', async () => {
+    const credentials = makeCredentials();
+    expect((await publish('To be revoked', 'Poet', credentials)).status).toBe(201);
+    const deleted = await SELF.fetch(ORIGIN + '/api/shares/' + credentials.id, {
+      method: 'DELETE', headers: { Origin: ORIGIN, 'X-Share-Delete-Token': credentials.deleteToken },
+    });
+    expect(deleted.status).toBe(200);
+    expect((await publish('To be revoked', 'Poet', credentials)).status).toBe(409);
+    expect((await SELF.fetch(ORIGIN + '/api/shares/' + credentials.id)).status).toBe(404);
   });
 
   it('preserves JSON-LD with dollar replacement markers and HTML metacharacters', async () => {
@@ -179,8 +247,8 @@ describe('anonymous artwork sharing', () => {
     await env.ARTWORKS.put(cardKey, jpeg(), { httpMetadata: { contentType: 'image/jpeg' } });
     await env.DB.prepare(
       `INSERT INTO shared_artworks
-       (id, title, author, image_key, image_type, card_key, delete_token_hash, revoked_at)
-       VALUES (?, '', '', ?, 'image/png', ?, '', CURRENT_TIMESTAMP)`,
+       (id, title, author, image_key, image_type, card_key, delete_token_hash, content_fingerprint, revoked_at)
+       VALUES (?, '', '', ?, 'image/png', ?, '', '', CURRENT_TIMESTAMP)`,
     ).bind(id, imageKey, cardKey).run();
 
     expect((await SELF.fetch(ORIGIN + '/s/' + id)).status).toBe(404);
