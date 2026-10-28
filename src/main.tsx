@@ -12,6 +12,8 @@ const AccountPage = lazy(async () => ({ default: (await import('./pages/AccountP
 const PrivacyPage = lazy(async () => ({ default: (await import('./pages/PrivacyPage.tsx')).PrivacyPage }));
 const AboutPage = lazy(async () => ({ default: (await import('./pages/AboutPage.tsx')).AboutPage }));
 
+const ShareViewerPage = lazy(async () => ({ default: (await import('./pages/ShareViewerPage.tsx')).default }));
+
 const runtimeClerkKey = typeof window !== 'undefined'
   ? (window as { __INKPOEM_CLERK_PUBLISHABLE_KEY?: string }).__INKPOEM_CLERK_PUBLISHABLE_KEY
   : undefined;
@@ -38,23 +40,26 @@ function AppRoutes() {
   );
 }
 
+function EditorWithAuth() {
+  return clerkPublishableKey ? (
+    <Suspense fallback={<RouteFallback />}>
+      <ClerkProvider publishableKey={clerkPublishableKey} afterSignOutUrl="/">
+        <ClerkAuthBridge><AppRoutes /></ClerkAuthBridge>
+      </ClerkProvider>
+    </Suspense>
+  ) : (
+    <NoAuthProvider><AppRoutes /></NoAuthProvider>
+  );
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <ToastProvider>
-        {clerkPublishableKey ? (
-          <Suspense fallback={<RouteFallback />}>
-            <ClerkProvider publishableKey={clerkPublishableKey} afterSignOutUrl="/">
-              <ClerkAuthBridge>
-                <AppRoutes />
-              </ClerkAuthBridge>
-            </ClerkProvider>
-          </Suspense>
-        ) : (
-          <NoAuthProvider>
-            <AppRoutes />
-          </NoAuthProvider>
-        )}
+        <Routes>
+          <Route path="/s/:id" element={<Suspense fallback={<RouteFallback />}><ShareViewerPage /></Suspense>} />
+          <Route path="/*" element={<EditorWithAuth />} />
+        </Routes>
       </ToastProvider>
     </BrowserRouter>
   </StrictMode>

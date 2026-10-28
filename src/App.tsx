@@ -27,6 +27,8 @@ import { ensureFontLoaded } from './fontLoader';
 import { usePageMetadata } from './hooks/usePageMetadata';
 import { useStructuralMemo } from './hooks/useStructuralMemo';
 import type { ExpandedSections, ExportFormat, ExportScale } from './types';
+import { PublishDialog, type PublishedShare } from './sharing/PublishDialog';
+import { SHARE_OWNER_KEY_PREFIX, shareCopy } from './sharing/copy';
 
 const ONBOARDING_DISMISSED_STORAGE_KEY = 'poem-to-image.onboarding-dismissed';
 const OnboardingModal = lazy(async () => ({ default: (await import('./components/OnboardingModal')).OnboardingModal }));
@@ -95,6 +97,7 @@ export default function App() {
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [editorOpenRequestId, setEditorOpenRequestId] = useState(0);
   const [previewZoom, setPreviewZoom] = useState(1);
+  const [publishDialogOpen, setPublishDialogOpen] = useState(false);
 
   const handleCloseOnboarding = () => {
     setIsOnboardingOpen(false);
@@ -379,11 +382,28 @@ export default function App() {
     exportImage,
     shareImage: handleShare,
     copyImage,
+    createShareAssets,
     shareToSocialPlatform: handleShareToSocial,
     isExporting,
     isSharing,
     canShare,
   } = useImageExporter(exportFormat, exportScale, exportScene, waitForSceneSettled);
+
+  const publishArtwork = async (): Promise<PublishedShare> => {
+    const { artwork, card } = await createShareAssets();
+    const form = new FormData();
+    form.append('artwork', artwork, artwork.type === 'image/png' ? 'artwork.png' : 'artwork.jpg');
+    form.append('card', card, 'card.jpg');
+    form.append('title', poem.title.trim().slice(0, 120));
+    form.append('author', poem.author.trim().slice(0, 100));
+    const response = await fetch('/api/shares', { method: 'POST', body: form });
+    const result = await response.json() as PublishedShare & { code?: string };
+    if (!response.ok) throw new Error(result.code ?? String(response.status));
+    if (!result.id || !result.url || !result.deleteToken) throw new Error('INVALID_RESPONSE');
+    try { localStorage.setItem(SHARE_OWNER_KEY_PREFIX + result.id, result.deleteToken); }
+    catch { /* Artwork remains published even if local revocation storage is unavailable. */ }
+    return result;
+  };
 
   const handleDownload = async () => {
     try {
@@ -544,6 +564,8 @@ export default function App() {
     onDownload: handleDownload,
     onShare: handleShare,
     onCopy: handleCopy,
+    onPublishLink: () => setPublishDialogOpen(true),
+    publishLinkLabel: shareCopy[language].publishLink,
     onShareToSocial: handleShareToSocial,
     isExporting,
     isSharing,
@@ -588,6 +610,13 @@ export default function App() {
       <Sidebar {...sidebarProps} />
 
       <CanvasPreview {...canvasPreviewProps} canUndo={canUndo} canRedo={canRedo} onUndo={handleUndo} onRedo={handleRedo} />
+
+      <PublishDialog
+        language={language}
+        isOpen={publishDialogOpen}
+        onClose={() => setPublishDialogOpen(false)}
+        publish={publishArtwork}
+      />
 
       <Suspense fallback={null}>
         <OnboardingModal

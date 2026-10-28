@@ -67,6 +67,8 @@ export function CanvasPreview({
   onDownload,
   onShare,
   onCopy,
+  onPublishLink,
+  publishLinkLabel,
   isExporting,
   isSharing,
   canShare,
@@ -419,6 +421,8 @@ export function CanvasPreview({
                     onDownload={handleSaveFromModal}
                     onShare={handleShareFromModal}
                     onCopy={handleCopyFromModal}
+                    onPublishLink={onPublishLink}
+                    publishLinkLabel={publishLinkLabel}
                     isExporting={isExporting}
                     isSharing={isSharing}
                     canShare={canShare}

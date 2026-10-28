@@ -404,6 +404,8 @@ export interface SidebarProps {
   onDownload: () => void;
   onShare: () => void;
   onCopy: () => void;
+  onPublishLink: () => void;
+  publishLinkLabel: string;
   onShareToSocial: (platform: SocialPlatform) => Promise<'clipboard' | 'downloaded' | 'cancelled'>;
   isExporting: boolean;
   isSharing: boolean;
@@ -461,6 +463,8 @@ export interface CanvasPreviewProps {
   onDownload: () => void;
   onShare: () => void;
   onCopy: () => void;
+  onPublishLink: () => void;
+  publishLinkLabel: string;
   onShareToSocial: (platform: SocialPlatform) => Promise<'clipboard' | 'downloaded' | 'cancelled'>;
   isExporting: boolean;
   isSharing: boolean;

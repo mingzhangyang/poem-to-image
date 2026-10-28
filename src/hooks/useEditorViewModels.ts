@@ -38,6 +38,8 @@ interface UseEditorViewModelsParams {
   onDownload: () => void;
   onShare: () => void;
   onCopy: () => void;
+  onPublishLink: () => void;
+  publishLinkLabel: string;
   onShareToSocial: CanvasPreviewProps['onShareToSocial'];
   isExporting: boolean;
   isSharing: boolean;
@@ -98,6 +100,8 @@ export function useEditorViewModels({
   onDownload,
   onShare,
   onCopy,
+  onPublishLink,
+  publishLinkLabel,
   onShareToSocial,
   isExporting,
   isSharing,
@@ -159,6 +163,8 @@ export function useEditorViewModels({
     onDownload,
     onShare,
     onCopy,
+    onPublishLink,
+    publishLinkLabel,
     onShareToSocial,
     isExporting,
     isSharing,
@@ -186,6 +192,8 @@ export function useEditorViewModels({
     onDownload,
     onShare,
     onCopy,
+    onPublishLink,
+    publishLinkLabel,
     onShareToSocial,
     isExporting,
     isSharing,
@@ -243,6 +251,8 @@ export function useEditorViewModels({
     onDownload,
     onShare,
     onCopy,
+    onPublishLink,
+    publishLinkLabel,
     onShareToSocial,
     isExporting,
     isSharing,
@@ -304,6 +314,8 @@ export function useEditorViewModels({
     onDownload,
     onShare,
     onCopy,
+    onPublishLink,
+    publishLinkLabel,
     onShareToSocial,
     isExporting,
     isSharing,

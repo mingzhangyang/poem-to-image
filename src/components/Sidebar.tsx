@@ -46,6 +46,8 @@ export function Sidebar({
   onDownload,
   onShare,
   onCopy,
+  onPublishLink,
+  publishLinkLabel,
   onShareToSocial,
   isExporting,
   isSharing,
@@ -252,6 +254,8 @@ export function Sidebar({
             onDownload={onDownload}
             onShare={onShare}
             onCopy={onCopy}
+            onPublishLink={onPublishLink}
+            publishLinkLabel={publishLinkLabel}
             isExporting={isExporting}
             isSharing={isSharing}
             canShare={canShare}
