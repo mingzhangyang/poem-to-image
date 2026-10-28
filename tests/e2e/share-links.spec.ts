@@ -52,9 +52,10 @@ test('anonymous editor can publish a snapshot using desktop or mobile export UI'
   await expect(dialog).toBeVisible();
   await expect(dialog.getByText('Anyone with the link can view, download or reshare it.', { exact: false })).toBeVisible();
   await dialog.getByRole('button', { name: 'Publish artwork', exact: true }).click();
-  await expect(dialog.getByRole('heading', { name: 'Your artwork is published' })).toBeVisible({ timeout: 45_000 });
+  const publishedDialog = page.getByRole('dialog', { name: 'Your artwork is published' });
+  await expect(publishedDialog).toBeVisible({ timeout: 45_000 });
   expect(requestWasReceived).toBe(true);
-  await expect(dialog.getByRole('textbox', { name: 'Copy link' })).toHaveValue(root + '/s/' + shareId);
+  await expect(publishedDialog.getByRole('textbox', { name: 'Copy link' })).toHaveValue(root + '/s/' + shareId);
   const persistedToken = await page.evaluate((id) => localStorage.getItem('inkpoem.share.owner.' + id), shareId);
   expect(persistedToken).toBe(deletionToken);
 });
