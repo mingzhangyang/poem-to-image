@@ -254,14 +254,33 @@ export async function publishShare(request: Request, env: WorkerEnv): Promise<Re
   const prefix = 'shares/' + id + '/' + attempt + '/';
   const imageKey = prefix + 'artwork.' + (isPng(artwork) ? 'png' : 'jpg');
   const cardKey = prefix + 'card.jpg';
-  let artworkUploaded = false;
-  let cardUploaded = false;
   let finalizationAttempted = false;
+
+  // Persist attempt keys before the first R2 write so a failed DELETE, a
+  // failed/ambiguous PUT or a crashed Worker cannot strand invisible objects
+  // with no durable cleanup record.
+  await env.DB.prepare(
+    'INSERT INTO shared_artwork_upload_attempts (attempt_id, share_id, image_key, card_key) VALUES (?, ?, ?, ?)',
+  ).bind(attempt, id, imageKey, cardKey).run();
+
+  const forgetAttempt = async (): Promise<void> => {
+    try {
+      await env.DB.prepare('DELETE FROM shared_artwork_upload_attempts WHERE attempt_id = ?')
+        .bind(attempt).run();
+    } catch (error) {
+      // A stale canonical record is safe: maintenance checks the current D1
+      // image keys before attempting any R2 deletion.
+      logError('share.attempt_record_cleanup_failed', error, { id, attempt });
+    }
+  };
 
   const cleanOwnUpload = async (): Promise<void> => {
     try {
-      if (cardUploaded) await env.ARTWORKS.delete(cardKey);
-      if (artworkUploaded) await env.ARTWORKS.delete(imageKey);
+      // A PUT that returned an error may nevertheless have written the object.
+      // Delete both deterministic attempt keys, regardless of which PUT
+      // completed. A failed delete leaves the durable attempt record intact.
+      await Promise.all([env.ARTWORKS.delete(imageKey), env.ARTWORKS.delete(cardKey)]);
+      await forgetAttempt();
     } catch (error) {
       logError('share.orphan_cleanup_failed', error, { id, attempt });
     }
@@ -269,9 +288,7 @@ export async function publishShare(request: Request, env: WorkerEnv): Promise<Re
 
   try {
     await env.ARTWORKS.put(imageKey, artworkBytes, { httpMetadata: { contentType: artwork.type } });
-    artworkUploaded = true;
     await env.ARTWORKS.put(cardKey, cardBytes, { httpMetadata: { contentType: 'image/jpeg' } });
-    cardUploaded = true;
     finalizationAttempted = true;
     const finalized = await env.DB.prepare(
       `UPDATE shared_artworks
@@ -280,6 +297,7 @@ export async function publishShare(request: Request, env: WorkerEnv): Promise<Re
          AND delete_token_hash = ? AND content_fingerprint = ?`,
     ).bind(imageKey, artwork.type, cardKey, id, deleteHash, fingerprint).run();
     if (finalized.meta.changes === 1) {
+      await forgetAttempt();
       return successfulPublication(request, id, deleteToken, 201);
     }
     const winner = await findShareById(env.DB, id);
@@ -304,6 +322,7 @@ export async function publishShare(request: Request, env: WorkerEnv): Promise<Re
 
     if (winner?.image_key === imageKey && winner.published_at
       && isIdempotentReplay(winner, deleteHash, fingerprint)) {
+      await forgetAttempt();
       return successfulPublication(request, id, deleteToken, 200);
     }
     // If a D1 UPDATE may have committed but cannot be checked, do not delete
@@ -421,6 +440,55 @@ export async function pruneRevokedShareAssets(env: WorkerEnv, maxBatch = 25): Pr
       removed++;
     } catch (error) {
       logError('share.cleanup_retry_failed', error, { id: row.id });
+    }
+  }
+  return removed;
+}
+
+interface UploadAttemptRecord {
+  attempt_id: string;
+  share_id: string;
+  image_key: string;
+  card_key: string;
+}
+
+/**
+ * Reconcile R2 upload-attempt records that survived a failed cleanup or
+ * interrupted request. One-hour grace period exceeds a normal Worker request
+ * lifetime, so an active upload is never removed while finalizing.
+ *
+ * D1 remains authoritative: a record pointing to a canonical image is simply
+ * discarded, while an unreferenced record's objects are deleted and the record
+ * retained for retry if either R2 deletion fails.
+ */
+export async function pruneOrphanedShareAttempts(env: WorkerEnv, maxBatch = 25): Promise<number> {
+  if (!available(env)) return 0;
+  const pending = await env.DB.prepare(
+    `SELECT attempt_id, share_id, image_key, card_key
+     FROM shared_artwork_upload_attempts
+     WHERE created_at < datetime('now', '-60 minutes')
+     ORDER BY created_at LIMIT ?`,
+  ).bind(maxBatch).all<UploadAttemptRecord>();
+  let removed = 0;
+  for (const attempt of pending.results) {
+    try {
+      const current = await env.DB.prepare(
+        'SELECT image_key, card_key FROM shared_artworks WHERE id = ?',
+      ).bind(attempt.share_id).first<{ image_key: string | null; card_key: string | null }>();
+      if (current?.image_key !== attempt.image_key && current?.card_key !== attempt.card_key) {
+        await Promise.all([
+          env.ARTWORKS.delete(attempt.image_key),
+          env.ARTWORKS.delete(attempt.card_key),
+        ]);
+      }
+      await env.DB.prepare(
+        'DELETE FROM shared_artwork_upload_attempts WHERE attempt_id = ?',
+      ).bind(attempt.attempt_id).run();
+      removed++;
+    } catch (error) {
+      logError('share.orphan_cleanup_retry_failed', error, {
+        id: attempt.share_id, attempt: attempt.attempt_id,
+      });
     }
   }
   return removed;

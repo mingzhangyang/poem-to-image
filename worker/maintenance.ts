@@ -1,15 +1,16 @@
 import { getOperationalHealth, pruneExpiredRateLimits } from './db';
 import { logError, logInfo } from './observability';
 import type { WorkerEnv } from './env';
-import { pruneRevokedShareAssets } from './shares';
+import { pruneOrphanedShareAttempts, pruneRevokedShareAssets } from './shares';
 
 export async function runOperationalChecks(env: WorkerEnv): Promise<void> {
-  const [health, prunedRateLimits, cleanedShareAssets] = await Promise.all([
+  const [health, prunedRateLimits, cleanedShareAssets, cleanedOrphanedAttempts] = await Promise.all([
     getOperationalHealth(env.DB),
     pruneExpiredRateLimits(env.DB),
     pruneRevokedShareAssets(env),
+    pruneOrphanedShareAttempts(env),
   ]);
-  const fields = { ...health, prunedRateLimits, cleanedShareAssets };
+  const fields = { ...health, prunedRateLimits, cleanedShareAssets, cleanedOrphanedAttempts };
   const hasAlert = health.paidPendingOrders > 0
     || health.reviewItems > 0
     || health.billingInvariantFailures > 0

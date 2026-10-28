@@ -118,6 +118,19 @@ CREATE INDEX IF NOT EXISTS idx_orders_reconciliation ON orders(status, created_a
 CREATE INDEX IF NOT EXISTS idx_orders_paid_pending ON orders(status, payment_confirmed_at);
 CREATE INDEX IF NOT EXISTS idx_billing_events_reconciliation ON billing_events(status, created_at);
 CREATE INDEX IF NOT EXISTS idx_rate_limits_expires_at ON rate_limits(expires_at);
+
+-- Each R2 upload attempt is durable until it becomes canonical or its
+-- unreferenced objects are successfully deleted. Failed deletes are retried.
+CREATE TABLE IF NOT EXISTS shared_artwork_upload_attempts (
+  attempt_id TEXT PRIMARY KEY,
+  share_id TEXT NOT NULL,
+  image_key TEXT NOT NULL UNIQUE,
+  card_key TEXT NOT NULL UNIQUE,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_shared_artwork_attempts_created
+  ON shared_artwork_upload_attempts(created_at);
+
 CREATE INDEX IF NOT EXISTS idx_shared_artworks_created ON shared_artworks(created_at);
 CREATE INDEX IF NOT EXISTS idx_shared_artworks_cleanup_pending ON shared_artworks(revoked_at)
   WHERE revoked_at IS NOT NULL AND assets_deleted_at IS NULL;

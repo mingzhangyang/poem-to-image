@@ -29,7 +29,7 @@ test('standalone schema agrees with actual numbered D1 migrations for billing an
   const schema = schemaDatabase();
   const migration = migrationsDatabase();
   try {
-    for (const table of ['orders', 'shared_artworks']) {
+    for (const table of ['orders', 'shared_artworks', 'shared_artwork_upload_attempts']) {
       assert.deepEqual(columns(schema, table), columns(migration, table),
         table + ' must have identical columns when initialized from schema.sql or migrations');
     }
