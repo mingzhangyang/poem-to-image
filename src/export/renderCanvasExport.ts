@@ -16,11 +16,14 @@ import type {
   WritingMode,
 } from '../types';
 import { drawBackground, loadImage } from './background';
+import type { PaperId } from '../paperStyles';
+import type { BackgroundType } from '../types';
 import { drawBorder } from './border';
 import { drawStamp, drawStampBody } from './stampDraw';
 
 export interface CanvasExportBackground {
-  backgroundType: 'solid' | 'gradient' | 'transparent' | 'image' | 'ai';
+  backgroundType: BackgroundType;
+  paperId?: PaperId;
   backgroundColor: string;
   gradientColor1: string;
   gradientColor2: string;
