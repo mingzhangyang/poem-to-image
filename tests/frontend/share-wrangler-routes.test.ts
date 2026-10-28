@@ -11,7 +11,8 @@ for (const path of ['wrangler.jsonc', 'wrangler.staging.example.jsonc']) {
       };
     };
     assert.equal(config.assets?.not_found_handling, 'single-page-application');
-    assert.ok(Array.isArray(config.assets?.run_worker_first), 'Expected explicit Worker-first route patterns');
-    assert.ok(config.assets.run_worker_first.includes('/s/*'), 'Share pages and images must bypass SPA fallback');
+    const patterns = config.assets?.run_worker_first;
+    assert.ok(Array.isArray(patterns), 'Expected explicit Worker-first route patterns');
+    assert.ok(patterns.includes('/s/*'), 'Share pages and images must bypass SPA fallback');
   });
 }
