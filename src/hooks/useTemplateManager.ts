@@ -22,6 +22,7 @@ const ACTIVE_TEMPLATE_STORAGE_KEY = 'poem-to-image.active-template';
 
 interface BackgroundState {
   backgroundType: string;
+  paperId: TemplateBackgroundConfig['paperId'];
   backgroundColor: string;
   gradientColor1: string;
   gradientColor2: string;
@@ -229,6 +230,7 @@ export function useTemplateManager({
   const handleSaveCustomTemplate = useCallback(
     (name: string) => {
       const bgConfig: TemplateBackgroundConfig = {
+        paperId: background.paperId,
         backgroundType:
           background.backgroundType === 'image' || background.backgroundType === 'ai'
             ? 'solid'
