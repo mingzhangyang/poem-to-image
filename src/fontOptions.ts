@@ -7,6 +7,8 @@ export interface FontOption {
 }
 
 const FONT_OPTIONS: FontOption[] = [
+  { value: '"LXGW WenKai Screen", "Noto Serif SC", serif', label: '霞鹜文楷 (清晰手写 · 本地字体)' },
+  { value: '"ZCOOL KuaiLe", cursive', label: '站酷快乐体 (趣味手写 · 本地字体)' },
   { value: '"Noto Serif SC", serif', label: 'Noto Serif SC (中文衬线)' },
   { value: '"Noto Sans SC", sans-serif', label: 'Noto Sans SC (中文黑体)' },
   { value: '"ZCOOL XiaoWei", serif', label: 'ZCOOL XiaoWei (小魏碑)' },
@@ -37,7 +39,7 @@ const FONT_OPTIONS: FontOption[] = [
 
 const LANGUAGE_DEFAULT_FONTS: Record<Language, string> = {
   en: '"Playfair Display", serif',
-  'zh-CN': '"Noto Serif SC", serif',
+  'zh-CN': '"LXGW WenKai Screen", "Noto Serif SC", serif',
   'zh-TW': '"Noto Serif TC", serif',
   ja: '"Shippori Mincho", serif',
   ko: '"Gowun Batang", serif',
@@ -54,6 +56,8 @@ const LANGUAGE_RECOMMENDED_FONTS: Record<Language, string[]> = {
     '"Space Mono", monospace',
   ],
   'zh-CN': [
+    '"LXGW WenKai Screen", "Noto Serif SC", serif',
+    '"ZCOOL KuaiLe", cursive',
     '"Noto Serif SC", serif',
     '"Noto Sans SC", sans-serif',
     '"ZCOOL XiaoWei", serif',
@@ -103,7 +107,7 @@ const LANGUAGE_RECOMMENDED_FONTS: Record<Language, string[]> = {
 const TEMPLATE_FONTS: Record<EditorTemplateId, Record<Language, string>> = {
   'ink-wash': {
     en: '"Cormorant Garamond", serif',
-    'zh-CN': '"ZCOOL XiaoWei", serif',
+    'zh-CN': '"LXGW WenKai Screen", "Noto Serif SC", serif',
     'zh-TW': '"Noto Serif TC", serif',
     ja: '"Shippori Mincho", serif',
     ko: '"Gowun Batang", serif',
@@ -223,7 +227,7 @@ const TEMPLATE_FONTS: Record<EditorTemplateId, Record<Language, string>> = {
   },
   'bamboo-scroll': {
     en: '"Cormorant Garamond", serif',
-    'zh-CN': '"ZCOOL XiaoWei", serif',
+    'zh-CN': '"LXGW WenKai Screen", "Noto Serif SC", serif',
     'zh-TW': '"Noto Serif TC", serif',
     ja: '"Shippori Mincho", serif',
     ko: '"Gowun Batang", serif',
