@@ -2,6 +2,7 @@ import { consumeRateLimit } from './db';
 import { applySecurityHeaders, bodyErrorResponse, jsonResponse, methodNotAllowed, readBoundedBytes } from './http';
 import type { WorkerEnv } from './env';
 import { logError } from './observability';
+import { validJpegDimensions } from './jpeg';
 
 export const MAX_SHARE_REQUEST_BYTES = 9 * 1024 * 1024;
 export const MAX_ARTWORK_BYTES = 6 * 1024 * 1024;
@@ -107,10 +108,10 @@ function isJpeg(file: File): boolean {
 async function validImage(file: File, kind: 'artwork' | 'card'): Promise<boolean> {
   const max = kind === 'card' ? MAX_CARD_BYTES : MAX_ARTWORK_BYTES;
   if (file.size < 16 || file.size > max) return false;
-  const header = new Uint8Array(await file.slice(0, 24).arrayBuffer());
   if (isJpeg(file)) {
-    return header[0] === 0xff && header[1] === 0xd8 && header[2] === 0xff;
+    return validJpegDimensions(new Uint8Array(await file.arrayBuffer()));
   }
+  const header = new Uint8Array(await file.slice(0, 24).arrayBuffer());
   if (kind === 'card' || !isPng(file) || header.length < 24) return false;
   const sig = [137, 80, 78, 71, 13, 10, 26, 10];
   if (!sig.every((b, i) => header[i] === b)) return false;
