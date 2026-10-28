@@ -155,7 +155,13 @@ function isIdempotentReplay(row: ExistingShare, hash: string, fingerprint: strin
   return !row.revoked_at && row.delete_token_hash === hash && row.content_fingerprint === fingerprint;
 }
 
-function shareConflict(): Response {
+function shareConflict(row: ExistingShare, hash: string): Response {
+  // A lost response followed by a changed canvas must NOT be treated as an
+  // invalid or unrelated ID: the original snapshot is still public and its
+  // deletion key must remain in the browser.
+  if (!row.revoked_at && row.delete_token_hash === hash) {
+    return jsonResponse({ error: 'The existing publication has different content.', code: 'SHARE_CONTENT_MISMATCH' }, 409);
+  }
   return jsonResponse({ error: 'The publication identifier is already used.', code: 'SHARE_ID_CONFLICT' }, 409);
 }
 
@@ -220,7 +226,7 @@ export async function publishShare(request: Request, env: WorkerEnv): Promise<Re
   if (existing) {
     return isIdempotentReplay(existing, deleteHash, fingerprint)
       ? successfulPublication(request, id, deleteToken, 200)
-      : shareConflict();
+      : shareConflict(existing, deleteHash);
   }
   const limited = await publishLimit(request, env.DB);
   if (limited) return limited;
@@ -276,7 +282,7 @@ export async function publishShare(request: Request, env: WorkerEnv): Promise<Re
     if (winner) {
       return isIdempotentReplay(winner, deleteHash, fingerprint)
         ? successfulPublication(request, id, deleteToken, 200)
-        : shareConflict();
+        : shareConflict(winner, deleteHash);
     }
     return jsonResponse({ error: 'Could not confirm artwork publication.', code: 'PUBLISH_UNCERTAIN' }, 502);
   }

@@ -444,6 +444,7 @@ export default function App() {
       return unknown();
     }
     if (!response.ok) {
+      if (body.code === 'SHARE_CONTENT_MISMATCH') return unknown();
       if (![400, 403, 409, 413, 415, 429].includes(response.status)) return unknown();
       // These errors happen before a successful insert, or indicate an ID
       // collision. The failed attempt is safe to discard.

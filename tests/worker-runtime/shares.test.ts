@@ -138,6 +138,7 @@ describe('anonymous artwork sharing', () => {
     expect((await publish('Original', 'Poet', credentials)).status).toBe(201);
     const otherBody = await publish('Changed', 'Poet', credentials);
     expect(otherBody.status).toBe(409);
+    expect(await otherBody.json()).toMatchObject({ code: 'SHARE_CONTENT_MISMATCH' });
     const otherToken = await publish('Original', 'Poet', { id: credentials.id, deleteToken: makeCredentials().deleteToken });
     expect(otherToken.status).toBe(409);
     const publicMetadata = await SELF.fetch(ORIGIN + '/api/shares/' + credentials.id);
