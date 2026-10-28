@@ -82,3 +82,21 @@ test('editor purchase flow surfaces checkout errors via toast', () => {
   assert.match(content, /showToast\(data\.error \?\? t\('checkoutFailed'\), 'error'\)/);
   assert.match(content, /showToast\(t\('networkError'\), 'error'\)/);
 });
+
+test('desktop and mobile paper selectors both receive the editor language', () => {
+  const sidebar = readRepoFile('src/components/Sidebar.tsx');
+  const instances = [...sidebar.matchAll(/<BackgroundPanel\b([\s\S]*?)\/>/g)];
+  assert.equal(instances.length, 2, 'both desktop and mobile controls must be checked');
+  for (const [, attributes] of instances) {
+    assert.match(attributes, /\blanguage=\{language\}/, 'paper swatch labels need the current language');
+  }
+});
+
+test('the selected LXGW WenKai family is defined by its local CSS', () => {
+  const loader = readRepoFile('src/fontLoader.ts');
+  const options = readRepoFile('src/fontOptions.ts');
+  const fontCss = readRepoFile('node_modules/lxgw-wenkai-screen-webfont/lxgwwenkaiscreen.css');
+  assert.match(options, /"LXGW WenKai Screen"/);
+  assert.match(loader, /'LXGW WenKai Screen': \(\) => import\('lxgw-wenkai-screen-webfont\/lxgwwenkaiscreen\.css'\)/);
+  assert.match(fontCss, /font-family:\s*["']?LXGW WenKai Screen["']?\s*;/i);
+});
