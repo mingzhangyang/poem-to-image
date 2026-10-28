@@ -253,6 +253,41 @@ test('uses a securely retained removal key to revoke a share from another browse
   await expect(page.getByRole('heading', { name: 'Artwork unavailable' })).toBeVisible();
 });
 
+test('revocation succeeds even if browser policy blocks localStorage access', async ({ page }) => {
+  await page.route('**/api/shares/' + shareId, async (route) => {
+    if (route.request().method() === 'DELETE') {
+      expect(route.request().headers()['x-share-delete-token']).toBe(deletionToken);
+      await route.fulfill({ status: 200, contentType: 'application/json', body: '{"revoked":true}' });
+      return;
+    }
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: shareId, title: 'Storage restricted artwork', author: 'Poet',
+        createdAt: '2026-10-28T18:00:00Z',
+        url: root + '/s/' + shareId, imageUrl: '/preview.png', cardUrl: '/preview.png',
+      }),
+    });
+  });
+  await page.goto('/s/' + shareId, { waitUntil: 'domcontentloaded' });
+  await expect(page.getByRole('heading', { name: 'Storage restricted artwork' })).toBeVisible();
+  await page.getByText('Have a private removal key?').click();
+  await page.getByPlaceholder('Paste the 64-character private removal key').fill(deletionToken);
+
+  // Some browsers throw SecurityError when the property getter is accessed,
+  // even though the server may accept the authenticated DELETE successfully.
+  await page.evaluate(() => {
+    Object.defineProperty(window, 'localStorage', {
+      configurable: true,
+      get() { throw new DOMException('Storage denied', 'SecurityError'); },
+    });
+  });
+  page.once('dialog', async (dialog) => { await dialog.accept(); });
+  await page.getByRole('button', { name: 'Remove this share' }).click();
+  await expect(page.getByRole('heading', { name: 'Artwork unavailable' })).toBeVisible();
+  await expect(page.getByText('Could not remove this share. Try again.')).toHaveCount(0);
+});
+
 test('public read-only viewer needs no account and creator can revoke from the original browser', async ({ page }) => {
   await page.addInitScript(({ id, token }) => {
     localStorage.setItem('inkpoem.share.owner.' + id, token);
