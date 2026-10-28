@@ -90,7 +90,7 @@ export function PrivacyPage() {
         </Section>
 
         <Section title="Cookies">
-          <p>Authentication sessions use cookies and similar technologies required by Clerk. We also use localStorage for editor drafts, language preferences and the anonymous share-deletion capability; this allows the publishing browser to revoke its links. You can also securely back up the private deletion capability to revoke from another browser. We do not use these items for advertising or third-party tracking.</p>
+          <p>Authentication sessions use cookies and similar technologies required by Clerk. We also use localStorage for editor drafts, language preferences and the anonymous share-deletion capability, which is generated and saved before public artwork is uploaded; this allows the publishing browser to retry an interrupted publication and revoke its links. You can also securely back up the private deletion capability to revoke from another browser. We do not use these items for advertising or third-party tracking.</p>
         </Section>
 
         <Section title="Your Rights">
