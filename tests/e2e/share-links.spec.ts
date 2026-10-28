@@ -4,6 +4,14 @@ const shareId = 'ABCDEF123456';
 const deletionToken = 'a'.repeat(64);
 const root = 'http://127.0.0.1:3000';
 
+function multipartValue(payload: Buffer | null, field: string): string {
+  const text = payload?.toString('latin1') ?? '';
+  const pattern = new RegExp('name="' + field + '"\r\n\r\n([^\r\n]+)');
+  const match = pattern.exec(text);
+  expect(match, 'Missing multipart field: ' + field).not.toBeNull();
+  return match![1];
+}
+
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('poem-to-image.onboarding-dismissed', 'true');
@@ -14,9 +22,11 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('anonymous editor can publish a snapshot using desktop or mobile export UI', async ({ page }, testInfo) => {
+test('anonymous editor pre-saves ID and token before publishing on mobile and desktop', async ({ page }, testInfo) => {
   test.setTimeout(90_000);
   let requestWasReceived = false;
+  let publishedId = '';
+  let ownerToken = '';
   await page.route('**/api/shares', async (route) => {
     expect(route.request().method()).toBe('POST');
     const bytes = route.request().postDataBuffer();
@@ -24,10 +34,14 @@ test('anonymous editor can publish a snapshot using desktop or mobile export UI'
     expect(bytes!.includes(Buffer.from('name="artwork"'))).toBe(true);
     expect(bytes!.includes(Buffer.from('name="card"'))).toBe(true);
     expect(bytes!.includes(Buffer.from([255, 216, 255]))).toBe(true);
+    publishedId = multipartValue(bytes, 'id');
+    ownerToken = multipartValue(bytes, 'deleteToken');
+    expect(publishedId).toMatch(/^[A-Za-z0-9_-]{12}$/);
+    expect(ownerToken).toMatch(/^[a-f0-9]{64}$/);
     requestWasReceived = true;
     await route.fulfill({
       status: 201, contentType: 'application/json',
-      body: JSON.stringify({ id: shareId, url: root + '/s/' + shareId, deleteToken: deletionToken }),
+      body: JSON.stringify({ id: publishedId, url: root + '/s/' + publishedId, deleteToken: ownerToken }),
     });
   });
 
@@ -50,17 +64,16 @@ test('anonymous editor can publish a snapshot using desktop or mobile export UI'
   await expect(exportDialog).toBeHidden();
   const dialog = page.getByRole('dialog', { name: 'Publish this artwork' });
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByText('Anyone with the link can view, download or reshare it.', { exact: false })).toBeVisible();
   await dialog.getByRole('button', { name: 'Publish artwork', exact: true }).click();
   const publishedDialog = page.getByRole('dialog', { name: 'Your artwork is published' });
   await expect(publishedDialog).toBeVisible({ timeout: 45_000 });
   expect(requestWasReceived).toBe(true);
-  await expect(publishedDialog.getByRole('textbox', { name: 'Copy link' })).toHaveValue(root + '/s/' + shareId);
-  const persistedToken = await page.evaluate((id) => localStorage.getItem('inkpoem.share.owner.' + id), shareId);
-  expect(persistedToken).toBe(deletionToken);
+  await expect(publishedDialog.getByRole('textbox', { name: 'Copy link' })).toHaveValue(root + '/s/' + publishedId);
+  expect(await page.evaluate((id) => localStorage.getItem('inkpoem.share.owner.' + id), publishedId)).toBe(ownerToken);
+  expect(await page.evaluate(() => localStorage.getItem('inkpoem.share.pending.v1'))).toBeNull();
 });
 
-test('rolls back a published share if saving its removal token fails', async ({ page }) => {
+test('never uploads when the browser cannot save its deletion capability', async ({ page }) => {
   test.setTimeout(90_000);
   await page.addInitScript(() => {
     const setItem = Storage.prototype.setItem;
@@ -69,72 +82,60 @@ test('rolls back a published share if saving its removal token fails', async ({ 
       return setItem.call(this, key, value);
     };
   });
-  let deleted = false;
+  let publishRequests = 0;
   await page.route('**/api/shares', async (route) => {
-    await route.fulfill({
-      status: 201, contentType: 'application/json',
-      body: JSON.stringify({ id: shareId, url: root + '/s/' + shareId, deleteToken: deletionToken }),
-    });
-  });
-  await page.route('**/api/shares/' + shareId, async (route) => {
-    expect(route.request().method()).toBe('DELETE');
-    expect(route.request().headers()['x-share-delete-token']).toBe(deletionToken);
-    deleted = true;
-    await route.fulfill({ status: 200, contentType: 'application/json', body: '{"revoked":true}' });
+    publishRequests++;
+    await route.abort('failed');
   });
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.getByRole('button', { name: 'Export Image' }).click();
-  await page.getByRole('dialog', { name: 'Export Image' }).getByRole('button', { name: 'Publish shareable link' }).click();
+  await page.getByRole('dialog', { name: 'Export Image' })
+    .getByRole('button', { name: 'Publish shareable link' }).click();
   const dialog = page.getByRole('dialog', { name: 'Publish this artwork' });
   await dialog.getByRole('button', { name: 'Publish artwork', exact: true }).click();
-  await expect(dialog.getByRole('alert')).toContainText('newly published artwork was automatically removed', { timeout: 40_000 });
-  expect(deleted).toBe(true);
-  await expect(page.getByRole('dialog', { name: 'Published, but removal key was not saved' })).toHaveCount(0);
+  await expect(dialog.getByRole('alert')).toContainText('Browser storage is unavailable', { timeout: 40_000 });
+  expect(publishRequests).toBe(0);
 });
 
-test('retains private recovery key if both local storage and automatic rollback fail', async ({ page }) => {
+test('recovers a dropped response by retrying the same publication credentials', async ({ page }) => {
   test.setTimeout(90_000);
-  await page.addInitScript(() => {
-    const setItem = Storage.prototype.setItem;
-    Storage.prototype.setItem = function (key: string, value: string) {
-      if (key.startsWith('inkpoem.share.owner.')) throw new DOMException('Storage quota reached', 'QuotaExceededError');
-      return setItem.call(this, key, value);
-    };
-  });
+  const attempts: Array<{ id: string; token: string }> = [];
   await page.route('**/api/shares', async (route) => {
-    await route.fulfill({
-      status: 201, contentType: 'application/json',
-      body: JSON.stringify({ id: shareId, url: root + '/s/' + shareId, deleteToken: deletionToken }),
-    });
-  });
-  let deleteAttempts = 0;
-  await page.route('**/api/shares/' + shareId, async (route) => {
-    deleteAttempts++;
-    await route.fulfill({ status: 503, contentType: 'application/json', body: '{"error":"Unavailable"}' });
+    const bytes = route.request().postDataBuffer();
+    const id = multipartValue(bytes, 'id');
+    const token = multipartValue(bytes, 'deleteToken');
+    attempts.push({ id, token });
+    if (attempts.length === 1) {
+      // Simulate an already committed upload whose response was lost.
+      await route.abort('failed');
+    } else {
+      await route.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify({ id, url: root + '/s/' + id, deleteToken: token }),
+      });
+    }
   });
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.getByRole('button', { name: 'Export Image' }).click();
-  await page.getByRole('dialog', { name: 'Export Image' }).getByRole('button', { name: 'Publish shareable link' }).click();
-  await page.getByRole('dialog', { name: 'Publish this artwork' })
-    .getByRole('button', { name: 'Publish artwork', exact: true }).click();
-  const recovery = page.getByRole('dialog', { name: 'Published, but removal key was not saved' });
-  await expect(recovery).toBeVisible({ timeout: 40_000 });
-  await expect(recovery.getByRole('alert')).toContainText('automatic removal failed');
-  await expect(recovery.getByRole('textbox', { name: 'Private removal key (never include in a shared URL)' })).toHaveValue(deletionToken);
-  await expect(recovery.getByRole('button', { name: 'Close' }).last()).toBeDisabled();
-
-  await recovery.getByRole('button', { name: 'Retry saving this key' }).click();
-  await expect(recovery.getByText('This browser still cannot save the removal key.')).toBeVisible();
-  await recovery.getByRole('button', { name: 'Remove public share now' }).click();
-  await expect(recovery.getByText('Could not remove the public artwork. Keep the private key and try again.')).toBeVisible();
-  expect(deleteAttempts).toBe(2);
-
-  await recovery.getByRole('checkbox', { name: 'I have securely saved the private removal key' }).check();
-  await expect(recovery.getByRole('button', { name: 'Close' }).last()).toBeEnabled();
-  await recovery.getByRole('button', { name: 'Close' }).last().click();
-  await expect(recovery).toBeHidden();
+  await page.getByRole('dialog', { name: 'Export Image' })
+    .getByRole('button', { name: 'Publish shareable link' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Publish this artwork' });
+  await dialog.getByRole('button', { name: 'Publish artwork', exact: true }).click();
+  const uncertain = page.getByRole('dialog', { name: 'Publication status uncertain' });
+  await expect(uncertain).toBeVisible({ timeout: 40_000 });
+  expect(attempts).toHaveLength(1);
+  const first = attempts[0];
+  expect(await page.evaluate((id) => localStorage.getItem('inkpoem.share.owner.' + id), first.id)).toBe(first.token);
+  expect(await page.evaluate(() => localStorage.getItem('inkpoem.share.pending.v1'))).toContain(first.id);
+  await expect(uncertain.getByRole('button', { name: 'Close' }).last()).toBeDisabled();
+  await uncertain.getByRole('button', { name: 'Retry the same publication' }).click();
+  const published = page.getByRole('dialog', { name: 'Your artwork is published' });
+  await expect(published).toBeVisible({ timeout: 40_000 });
+  expect(attempts).toEqual([first, first]);
+  expect(await page.evaluate(() => localStorage.getItem('inkpoem.share.pending.v1'))).toBeNull();
+  expect(await page.evaluate((id) => localStorage.getItem('inkpoem.share.owner.' + id), first.id)).toBe(first.token);
 });
 
 test('uses a securely retained removal key to revoke a share from another browser', async ({ page }) => {
