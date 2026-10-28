@@ -168,6 +168,9 @@ test('uses a securely retained removal key to revoke a share from another browse
 test('public read-only viewer needs no account and creator can revoke from the original browser', async ({ page }) => {
   await page.addInitScript(({ id, token }) => {
     localStorage.setItem('inkpoem.share.owner.' + id, token);
+    localStorage.setItem('inkpoem.share.pending.v1', JSON.stringify({
+      id, deleteToken: token, fingerprint: 'c'.repeat(64),
+    }));
   }, { id: shareId, token: deletionToken });
 
   await page.route('**/api/shares/' + shareId, async (route) => {
@@ -196,6 +199,7 @@ test('public read-only viewer needs no account and creator can revoke from the o
   await page.getByRole('button', { name: 'Remove this share' }).click();
   await expect(page.getByRole('heading', { name: 'Artwork unavailable' })).toBeVisible();
   expect(await page.evaluate((id) => localStorage.getItem('inkpoem.share.owner.' + id), shareId)).toBeNull();
+  expect(await page.evaluate(() => localStorage.getItem('inkpoem.share.pending.v1'))).toBeNull();
 });
 
 
