@@ -48,6 +48,11 @@ class RecordingContext {
   fillText(text: string, x: number, y: number) { this.record('fillText', text, x, y); }
   drawImage(...a: unknown[]) { this.record('drawImage', ...a); }
 
+  createPattern(image: unknown, repetition: string) {
+    this.record('createPattern', repetition);
+    return { image, repetition };
+  }
+
   createLinearGradient(...a: number[]) {
     this.record('createLinearGradient', ...a);
     return { addColorStop: () => {} };
@@ -68,6 +73,8 @@ class RecordingContext {
 }
 
 const createdContexts: RecordingContext[] = [];
+const requestedImages: string[] = [];
+const loadedFontTexts: string[] = [];
 
 class FakeCanvas {
   width = 0;
@@ -88,7 +95,8 @@ class FakeImage {
   naturalHeight = 400;
   onload: (() => void) | null = null;
   onerror: (() => void) | null = null;
-  set src(_value: string) {
+  set src(value: string) {
+    requestedImages.push(value);
     queueMicrotask(() => this.onload?.());
   }
 }
@@ -105,7 +113,13 @@ before(() => {
       if (tag === 'canvas') return new FakeCanvas();
       throw new Error(`unexpected createElement(${tag})`);
     },
-    fonts: { ready: Promise.resolve() },
+    fonts: {
+      ready: Promise.resolve(),
+      load(_face: string, text: string) {
+        loadedFontTexts.push(text);
+        return Promise.resolve([]);
+      },
+    },
   };
   g.Path2D = class { constructor(public path?: string) {} };
   g.Image = FakeImage;
@@ -120,6 +134,8 @@ after(() => {
 
 afterEach(() => {
   createdContexts.length = 0;
+  requestedImages.length = 0;
+  loadedFontTexts.length = 0;
 });
 
 // Imported after the DOM stubs are declared; the module itself is side-effect free,
@@ -266,6 +282,52 @@ test('border strokeRect appears only when showBorder is true', async () => {
     },
   }));
   assert.equal(mainTrace().some((o) => o.op === 'strokeRect'), true);
+});
+
+test('empty stamp preloads and draws the same fallback glyph', async () => {
+  const base = makeScene();
+  await renderCanvasExport(makeScene({
+    decorations: {
+      ...base.decorations,
+      showStamp: true,
+      stamp: {
+        text: '',
+        style: 'square',
+        colorScheme: 'outline',
+        size: 80,
+        positionX: 50,
+        positionY: 50,
+        rotation: 0,
+        opacity: 1,
+        fontFamily: 'serif',
+        weathering: 0,
+      },
+    },
+  }));
+
+  assert.ok(loadedFontTexts.includes('印'), 'export preloads the fallback seal glyph');
+  assert.ok(!loadedFontTexts.includes('诗'), 'export must not preload an unrelated fallback glyph');
+  assert.ok(createdContexts.length >= 2, 'stamp should be rendered on an offscreen canvas');
+  const renderedStampGlyphs = createdContexts.slice(1).flatMap((context) =>
+    context.trace.filter((op) => op.op === 'fillText').map((op) => op.args[0]),
+  );
+  assert.ok(renderedStampGlyphs.includes('印'), 'the stamp actually draws the preloaded glyph');
+});
+
+test('paper texture uses the preview tile and repeats it behind the poem', async () => {
+  const { paperTextureUrl } = await import('../../src/paperStyles');
+  const base = makeScene();
+  await renderCanvasExport(makeScene({
+    background: { ...base.background, backgroundType: 'paper', paperId: 'rice' },
+  }));
+  assert.ok(requestedImages.includes(paperTextureUrl('rice')), 'export must load the preview tile');
+  const trace = mainTrace();
+  const pattern = trace.findIndex((item) => item.op === 'createPattern');
+  const poem = trace.findIndex((item) => item.op === 'fillText');
+  assert.ok(pattern >= 0, 'export must paint a repeating texture');
+  assert.ok(pattern < poem, 'paper must render behind text');
+  assert.deepEqual(trace[pattern].args, ['repeat']);
+  assert.equal(trace.filter((item) => item.op === 'fillRect').length, 2, 'paper and tile cover the canvas');
 });
 
 test('transparent background clears instead of filling', async () => {

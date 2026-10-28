@@ -68,6 +68,7 @@ const zhTW: TranslationMessages = {
     background: "背景",
     stylePanelTitle: "樣式",
     bgSolid: "純色",
+    bgPaper: "紙張",
     bgGradient: "漸變",
     bgTransparent: "透明",
     bgImage: "圖片",

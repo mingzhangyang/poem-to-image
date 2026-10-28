@@ -68,6 +68,7 @@ const fr: TranslationMessages = {
     background: "Arrière-plan",
     stylePanelTitle: "Style",
     bgSolid: "Uni",
+    bgPaper: "Papier",
     bgGradient: "Dégradé",
     bgTransparent: "Transparent",
     bgImage: "Image",

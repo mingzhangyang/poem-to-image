@@ -1,4 +1,6 @@
-import { createStructuredPoemLayout } from '../poemContent';
+import { createStructuredPoemLayout, getPlainPoemText } from '../poemContent';
+import { ensureFontReady } from '../fontLoader';
+import { getStampCharacters } from '../stampRendering';
 import { getCanvasPositioningRect } from '../positioningRect';
 import { createCanvasTextMeasurer, createTextLayout } from '../textLayout';
 import { drawSignatureToCanvas, ensureSignatureFontsLoaded, getSignatureCanvasSize } from '../signatureRendering';
@@ -16,11 +18,14 @@ import type {
   WritingMode,
 } from '../types';
 import { drawBackground, loadImage } from './background';
+import type { PaperId } from '../paperStyles';
+import type { BackgroundType } from '../types';
 import { drawBorder } from './border';
 import { drawStamp, drawStampBody } from './stampDraw';
 
 export interface CanvasExportBackground {
-  backgroundType: 'solid' | 'gradient' | 'transparent' | 'image' | 'ai';
+  backgroundType: BackgroundType;
+  paperId?: PaperId;
   backgroundColor: string;
   gradientColor1: string;
   gradientColor2: string;
@@ -344,6 +349,19 @@ export async function renderCanvasExport(inputScene: CanvasExportScene, options:
   if (!ctx) throw new Error('Failed to create export canvas');
 
   if (scene.decorations.signatures.length > 0) await ensureSignatureFontsLoaded();
+  // Wait for the CSS and the unicode-range font subsets used by this *exact*
+  // poem, including custom text and stamp. A stylesheet-in-flight is not
+  // covered by document.fonts.ready on its own.
+  const primaryText = [
+    getPlainPoemText(scene.typography.poem),
+    ...scene.decorations.customTexts.map((item) => item.text),
+  ].join('\n');
+  await ensureFontReady(scene.typography.fontFamily, primaryText);
+  if (scene.decorations.showStamp) {
+    // Preload precisely the glyphs drawn by drawStampText, including its
+    // '印' fallback for empty text and the four-character limit.
+    await ensureFontReady(scene.decorations.stamp.fontFamily, getStampCharacters(scene.decorations.stamp.text).join(''));
+  }
   if ('fonts' in document) await document.fonts.ready;
 
   ctx.scale(scene.exportScale, scene.exportScale);

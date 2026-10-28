@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ChevronDown, ChevronRight, Loader2, LogIn, Palette, Sparkles, Upload } from 'lucide-react';
-import type { TranslationKey } from '../../translations';
+import type { Language, TranslationKey } from '../../translations';
+import { PAPER_STYLES, paperPreviewStyle } from '../../paperStyles';
 import { CREDIT_COST } from '../../types';
 import type { AiProvider, BackgroundType, BackgroundSectionProps, ExpandedSections, TranslateFn } from '../../types';
 import { ControlSection } from '../ControlSection';
@@ -12,6 +13,7 @@ const CLERK_CONFIGURED = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
 const backgroundTypeLabels: Record<BackgroundType, TranslationKey> = {
   solid: 'bgSolid',
+  paper: 'bgPaper',
   gradient: 'bgGradient',
   transparent: 'bgTransparent',
   image: 'bgImage',
@@ -44,13 +46,14 @@ const PROMPT_SUGGESTIONS = [
 
 interface BackgroundPanelProps {
   t: TranslateFn;
+  language: Language;
   expanded: ExpandedSections['background'];
   onToggle: () => void;
   background: BackgroundSectionProps;
   balance: number | null;
 }
 
-export function BackgroundPanel({ t, expanded, onToggle, background, balance }: BackgroundPanelProps) {
+export function BackgroundPanel({ t, language, expanded, onToggle, background, balance }: BackgroundPanelProps) {
   const { isSignedIn } = useAppAuth();
   const [isPromptHelpOpen, setIsPromptHelpOpen] = useState(false);
   const hasImageAdjustments = background.bgBrightness !== 100 || background.bgBlur !== 0;
@@ -101,7 +104,7 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
     >
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-2">
-          {(['solid', 'gradient', 'transparent', 'image', 'ai'] as BackgroundType[]).map((type) => (
+          {(['solid', 'paper', 'gradient', 'transparent', 'image', 'ai'] as BackgroundType[]).map((type) => (
             <button
               key={type}
               type="button"
@@ -117,6 +120,25 @@ export function BackgroundPanel({ t, expanded, onToggle, background, balance }: 
             </button>
           ))}
         </div>
+
+        {background.backgroundType === 'paper' ? (
+          <div className="grid grid-cols-3 gap-2" role="group" aria-label={t('bgPaper')}>
+            {PAPER_STYLES.map((paper) => (
+              <button
+                key={paper.id}
+                type="button"
+                aria-pressed={background.paperId === paper.id}
+                onClick={() => background.onPaperIdChange(paper.id)}
+                className={`min-w-0 rounded-xl border p-1.5 text-center transition-colors ${background.paperId === paper.id ? 'border-(--app-accent-500) ring-2 ring-(--app-accent-200)' : 'border-[rgba(34,48,52,0.12)] hover:border-(--app-accent-400)'}`}
+              >
+                <span aria-hidden="true" className="block h-12 rounded-md border border-black/5" style={paperPreviewStyle(paper.id)} />
+                <span className="mt-1.5 block text-[11px] leading-4 text-(--app-accent-700)">
+                  {language.startsWith('zh') ? paper.labelZh : paper.labelEn}
+                </span>
+              </button>
+            ))}
+          </div>
+        ) : null}
 
         {background.backgroundType === 'solid' ? (
           <div className="flex items-center gap-3">

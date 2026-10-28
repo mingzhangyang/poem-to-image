@@ -138,6 +138,7 @@ export function Sidebar({
       <div>
         <BackgroundPanel
           t={t}
+          language={language}
           expanded={expandedSections.background}
           onToggle={() => onToggleSection('background')}
           background={background}
@@ -221,6 +222,7 @@ export function Sidebar({
         <div className="app-sidebar-scrollbar p-4 sm:p-6 space-y-6 flex-1 overflow-y-auto">
           <BackgroundPanel
             t={t}
+            language={language}
             expanded={expandedSections.background}
             onToggle={() => onToggleSection('background')}
             background={background}

@@ -1,4 +1,5 @@
 import type { CanvasExportScene } from './renderCanvasExport';
+import { getPaperStyle, paperTextureUrl } from '../paperStyles';
 
 const IMAGE_CACHE_LIMIT = 32;
 const imageLoadCache = new Map<string, Promise<HTMLImageElement>>();
@@ -76,6 +77,20 @@ export async function drawBackground(ctx: CanvasRenderingContext2D, scene: Canva
 
   if (background.backgroundType === 'solid') {
     ctx.fillStyle = background.backgroundColor;
+    ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
+    return;
+  }
+
+  if (background.backgroundType === 'paper') {
+    const paper = getPaperStyle(background.paperId);
+    ctx.fillStyle = paper.base;
+    ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
+    // The preview uses this very same 240x240 SVG tile at 1:1 CSS pixels.
+    // Canvas scaling is applied by the caller, preserving it in 1x/2x/3x exports.
+    const tile = await loadImage(paperTextureUrl(paper.id));
+    const pattern = ctx.createPattern(tile, 'repeat');
+    if (!pattern) throw new Error('Could not render paper texture');
+    ctx.fillStyle = pattern;
     ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
     return;
   }

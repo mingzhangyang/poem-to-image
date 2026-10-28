@@ -1,9 +1,8 @@
-// On-demand loader for the editor's Google Fonts. Previously every family was
-// pulled in via one render-blocking @import in index.css, including the heavy CJK
-// families most users never touch. Instead we inject a stylesheet <link> for a
-// family the first time it's actually used (selected as the poem/stamp font), with
-// font-display: swap so text paints immediately in a fallback and swaps in once
-// loaded. Signature fonts have their own equivalent loader in signatureRendering.ts.
+// On-demand font loader for the editor. Chinese handwriting fonts are bundled
+// locally via @fontsource / LXGW and requested only when selected. Other font
+// families retain their Google Fonts fallback. We wait for selected glyphs at
+// export time to avoid producing an image in a temporary fallback font.
+// Signature fonts have their own loader in signatureRendering.ts.
 
 // Maps a Google Font family name to its css2 `family=` query segment (weights match
 // what the old monolithic @import requested).
@@ -34,7 +33,18 @@ const GOOGLE_FONT_SPECS: Record<string, string> = {
   'Space Mono': 'Space+Mono:wght@400;700',
 };
 
-const loadedFamilies = new Set<string>();
+// The Chinese font CSS is bundled by Vite and uses unicode-range subsets.
+// Vite fetches only the CSS for a selected family; the browser fetches only
+// the glyph subsets needed for the poem, avoiding external font CDNs.
+const LOCAL_FONT_LOADERS: Record<string, () => Promise<unknown>> = {
+  'LXGW WenKai Screen': () => import('lxgw-wenkai-screen-webfont/lxgwwenkaiscreen.css'),
+  'Ma Shan Zheng': () => import('@fontsource/ma-shan-zheng/400.css'),
+  'Zhi Mang Xing': () => import('@fontsource/zhi-mang-xing/400.css'),
+  'Long Cang': () => import('@fontsource/long-cang/400.css'),
+  'ZCOOL KuaiLe': () => import('@fontsource/zcool-kuaile/400.css'),
+};
+
+const pendingStylesheets = new Map<string, Promise<void>>();
 
 // '"Noto Serif SC", serif' -> 'Noto Serif SC'
 function familyNameFromValue(fontValue: string): string {
@@ -42,17 +52,53 @@ function familyNameFromValue(fontValue: string): string {
   return first.replace(/^["']|["']$/g, '');
 }
 
+function loadFontStylesheet(fontValue: string | undefined | null): Promise<void> {
+  if (!fontValue || typeof document === 'undefined') return Promise.resolve();
+  const family = familyNameFromValue(fontValue);
+  const existing = pendingStylesheets.get(family);
+  if (existing) return existing;
+
+  const local = LOCAL_FONT_LOADERS[family];
+  if (local) {
+    const promise = local().then(() => undefined);
+    pendingStylesheets.set(family, promise);
+    void promise.catch(() => pendingStylesheets.delete(family));
+    return promise;
+  }
+
+  const spec = GOOGLE_FONT_SPECS[family];
+  if (!spec) return Promise.resolve();
+  const promise = new Promise<void>((resolve, reject) => {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = `https://fonts.googleapis.com/css2?family=${spec}&display=swap`;
+    link.setAttribute('data-editor-font', family);
+    link.onload = () => resolve();
+    link.onerror = () => reject(new Error(`Could not load font stylesheet: ${family}`));
+    document.head.appendChild(link);
+  });
+  pendingStylesheets.set(family, promise);
+  void promise.catch(() => pendingStylesheets.delete(family));
+  return promise;
+}
+
+/** Start loading on selection without delaying typing or the live preview. */
 export function ensureFontLoaded(fontValue: string | undefined | null): void {
-  if (!fontValue || typeof document === 'undefined') return;
+  void loadFontStylesheet(fontValue).catch(() => {
+    // The browser preview uses fallback text on network errors. An export
+    // independently retries and reports failure rather than silently swapping.
+  });
+}
 
-  const familyName = familyNameFromValue(fontValue);
-  const spec = GOOGLE_FONT_SPECS[familyName];
-  if (!spec || loadedFamilies.has(familyName)) return;
-
-  loadedFamilies.add(familyName);
-  const link = document.createElement('link');
-  link.rel = 'stylesheet';
-  link.href = `https://fonts.googleapis.com/css2?family=${spec}&display=swap`;
-  link.setAttribute('data-editor-font', familyName);
-  document.head.appendChild(link);
+/**
+ * Canvas drawing must not run while a font stylesheet or unicode-range glyph
+ * subset is still loading. Load the *actual text* used by the artwork so a
+ * copy/share/export always renders the same face as the preview.
+ */
+export async function ensureFontReady(fontValue: string | undefined | null, text: string): Promise<void> {
+  if (!fontValue || typeof document === 'undefined' || typeof document.fonts?.load !== 'function') return;
+  const family = familyNameFromValue(fontValue);
+  await loadFontStylesheet(fontValue);
+  await document.fonts.load(`20px "${family}"`, text.trim() || '诗');
+  await document.fonts.ready;
 }

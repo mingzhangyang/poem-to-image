@@ -68,6 +68,7 @@ const ja: TranslationMessages = {
     background: "背景",
     stylePanelTitle: "スタイル",
     bgSolid: "単色",
+    bgPaper: "用紙",
     bgGradient: "グラデーション",
     bgTransparent: "透明",
     bgImage: "画像",

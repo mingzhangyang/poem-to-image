@@ -3,6 +3,7 @@ import type { ChangeEvent, CSSProperties } from 'react';
 import { logError } from '../logger';
 import type { AiProvider, BackgroundImageSource, BackgroundType, TemplateBackgroundConfig, TranslateFn } from '../types';
 import { inferBackgroundImageSource } from '../backgroundImageSource';
+import { DEFAULT_PAPER_ID, getPaperStyle, paperPreviewStyle, type PaperId } from '../paperStyles';
 import { useAiBackground } from './useAiBackground';
 
 const MAX_EXPORT_SCALE = 3;
@@ -36,6 +37,7 @@ interface UseBackgroundConfigParams {
 
 export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getToken, onBalanceChange }: UseBackgroundConfigParams) {
   const [backgroundType, setBackgroundType] = useState<BackgroundType>('solid');
+  const [paperId, setPaperId] = useState<PaperId>(DEFAULT_PAPER_ID);
   const [backgroundColor, setBackgroundColor] = useState('#f8fafc');
   const [gradientColor1, setGradientColor1] = useState('#e0e7ff');
   const [gradientColor2, setGradientColor2] = useState('#ede9fe');
@@ -176,6 +178,7 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getTok
 
   const applyBackgroundTemplate = (template: TemplateBackgroundConfig) => {
     setBackgroundType(template.backgroundType);
+    setPaperId(getPaperStyle(template.paperId).id);
     setBackgroundColor(template.backgroundColor);
     setGradientColor1(template.gradientColor1);
     setGradientColor2(template.gradientColor2);
@@ -196,6 +199,8 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getTok
     switch (backgroundType) {
       case 'solid':
         return { backgroundColor };
+      case 'paper':
+        return paperPreviewStyle(paperId);
       case 'gradient':
         return {
           backgroundImage: `linear-gradient(${gradientDirection}, ${gradientColor1}, ${gradientColor2})`,
@@ -216,6 +221,7 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getTok
 
   return {
     backgroundType,
+    paperId,
     backgroundColor,
     gradientColor1,
     gradientColor2,
@@ -233,6 +239,10 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getTok
     fileInputRef,
     backgroundStyle,
     setBackgroundType,
+    setPaperId: (id: PaperId) => {
+      setPaperId(getPaperStyle(id).id);
+      setBackgroundType('paper');
+    },
     setBackgroundColor,
     setGradientColor1,
     setGradientColor2,

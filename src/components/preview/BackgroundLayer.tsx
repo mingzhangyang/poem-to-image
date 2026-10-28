@@ -53,8 +53,9 @@ export function BackgroundLayer({
         className="absolute inset-0 z-0"
         style={{
           ...backgroundStyle,
-          filter: `brightness(${bgBrightness}%) blur(${bgBlur}px)`,
-          transform: bgBlur > 0 ? 'scale(1.1)' : 'none',
+          // Image-only adjustments must not discolor paper or gradients.
+          filter: hasImage ? `brightness(${bgBrightness}%) blur(${bgBlur}px)` : 'none',
+          transform: hasImage && bgBlur > 0 ? 'scale(1.1)' : 'none',
         }}
       />
 

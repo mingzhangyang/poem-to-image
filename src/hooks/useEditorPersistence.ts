@@ -56,6 +56,7 @@ interface UseEditorPersistenceParams {
   background: Pick<
     BackgroundSectionProps,
     | 'backgroundType'
+    | 'paperId'
     | 'backgroundColor'
     | 'gradientColor1'
     | 'gradientColor2'
@@ -100,6 +101,7 @@ export function useEditorPersistence({
         presetSize,
         background: {
           backgroundType: background.backgroundType === 'ai' ? 'image' : background.backgroundType,
+          paperId: background.paperId,
           backgroundColor: background.backgroundColor,
           gradientColor1: background.gradientColor1,
           gradientColor2: background.gradientColor2,

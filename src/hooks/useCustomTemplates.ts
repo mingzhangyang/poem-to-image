@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { normalizeUserCustomTemplate } from '../poemStyle';
+import { getPaperStyle } from '../paperStyles';
 import type { UserCustomTemplate, TemplateBackgroundConfig, TemplateTypographyConfig, TemplateDecorationsConfig } from '../types';
 
 const STORAGE_KEY = 'poem-to-image.custom-templates';
@@ -26,6 +27,10 @@ function saveToStorage(templates: UserCustomTemplate[]): void {
 // ── Accent color helper ──────────────────────────────────────────────────────
 
 function deriveAccentColors(background: TemplateBackgroundConfig): { accentFrom: string; accentTo: string } {
+  if (background.backgroundType === 'paper') {
+    const base = getPaperStyle(background.paperId).base;
+    return { accentFrom: base, accentTo: base };
+  }
   if (background.backgroundType === 'gradient') {
     return { accentFrom: background.gradientColor1, accentTo: background.gradientColor2 };
   }
