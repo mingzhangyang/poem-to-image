@@ -18,6 +18,8 @@ import type {
 } from '../types';
 import { drawBackground, loadImage } from './background';
 import type { PaperId } from '../paperStyles';
+import { ensureFontReady } from '../fontLoader';
+import type { PaperId } from '../paperStyles';
 import type { BackgroundType } from '../types';
 import { drawBorder } from './border';
 import { drawStamp, drawStampBody } from './stampDraw';
