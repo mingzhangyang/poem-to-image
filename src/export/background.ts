@@ -95,7 +95,6 @@ export async function drawBackground(ctx: CanvasRenderingContext2D, scene: Canva
     return;
   }
 
-
   if (background.backgroundType === 'gradient') {
     ctx.fillStyle = createGradient(
       ctx,
