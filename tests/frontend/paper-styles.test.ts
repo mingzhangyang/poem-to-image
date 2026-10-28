@@ -23,7 +23,7 @@ test('paper texture is deterministic, local, and identical in the preview style'
     const svg = decodeURIComponent(url.slice('data:image/svg+xml,'.length));
     assert.ok(svg.startsWith('<svg xmlns="http://www.w3.org/2000/svg"'));
     assert.ok(svg.endsWith('</svg>'));
-    assert.doesNotMatch(svg, /<image|<foreignObject|<filter|<script|https?:\/\//);
+    assert.doesNotMatch(svg, /<image|<foreignObject|<filter|<script|(?:xlink:)?href=|url\(/);
   }
 });
 
