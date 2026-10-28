@@ -68,6 +68,7 @@ const ko: TranslationMessages = {
     background: "배경",
     stylePanelTitle: "스타일",
     bgSolid: "단색",
+    bgPaper: "종이",
     bgGradient: "그라데이션",
     bgTransparent: "투명",
     bgImage: "이미지",
