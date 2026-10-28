@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Check, Copy, ExternalLink, Link2, Loader2, Trash2, X } from 'lucide-react';
 import { useDialogA11y } from '../hooks/useDialogA11y';
 import { SHARE_OWNER_KEY_PREFIX, shareCopy } from './copy';
-import { removePublishCredentials } from './publishProtocol';
+import { removePublishCredentialsSafely } from './publishProtocol';
 import type { Language } from '../translations';
 
 export interface PublishedShare {
@@ -133,7 +133,7 @@ export function PublishDialog({ language, isOpen, onClose, publish }: Props) {
         headers: { 'X-Share-Delete-Token': result.deleteToken },
       });
       if (!response.ok) throw new Error('REVOKE_FAILED');
-      removePublishCredentials(localStorage, result.id, result.deleteToken);
+      removePublishCredentialsSafely(result.id, result.deleteToken);
       setResult(null);
       setRevoked(true);
     } catch {

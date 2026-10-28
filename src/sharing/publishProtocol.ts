@@ -123,3 +123,17 @@ export function removePublishCredentials(storage: Storage, id: string, deleteTok
     }
   } catch { /* storage access denied */ }
 }
+
+/**
+ * Revocation has already succeeded on the server. Browser policy may deny
+ * even reading the localStorage property; that must never undo the successful
+ * UI transition or cause a spurious "revoke failed" message.
+ */
+export function removePublishCredentialsSafely(
+  id: string, deleteToken: string,
+  getStorage: () => Storage = () => window.localStorage,
+): void {
+  try {
+    removePublishCredentials(getStorage(), id, deleteToken);
+  } catch { /* storage denied: the server remains the source of truth */ }
+}

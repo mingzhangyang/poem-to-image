@@ -31,7 +31,7 @@ import { PublishDialog, type PublishedShare } from './sharing/PublishDialog';
 import { shareCopy } from './sharing/copy';
 import {
   PendingShareConflict, completePublishCredentials, fingerprintArtwork,
-  preparePublishCredentials, removePublishCredentials,
+  preparePublishCredentials, removePublishCredentialsSafely,
 } from './sharing/publishProtocol';
 
 const ONBOARDING_DISMISSED_STORAGE_KEY = 'poem-to-image.onboarding-dismissed';
@@ -449,13 +449,20 @@ export default function App() {
       // earlier attempt failed. Keep the owner key and pending reservation.
       // The creator may safely retry or explicitly cancel the identifier.
       if (body.code === 'SHARE_CANCELLED') {
-        removePublishCredentials(localStorage, credentials.id, credentials.deleteToken);
+        removePublishCredentialsSafely(credentials.id, credentials.deleteToken);
         throw new Error('SHARE_CANCELLED');
       }
       return unknown();
     }
     if (body.id !== credentials.id || body.deleteToken !== credentials.deleteToken) return unknown();
-    completePublishCredentials(localStorage, credentials);
+    try {
+      completePublishCredentials(localStorage, credentials);
+    } catch {
+      // A blocked storage getter must not hide a confirmed publication.
+      // Keep the removal capability in the recovery dialog for manual backup.
+      return { id: credentials.id, url: link(credentials.id),
+        deleteToken: credentials.deleteToken, recoveryRequired: true };
+    }
     return { id: credentials.id, url: link(credentials.id), deleteToken: credentials.deleteToken };
   };
 
