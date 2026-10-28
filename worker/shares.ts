@@ -46,16 +46,6 @@ export function isShareId(id: string): boolean {
   return SHARE_ID_PATTERN.test(id);
 }
 
-function randomShareId(): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(9));
-  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
-function randomToken(byteLength: number): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(byteLength));
-  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
-}
-
 async function tokenHash(token: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token));
   return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
@@ -149,6 +139,37 @@ async function publishLimit(request: Request, db: D1Database): Promise<Response 
   return null;
 }
 
+interface ExistingShare extends ShareRecord {
+  delete_token_hash: string;
+  content_fingerprint: string;
+  revoked_at: string | null;
+}
+
+async function findShareById(db: D1Database, id: string): Promise<ExistingShare | null> {
+  return db.prepare(
+    'SELECT id, title, author, image_key, image_type, card_key, created_at, delete_token_hash, content_fingerprint, revoked_at FROM shared_artworks WHERE id = ?',
+  ).bind(id).first<ExistingShare>();
+}
+
+function isIdempotentReplay(row: ExistingShare, hash: string, fingerprint: string): boolean {
+  return !row.revoked_at && row.delete_token_hash === hash && row.content_fingerprint === fingerprint;
+}
+
+function shareConflict(): Response {
+  return jsonResponse({ error: 'The publication identifier is already used.', code: 'SHARE_ID_CONFLICT' }, 409);
+}
+
+function successfulPublication(request: Request, id: string, deleteToken: string, status: number): Response {
+  return jsonResponse({ id, url: artworkUrl(request, id), deleteToken }, status);
+}
+
+/**
+ * The browser generates a random share identifier and deletion key, then saves
+ * them BEFORE upload. Repeated requests with the same credentials and content
+ * get the original snapshot rather than publishing another one. Concurrent
+ * attempts write to distinct R2 paths and race on the D1 primary key; only the
+ * winning attempt's paths become addressable.
+ */
 export async function publishShare(request: Request, env: WorkerEnv): Promise<Response> {
   if (!available(env)) return jsonResponse({ error: 'Sharing is not configured.' }, 503);
   if (request.method !== 'POST') return methodNotAllowed(['POST']);
@@ -157,8 +178,6 @@ export async function publishShare(request: Request, env: WorkerEnv): Promise<Re
   if (!/^multipart\/form-data\s*;/i.test(contentType)) {
     return jsonResponse({ error: 'Expected multipart form upload.' }, 415);
   }
-  const limited = await publishLimit(request, env.DB);
-  if (limited) return limited;
 
   let form: FormData;
   try {
@@ -167,50 +186,99 @@ export async function publishShare(request: Request, env: WorkerEnv): Promise<Re
     body.set(bytes);
     form = await new Response(body.buffer, { headers: { 'Content-Type': contentType } }).formData();
   } catch (error) {
-    const response = bodyErrorResponse(error);
-    return response ?? jsonResponse({ error: 'Invalid form upload.' }, 400);
+    return bodyErrorResponse(error) ?? jsonResponse({ error: 'Invalid form upload.' }, 400);
   }
 
+  const id = form.get('id');
+  const deleteToken = form.get('deleteToken');
   const artwork = form.get('artwork');
   const card = form.get('card');
   const rawTitle = form.get('title');
   const rawAuthor = form.get('author');
-  if (!(artwork instanceof File) || !(card instanceof File)
+  if (typeof id !== 'string' || !isShareId(id)
+    || typeof deleteToken !== 'string' || !/^[a-f0-9]{64}$/.test(deleteToken)
+    || !(artwork instanceof File) || !(card instanceof File)
     || typeof rawTitle !== 'string' || typeof rawAuthor !== 'string'
     || rawTitle.trim().length > TITLE_LIMIT || rawAuthor.trim().length > AUTHOR_LIMIT
     || !(await validImage(artwork, 'artwork')) || !(await validImage(card, 'card'))) {
-    return jsonResponse({ error: 'Invalid artwork or social preview.' }, 400);
+    return jsonResponse({ error: 'Invalid artwork, identifier or social preview.', code: 'INVALID_SHARE' }, 400);
   }
 
   const title = rawTitle.trim() || 'Untitled poem';
   const author = rawAuthor.trim();
-  const id = randomShareId();
-  const deleteToken = randomToken(32);
-  const imageKey = 'shares/' + id + '/artwork.' + (isPng(artwork) ? 'png' : 'jpg');
-  const cardKey = 'shares/' + id + '/card.jpg';
+  const artworkBytes = await artwork.arrayBuffer();
+  const cardBytes = await card.arrayBuffer();
+  const deleteHash = await tokenHash(deleteToken);
+  const imageDigest = await crypto.subtle.digest('SHA-256', artworkBytes);
+  const cardDigest = await crypto.subtle.digest('SHA-256', cardBytes);
+  const toHex = (bytes: ArrayBuffer) => Array.from(new Uint8Array(bytes), (b) => b.toString(16).padStart(2, '0')).join('');
+  const fingerprint = await tokenHash(JSON.stringify([
+    title, author, artwork.type, toHex(imageDigest), toHex(cardDigest),
+  ]));
+
+  const existing = await findShareById(env.DB, id);
+  if (existing) {
+    return isIdempotentReplay(existing, deleteHash, fingerprint)
+      ? successfulPublication(request, id, deleteToken, 200)
+      : shareConflict();
+  }
+  const limited = await publishLimit(request, env.DB);
+  if (limited) return limited;
+
+  // A retry may race with the first request even if both observed no D1 row.
+  // Unique attempt paths prevent the losing request from overwriting the
+  // already committed immutable artwork.
+  const attempt = crypto.randomUUID();
+  const prefix = 'shares/' + id + '/' + attempt + '/';
+  const imageKey = prefix + 'artwork.' + (isPng(artwork) ? 'png' : 'jpg');
+  const cardKey = prefix + 'card.jpg';
   let artworkUploaded = false;
   let cardUploaded = false;
+  let databaseWriteAttempted = false;
+
+  const cleanOwnUpload = async (): Promise<void> => {
+    try {
+      if (cardUploaded) await env.ARTWORKS.delete(cardKey);
+      if (artworkUploaded) await env.ARTWORKS.delete(imageKey);
+    } catch (error) {
+      logError('share.orphan_cleanup_failed', error, { id, attempt });
+    }
+  };
 
   try {
-    await env.ARTWORKS.put(imageKey, await artwork.arrayBuffer(), {
-      httpMetadata: { contentType: artwork.type },
-    });
+    await env.ARTWORKS.put(imageKey, artworkBytes, { httpMetadata: { contentType: artwork.type } });
     artworkUploaded = true;
-    await env.ARTWORKS.put(cardKey, await card.arrayBuffer(), {
-      httpMetadata: { contentType: 'image/jpeg' },
-    });
+    await env.ARTWORKS.put(cardKey, cardBytes, { httpMetadata: { contentType: 'image/jpeg' } });
     cardUploaded = true;
+    databaseWriteAttempted = true;
     await env.DB.prepare(
-      `INSERT INTO shared_artworks (id, title, author, image_key, image_type, card_key, delete_token_hash)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    ).bind(id, title, author, imageKey, artwork.type, cardKey, await tokenHash(deleteToken)).run();
-    return jsonResponse({ id, url: artworkUrl(request, id), deleteToken }, 201);
+      'INSERT INTO shared_artworks (id, title, author, image_key, image_type, card_key, delete_token_hash, content_fingerprint) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    ).bind(id, title, author, imageKey, artwork.type, cardKey, deleteHash, fingerprint).run();
+    return successfulPublication(request, id, deleteToken, 201);
   } catch (error) {
-    logError('share.publish_failed', error, { id });
-    // Best-effort cleanup after an R2 or D1 error; unpublished keys are not addressable.
-    if (cardUploaded) await env.ARTWORKS.delete(cardKey).catch(() => {});
-    if (artworkUploaded) await env.ARTWORKS.delete(imageKey).catch(() => {});
-    return jsonResponse({ error: 'Could not publish artwork.' }, 502);
+    logError('share.publish_failed', error, { id, attempt });
+    let winner: ExistingShare | null = null;
+    let didCheckDatabase = false;
+    try {
+      winner = await findShareById(env.DB, id);
+      didCheckDatabase = true;
+    } catch (lookupError) {
+      logError('share.publish_reconciliation_failed', lookupError, { id });
+    }
+
+    // A commit may have succeeded even when its acknowledgement was lost.
+    if (winner?.image_key === imageKey && isIdempotentReplay(winner, deleteHash, fingerprint)) {
+      return successfulPublication(request, id, deleteToken, 200);
+    }
+    // Never delete a key whose D1 commit could have succeeded but cannot be
+    // checked. Otherwise retries could serve a permanently broken snapshot.
+    if (!databaseWriteAttempted || didCheckDatabase) await cleanOwnUpload();
+    if (winner) {
+      return isIdempotentReplay(winner, deleteHash, fingerprint)
+        ? successfulPublication(request, id, deleteToken, 200)
+        : shareConflict();
+    }
+    return jsonResponse({ error: 'Could not confirm artwork publication.', code: 'PUBLISH_UNCERTAIN' }, 502);
   }
 }
 

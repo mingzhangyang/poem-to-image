@@ -88,6 +88,7 @@ CREATE TABLE IF NOT EXISTS shared_artworks (
   image_type TEXT NOT NULL,
   card_key TEXT NOT NULL UNIQUE,
   delete_token_hash TEXT NOT NULL,
+  content_fingerprint TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   revoked_at TEXT,
   assets_deleted_at TEXT
