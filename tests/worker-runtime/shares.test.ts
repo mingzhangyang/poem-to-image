@@ -101,9 +101,25 @@ describe('anonymous artwork sharing', () => {
   });
 
   it('preserves JSON-LD with dollar replacement markers and HTML metacharacters', async () => {
-    // These are legal creator-supplied strings. A string replacement would
-    // interpret $,   it('rejects malformed images and cross-origin submissions', async () => {, $\u0027 and $\u0060 as replacement directives.
-    const title = "Cost $, suffix 
+    // Dollar sequences must survive string replacement as literal JSON content.
+    const title = "Cost $$, suffix $', whole $&";
+    const author = 'Poet $& <script>alert(1)</script>';
+    const published = await publish(title, author);
+    expect(published.status).toBe(201);
+    const { url } = await published.json() as { url: string };
+    const page = await SELF.fetch(url);
+    expect(page.status).toBe(200);
+    const html = await page.text();
+    const match = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
+    expect(match).not.toBeNull();
+    const data = JSON.parse(match![1]) as Record<string, string>;
+    expect(data.name).toBe(title);
+    expect(data.creator).toBe(author);
+    expect(html).not.toContain('<script>alert(1)</script>');
+    expect(html).toContain('Cost $$');
+  });
+
+  it('rejects malformed images and cross-origin submissions', async () => {
     const wrong = form('Invalid');
     wrong.set('artwork', new File(['not an image'], 'bad.png', { type: 'image/png' }));
     const invalid = await SELF.fetch(ORIGIN + '/api/shares', { method: 'POST', body: wrong });
