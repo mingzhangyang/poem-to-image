@@ -174,6 +174,58 @@ test('a rate-limited replay preserves the first upload removal key', async ({ pa
   expect(await page.evaluate(() => localStorage.getItem('inkpoem.share.pending.v1'))).toContain(firstId);
 });
 
+test('a stale uncertain publication can be cancelled before creating a new share', async ({ page }) => {
+  test.setTimeout(90_000);
+  const oldId = 'StaleShare01';
+  const oldKey = 'b'.repeat(64);
+  await page.addInitScript(({ id, token }) => {
+    localStorage.setItem('inkpoem.share.owner.' + id, token);
+    localStorage.setItem('inkpoem.share.pending.v1', JSON.stringify({
+      id, deleteToken: token, fingerprint: 'f'.repeat(64),
+    }));
+  }, { id: oldId, token: oldKey });
+  let cancellations = 0;
+  await page.route('**/api/shares/' + oldId, async (route) => {
+    expect(route.request().method()).toBe('DELETE');
+    expect(route.request().headers()['x-share-delete-token']).toBe(oldKey);
+    cancellations++;
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '{"revoked":true}' });
+  });
+  let freshId = '';
+  await page.route('**/api/shares', async (route) => {
+    const body = route.request().postDataBuffer();
+    freshId = multipartValue(body, 'id');
+    expect(freshId).not.toBe(oldId);
+    const token = multipartValue(body, 'deleteToken');
+    await route.fulfill({ status: 201, contentType: 'application/json',
+      body: JSON.stringify({ id: freshId, deleteToken: token, url: root + '/s/' + freshId }) });
+  });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: 'Export Image' }).click();
+  await page.getByRole('dialog', { name: 'Export Image' })
+    .getByRole('button', { name: 'Publish shareable link' }).click();
+  await page.getByRole('dialog', { name: 'Publish this artwork' })
+    .getByRole('button', { name: 'Publish artwork', exact: true }).click();
+  const pending = page.getByRole('dialog', { name: 'Publication status uncertain' });
+  await expect(pending).toBeVisible({ timeout: 40_000 });
+  await expect(pending.getByRole('button', { name: 'Retry the same publication' })).toHaveCount(0);
+  expect(freshId).toBe('');
+  await pending.getByRole('button', { name: 'Remove public share now' }).click();
+  const removed = page.getByRole('dialog', { name: 'Public artwork removed' });
+  await expect(removed).toBeVisible();
+  expect(cancellations).toBe(1);
+  expect(await page.evaluate(() => localStorage.getItem('inkpoem.share.pending.v1'))).toBeNull();
+  await removed.getByRole('button', { name: 'Close' }).click();
+  await page.getByRole('button', { name: 'Export Image' }).click();
+  await page.getByRole('dialog', { name: 'Export Image' })
+    .getByRole('button', { name: 'Publish shareable link' }).click();
+  await page.getByRole('dialog', { name: 'Publish this artwork' })
+    .getByRole('button', { name: 'Publish artwork', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Your artwork is published' })).toBeVisible({ timeout: 40_000 });
+  expect(freshId).toMatch(/^[A-Za-z0-9_-]{12}$/);
+});
+
 test('uses a securely retained removal key to revoke a share from another browser', async ({ page }) => {
   await page.route('**/api/shares/' + shareId, async (route) => {
     if (route.request().method() === 'DELETE') {
