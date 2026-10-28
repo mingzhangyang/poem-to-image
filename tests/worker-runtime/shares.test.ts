@@ -1,5 +1,5 @@
 import { SELF, env } from 'cloudflare:test';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { pruneRevokedShareAssets } from '../../worker/shares';
 
 const ORIGIN = 'https://inkpoem.test';
@@ -46,6 +46,12 @@ async function publish(title?: string, author?: string, creds?: TestCredentials)
 }
 
 describe('anonymous artwork sharing', () => {
+  // Rate limits are IP-scoped in production. Unit cases represent independent
+  // visitors and must not exhaust a single anonymous test IP across cases.
+  beforeEach(async () => {
+    await env.DB.prepare("DELETE FROM rate_limits WHERE key LIKE 'publish:%'").run();
+  });
+
   it('publishes a public snapshot, renders crawler metadata and revokes with its token', async () => {
     const response = await publish('Moon & <Stars>', 'Poet "A"');
     expect(response.status).toBe(201);
