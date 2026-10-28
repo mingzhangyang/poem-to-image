@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Check, Copy, ExternalLink, Link2, Loader2, Trash2, X } from 'lucide-react';
 import { useDialogA11y } from '../hooks/useDialogA11y';
 import { SHARE_OWNER_KEY_PREFIX, shareCopy } from './copy';
+import { removePublishCredentials } from './publishProtocol';
 import type { Language } from '../translations';
 
 export interface PublishedShare {
@@ -11,6 +12,9 @@ export interface PublishedShare {
   /** Set when the public share is live but saving its revocation token failed
    * and a best-effort automatic rollback did not confirm removal. */
   recoveryRequired?: boolean;
+  /** A request may have committed even though the response was lost.
+   * Keep the pre-persisted ID and deletion capability and retry idempotently. */
+  statusUnknown?: boolean;
 }
 
 interface Props {
@@ -37,7 +41,8 @@ export function PublishDialog({ language, isOpen, onClose, publish }: Props) {
 
   // A live share without persistent revocation credentials cannot be dismissed
   // accidentally. The user must first confirm an independent backup or revoke.
-  const needsBackup = result?.recoveryRequired && !backupConfirmed;
+  const unresolved = !!(result?.recoveryRequired || result?.statusUnknown);
+  const needsBackup = unresolved && !backupConfirmed;
   const canClose = !inFlightRef.current && !publishing && !recoveryBusy && !needsBackup;
   const close = () => { if (canClose) onClose(); };
   useDialogA11y({ isOpen, dialogRef, onClose: close });
@@ -85,7 +90,7 @@ export function PublishDialog({ language, isOpen, onClose, publish }: Props) {
   };
 
   const handleCopyRecovery = async () => {
-    if (!result?.recoveryRequired) return;
+    if (!unresolved || !result) return;
     try {
       // The token must NEVER be appended to a public link or shared via
       // navigator.share. Clipboard access is explicit and user-initiated.
@@ -98,7 +103,12 @@ export function PublishDialog({ language, isOpen, onClose, publish }: Props) {
   };
 
   const handleRetrySave = () => {
-    if (!result?.recoveryRequired) return;
+    if (!result) return;
+    if (result.statusUnknown) {
+      void handlePublish(); // Uses the pre-persisted ID/token; never republishes another ID.
+      return;
+    }
+    if (!result.recoveryRequired) return;
     try {
       const key = SHARE_OWNER_KEY_PREFIX + result.id;
       localStorage.setItem(key, result.deleteToken);
@@ -111,7 +121,7 @@ export function PublishDialog({ language, isOpen, onClose, publish }: Props) {
   };
 
   const handleRevoke = async () => {
-    if (!result?.recoveryRequired || recoveryBusy) return;
+    if (!unresolved || !result || recoveryBusy) return;
     setRecoveryBusy(true);
     setError('');
     try {
@@ -120,7 +130,7 @@ export function PublishDialog({ language, isOpen, onClose, publish }: Props) {
         headers: { 'X-Share-Delete-Token': result.deleteToken },
       });
       if (!response.ok) throw new Error('REVOKE_FAILED');
-      try { localStorage.removeItem(SHARE_OWNER_KEY_PREFIX + result.id); } catch { /* ignored */ }
+      removePublishCredentials(localStorage, result.id, result.deleteToken);
       setResult(null);
       setRevoked(true);
     } catch {
@@ -146,7 +156,8 @@ export function PublishDialog({ language, isOpen, onClose, publish }: Props) {
           <span className="rounded-2xl bg-(--app-accent-50) p-3"><Link2 size={22} /></span>
           <h2 id="publish-dialog-title" className="pr-9 text-xl font-semibold">
             {revoked ? copy.recoveryRevoked
-              : result?.recoveryRequired ? copy.recoveryTitle
+              : result?.statusUnknown ? copy.pendingTitle
+                : result?.recoveryRequired ? copy.recoveryTitle
                 : result ? copy.published : copy.publishTitle}
           </h2>
         </div>
@@ -157,10 +168,10 @@ export function PublishDialog({ language, isOpen, onClose, publish }: Props) {
             <button type="button" onClick={close}
               className="app-button-primary w-full rounded-xl px-4 py-3 font-semibold">{copy.close}</button>
           </div>
-        ) : result?.recoveryRequired ? (
+        ) : unresolved && result ? (
           <div className="space-y-4">
             <p role="alert" className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950">
-              {copy.recoveryWarning}
+              {result.statusUnknown ? copy.pendingWarning : copy.recoveryWarning}
             </p>
             <p className="break-all text-sm text-(--app-accent-700)">{result.url}</p>
             <label className="block space-y-2 text-sm font-semibold text-(--app-accent-800)">
@@ -176,11 +187,11 @@ export function PublishDialog({ language, isOpen, onClose, publish }: Props) {
             </button>
             {error ? <p role="alert" className="text-sm text-red-700">{error}</p> : null}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <button type="button" onClick={handleRetrySave} disabled={recoveryBusy}
+              <button type="button" onClick={handleRetrySave} disabled={recoveryBusy || publishing}
                 className="app-button-secondary rounded-xl px-4 py-3 text-sm font-semibold disabled:opacity-50">
-                {copy.recoveryRetry}
+                {publishing ? copy.publishing : result.statusUnknown ? copy.pendingRetry : copy.recoveryRetry}
               </button>
-              <button type="button" onClick={() => void handleRevoke()} disabled={recoveryBusy}
+              <button type="button" onClick={() => void handleRevoke()} disabled={recoveryBusy || publishing}
                 className="flex items-center justify-center gap-2 rounded-xl border border-red-300 bg-white px-4 py-3 text-sm font-semibold text-red-800 disabled:opacity-50">
                 {recoveryBusy ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
                 {copy.recoveryRevoke}
