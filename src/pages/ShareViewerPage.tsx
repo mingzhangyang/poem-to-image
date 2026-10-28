@@ -19,10 +19,11 @@ export default function ShareViewerPage() {
   const [revoking, setRevoking] = useState(false);
   const [error, setError] = useState('');
   const [deleteToken, setDeleteToken] = useState<string | null>(null);
+  const [manualToken, setManualToken] = useState('');
   const linkRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     const controller = new AbortController();
-    setLoading(true); setNotFound(false); setArtwork(null); setError('');
+    setLoading(true); setNotFound(false); setArtwork(null); setError(''); setManualToken('');
     try { setDeleteToken(localStorage.getItem(SHARE_OWNER_KEY_PREFIX + id)); }
     catch { setDeleteToken(null); }
     void fetch('/api/shares/' + encodeURIComponent(id), { signal: controller.signal })
@@ -48,15 +49,16 @@ export default function ShareViewerPage() {
     catch { /* Cancelling the share sheet is not an error. */ }
   };
   const handleRevoke = async () => {
-    if (!deleteToken || !artwork || revoking || !window.confirm(copy.revokeConfirm)) return;
+    const token = deleteToken ?? manualToken.trim();
+    if (!/^[a-f0-9]{64}$/.test(token) || !artwork || revoking || !window.confirm(copy.revokeConfirm)) return;
     setRevoking(true); setError('');
     try {
       const response = await fetch('/api/shares/' + artwork.id, {
-        method: 'DELETE', headers: { 'X-Share-Delete-Token': deleteToken },
+        method: 'DELETE', headers: { 'X-Share-Delete-Token': token },
       });
       if (!response.ok) throw new Error('Revoke failed');
       try { localStorage.removeItem(SHARE_OWNER_KEY_PREFIX + artwork.id); } catch { /* storage denied */ }
-      setDeleteToken(null); setArtwork(null); setNotFound(true);
+      setDeleteToken(null); setManualToken(''); setArtwork(null); setNotFound(true);
     } catch { setError(copy.revokeError); }
     finally { setRevoking(false); }
   };
@@ -98,16 +100,31 @@ export default function ShareViewerPage() {
             </div>
             <input ref={linkRef} readOnly value={artwork.url} aria-label={copy.copy}
               onFocus={(event) => event.target.select()} className="mt-4 w-full max-w-md rounded-lg border border-slate-200 bg-white/70 px-3 py-2 text-center text-xs text-slate-600" />
-            {deleteToken ? (
-              <div className="mt-10 text-center">
+            <div className="mt-10 w-full max-w-md text-center">
+              {!deleteToken ? (
+                <details className="rounded-xl border border-slate-200 bg-white/70 px-4 py-3 text-left">
+                  <summary className="cursor-pointer text-sm font-medium text-slate-700">
+                    {copy.recoveryPaste}
+                  </summary>
+                  <label className="mt-3 block text-xs text-slate-600">
+                    {copy.recoveryKey}
+                    <input type="password" value={manualToken} autoComplete="off" spellCheck={false}
+                      onChange={(event) => setManualToken(event.target.value)}
+                      placeholder={copy.recoveryPastePlaceholder}
+                      className="mt-2 w-full rounded-lg border border-slate-300 bg-white p-3 font-mono text-xs text-slate-900" />
+                  </label>
+                  <p className="mt-2 text-xs text-slate-500">{copy.recoveryKey}</p>
+                </details>
+              ) : null}
+              {deleteToken || /^[a-f0-9]{64}$/.test(manualToken.trim()) ? (
                 <button type="button" onClick={() => void handleRevoke()} disabled={revoking}
-                  className="inline-flex items-center gap-2 text-xs text-red-700 underline disabled:opacity-50">
+                  className="mt-4 inline-flex items-center gap-2 text-xs text-red-700 underline disabled:opacity-50">
                   {revoking ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
                   {revoking ? copy.revoking : copy.revoke}
                 </button>
-                {error ? <p role="alert" className="mt-2 text-sm text-red-700">{error}</p> : null}
-              </div>
-            ) : null}
+              ) : null}
+              {error ? <p role="alert" className="mt-2 text-sm text-red-700">{error}</p> : null}
+            </div>
             <a href="/" className="mt-12 inline-flex items-center gap-2 text-sm text-teal-900 underline">
               {copy.poweredBy}<ExternalLink size={14} />
             </a>
