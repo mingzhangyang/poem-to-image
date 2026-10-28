@@ -21,7 +21,7 @@ export type PaperId = (typeof PAPER_STYLES)[number]['id'];
 export const DEFAULT_PAPER_ID: PaperId = 'rice';
 
 export function getPaperStyle(id: PaperId | string | undefined) {
-  return PAPER_STYLES.find((paper) => paper.id === id) ?? PAPER_STYLES[1];
+  return PAPER_STYLES.find((paper) => paper.id === id) ?? PAPER_STYLES[3];
 }
 
 const tileCache = new Map<PaperId, string>();
