@@ -339,8 +339,8 @@ export async function deleteShare(request: Request, env: WorkerEnv, id: string):
   // that blocks any delayed POST from creating a reservation and publishing.
   await env.DB.prepare(
     \`INSERT OR IGNORE INTO shared_artworks
-     (id, delete_token_hash, revoked_at, assets_deleted_at)
-     VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)\`,
+     (id, title, author, delete_token_hash, revoked_at, assets_deleted_at)
+     VALUES (?, '', '', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)\`,
   ).bind(id, hash).run();
 
   let row = await findShareById(env.DB, id);

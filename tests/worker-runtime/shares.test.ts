@@ -166,6 +166,44 @@ describe('anonymous artwork sharing', () => {
     expect(await env.ARTWORKS.head(rows.results[0].image_key)).not.toBeNull();
   });
 
+  it('allows cancellation before publication reaches the Worker and blocks delayed uploads', async () => {
+    const credentials = makeCredentials();
+    const cancellation = await SELF.fetch(ORIGIN + '/api/shares/' + credentials.id, {
+      method: 'DELETE', headers: { Origin: ORIGIN, 'X-Share-Delete-Token': credentials.deleteToken },
+    });
+    expect(cancellation.status).toBe(200);
+    expect(await cancellation.json()).toMatchObject({ revoked: true });
+    const delayed = await publish('Would have been public', 'Poet', credentials);
+    expect(delayed.status).toBe(409);
+    expect(await delayed.json()).toMatchObject({ code: 'SHARE_CANCELLED' });
+    expect((await SELF.fetch(ORIGIN + '/api/shares/' + credentials.id)).status).toBe(404);
+    const tombstone = await env.DB.prepare('SELECT revoked_at, published_at, image_key FROM shared_artworks WHERE id = ?')
+      .bind(credentials.id).first<{ revoked_at: string | null; published_at: string | null; image_key: string | null }>();
+    expect(tombstone?.revoked_at).toBeTruthy();
+    expect(tombstone?.published_at).toBeNull();
+    expect(tombstone?.image_key).toBeNull();
+    const repeated = await SELF.fetch(ORIGIN + '/api/shares/' + credentials.id, {
+      method: 'DELETE', headers: { Origin: ORIGIN, 'X-Share-Delete-Token': credentials.deleteToken },
+    });
+    expect(repeated.status).toBe(200);
+  });
+
+  it('can revoke an incomplete server reservation and prevents any later finalization', async () => {
+    const credentials = makeCredentials();
+    const subtle = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(credentials.deleteToken));
+    const tokenHash = Array.from(new Uint8Array(subtle), (byte) => byte.toString(16).padStart(2, '0')).join('');
+    await env.DB.prepare(
+      "INSERT INTO shared_artworks (id, title, author, delete_token_hash, content_fingerprint) VALUES (?, 'Awaiting', 'Poet', ?, ?)",
+    ).bind(credentials.id, tokenHash, 'b'.repeat(64)).run();
+    const cancelled = await SELF.fetch(ORIGIN + '/api/shares/' + credentials.id, {
+      method: 'DELETE', headers: { Origin: ORIGIN, 'X-Share-Delete-Token': credentials.deleteToken },
+    });
+    expect(cancelled.status).toBe(200);
+    const delayed = await publish('Awaiting', 'Poet', credentials);
+    expect(delayed.status).toBe(409);
+    expect(await delayed.json()).toMatchObject({ code: 'SHARE_CANCELLED' });
+  });
+
   it('refuses an already revoked publication identifier on retry', async () => {
     const credentials = makeCredentials();
     expect((await publish('To be revoked', 'Poet', credentials)).status).toBe(201);

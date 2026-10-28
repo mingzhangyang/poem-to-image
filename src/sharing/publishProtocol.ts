@@ -114,9 +114,12 @@ export function removePublishCredentials(storage: Storage, id: string, deleteTok
     if (storage.getItem(SHARE_OWNER_KEY_PREFIX + id) === deleteToken) {
       storage.removeItem(SHARE_OWNER_KEY_PREFIX + id);
     }
+  } catch { /* storage access denied */ }
+  // A failed owner-key removal must not also keep an obsolete pending record.
+  try {
     const pending = pendingCredentials(storage);
     if (pending?.id === id && pending.deleteToken === deleteToken) {
       storage.removeItem(PENDING_SHARE_KEY);
     }
-  } catch { /* storage unavailable; server revocation already took effect */ }
+  } catch { /* storage access denied */ }
 }

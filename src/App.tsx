@@ -444,12 +444,15 @@ export default function App() {
       return unknown();
     }
     if (!response.ok) {
-      if (body.code === 'SHARE_CONTENT_MISMATCH') return unknown();
-      if (![400, 403, 409, 413, 415, 429].includes(response.status)) return unknown();
-      // These errors happen before a successful insert, or indicate an ID
-      // collision. The failed attempt is safe to discard.
-      removePublishCredentials(localStorage, credentials.id, credentials.deleteToken);
-      throw new Error(body.code ?? String(response.status));
+      // A previous request with these credentials may still be committing to
+      // D1/R2. A 429, 400 or 409 for a later retry is NOT proof that the
+      // earlier attempt failed. Keep the owner key and pending reservation.
+      // The creator may safely retry or explicitly cancel the identifier.
+      if (body.code === 'SHARE_CANCELLED') {
+        removePublishCredentials(localStorage, credentials.id, credentials.deleteToken);
+        throw new Error('SHARE_CANCELLED');
+      }
+      return unknown();
     }
     if (body.id !== credentials.id || body.deleteToken !== credentials.deleteToken) return unknown();
     completePublishCredentials(localStorage, credentials);
