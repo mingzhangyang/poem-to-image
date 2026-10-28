@@ -76,6 +76,7 @@ const en = {
     background: "Background",
     stylePanelTitle: "Style",
     bgSolid: "Solid",
+    bgPaper: "Paper",
     bgGradient: "Gradient",
     bgTransparent: "Transparent",
     bgImage: "Image",
