@@ -1,9 +1,10 @@
 import type { CSSProperties, ChangeEvent, ReactNode, RefObject } from 'react';
 import type { Language, TranslationKey } from './translations';
+import type { PaperId } from './paperStyles';
 
 export type AiProvider = 'gemini' | 'openai';
 export const CREDIT_COST: Record<AiProvider, number> = { gemini: 2, openai: 1 };
-export type BackgroundType = 'solid' | 'gradient' | 'transparent' | 'image' | 'ai';
+export type BackgroundType = 'solid' | 'paper' | 'gradient' | 'transparent' | 'image' | 'ai';
 export type BackgroundImageSource = 'template' | 'upload' | 'ai' | null;
 export type WritingMode = 'horizontal-tb' | 'vertical-rl';
 export type TextAlign = 'left' | 'center' | 'right';
@@ -125,6 +126,8 @@ export interface StampConfig {
 
 export interface TemplateBackgroundConfig {
   backgroundType: Exclude<BackgroundType, 'ai'>;
+  /** Optional for backwards compatibility with templates saved before paper support. */
+  paperId?: PaperId;
   backgroundColor: string;
   gradientColor1: string;
   gradientColor2: string;
@@ -280,6 +283,7 @@ export interface ContentSectionProps {
 export interface BackgroundSectionProps {
   hasPoemText: boolean;
   backgroundType: BackgroundType;
+  paperId: PaperId;
   backgroundColor: string;
   gradientColor1: string;
   gradientColor2: string;
@@ -295,6 +299,7 @@ export interface BackgroundSectionProps {
   isGeneratingAI: boolean;
   fileInputRef: RefObject<HTMLInputElement | null>;
   onBackgroundTypeChange: (value: BackgroundType) => void;
+  onPaperIdChange: (value: PaperId) => void;
   onBackgroundColorChange: (value: string) => void;
   onGradientColor1Change: (value: string) => void;
   onGradientColor2Change: (value: string) => void;
