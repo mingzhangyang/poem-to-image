@@ -110,11 +110,12 @@ describe('anonymous artwork sharing', () => {
     const page = await SELF.fetch(url);
     expect(page.status).toBe(200);
     const html = await page.text();
-    const match = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
-    expect(match).not.toBeNull();
-    const data = JSON.parse(match![1]) as Record<string, string>;
-    expect(data.name).toBe(title);
-    expect(data.creator).toBe(author);
+    const data = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
+      .map((match) => JSON.parse(match[1]) as Record<string, string>)
+      .find((item) => item['@type'] === 'VisualArtwork');
+    expect(data).toBeDefined();
+    expect(data?.name).toBe(title);
+    expect(data?.creator).toBe(author);
     expect(html).not.toContain('<script>alert(1)</script>');
     expect(html).toContain('Cost $$');
   });
