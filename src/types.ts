@@ -1,7 +1,6 @@
 import type { CSSProperties, ChangeEvent, ReactNode, RefObject } from 'react';
 import type { Language, TranslationKey } from './translations';
 import type { PaperId } from './paperStyles';
-import type { PaperId } from './paperStyles';
 
 export type AiProvider = 'gemini' | 'openai';
 export const CREDIT_COST: Record<AiProvider, number> = { gemini: 2, openai: 1 };
@@ -127,7 +126,6 @@ export interface StampConfig {
 
 export interface TemplateBackgroundConfig {
   backgroundType: Exclude<BackgroundType, 'ai'>;
-  paperId?: PaperId;
   /** Optional for backwards compatibility with templates saved before paper support. */
   paperId?: PaperId;
   backgroundColor: string;
@@ -285,8 +283,6 @@ export interface ContentSectionProps {
 export interface BackgroundSectionProps {
   hasPoemText: boolean;
   backgroundType: BackgroundType;
-  paperId: PaperId;
-  onPaperChange: (value: PaperId) => void;
   paperId: PaperId;
   backgroundColor: string;
   gradientColor1: string;
