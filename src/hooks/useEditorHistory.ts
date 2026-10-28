@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useUndoHistory } from './useUndoHistory';
+import type { PaperId } from '../paperStyles';
 import type {
   BackgroundImageSource,
   BackgroundType,
@@ -20,6 +21,7 @@ import type {
 
 interface HistoryBackgroundSource {
   backgroundType: BackgroundType;
+  paperId: PaperId;
   backgroundColor: string;
   gradientColor1: string;
   gradientColor2: string;
@@ -137,6 +139,7 @@ export function useEditorHistory({
       presetSize,
       background: {
         backgroundType: background.backgroundType === 'ai' ? 'image' : background.backgroundType,
+        paperId: background.paperId,
         backgroundColor: background.backgroundColor,
         gradientColor1: background.gradientColor1,
         gradientColor2: background.gradientColor2,
