@@ -1,4 +1,5 @@
-import { createStructuredPoemLayout } from '../poemContent';
+import { createStructuredPoemLayout, getPlainPoemText } from '../poemContent';
+import { ensureFontReady } from '../fontLoader';
 import { getCanvasPositioningRect } from '../positioningRect';
 import { createCanvasTextMeasurer, createTextLayout } from '../textLayout';
 import { drawSignatureToCanvas, ensureSignatureFontsLoaded, getSignatureCanvasSize } from '../signatureRendering';
@@ -347,6 +348,17 @@ export async function renderCanvasExport(inputScene: CanvasExportScene, options:
   if (!ctx) throw new Error('Failed to create export canvas');
 
   if (scene.decorations.signatures.length > 0) await ensureSignatureFontsLoaded();
+  // Wait for the CSS and the unicode-range font subsets used by this *exact*
+  // poem, including custom text and stamp. A stylesheet-in-flight is not
+  // covered by document.fonts.ready on its own.
+  const primaryText = [
+    getPlainPoemText(scene.typography.poem),
+    ...scene.decorations.customTexts.map((item) => item.text),
+  ].join('\n');
+  await ensureFontReady(scene.typography.fontFamily, primaryText);
+  if (scene.decorations.showStamp) {
+    await ensureFontReady(scene.decorations.stamp.fontFamily, scene.decorations.stamp.text);
+  }
   if ('fonts' in document) await document.fonts.ready;
 
   ctx.scale(scene.exportScale, scene.exportScale);
