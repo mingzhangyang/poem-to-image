@@ -105,6 +105,10 @@ describe('anonymous artwork sharing', () => {
       method: 'POST', headers: { Origin: 'https://evil.test' }, body: form(),
     });
     expect(hostile.status).toBe(403);
+    const malformedOrigin = await SELF.fetch(ORIGIN + '/api/shares', {
+      method: 'POST', headers: { Origin: 'not an origin' }, body: form(),
+    });
+    expect(malformedOrigin.status).toBe(403);
   });
 
   it('returns 404 for malformed share IDs and never falls back to the editor', async () => {

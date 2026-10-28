@@ -32,7 +32,8 @@ The viewer is a separate React route and is deliberately outside the Clerk provi
 - No direct arbitrary R2 key is accepted from the request.
 - Image size limits: artwork 6 MiB, JPEG card 1.5 MB, total request 9 MiB. PNG signature and IHDR size checks; JPEG signature check; maximum allowed PNG width/height 4096. `Content-Type` and actual file signature must agree.
 - At most 5 publication attempts/hour and 20/day per `CF-Connecting-IP`, with a hashed bucket identifier. This is a baseline, not a bot-proof CAPTCHA; evaluate Turnstile if real abuse appears.
-- Origin checks defend against ordinary cross-origin browser submissions and removal calls; curl/no-Origin publishing remains supported.
+- Origin checks defend against ordinary cross-origin browser submissions and removal calls; curl/no-Origin publishing remains supported. Local Vite development also permits loopback-to-loopback origin forwarding (ports 3000/8787); production never permits unrelated origins.
+- Anonymous publishing requires working localStorage for the browser-held revocation capability; browsers that block storage must allow site data before publishing.
 - Published images can be downloaded and redistributed by visitors; revocation cannot remove third-party copies or cached social previews. Cache-Control is `no-store` for app-served public pages and images.
 - R2 writes happen before D1 insert. On failure, the Worker best-effort cleans up uploaded R2 objects; unreachable orphans may require maintenance if R2 deletion also fails.
 - Publishing does not upload edit history, templates, arbitrary localStorage or original unrendered user-upload files.
@@ -47,6 +48,12 @@ npx wrangler r2 bucket create inkpoem-shared-artworks-staging
 ```
 
 Provision staging D1 and credentials according to [operations runbook](operations-runbook.md). The repository's existing `wrangler.jsonc` now has an `ARTWORKS` R2 binding to `inkpoem-shared-artworks`; `wrangler.staging.example.jsonc` points to a separate staging R2 bucket. Keep buckets private; no custom public R2 domain is needed.
+
+For local development, initialize local D1 before opening the Vite editor:
+
+```sh
+npx wrangler d1 migrations apply DB --local --config wrangler.jsonc
+```
 
 After both resources exist, apply the new numbered D1 migration **before deploying Worker code**:
 

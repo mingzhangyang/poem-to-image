@@ -390,6 +390,15 @@ export default function App() {
   } = useImageExporter(exportFormat, exportScale, exportScene, waitForSceneSettled);
 
   const publishArtwork = async (): Promise<PublishedShare> => {
+    // Avoid publishing a link that the anonymous creator cannot later revoke.
+    const probeKey = 'inkpoem.share.storage-probe';
+    try {
+      localStorage.setItem(probeKey, '1');
+      if (localStorage.getItem(probeKey) !== '1') throw new Error('STORAGE_UNAVAILABLE');
+      localStorage.removeItem(probeKey);
+    } catch {
+      throw new Error('STORAGE_UNAVAILABLE');
+    }
     const { artwork, card } = await createShareAssets();
     const form = new FormData();
     form.append('artwork', artwork, artwork.type === 'image/png' ? 'artwork.png' : 'artwork.jpg');
@@ -401,7 +410,7 @@ export default function App() {
     if (!response.ok) throw new Error(result.code ?? String(response.status));
     if (!result.id || !result.url || !result.deleteToken) throw new Error('INVALID_RESPONSE');
     try { localStorage.setItem(SHARE_OWNER_KEY_PREFIX + result.id, result.deleteToken); }
-    catch { /* Artwork remains published even if local revocation storage is unavailable. */ }
+    catch { throw new Error('STORAGE_SAVE_FAILED'); }
     return result;
   };
 

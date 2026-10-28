@@ -24,6 +24,24 @@ function available(env: WorkerEnv): boolean {
   return !!(env.DB && env.ARTWORKS);
 }
 
+// Production requests must originate from this Worker host. When running Vite
+// locally, the browser's :3000 origin differs from the proxied Worker's :8787.
+function hasAllowedOrigin(request: Request): boolean {
+  const rawOrigin = request.headers.get('origin');
+  if (!rawOrigin) return true; // CLI clients do not always send Origin.
+  const requestUrl = new URL(request.url);
+  let browserOrigin: URL;
+  try {
+    browserOrigin = new URL(rawOrigin);
+  } catch {
+    return false;
+  }
+  if (browserOrigin.origin === requestUrl.origin) return true;
+  const localHosts = new Set(['localhost', '127.0.0.1', '[::1]']);
+  return requestUrl.protocol === 'http:' && browserOrigin.protocol === 'http:'
+    && localHosts.has(requestUrl.hostname) && localHosts.has(browserOrigin.hostname);
+}
+
 export function isShareId(id: string): boolean {
   return SHARE_ID_PATTERN.test(id);
 }
@@ -121,10 +139,7 @@ async function publishLimit(request: Request, db: D1Database): Promise<Response 
 export async function publishShare(request: Request, env: WorkerEnv): Promise<Response> {
   if (!available(env)) return jsonResponse({ error: 'Sharing is not configured.' }, 503);
   if (request.method !== 'POST') return methodNotAllowed(['POST']);
-  const origin = request.headers.get('origin');
-  if (origin && origin !== new URL(request.url).origin) {
-    return jsonResponse({ error: 'Invalid origin.' }, 403);
-  }
+  if (!hasAllowedOrigin(request)) return jsonResponse({ error: 'Invalid origin.' }, 403);
   const contentType = request.headers.get('content-type') || '';
   if (!/^multipart\/form-data\s*;/i.test(contentType)) {
     return jsonResponse({ error: 'Expected multipart form upload.' }, 415);
@@ -197,8 +212,7 @@ export async function deleteShare(request: Request, env: WorkerEnv, id: string):
   if (request.method !== 'DELETE') return methodNotAllowed(['DELETE']);
   if (!available(env)) return jsonResponse({ error: 'Sharing is not configured.' }, 503);
   if (!isShareId(id)) return notFound();
-  const origin = request.headers.get('origin');
-  if (origin && origin !== new URL(request.url).origin) return jsonResponse({ error: 'Invalid origin.' }, 403);
+  if (!hasAllowedOrigin(request)) return jsonResponse({ error: 'Invalid origin.' }, 403);
   const token = request.headers.get('X-Share-Delete-Token') ?? '';
   if (!/^[a-f0-9]{64}$/.test(token)) return notFound();
   const hash = await tokenHash(token);
