@@ -43,6 +43,12 @@ const english = {
   recoveryStorageRolledBack: "Browser storage could not save the removal key, so this newly published artwork was automatically removed. Enable storage and try again.",
   recoveryPaste: "Have a private removal key?",
   recoveryPastePlaceholder: "Paste the 64-character private removal key",
+  pendingTitle: "Publication status uncertain",
+  pendingWarning: "The response to your upload was interrupted. Your private removal key was saved before upload, but the artwork may or may not be public. Retry safely with the original unchanged canvas, remove the share if it exists, or securely back up this key before closing.",
+  pendingRetry: "Retry the same publication",
+  loadError: "Could not load the artwork",
+  loadErrorHint: "The connection or service is temporarily unavailable. The artwork may still be public. Try again.",
+  loadRetry: "Try loading again",
   poweredBy: 'Made with InkPoem',
 };
 type Copy = typeof english;
@@ -76,6 +82,12 @@ const zhCN: Copy = {
   recoveryStorageRolledBack: "浏览器无法保存撤销密钥，新发布的作品已自动撤销。启用网站存储后请重试。",
   recoveryPaste: "持有私人撤销密钥？",
   recoveryPastePlaceholder: "粘贴 64 位私人撤销密钥",
+  pendingTitle: "作品发布状态尚不确定",
+  pendingWarning: "上传响应已中断。撤销密钥在上传前已保存在浏览器中，但作品是否发布成功尚不确定。请保持画布内容不变后安全重试，或尝试撤销分享；关闭前请妥善备份密钥。",
+  pendingRetry: "安全重试同一次发布",
+  loadError: "暂时无法加载作品",
+  loadErrorHint: "网络或服务暂时不可用，作品可能仍然公开。请重试加载。",
+  loadRetry: "重新加载",
   poweredBy: '由 InkPoem 创作',
 };
 const zhTW: Copy = {
@@ -108,6 +120,12 @@ const zhTW: Copy = {
   recoveryStorageRolledBack: "無法儲存撤銷金鑰，剛發佈的作品已自動撤銷。請啟用儲存空間再試。",
   recoveryPaste: "持有私人撤銷金鑰？",
   recoveryPastePlaceholder: "貼上 64 字元私人撤銷金鑰",
+  pendingTitle: "作品發佈狀態尚不確定",
+  pendingWarning: "上傳回應中斷。撤銷金鑰已在上傳前儲存，但尚不確定作品是否發佈成功。請保持畫布不變後安全重試，或撤銷分享；關閉前請備份金鑰。",
+  pendingRetry: "安全重試同一次發佈",
+  loadError: "暫時無法載入作品",
+  loadErrorHint: "網路或服務暫時無法使用，作品可能仍公開。請重試。",
+  loadRetry: "重新載入",
   poweredBy: '由 InkPoem 創作',
 };
 const ja: Copy = {
@@ -140,6 +158,12 @@ const ja: Copy = {
   recoveryStorageRolledBack: "削除キーを保存できなかったため、新しい公開を取り消しました。ストレージを有効にして再試行してください。",
   recoveryPaste: "秘密の削除キーがありますか？",
   recoveryPastePlaceholder: "64文字の秘密キーを貼り付け",
+  pendingTitle: "公開状態を確認できません",
+  pendingWarning: "アップロードの応答が中断しました。秘密キーは事前に保存されていますが、公開されたか不明です。元の作品を変更せず同じ操作を再試行するか、削除を試み、キーを安全に保管してください。",
+  pendingRetry: "同じ公開を安全に再試行",
+  loadError: "作品を読み込めません",
+  loadErrorHint: "接続またはサービスが一時的に利用できません。作品が公開されている可能性があります。再試行してください。",
+  loadRetry: "再読み込み",
   poweredBy: 'InkPoemで作成',
 };
 const ko: Copy = {
@@ -172,6 +196,12 @@ const ko: Copy = {
   recoveryStorageRolledBack: "삭제 키를 저장할 수 없어 새 게시물을 자동으로 삭제했습니다. 저장소 사용 설정 후 다시 시도하세요.",
   recoveryPaste: "비밀 삭제 키가 있나요?",
   recoveryPastePlaceholder: "64자리 비밀 삭제 키 붙여넣기",
+  pendingTitle: "게시 상태를 확인할 수 없습니다",
+  pendingWarning: "업로드 응답이 중단되었습니다. 비밀 삭제 키는 업로드 전에 저장되었지만 게시 여부는 불확실합니다. 원래 캔버스를 유지한 채 안전하게 다시 시도하거나 삭제를 요청하고 키를 백업하세요.",
+  pendingRetry: "같은 게시 안전하게 재시도",
+  loadError: "작품을 불러올 수 없습니다",
+  loadErrorHint: "연결이나 서비스에 일시적인 문제가 있습니다. 작품은 여전히 공개되어 있을 수 있습니다. 다시 시도하세요.",
+  loadRetry: "다시 불러오기",
   poweredBy: 'InkPoem으로 제작',
 };
 const es: Copy = {
@@ -204,6 +234,12 @@ const es: Copy = {
   recoveryStorageRolledBack: "No se pudo guardar la clave y la nueva publicación se retiró. Activa el almacenamiento y reintenta.",
   recoveryPaste: "¿Tienes una clave privada de eliminación?",
   recoveryPastePlaceholder: "Pega la clave privada de 64 caracteres",
+  pendingTitle: "No se pudo confirmar la publicación",
+  pendingWarning: "La respuesta de carga se interrumpió. La clave privada se guardó antes de enviar, pero no sabemos si la obra es pública. Reinténtalo sin cambiar el lienzo, intenta retirarla o guarda la clave antes de cerrar.",
+  pendingRetry: "Reintentar la misma publicación",
+  loadError: "No se pudo cargar la obra",
+  loadErrorHint: "La conexión o el servicio está temporalmente indisponible. La obra podría seguir publicada. Inténtalo de nuevo.",
+  loadRetry: "Volver a cargar",
   poweredBy: 'Creado con InkPoem',
 };
 const fr: Copy = {
@@ -236,6 +272,12 @@ const fr: Copy = {
   recoveryStorageRolledBack: "La clé n’a pas pu être enregistrée ; la nouvelle publication a été retirée. Activez le stockage et réessayez.",
   recoveryPaste: "Vous avez une clé privée de suppression ?",
   recoveryPastePlaceholder: "Collez la clé privée de 64 caractères",
+  pendingTitle: "Statut de publication incertain",
+  pendingWarning: "La réponse du transfert a été interrompue. La clé privée a été enregistrée avant l'envoi, mais l'œuvre peut être publique. Réessayez sans modifier le canevas, retirez-la ou sauvegardez la clé avant de fermer.",
+  pendingRetry: "Réessayer la même publication",
+  loadError: "Impossible de charger l’œuvre",
+  loadErrorHint: "La connexion ou le service est temporairement indisponible. L’œuvre peut encore être publique. Réessayez.",
+  loadRetry: "Réessayer",
   poweredBy: 'Créé avec InkPoem',
 };
 const de: Copy = {
@@ -268,6 +310,12 @@ const de: Copy = {
   recoveryStorageRolledBack: "Der Schlüssel konnte nicht gespeichert werden; die neue Veröffentlichung wurde entfernt. Speicher aktivieren und erneut versuchen.",
   recoveryPaste: "Privaten Löschschlüssel vorhanden?",
   recoveryPastePlaceholder: "64-stelligen privaten Löschschlüssel einfügen",
+  pendingTitle: "Veröffentlichungsstatus unklar",
+  pendingWarning: "Die Upload-Antwort wurde unterbrochen. Der private Schlüssel wurde vor dem Senden gespeichert, aber es ist unklar, ob das Werk öffentlich ist. Ohne Änderungen erneut versuchen, Freigabe entfernen oder Schlüssel sichern.",
+  pendingRetry: "Dieselbe Veröffentlichung wiederholen",
+  loadError: "Werk konnte nicht geladen werden",
+  loadErrorHint: "Verbindung oder Dienst ist vorübergehend nicht verfügbar. Das Werk könnte noch öffentlich sein. Bitte erneut versuchen.",
+  loadRetry: "Erneut laden",
   poweredBy: 'Mit InkPoem erstellt',
 };
 export const shareCopy: Record<Language, Copy> = {
