@@ -52,7 +52,7 @@ test('saved custom template thumbnail uses the actual paper texture', () => {
 test('writing-paper rules keep 40px spacing across repeating tile edges', () => {
   const url = paperTextureUrl('lined');
   const svg = decodeURIComponent(url.slice('data:image/svg+xml,'.length));
-  const rules = [...svg.matchAll(/<path d="M0 (\\d+)H240" stroke="#7291AB"/g)]
+  const rules = [...svg.matchAll(/<path d="M0 (\d+)H240" stroke="#7291AB"/g)]
     .map((match) => Number(match[1]));
   assert.deepEqual(rules, [20, 60, 100, 140, 180, 220]);
   const nextTileFirstRule = 240 + rules[0];
