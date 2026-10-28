@@ -1,6 +1,8 @@
 import { useCallback, useMemo, useState } from 'react';
 import { logError } from '../logger';
 import { renderCanvasExport } from '../export/renderCanvasExport';
+import type { PaperId } from '../paperStyles';
+import type { BackgroundType } from '../types';
 import { createExportFilename } from '../export/exportFilename';
 import type { BorderStyle, CustomText, ExportFormat, ExportScale, LogoConfig, PoemContentData, PoemLayerStyle, PositionedElement, SignatureConfig, SocialPlatform, StampConfig, TextAlign, WritingMode } from '../types';
 
@@ -39,7 +41,8 @@ async function copyImageToClipboard(blob: Blob): Promise<boolean> {
 }
 
 interface UseImageExporterBackgroundOptions {
-  backgroundType: 'solid' | 'gradient' | 'transparent' | 'image' | 'ai';
+  backgroundType: BackgroundType;
+  paperId?: PaperId;
   backgroundColor: string;
   gradientColor1: string;
   gradientColor2: string;
