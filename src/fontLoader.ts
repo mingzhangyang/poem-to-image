@@ -37,7 +37,7 @@ const GOOGLE_FONT_SPECS: Record<string, string> = {
 // Vite fetches only the CSS for a selected family; the browser fetches only
 // the glyph subsets needed for the poem, avoiding external font CDNs.
 const LOCAL_FONT_LOADERS: Record<string, () => Promise<unknown>> = {
-  'LXGW WenKai Screen': () => import('lxgw-wenkai-screen-webfont/lxgwwenkaigbscreen.css'),
+  'LXGW WenKai Screen': () => import('lxgw-wenkai-screen-webfont/lxgwwenkaiscreen.css'),
   'Ma Shan Zheng': () => import('@fontsource/ma-shan-zheng/400.css'),
   'Zhi Mang Xing': () => import('@fontsource/zhi-mang-xing/400.css'),
   'Long Cang': () => import('@fontsource/long-cang/400.css'),
