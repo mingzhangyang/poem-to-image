@@ -1,81 +1,72 @@
-# Published artwork links — InkPoem
+# InkPoem public, read-only artwork links
 
-InkPoem can publish an **immutable, public, read-only image snapshot** at `https://inkpoem.com/s/<12-char-id>`. These are not shareable editor state, collaborative documents or private drafts. Publication costs no AI credits.
+Users may publish an immutable rendered snapshot at `https://inkpoem.com/s/<id>`. Publication is anonymous and does not spend AI credits, upload the editor project or make an editable document public.
 
-## User journey
+## Reader and creator flow
 
-1. Finish an artwork in the editor.
-2. Open **Export / Share** (mobile or desktop), then **Publish shareable link**.
-3. Read the public-content warning and confirm publication.
-4. InkPoem renders the exact work using the existing canvas exporter, creates a 1200×630 JPEG social card and uploads both images through a bounded multipart request.
-5. After rendering but **before making any network request**, the browser generates a random 12-character ID and 256-bit revocation token and saves both with a fingerprint of the snapshot in localStorage. It passes both credentials to the Worker, which stores immutable R2 images and D1 metadata. The token is stored as a hash in D1; the public `/s/:id` URL never includes it.
-6. Viewers can open the link without signing in, see the read-only image, download it, share the link and follow a link back to InkPoem.
-7. The creator can remove the share using its revocation key, either on the publishing browser or by securely pasting a backed-up key into the read-only viewer. If credential storage fails **before** upload, publishing is blocked. If the upload response is lost after the Worker commits, the browser retains the pre-stored ID/token and the dialog shows an uncertain state with an idempotent retry, removal control, and backup option. It never generates a second ID for the same pending snapshot. Never include the key in a shared link.
+1. Finish a poem, open Export / Share, select **Publish shareable link** and confirm the public-content warning.
+2. InkPoem renders the artwork and a 1200×630 JPEG preview. **Before any upload**, the browser generates a random 12-character share ID and 256-bit deletion capability, and verifies both can be stored in localStorage along with the exact rendered snapshot fingerprint.
+3. The Worker validates the multipart request and coordinates a D1 publication reservation followed by private R2 object uploads. A conditional D1 update publishes only one immutable snapshot per ID.
+4. The resulting `/s/:id` page is read-only, unauthenticated, downloadable and shareable; OG/Twitter metadata is inserted into server-delivered HTML.
+5. Creators can revoke a link from the original browser or use a securely backed-up deletion key on another device. The key **must never be included in the public URL**.
 
-Sharing is deliberately separate from the existing **Share image** (native file share), **Copy image**, **Download**, and social-platform exports. Existing workflows remain intact. Once published, the snapshot is immutable even if the editor state changes. New publication creates a new link.
+The existing **Share image**, **Copy image**, **Download** and social-platform export actions remain separate and unchanged.
 
-## Persistence and routes
+## Failure-safe publication protocol
 
-- `shared_artworks` D1 table: opaque ID, title, author, image key and MIME, card key, SHA-256 revocation token hash, immutable content fingerprint, creation time, nullable revocation time. A partial index on pending cleanup tombstones allows bounded hourly cleanup.
-- `ARTWORKS` R2 binding (private): `shares/<id>/artwork.png|jpg`, `shares/<id>/card.jpg`.
-- `POST /api/shares`: anonymous multipart `id` (client-generated 12-character random string), `deleteToken` (256-bit private hex key), `artwork` (PNG/JPEG), `card` (JPEG), `title`, `author`. New creation returns 201; identical retries return 200 with the same ID and token. A repeated ID with a different token or artwork fingerprint returns 409. Credentials must be saved locally **before** uploading; a lost POST response does not lose the ability to revoke.
-- `GET /api/shares/:id`: public metadata, never exposes deletion token/hash.
-- `DELETE /api/shares/:id`: creator-held `X-Share-Delete-Token` capability; disables D1 visibility and clears title, author and hashed deletion secret before removing R2 objects; nonmatching token returns 404.
-- `GET /s/:id`: server-rendered HTML shell with escaped title, description, canonical, OG/Twitter tags (1200×630 social card), JSON-LD. Invalid or revoked ID is an actual 404 with `noindex`.
-- `GET|HEAD /s/:id/image.png|jpg` and `/s/:id/card.jpg`: gated through active D1 record and returned with image MIME, `nosniff` and `no-store`. R2 objects are not made publicly accessible.
+The browser stores the share ID, removal capability and content fingerprint in `inkpoem.share.pending.v1` and the owner key in `inkpoem.share.owner.<id>` *before* issuing POST. It keeps these credentials until the publish outcome is confirmed or a server-confirmed cancellation occurs.
 
-The viewer is a separate React route and is deliberately outside the Clerk provider; guests do not load the editor or need authentication.
+- `POST /api/shares`: multipart `id`, `deleteToken`, `artwork`, `card`, `title`, `author`. Missing/invalid payloads are rejected. The Worker inserts a reserved D1 row before writing R2. First successful publish returns 201; an identical retry returns 200. A different fingerprint or owner token for an existing ID returns a 409 without overwriting the work.
+- Each concurrent attempt uploads to distinct random R2 paths, and the D1 conditional update atomically selects one winner. Losing attempts clean their own uploads. A pending row is not exposed by public GET/HTML/image routes.
+- Network errors, unreadable responses, 429s and other ambiguous retry failures **never erase stored creator credentials**. The dialog displays a protected recovery state: retry the same unchanged snapshot, cancel the previous ID, or securely back up the key before closing.
+- When an uncertain pending publication blocks publishing edited artwork, the creator can cancel the old ID before attempting a new share. Cancelling a request that never reached the Worker is valid and idempotent; the Worker inserts a **revocation tombstone** into D1 if necessary. Thus even an older request arriving afterward cannot reserve or publish that ID. A cancellation in the middle of R2 upload wins over the final conditional D1 update.
+- `DELETE /api/shares/:id`: requires the private `X-Share-Delete-Token`. The Worker hashes the token, atomically revokes an existing reservation or published row, or records a tombstone when the ID was not seen previously; repeats using the same capability are accepted. The browser clears the matching pending record and owner key only after an acknowledged cancellation.
+- `GET /api/shares/:id`: public metadata only for fully published, not-revoked work. `GET /s/:id`: server-delivered HTML with escaped OG/Twitter/JSON-LD metadata and true 404/noindex for absent, pending or revoked IDs.
+- `GET|HEAD /s/:id/image.png|jpg`, `/s/:id/card.jpg`: private R2 reads gated by the published D1 record.
 
-## Abuse controls and limitations
+Revocation immediately disables public reads and erases stored title/author. D1 retains an ID tombstone and the SHA-256 key hash so delayed publish requests and repeated deletes are handled safely. R2 cleanup is retried by the existing hourly maintenance task if an object deletion fails; a partial index bounds this query.
 
-- 72 bits of randomly generated ID entropy; 256-bit random revocation capability, stored as SHA-256 hash in D1.
-- No direct arbitrary R2 key is accepted from the request.
-- Image size limits: artwork 6 MiB, JPEG card 1.5 MB, total request 9 MiB. PNG signature and IHDR size checks; JPEG signature check; maximum allowed PNG width/height 4096. `Content-Type` and actual file signature must agree.
-- At most 5 publication attempts/hour and 20/day per `CF-Connecting-IP`, with a hashed bucket identifier. This is a baseline, not a bot-proof CAPTCHA; evaluate Turnstile if real abuse appears.
-- Origin checks defend against ordinary cross-origin browser submissions and removal calls; curl/no-Origin publishing remains supported. Local Vite development also permits loopback-to-loopback origin forwarding (ports 3000/8787); production never permits unrelated origins.
-- Anonymous publishing stores and verifies the complete deletion key and pending publication metadata in localStorage **before** sending the multipart request. A lost/invalid response is an uncertain publication, not a confirmed failure; the dialog retains the key and provides idempotent retry or revocation. If the canvas differs from a pending publication, it refuses to overwrite the pending credentials. Never include a private key in a share URL or native share payload.
-- Published images can be downloaded and redistributed by visitors; revocation cannot remove third-party copies or cached social previews. Cache-Control is `no-store` for app-served public pages and images.
-- Concurrent publication attempts write to separate random R2 prefixes. D1's primary key elects the single canonical winner; losing attempts clean their own unreferenced objects, and identical retries return the existing result without mutating published content. If D1 commit outcome cannot be checked, assets are conservatively retained rather than deleting potentially published files. Separate orphan-object maintenance can reclaim stranded objects from rare infrastructure failures.
-- Revocation clears public metadata and disables access immediately, then deletes R2 assets. Failed deletions are retried by the existing hourly maintenance cron in bounded batches; `assets_deleted_at` tracks completion.
-- Publishing does not upload edit history, templates, arbitrary localStorage or original unrendered user-upload files.
+## Privacy and abuse controls
 
-## One-time Cloudflare provisioning (before merge/deployment)
+- Random ID entropy: 72 bits; private revocation key: 256 bits; only a hash is saved in D1.
+- Artwork max 6 MiB; social card max 1.5 MiB; total request max 9 MiB. Image MIME signatures and basic dimensions are checked.
+- Publication is rate-limited per hashed `CF-Connecting-IP` to five attempts per hour and 20 per day. Do not bypass these limits in production.
+- Normal cross-origin browser requests are rejected; localhost Vite proxy is explicitly supported for development. Private R2 buckets do not need a public custom domain.
+- The creator can lose browser-held revocation access by clearing site data unless they kept a separate private backup. Public images downloaded by others and third-party cached social previews cannot be recalled.
+- No arbitrary editor drafts, templates, original uploaded assets or AI requests are sent by the share endpoint. Publish is an explicit user action.
 
-From the Cloudflare account hosting the Worker:
+## Production-only deployment — no staging environment
+
+This project does **not** require a staging Worker, staging D1 database or separate staging R2 bucket for this feature. Leave the repository's pre-existing staging example unrelated to the feature unchanged.
+
+### Local and CI verification
+
+```sh
+npm ci
+npx wrangler d1 migrations apply DB --local --config wrangler.jsonc
+npm run verify
+npm run test:e2e
+npm run deploy:dry-run
+```
+
+Check the Worker runtime tests for reservation/cancellation races, idempotent retries, malformed payloads, revocation, OG and public 404s. Check browser tests on desktop and mobile for normal publishing, lost responses, failed local storage, pending cleanup and viewer recovery.
+
+### One-time production resources
+
+Using the Cloudflare account that deploys InkPoem:
 
 ```sh
 npx wrangler r2 bucket create inkpoem-shared-artworks
-npx wrangler r2 bucket create inkpoem-shared-artworks-staging
-```
-
-Provision staging D1 and credentials according to [operations runbook](operations-runbook.md). The repository's existing `wrangler.jsonc` now has an `ARTWORKS` R2 binding to `inkpoem-shared-artworks`; `wrangler.staging.example.jsonc` points to a separate staging R2 bucket. Keep buckets private; no custom public R2 domain is needed.
-
-For local development, initialize local D1 before opening the Vite editor:
-
-```sh
-npx wrangler d1 migrations apply DB --local --config wrangler.jsonc
-```
-
-After both resources exist, apply the new numbered D1 migration **before deploying Worker code**:
-
-```sh
-npx wrangler d1 migrations apply DB --remote --config wrangler.staging.jsonc
 npx wrangler d1 migrations apply DB --remote --config wrangler.jsonc
 ```
 
-Only deploy to production after CI is green, staging proves full publish/view/OG/revoke and both R2 + migration are provisioned. A missing binding/config causes shares to return 503 and should block release.
+`wrangler.jsonc` binds the private R2 bucket as `ARTWORKS` and the existing D1 database as `DB`. Apply the `0005_shared_artworks.sql` migration **before** deploying Worker code. Confirm these bindings and migration in the Cloudflare dashboard. Provisioning has **not** been performed from GitHub.
 
-## Acceptance gates
+### Controlled production launch and rollback
 
-- `npm run verify` (typecheck, lint, unit tests, worker runtime tests, build)
-- `npm run test:e2e` (desktop and mobile export UI, including dropped responses and transient viewer errors)
-- Anonymous create succeeds with a 12-char ID and returns an unguessable management capability.
-- Deep-link `/s/:id` works in private browsing; it never invokes Clerk.
-- Browser and network crawlers receive title/description/canonical and unique OG image **in server HTML**. Cloudflare `assets.run_worker_first: ["/s/*"]` in production and staging routes share pages through the Worker before SPA fallback; the Worker fetches `/` (not `/index.html`, which redirects on Cloudflare).
-- PNG and JPEG artwork display; thumbnail is a 1200×630 JPEG and is not broken.
-- Wrong/absent revocation token cannot remove an artwork. A creator holding a backed-up private token can revoke from a different browser, including when localStorage was lost.
-- Revoking instantly fails new D1-gated page, API and asset requests; missing ID is actual 404, not SPA soft-404.
-- Malformed, cross-origin, oversized and rate-limited publish requests fail clearly.
-- If the browser rejects saving the owner or pending publication credentials, it sends **no POST**. If POST succeeds but its response is lost, retry uses the same ID/key, returning 200 without duplicate publication. An uncertain result keeps the key visible, with retry/revoke and an explicit backup acknowledgment gate.
-- JSON-LD serializes literal dollar sequences (`$$`, `$&`, `$'`) and HTML metacharacters without corrupting structured data.
-- Native **Share image** and **Copy image** remain unchanged.
+1. Verify all CI jobs pass and review the migration. Create the production R2 bucket and apply remote D1 migration. Then deploy using the repository's existing production release process (not as part of a PR fix).
+2. Open InkPoem and explicitly publish a disposable non-sensitive sample. Validate its URL in a private browser, server HTML OG image and title, image MIME, and download.
+3. Revoke that sample; confirm the public API, page and images return 404, the HTML has `noindex`, and neither title nor author remains in D1. Test idempotent cancellation of an unused ID locally; do not simulate deliberately broken uploads against production.
+4. If the share feature is unhealthy, **roll back the Worker code to the prior release while leaving the additive D1 migration and private R2 bucket intact**. Do not delete R2 objects or revert the database schema during an emergency rollback; preserve existing user content and deletion capabilities. Fix and redeploy only after diagnosis.
+
+A missing binding, unapplied migration or failed production smoke check blocks declaring the feature launched.
