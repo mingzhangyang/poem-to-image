@@ -15,6 +15,8 @@ export interface PublishedShare {
   /** A request may have committed even though the response was lost.
    * Keep the pre-persisted ID and deletion capability and retry idempotently. */
   statusUnknown?: boolean;
+  /** A different canvas cannot safely replay the previous snapshot. */
+  pendingChanged?: boolean;
 }
 
 interface Props {
@@ -105,6 +107,7 @@ export function PublishDialog({ language, isOpen, onClose, publish }: Props) {
   const handleRetrySave = () => {
     if (!result) return;
     if (result.statusUnknown) {
+      if (result.pendingChanged) return;
       void handlePublish(); // Uses the pre-persisted ID/token; never republishes another ID.
       return;
     }
@@ -171,7 +174,8 @@ export function PublishDialog({ language, isOpen, onClose, publish }: Props) {
         ) : unresolved && result ? (
           <div className="space-y-4">
             <p role="alert" className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950">
-              {result.statusUnknown ? copy.pendingWarning : copy.recoveryWarning}
+              {result.pendingChanged ? copy.pendingChangedWarning
+                : result.statusUnknown ? copy.pendingWarning : copy.recoveryWarning}
             </p>
             <p className="break-all text-sm text-(--app-accent-700)">{result.url}</p>
             <label className="block space-y-2 text-sm font-semibold text-(--app-accent-800)">
@@ -187,10 +191,12 @@ export function PublishDialog({ language, isOpen, onClose, publish }: Props) {
             </button>
             {error ? <p role="alert" className="text-sm text-red-700">{error}</p> : null}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <button type="button" onClick={handleRetrySave} disabled={recoveryBusy || publishing}
-                className="app-button-secondary rounded-xl px-4 py-3 text-sm font-semibold disabled:opacity-50">
-                {publishing ? copy.publishing : result.statusUnknown ? copy.pendingRetry : copy.recoveryRetry}
-              </button>
+              {!result.pendingChanged ? (
+                <button type="button" onClick={handleRetrySave} disabled={recoveryBusy || publishing}
+                  className="app-button-secondary rounded-xl px-4 py-3 text-sm font-semibold disabled:opacity-50">
+                  {publishing ? copy.publishing : result.statusUnknown ? copy.pendingRetry : copy.recoveryRetry}
+                </button>
+              ) : null}
               <button type="button" onClick={() => void handleRevoke()} disabled={recoveryBusy || publishing}
                 className="flex items-center justify-center gap-2 rounded-xl border border-red-300 bg-white px-4 py-3 text-sm font-semibold text-red-800 disabled:opacity-50">
                 {recoveryBusy ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}

@@ -410,7 +410,7 @@ export default function App() {
         const pending = error.pending;
         return {
           id: pending.id, url: link(pending.id),
-          deleteToken: pending.deleteToken, statusUnknown: true,
+          deleteToken: pending.deleteToken, statusUnknown: true, pendingChanged: true,
         };
       }
       throw error;

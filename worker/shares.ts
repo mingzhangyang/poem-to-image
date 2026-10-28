@@ -325,6 +325,25 @@ export async function getShareApi(request: Request, env: WorkerEnv, id: string):
   return row ? jsonResponse(publicShare(request, row)) : notFound();
 }
 
+async function limitUnknownCancellation(request: Request, db: D1Database): Promise<Response | null> {
+  // Cancellation must support an ID whose POST never reached the Worker.
+  // Bound creation of unauthenticated tombstones to avoid unbounded D1 growth.
+  const address = request.headers.get('CF-Connecting-IP') || 'unknown';
+  const hash = await tokenHash('inkpoem-share-cancel:' + address);
+  for (const [key, max, period] of [
+    ['cancel:hour:' + hash, 30, 3600],
+    ['cancel:day:' + hash, 100, 86400],
+  ] as const) {
+    const result = await consumeRateLimit(db, key, max, period);
+    if (!result.allowed) {
+      const response = jsonResponse({ error: 'Too many cancellation attempts.', code: 'RATE_LIMITED' }, 429);
+      response.headers.set('Retry-After', String(result.retryAfterSeconds));
+      return response;
+    }
+  }
+  return null;
+}
+
 export async function deleteShare(request: Request, env: WorkerEnv, id: string): Promise<Response> {
   if (request.method !== 'DELETE') return methodNotAllowed(['DELETE']);
   if (!available(env)) return jsonResponse({ error: 'Sharing is not configured.' }, 503);
@@ -333,6 +352,10 @@ export async function deleteShare(request: Request, env: WorkerEnv, id: string):
   const token = request.headers.get('X-Share-Delete-Token') ?? '';
   if (!/^[a-f0-9]{64}$/.test(token)) return notFound();
   const hash = await tokenHash(token);
+  if (!await findShareById(env.DB, id)) {
+    const limited = await limitUnknownCancellation(request, env.DB);
+    if (limited) return limited;
+  }
 
   // A cancellation must be durable even if the POST has not reached D1 yet.
   // First-writer-wins on the random ID: DELETE inserts a revocation tombstone
