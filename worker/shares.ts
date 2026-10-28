@@ -1,0 +1,288 @@
+import { consumeRateLimit } from './db';
+import { applySecurityHeaders, bodyErrorResponse, jsonResponse, methodNotAllowed, readBoundedBytes } from './http';
+import type { WorkerEnv } from './env';
+import { logError } from './observability';
+
+export const MAX_SHARE_REQUEST_BYTES = 9 * 1024 * 1024;
+export const MAX_ARTWORK_BYTES = 6 * 1024 * 1024;
+export const MAX_CARD_BYTES = 1_500_000;
+const SHARE_ID_PATTERN = /^[A-Za-z0-9_-]{12}$/;
+const TITLE_LIMIT = 120;
+const AUTHOR_LIMIT = 100;
+
+interface ShareRecord {
+  id: string;
+  title: string;
+  author: string;
+  image_key: string;
+  image_type: string;
+  card_key: string;
+  created_at: string;
+}
+
+function available(env: WorkerEnv): boolean {
+  return !!(env.DB && env.ARTWORKS);
+}
+
+export function isShareId(id: string): boolean {
+  return SHARE_ID_PATTERN.test(id);
+}
+
+function randomToken(byteLength: number): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(byteLength));
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function tokenHash(token: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token));
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+function artworkUrl(request: Request, id: string): string {
+  return new URL('/s/' + id, request.url).toString();
+}
+
+function imagePath(id: string, mime: string): string {
+  return '/s/' + id + '/image.' + (mime === 'image/png' ? 'png' : 'jpg');
+}
+
+function publicShare(request: Request, row: ShareRecord) {
+  return {
+    id: row.id,
+    title: row.title,
+    author: row.author,
+    createdAt: row.created_at,
+    url: artworkUrl(request, row.id),
+    imageUrl: imagePath(row.id, row.image_type),
+    cardUrl: '/s/' + row.id + '/card.jpg',
+  };
+}
+
+async function lookupShare(db: D1Database, id: string): Promise<ShareRecord | null> {
+  if (!isShareId(id)) return null;
+  return db.prepare(
+    `SELECT id, title, author, image_key, image_type, card_key, created_at
+     FROM shared_artworks WHERE id = ? AND revoked_at IS NULL`,
+  ).bind(id).first<ShareRecord>();
+}
+
+function notFound() {
+  return jsonResponse({ error: 'Artwork not found.', code: 'NOT_FOUND' }, 404);
+}
+
+function isPng(file: File): boolean {
+  return file.type === 'image/png';
+}
+
+function isJpeg(file: File): boolean {
+  return file.type === 'image/jpeg';
+}
+
+async function validImage(file: File, kind: 'artwork' | 'card'): Promise<boolean> {
+  const max = kind === 'card' ? MAX_CARD_BYTES : MAX_ARTWORK_BYTES;
+  if (file.size < 16 || file.size > max) return false;
+  const header = new Uint8Array(await file.slice(0, 24).arrayBuffer());
+  if (isJpeg(file)) {
+    return header[0] === 0xff && header[1] === 0xd8 && header[2] === 0xff;
+  }
+  if (kind === 'card' || !isPng(file) || header.length < 24) return false;
+  const sig = [137, 80, 78, 71, 13, 10, 26, 10];
+  if (!sig.every((b, i) => header[i] === b)) return false;
+  if (String.fromCharCode(...header.slice(12, 16)) !== 'IHDR') return false;
+  const view = new DataView(header.buffer, header.byteOffset, header.byteLength);
+  const width = view.getUint32(16);
+  const height = view.getUint32(20);
+  return width > 0 && height > 0 && width <= 4096 && height <= 4096;
+}
+
+async function publishLimit(request: Request, db: D1Database): Promise<Response | null> {
+  // On Cloudflare, CF-Connecting-IP is set by the platform. Do not persist raw IPs.
+  const address = request.headers.get('CF-Connecting-IP') || 'unknown';
+  const hash = await tokenHash('inkpoem-share:' + address);
+  for (const [key, max, period] of [
+    ['publish:hour:' + hash, 5, 3600],
+    ['publish:day:' + hash, 20, 86400],
+  ] as const) {
+    const result = await consumeRateLimit(db, key, max, period);
+    if (!result.allowed) {
+      const response = jsonResponse({ error: 'Too many published artworks. Please try later.', code: 'RATE_LIMITED' }, 429);
+      response.headers.set('Retry-After', String(result.retryAfterSeconds));
+      return response;
+    }
+  }
+  return null;
+}
+
+export async function publishShare(request: Request, env: WorkerEnv): Promise<Response> {
+  if (!available(env)) return jsonResponse({ error: 'Sharing is not configured.' }, 503);
+  if (request.method !== 'POST') return methodNotAllowed(['POST']);
+  const origin = request.headers.get('origin');
+  if (origin && origin !== new URL(request.url).origin) {
+    return jsonResponse({ error: 'Invalid origin.' }, 403);
+  }
+  const contentType = request.headers.get('content-type') || '';
+  if (!/^multipart\/form-data\s*;/i.test(contentType)) {
+    return jsonResponse({ error: 'Expected multipart form upload.' }, 415);
+  }
+  const limited = await publishLimit(request, env.DB);
+  if (limited) return limited;
+
+  let form: FormData;
+  try {
+    const bytes = await readBoundedBytes(request, MAX_SHARE_REQUEST_BYTES);
+    form = await new Response(bytes, { headers: { 'Content-Type': contentType } }).formData();
+  } catch (error) {
+    const response = bodyErrorResponse(error);
+    return response ?? jsonResponse({ error: 'Invalid form upload.' }, 400);
+  }
+
+  const artwork = form.get('artwork');
+  const card = form.get('card');
+  const rawTitle = form.get('title');
+  const rawAuthor = form.get('author');
+  if (!(artwork instanceof File) || !(card instanceof File)
+    || typeof rawTitle !== 'string' || typeof rawAuthor !== 'string'
+    || rawTitle.trim().length > TITLE_LIMIT || rawAuthor.trim().length > AUTHOR_LIMIT
+    || !(await validImage(artwork, 'artwork')) || !(await validImage(card, 'card'))) {
+    return jsonResponse({ error: 'Invalid artwork or social preview.' }, 400);
+  }
+
+  const title = rawTitle.trim() || 'Untitled poem';
+  const author = rawAuthor.trim();
+  const id = randomToken(9).slice(0, 12);
+  const deleteToken = randomToken(32);
+  const imageKey = 'shares/' + id + '/artwork.' + (isPng(artwork) ? 'png' : 'jpg');
+  const cardKey = 'shares/' + id + '/card.jpg';
+  let artworkUploaded = false;
+  let cardUploaded = false;
+
+  try {
+    await env.ARTWORKS.put(imageKey, await artwork.arrayBuffer(), {
+      httpMetadata: { contentType: artwork.type },
+    });
+    artworkUploaded = true;
+    await env.ARTWORKS.put(cardKey, await card.arrayBuffer(), {
+      httpMetadata: { contentType: 'image/jpeg' },
+    });
+    cardUploaded = true;
+    await env.DB.prepare(
+      `INSERT INTO shared_artworks (id, title, author, image_key, image_type, card_key, delete_token_hash)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    ).bind(id, title, author, imageKey, artwork.type, cardKey, await tokenHash(deleteToken)).run();
+    return jsonResponse({ id, url: artworkUrl(request, id), deleteToken }, 201);
+  } catch (error) {
+    logError('share.publish_failed', error, { id });
+    // Best-effort cleanup after an R2 or D1 error; unpublished keys are not addressable.
+    if (cardUploaded) await env.ARTWORKS.delete(cardKey).catch(() => {});
+    if (artworkUploaded) await env.ARTWORKS.delete(imageKey).catch(() => {});
+    return jsonResponse({ error: 'Could not publish artwork.' }, 502);
+  }
+}
+
+export async function getShareApi(request: Request, env: WorkerEnv, id: string): Promise<Response> {
+  if (request.method !== 'GET') return methodNotAllowed(['GET']);
+  if (!available(env)) return jsonResponse({ error: 'Sharing is not configured.' }, 503);
+  const row = await lookupShare(env.DB, id);
+  return row ? jsonResponse(publicShare(request, row)) : notFound();
+}
+
+export async function deleteShare(request: Request, env: WorkerEnv, id: string): Promise<Response> {
+  if (request.method !== 'DELETE') return methodNotAllowed(['DELETE']);
+  if (!available(env)) return jsonResponse({ error: 'Sharing is not configured.' }, 503);
+  if (!isShareId(id)) return notFound();
+  const origin = request.headers.get('origin');
+  if (origin && origin !== new URL(request.url).origin) return jsonResponse({ error: 'Invalid origin.' }, 403);
+  const token = request.headers.get('X-Share-Delete-Token') ?? '';
+  if (!/^[a-f0-9]{64}$/.test(token)) return notFound();
+  const hash = await tokenHash(token);
+  const row = await lookupShare(env.DB, id);
+  if (!row) return notFound();
+  const result = await env.DB.prepare(
+    `UPDATE shared_artworks SET revoked_at = CURRENT_TIMESTAMP
+     WHERE id = ? AND delete_token_hash = ? AND revoked_at IS NULL`,
+  ).bind(id, hash).run();
+  if (result.meta.changes !== 1) return notFound();
+  // Revocation is effective at the DB gate before removing objects.
+  try {
+    await Promise.all([env.ARTWORKS.delete(row.image_key), env.ARTWORKS.delete(row.card_key)]);
+  } catch (error) {
+    logError('share.cleanup_failed', error, { id });
+  }
+  return jsonResponse({ revoked: true });
+}
+
+export async function getShareImage(request: Request, env: WorkerEnv, id: string, variant: 'image' | 'card'): Promise<Response> {
+  if (request.method !== 'GET' && request.method !== 'HEAD') return methodNotAllowed(['GET', 'HEAD']);
+  if (!available(env)) return jsonResponse({ error: 'Sharing is not configured.' }, 503);
+  const row = await lookupShare(env.DB, id);
+  if (!row) return notFound();
+  const key = variant === 'card' ? row.card_key : row.image_key;
+  const type = variant === 'card' ? 'image/jpeg' : row.image_type;
+  const object = request.method === 'HEAD' ? await env.ARTWORKS.head(key) : await env.ARTWORKS.get(key);
+  if (!object) return notFound();
+  const headers = new Headers({
+    'Content-Type': type,
+    'Cache-Control': 'public, max-age=60',
+    'Content-Disposition': 'inline',
+  });
+  return applySecurityHeaders(new Response(request.method === 'HEAD' ? null : (object as R2ObjectBody).body, { headers }));
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (ch) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  })[ch]!);
+}
+
+function upsertMeta(html: string, kind: 'name' | 'property', key: string, value: string): string {
+  const tag = '<meta ' + kind + '="' + key + '" content="' + escapeHtml(value) + '" />';
+  const pattern = new RegExp('<meta\\s+' + kind + '="' + key.replace(/[.*+?^\\$()|[\]{}]/g, '\\$&') + '"[^>]*>', 'i');
+  if (pattern.test(html)) return html.replace(pattern, () => tag);
+  return html.replace('</head>', tag + '\n</head>');
+}
+
+export async function getShareHtml(request: Request, env: WorkerEnv, id: string): Promise<Response> {
+  if (request.method !== 'GET' && request.method !== 'HEAD') return methodNotAllowed(['GET', 'HEAD']);
+  if (!available(env)) return jsonResponse({ error: 'Sharing is not configured.' }, 503);
+  const row = await lookupShare(env.DB, id);
+  if (!row) {
+    return applySecurityHeaders(new Response(
+      '<!doctype html><html><head><meta name="robots" content="noindex"><title>Artwork unavailable · InkPoem</title></head><body><main><h1>Artwork unavailable</h1><a href="/">InkPoem</a></main></body></html>',
+      { status: 404, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } },
+    ));
+  }
+  const shell = await env.ASSETS.fetch(new Request(new URL('/index.html', request.url), { method: 'GET' }));
+  if (!shell.ok) return applySecurityHeaders(new Response('App shell unavailable', { status: 503 }));
+  const url = artworkUrl(request, id);
+  const title = row.title + ' · InkPoem';
+  const description = row.author ? row.title + ' — ' + row.author + ' · InkPoem' : row.title + ' · Made with InkPoem';
+  const cardUrl = new URL('/s/' + id + '/card.jpg', request.url).toString();
+  let html = await shell.text();
+  const head = [
+    ['name', 'description', description],
+    ['name', 'robots', 'index, follow'],
+    ['property', 'og:title', title],
+    ['property', 'og:description', description],
+    ['property', 'og:url', url],
+    ['property', 'og:image', cardUrl],
+    ['property', 'og:image:width', '1200'],
+    ['property', 'og:image:height', '630'],
+    ['property', 'og:type', 'article'],
+    ['name', 'twitter:card', 'summary_large_image'],
+    ['name', 'twitter:title', title],
+    ['name', 'twitter:description', description],
+    ['name', 'twitter:image', cardUrl],
+  ] as const;
+  for (const [kind, name, value] of head) html = upsertMeta(html, kind, name, value);
+  html = html.replace(/<title>[\s\S]*?<\/title>/i, () => '<title>' + escapeHtml(title) + '</title>');
+  html = html.replace(/<link\s+rel="canonical"[^>]*>/i, () => '<link rel="canonical" href="' + escapeHtml(url) + '" />');
+  // The stock app's WebApplication JSON-LD remains. Add this page's artwork data.
+  const structured = JSON.stringify({
+    '@context': 'https://schema.org', '@type': 'VisualArtwork', name: row.title,
+    creator: row.author, image: cardUrl, url,
+  }).replace(/</g, '\\u003c');
+  html = html.replace('</head>', '<script type="application/ld+json">' + structured + '</script>\n</head>');
+  return applySecurityHeaders(new Response(request.method === 'HEAD' ? null : html, {
+    headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=60' },
+  }));
+}

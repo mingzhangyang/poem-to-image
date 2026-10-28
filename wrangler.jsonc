@@ -13,6 +13,12 @@
     "binding": "ASSETS",
     "not_found_handling": "single-page-application"
   },
+  "r2_buckets": [
+    {
+      "binding": "ARTWORKS",
+      "bucket_name": "inkpoem-shared-artworks"
+    }
+  ],
   "d1_databases": [
     {
       "binding": "DB",

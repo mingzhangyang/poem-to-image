@@ -80,6 +80,18 @@ CREATE TABLE IF NOT EXISTS billing_events (
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS shared_artworks (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  author TEXT NOT NULL,
+  image_key TEXT NOT NULL UNIQUE,
+  image_type TEXT NOT NULL,
+  card_key TEXT NOT NULL UNIQUE,
+  delete_token_hash TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  revoked_at TEXT
+);
+
 CREATE TABLE IF NOT EXISTS rate_limits (
   key TEXT NOT NULL,
   bucket_start INTEGER NOT NULL,
@@ -103,3 +115,4 @@ CREATE INDEX IF NOT EXISTS idx_orders_reconciliation ON orders(status, created_a
 CREATE INDEX IF NOT EXISTS idx_orders_paid_pending ON orders(status, payment_confirmed_at);
 CREATE INDEX IF NOT EXISTS idx_billing_events_reconciliation ON billing_events(status, created_at);
 CREATE INDEX IF NOT EXISTS idx_rate_limits_expires_at ON rate_limits(expires_at);
+CREATE INDEX IF NOT EXISTS idx_shared_artworks_created ON shared_artworks(created_at);

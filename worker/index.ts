@@ -13,6 +13,7 @@ import { applySecurityHeaders, bodyErrorResponse, jsonResponse, methodNotAllowed
 import { logError, logInfo, requestIdFor, withRequestId } from './observability';
 import type { WorkerEnv } from './env';
 import { runOperationalChecks } from './maintenance';
+import { publishShare, getShareApi, deleteShare, getShareImage, getShareHtml } from './shares';
 
 const MAX_AI_PROMPT_LENGTH = 500;
 const MAX_REQUEST_ID_LENGTH = 80;
@@ -364,6 +365,20 @@ async function handleMe(request: Request, env: WorkerEnv): Promise<Response> {
 async function routeRequest(request: Request, env: WorkerEnv): Promise<Response> {
     const url = new URL(request.url);
     const { pathname } = url;
+
+    // ── Public, immutable artwork shares ─────────────────────────────────
+    if (pathname === '/api/shares') return publishShare(request, env);
+    const shareApi = /^\/api\/shares\/([A-Za-z0-9_-]+)$/.exec(pathname);
+    if (shareApi) {
+      if (request.method === 'GET') return getShareApi(request, env, shareApi[1]);
+      if (request.method === 'DELETE') return deleteShare(request, env, shareApi[1]);
+      return methodNotAllowed(['GET', 'DELETE']);
+    }
+    const shareImage = /^\/s\/([A-Za-z0-9_-]+)\/(image\.(?:png|jpg)|card\.jpg)$/.exec(pathname);
+    if (shareImage) return getShareImage(request, env, shareImage[1], shareImage[2] === 'card.jpg' ? 'card' : 'image');
+    const sharePage = /^\/s\/([A-Za-z0-9_-]+)$/.exec(pathname);
+    if (sharePage) return getShareHtml(request, env, sharePage[1]);
+    if (pathname.startsWith('/s/')) return getShareHtml(request, env, '');
 
     // ── AI generation ──────────────────────────────────────────────────
     if (pathname === '/api/ai-background') {
