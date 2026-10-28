@@ -28,7 +28,11 @@ import { usePageMetadata } from './hooks/usePageMetadata';
 import { useStructuralMemo } from './hooks/useStructuralMemo';
 import type { ExpandedSections, ExportFormat, ExportScale } from './types';
 import { PublishDialog, type PublishedShare } from './sharing/PublishDialog';
-import { SHARE_OWNER_KEY_PREFIX, shareCopy } from './sharing/copy';
+import { shareCopy } from './sharing/copy';
+import {
+  PendingShareConflict, completePublishCredentials, fingerprintArtwork,
+  preparePublishCredentials, removePublishCredentials,
+} from './sharing/publishProtocol';
 
 const ONBOARDING_DISMISSED_STORAGE_KEY = 'poem-to-image.onboarding-dismissed';
 const OnboardingModal = lazy(async () => ({ default: (await import('./components/OnboardingModal')).OnboardingModal }));
@@ -390,53 +394,65 @@ export default function App() {
   } = useImageExporter(exportFormat, exportScale, exportScene, waitForSceneSettled);
 
   const publishArtwork = async (): Promise<PublishedShare> => {
-    // Publishing is anonymous: check storage up front, then verify the actual
-    // 256-bit deletion token once the public snapshot exists.
-    const probeKey = 'inkpoem.share.storage-probe';
+    const { artwork, card } = await createShareAssets();
+    const title = poem.title.trim().slice(0, 120);
+    const author = poem.author.trim().slice(0, 100);
+    const fingerprint = await fingerprintArtwork(artwork, card, title, author);
+    const link = (id: string) => new URL('/s/' + id, window.location.origin).toString();
+
+    let credentials;
     try {
-      const probe = 'x'.repeat(64);
-      localStorage.setItem(probeKey, probe);
-      if (localStorage.getItem(probeKey) !== probe) throw new Error('STORAGE_UNAVAILABLE');
-      localStorage.removeItem(probeKey);
-    } catch {
-      throw new Error('STORAGE_UNAVAILABLE');
+      credentials = preparePublishCredentials(localStorage, fingerprint);
+    } catch (error) {
+      if (error instanceof PendingShareConflict) {
+        // Never silently replace credentials for a possibly public prior
+        // upload. Surface the old ID/key so the creator can resolve it first.
+        const pending = error.pending;
+        return {
+          id: pending.id, url: link(pending.id),
+          deleteToken: pending.deleteToken, statusUnknown: true,
+        };
+      }
+      throw error;
     }
 
-    const { artwork, card } = await createShareAssets();
+    const unknown = (): PublishedShare => ({
+      id: credentials.id, url: link(credentials.id),
+      deleteToken: credentials.deleteToken, statusUnknown: true,
+    });
     const form = new FormData();
+    form.append('id', credentials.id);
+    form.append('deleteToken', credentials.deleteToken);
     form.append('artwork', artwork, artwork.type === 'image/png' ? 'artwork.png' : 'artwork.jpg');
     form.append('card', card, 'card.jpg');
-    form.append('title', poem.title.trim().slice(0, 120));
-    form.append('author', poem.author.trim().slice(0, 100));
-    const response = await fetch('/api/shares', { method: 'POST', body: form });
-    const result = await response.json() as PublishedShare & { code?: string };
-    if (!response.ok) throw new Error(result.code ?? String(response.status));
-    if (!result.id || !result.url || !/^[a-f0-9]{64}$/.test(result.deleteToken)) {
-      throw new Error('INVALID_RESPONSE');
+    form.append('title', title);
+    form.append('author', author);
+
+    let response: Response;
+    try {
+      response = await fetch('/api/shares', { method: 'POST', body: form });
+    } catch {
+      // The Worker may already have committed. Keep the pre-stored ID and
+      // deletion token and do NOT create another share on retry.
+      return unknown();
     }
 
+    let body: Partial<PublishedShare> & { code?: string };
     try {
-      localStorage.setItem(SHARE_OWNER_KEY_PREFIX + result.id, result.deleteToken);
-      if (localStorage.getItem(SHARE_OWNER_KEY_PREFIX + result.id) !== result.deleteToken) {
-        throw new Error('STORAGE_SAVE_FAILED');
-      }
-      return result;
+      body = await response.json() as Partial<PublishedShare> & { code?: string };
     } catch {
-      // The snapshot is already PUBLIC. Immediately attempt to revoke it.
-      // Never throw away the only removal token unless revocation is confirmed.
-      try {
-        const revoke = await fetch('/api/shares/' + encodeURIComponent(result.id), {
-          method: 'DELETE',
-          headers: { 'X-Share-Delete-Token': result.deleteToken },
-        });
-        if (revoke.ok) throw new Error('STORAGE_UNAVAILABLE_REVOKED');
-      } catch (error) {
-        if (error instanceof Error && error.message === 'STORAGE_UNAVAILABLE_REVOKED') throw error;
-        // A failed or ambiguous rollback requires the creator to retain the
-        // removal capability in a visible recovery dialog.
-      }
-      return { ...result, recoveryRequired: true };
+      return unknown();
     }
+    if (!response.ok) {
+      if (![400, 403, 409, 413, 415, 429].includes(response.status)) return unknown();
+      // These errors happen before a successful insert, or indicate an ID
+      // collision. The failed attempt is safe to discard.
+      removePublishCredentials(localStorage, credentials.id, credentials.deleteToken);
+      throw new Error(body.code ?? String(response.status));
+    }
+    if (body.id !== credentials.id || body.deleteToken !== credentials.deleteToken) return unknown();
+    completePublishCredentials(localStorage, credentials);
+    return { id: credentials.id, url: link(credentials.id), deleteToken: credentials.deleteToken };
   };
 
   const handleDownload = async () => {
