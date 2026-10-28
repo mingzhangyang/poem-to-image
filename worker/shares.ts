@@ -30,7 +30,7 @@ export function isShareId(id: string): boolean {
 
 function randomShareId(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(9));
-  return btoa(String.fromCharCode(...bytes)).replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/, '');
+  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
 function randomToken(byteLength: number): string {
@@ -243,7 +243,7 @@ function escapeHtml(value: string): string {
 
 function upsertMeta(html: string, kind: 'name' | 'property', key: string, value: string): string {
   const tag = '<meta ' + kind + '="' + key + '" content="' + escapeHtml(value) + '" />';
-  const pattern = new RegExp('<meta\\s+' + kind + '="' + key.replace(/[.*+?^\\$()|[\]{}]/g, '\\$&') + '"[^>]*>', 'i');
+  const pattern = new RegExp('<meta\\s+' + kind + '="' + key + '"[^>]*>', 'i');
   if (pattern.test(html)) return html.replace(pattern, () => tag);
   return html.replace('</head>', tag + '\n</head>');
 }
