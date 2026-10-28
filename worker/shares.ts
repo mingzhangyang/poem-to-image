@@ -273,10 +273,10 @@ export async function publishShare(request: Request, env: WorkerEnv): Promise<Re
     cardUploaded = true;
     finalizationAttempted = true;
     const finalized = await env.DB.prepare(
-      \`UPDATE shared_artworks
+      `UPDATE shared_artworks
        SET image_key = ?, image_type = ?, card_key = ?, published_at = CURRENT_TIMESTAMP
        WHERE id = ? AND published_at IS NULL AND revoked_at IS NULL
-         AND delete_token_hash = ? AND content_fingerprint = ?\`,
+         AND delete_token_hash = ? AND content_fingerprint = ?`,
     ).bind(imageKey, artwork.type, cardKey, id, deleteHash, fingerprint).run();
     if (finalized.meta.changes === 1) {
       return successfulPublication(request, id, deleteToken, 201);
@@ -338,18 +338,18 @@ export async function deleteShare(request: Request, env: WorkerEnv, id: string):
   // First-writer-wins on the random ID: DELETE inserts a revocation tombstone
   // that blocks any delayed POST from creating a reservation and publishing.
   await env.DB.prepare(
-    \`INSERT OR IGNORE INTO shared_artworks
+    `INSERT OR IGNORE INTO shared_artworks
      (id, title, author, delete_token_hash, revoked_at, assets_deleted_at)
-     VALUES (?, '', '', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)\`,
+     VALUES (?, '', '', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
   ).bind(id, hash).run();
 
   let row = await findShareById(env.DB, id);
   if (!row || row.delete_token_hash !== hash) return notFound();
   if (!row.revoked_at) {
     const result = await env.DB.prepare(
-      \`UPDATE shared_artworks
+      `UPDATE shared_artworks
        SET revoked_at = CURRENT_TIMESTAMP, title = '', author = ''
-       WHERE id = ? AND delete_token_hash = ? AND revoked_at IS NULL\`,
+       WHERE id = ? AND delete_token_hash = ? AND revoked_at IS NULL`,
     ).bind(id, hash).run();
     if (result.meta.changes !== 1) {
       row = await findShareById(env.DB, id);
