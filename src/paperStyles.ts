@@ -6,6 +6,8 @@ import type { CSSProperties } from 'react';
  * No remote assets, blob URLs or generated image bytes enter saved templates.
  */
 export const PAPER_STYLES = [
+  { id: 'grid', labelZh: '方格稿纸', labelEn: 'Grid paper', base: '#FDFBF7', ink: '#7182A1', density: 8 },
+  { id: 'dot', labelZh: '点阵稿纸', labelEn: 'Dot paper', base: '#F8F4E9', ink: '#8A8176', density: 9 },
   { id: 'ivory', labelZh: '象牙素笺', labelEn: 'Ivory', base: '#FDFBF7', ink: '#9D8E75', density: 12 },
   { id: 'rice', labelZh: '手工宣纸', labelEn: 'Rice paper', base: '#F4EBD9', ink: '#A18864', density: 46 },
   { id: 'textured', labelZh: '细纹棉纸', labelEn: 'Textured cotton', base: '#F5F5F0', ink: '#8B8C80', density: 52 },
@@ -44,6 +46,18 @@ function tileSvg(id: PaperId): string {
     if (i % 2 === 0) {
       const radius = (0.35 + rand() * 0.85).toFixed(2);
       lines.push(`<circle cx="${Math.round(rand() * TILE_SIZE)}" cy="${Math.round(rand() * TILE_SIZE)}" r="${radius}" fill="${paper.ink}" fill-opacity="${(Number(opacity) * 0.7).toFixed(3)}"/>`);
+    }
+  }
+  if (id === 'grid') {
+    for (let n = 0; n < TILE_SIZE; n += 30) {
+      lines.push(`<path d="M${n} 0V240M0 ${n}H240" stroke="#7182A1" stroke-opacity=".12" stroke-width="1"/>`);
+    }
+  }
+  if (id === 'dot') {
+    for (let y = 12; y < TILE_SIZE; y += 24) {
+      for (let x = 12; x < TILE_SIZE; x += 24) {
+        lines.push(`<circle cx="${x}" cy="${y}" r="1.25" fill="#8A8176" fill-opacity=".28"/>`);
+      }
     }
   }
   if (id === 'lined') {
