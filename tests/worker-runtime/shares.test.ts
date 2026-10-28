@@ -1,6 +1,7 @@
 import { SELF, env } from 'cloudflare:test';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { pruneRevokedShareAssets } from '../../worker/shares';
+import { pruneOrphanedShareAttempts, pruneRevokedShareAssets } from '../../worker/shares';
+import type { WorkerEnv } from '../../worker/env';
 
 const ORIGIN = 'https://inkpoem.test';
 
@@ -12,8 +13,18 @@ function png() {
   return bytes;
 }
 
-function jpeg() {
-  return new Uint8Array([255, 216, 255, 224, 0, 16, 74, 70, 73, 70, 0, 1, 1, 1, 0, 96, 0, 96, 255, 217]);
+// A real baseline JPEG generated from a 16x16 image, rather than only a
+// three-byte signature. Upload validation must find a valid SOF and SOS.
+const JPEG_BASE64 = '/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAoHBwgHBgoICAgLCgoLDhgQDg0NDh0VFhEYIx8lJCIfIiEmKzcvJik0KSEiMEExNDk7Pj4+JS5ESUM8SDc9Pjv/2wBDAQoLCw4NDhwQEBw7KCIoOzs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozv/wAARCAAQABADASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD0eiiivOOo/9k=';
+function jpeg(width = 16, height = 16) {
+  const image = Uint8Array.from(atob(JPEG_BASE64), (char) => char.charCodeAt(0));
+  const sof = image.findIndex((byte, i) => byte === 0xff && image[i + 1] === 0xc0);
+  if (sof < 0) throw new Error('JPEG test fixture has no Start Of Frame');
+  image[sof + 5] = height >> 8;
+  image[sof + 6] = height & 0xff;
+  image[sof + 7] = width >> 8;
+  image[sof + 8] = width & 0xff;
+  return image;
 }
 
 interface TestCredentials { id: string; deleteToken: string }
@@ -233,6 +244,80 @@ describe('anonymous artwork sharing', () => {
     expect(data?.creator).toBe(author);
     expect(html).not.toContain('<script>alert(1)</script>');
     expect(html).toContain('Cost $$');
+  });
+
+  it('rejects oversized or malformed JPEG frames for both artwork and social cards', async () => {
+    for (const [name, payload] of [
+      ['width over 4096', jpeg(4097, 16)],
+      ['height over 4096', jpeg(16, 4097)],
+      ['missing SOF', (() => {
+        const image = jpeg();
+        const sof = image.findIndex((byte, i) => byte === 0xff && image[i + 1] === 0xc0);
+        image[sof + 1] = 0xe1;
+        return image;
+      })()],
+      ['truncated header', jpeg().slice(0, 120)],
+    ] as const) {
+      const artwork = form(name);
+      artwork.set('artwork', new File([payload], 'artwork.jpg', { type: 'image/jpeg' }));
+      const rejectedArtwork = await SELF.fetch(ORIGIN + '/api/shares', { method: 'POST', body: artwork });
+      expect(rejectedArtwork.status, name + ' artwork').toBe(400);
+
+      const preview = form(name);
+      preview.set('card', new File([payload], 'card.jpg', { type: 'image/jpeg' }));
+      const rejectedCard = await SELF.fetch(ORIGIN + '/api/shares', { method: 'POST', body: preview });
+      expect(rejectedCard.status, name + ' card').toBe(400);
+    }
+
+    const allowed = form('JPEG under limit');
+    allowed.set('artwork', new File([jpeg(4096, 16)], 'artwork.jpg', { type: 'image/jpeg' }));
+    expect((await SELF.fetch(ORIGIN + '/api/shares', { method: 'POST', body: allowed })).status).toBe(201);
+  });
+
+  it('durably retries orphan-attempt cleanup after R2 deletion fails', async () => {
+    const id = 'OrphanRetry1';
+    const attemptId = crypto.randomUUID();
+    const imageKey = 'shares/' + id + '/' + attemptId + '/artwork.png';
+    const cardKey = 'shares/' + id + '/' + attemptId + '/card.jpg';
+    await env.ARTWORKS.put(imageKey, png());
+    await env.ARTWORKS.put(cardKey, jpeg());
+    await env.DB.prepare(
+      "INSERT INTO shared_artwork_upload_attempts (attempt_id, share_id, image_key, card_key, created_at) VALUES (?, ?, ?, ?, datetime('now', '-2 hours'))",
+    ).bind(attemptId, id, imageKey, cardKey).run();
+
+    const failedEnv = {
+      DB: env.DB,
+      ARTWORKS: { delete: async () => { throw new Error('Simulated R2 outage'); } },
+    } as unknown as WorkerEnv;
+    expect(await pruneOrphanedShareAttempts(failedEnv)).toBe(0);
+    const stillPending = await env.DB.prepare(
+      'SELECT attempt_id FROM shared_artwork_upload_attempts WHERE attempt_id = ?',
+    ).bind(attemptId).first();
+    expect(stillPending).not.toBeNull();
+
+    expect(await pruneOrphanedShareAttempts(env)).toBeGreaterThanOrEqual(1);
+    expect(await env.ARTWORKS.head(imageKey)).toBeNull();
+    expect(await env.ARTWORKS.head(cardKey)).toBeNull();
+    expect(await env.DB.prepare(
+      'SELECT attempt_id FROM shared_artwork_upload_attempts WHERE attempt_id = ?',
+    ).bind(attemptId).first()).toBeNull();
+  });
+
+  it('does not delete canonical artwork while clearing a stale attempt record', async () => {
+    const created = await publish('Canonical protected', 'Poet');
+    expect(created.status).toBe(201);
+    const { id } = await created.json() as { id: string };
+    const row = await env.DB.prepare(
+      'SELECT image_key, card_key FROM shared_artworks WHERE id = ?',
+    ).bind(id).first<{ image_key: string; card_key: string }>();
+    expect(row).not.toBeNull();
+    const attemptId = crypto.randomUUID();
+    await env.DB.prepare(
+      "INSERT INTO shared_artwork_upload_attempts (attempt_id, share_id, image_key, card_key, created_at) VALUES (?, ?, ?, ?, datetime('now', '-2 hours'))",
+    ).bind(attemptId, id, row!.image_key, row!.card_key).run();
+    expect(await pruneOrphanedShareAttempts(env)).toBeGreaterThanOrEqual(1);
+    expect(await env.ARTWORKS.head(row!.image_key)).not.toBeNull();
+    expect(await env.ARTWORKS.head(row!.card_key)).not.toBeNull();
   });
 
   it('rejects malformed images and cross-origin submissions', async () => {
