@@ -390,15 +390,18 @@ export default function App() {
   } = useImageExporter(exportFormat, exportScale, exportScene, waitForSceneSettled);
 
   const publishArtwork = async (): Promise<PublishedShare> => {
-    // Avoid publishing a link that the anonymous creator cannot later revoke.
+    // Publishing is anonymous: check storage up front, then verify the actual
+    // 256-bit deletion token once the public snapshot exists.
     const probeKey = 'inkpoem.share.storage-probe';
     try {
-      localStorage.setItem(probeKey, '1');
-      if (localStorage.getItem(probeKey) !== '1') throw new Error('STORAGE_UNAVAILABLE');
+      const probe = 'x'.repeat(64);
+      localStorage.setItem(probeKey, probe);
+      if (localStorage.getItem(probeKey) !== probe) throw new Error('STORAGE_UNAVAILABLE');
       localStorage.removeItem(probeKey);
     } catch {
       throw new Error('STORAGE_UNAVAILABLE');
     }
+
     const { artwork, card } = await createShareAssets();
     const form = new FormData();
     form.append('artwork', artwork, artwork.type === 'image/png' ? 'artwork.png' : 'artwork.jpg');
@@ -408,10 +411,32 @@ export default function App() {
     const response = await fetch('/api/shares', { method: 'POST', body: form });
     const result = await response.json() as PublishedShare & { code?: string };
     if (!response.ok) throw new Error(result.code ?? String(response.status));
-    if (!result.id || !result.url || !result.deleteToken) throw new Error('INVALID_RESPONSE');
-    try { localStorage.setItem(SHARE_OWNER_KEY_PREFIX + result.id, result.deleteToken); }
-    catch { throw new Error('STORAGE_SAVE_FAILED'); }
-    return result;
+    if (!result.id || !result.url || !/^[a-f0-9]{64}$/.test(result.deleteToken)) {
+      throw new Error('INVALID_RESPONSE');
+    }
+
+    try {
+      localStorage.setItem(SHARE_OWNER_KEY_PREFIX + result.id, result.deleteToken);
+      if (localStorage.getItem(SHARE_OWNER_KEY_PREFIX + result.id) !== result.deleteToken) {
+        throw new Error('STORAGE_SAVE_FAILED');
+      }
+      return result;
+    } catch {
+      // The snapshot is already PUBLIC. Immediately attempt to revoke it.
+      // Never throw away the only removal token unless revocation is confirmed.
+      try {
+        const revoke = await fetch('/api/shares/' + encodeURIComponent(result.id), {
+          method: 'DELETE',
+          headers: { 'X-Share-Delete-Token': result.deleteToken },
+        });
+        if (revoke.ok) throw new Error('STORAGE_UNAVAILABLE_REVOKED');
+      } catch (error) {
+        if (error instanceof Error && error.message === 'STORAGE_UNAVAILABLE_REVOKED') throw error;
+        // A failed or ambiguous rollback requires the creator to retain the
+        // removal capability in a visible recovery dialog.
+      }
+      return { ...result, recoveryRequired: true };
+    }
   };
 
   const handleDownload = async () => {
