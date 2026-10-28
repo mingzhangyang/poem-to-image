@@ -68,6 +68,7 @@ const zhCN: TranslationMessages = {
     background: "背景",
     stylePanelTitle: "样式",
     bgSolid: "纯色",
+    bgPaper: "纸张",
     bgGradient: "渐变",
     bgTransparent: "透明",
     bgImage: "图片",
