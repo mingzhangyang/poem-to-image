@@ -28,6 +28,11 @@ export function isShareId(id: string): boolean {
   return SHARE_ID_PATTERN.test(id);
 }
 
+function randomShareId(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(9));
+  return btoa(String.fromCharCode(...bytes)).replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/, '');
+}
+
 function randomToken(byteLength: number): string {
   const bytes = crypto.getRandomValues(new Uint8Array(byteLength));
   return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
@@ -130,7 +135,9 @@ export async function publishShare(request: Request, env: WorkerEnv): Promise<Re
   let form: FormData;
   try {
     const bytes = await readBoundedBytes(request, MAX_SHARE_REQUEST_BYTES);
-    form = await new Response(bytes, { headers: { 'Content-Type': contentType } }).formData();
+    const body = new Uint8Array(bytes.byteLength);
+    body.set(bytes);
+    form = await new Response(body.buffer, { headers: { 'Content-Type': contentType } }).formData();
   } catch (error) {
     const response = bodyErrorResponse(error);
     return response ?? jsonResponse({ error: 'Invalid form upload.' }, 400);
@@ -149,7 +156,7 @@ export async function publishShare(request: Request, env: WorkerEnv): Promise<Re
 
   const title = rawTitle.trim() || 'Untitled poem';
   const author = rawAuthor.trim();
-  const id = randomToken(9).slice(0, 12);
+  const id = randomShareId();
   const deleteToken = randomToken(32);
   const imageKey = 'shares/' + id + '/artwork.' + (isPng(artwork) ? 'png' : 'jpg');
   const cardKey = 'shares/' + id + '/card.jpg';
@@ -222,7 +229,7 @@ export async function getShareImage(request: Request, env: WorkerEnv, id: string
   if (!object) return notFound();
   const headers = new Headers({
     'Content-Type': type,
-    'Cache-Control': 'public, max-age=60',
+    'Cache-Control': 'no-store',
     'Content-Disposition': 'inline',
   });
   return applySecurityHeaders(new Response(request.method === 'HEAD' ? null : (object as R2ObjectBody).body, { headers }));
@@ -283,6 +290,6 @@ export async function getShareHtml(request: Request, env: WorkerEnv, id: string)
   }).replace(/</g, '\\u003c');
   html = html.replace('</head>', '<script type="application/ld+json">' + structured + '</script>\n</head>');
   return applySecurityHeaders(new Response(request.method === 'HEAD' ? null : html, {
-    headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=60' },
+    headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' },
   }));
 }

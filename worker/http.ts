@@ -80,7 +80,7 @@ export async function readBoundedBytes(request: Request, limitBytes: number): Pr
     throw new PayloadTooLargeError(limitBytes);
   }
 
-  if (!request.body) return '';
+  if (!request.body) return new Uint8Array(0);
 
   const reader = request.body.getReader();
   const chunks: Uint8Array[] = [];
