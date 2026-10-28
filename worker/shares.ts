@@ -326,7 +326,7 @@ export async function getShareHtml(request: Request, env: WorkerEnv, id: string)
     '@context': 'https://schema.org', '@type': 'VisualArtwork', name: row.title,
     creator: row.author, image: cardUrl, url,
   }).replace(/</g, '\\u003c');
-  html = html.replace('</head>', '<script type="application/ld+json">' + structured + '</script>\n</head>');
+  html = html.replace('</head>', () => '<script type="application/ld+json">' + structured + '</script>\n</head>');
   return applySecurityHeaders(new Response(request.method === 'HEAD' ? null : html, {
     headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' },
   }));
