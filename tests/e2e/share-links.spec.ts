@@ -138,6 +138,42 @@ test('recovers a dropped response by retrying the same publication credentials',
   expect(await page.evaluate((id) => localStorage.getItem('inkpoem.share.owner.' + id), first.id)).toBe(first.token);
 });
 
+test('a rate-limited replay preserves the first upload removal key', async ({ page }) => {
+  test.setTimeout(90_000);
+  let count = 0;
+  let firstId = '';
+  let firstToken = '';
+  await page.route('**/api/shares', async (route) => {
+    count++;
+    const body = route.request().postDataBuffer();
+    const id = multipartValue(body, 'id');
+    const token = multipartValue(body, 'deleteToken');
+    if (count === 1) {
+      firstId = id; firstToken = token;
+      await route.abort('failed');
+    } else {
+      expect(id).toBe(firstId);
+      expect(token).toBe(firstToken);
+      await route.fulfill({ status: 429, contentType: 'application/json',
+        body: '{"code":"RATE_LIMITED"}' });
+    }
+  });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: 'Export Image' }).click();
+  await page.getByRole('dialog', { name: 'Export Image' })
+    .getByRole('button', { name: 'Publish shareable link' }).click();
+  await page.getByRole('dialog', { name: 'Publish this artwork' })
+    .getByRole('button', { name: 'Publish artwork', exact: true }).click();
+  const uncertain = page.getByRole('dialog', { name: 'Publication status uncertain' });
+  await expect(uncertain).toBeVisible({ timeout: 45_000 });
+  await uncertain.getByRole('button', { name: 'Retry the same publication' }).click();
+  await expect.poll(() => count).toBe(2);
+  await expect(uncertain).toBeVisible();
+  expect(await page.evaluate((id) => localStorage.getItem('inkpoem.share.owner.' + id), firstId)).toBe(firstToken);
+  expect(await page.evaluate(() => localStorage.getItem('inkpoem.share.pending.v1'))).toContain(firstId);
+});
+
 test('uses a securely retained removal key to revoke a share from another browser', async ({ page }) => {
   await page.route('**/api/shares/' + shareId, async (route) => {
     if (route.request().method() === 'DELETE') {
