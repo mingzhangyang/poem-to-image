@@ -36,6 +36,7 @@ The viewer is a separate React route and is deliberately outside the Clerk provi
 - Anonymous publishing requires working localStorage for the browser-held revocation capability; browsers that block storage must allow site data before publishing.
 - Published images can be downloaded and redistributed by visitors; revocation cannot remove third-party copies or cached social previews. Cache-Control is `no-store` for app-served public pages and images.
 - R2 writes happen before D1 insert. On failure, the Worker best-effort cleans up uploaded R2 objects; unreachable orphans may require maintenance if R2 deletion also fails.
+- Revocation clears public metadata and disables access immediately, then deletes R2 assets. Failed deletions are retried by the existing hourly maintenance cron in bounded batches; `assets_deleted_at` tracks completion.
 - Publishing does not upload edit history, templates, arbitrary localStorage or original unrendered user-upload files.
 
 ## One-time Cloudflare provisioning (before merge/deployment)

@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS shared_artworks (
   card_key TEXT NOT NULL UNIQUE,
   delete_token_hash TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  revoked_at TEXT
+  revoked_at TEXT,
+  assets_deleted_at TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_shared_artworks_created ON shared_artworks(created_at);

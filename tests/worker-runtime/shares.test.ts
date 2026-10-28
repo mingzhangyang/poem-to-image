@@ -1,5 +1,6 @@
 import { SELF, env } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
+import { pruneRevokedShareAssets } from '../../worker/shares';
 
 const ORIGIN = 'https://inkpoem.test';
 
@@ -120,6 +121,27 @@ describe('anonymous artwork sharing', () => {
     expect(response.status).toBe(404);
     expect(await response.text()).toContain('noindex');
     expect((await SELF.fetch(ORIGIN + '/api/shares/invalid')).status).toBe(404);
+  });
+
+  it('retries R2 object cleanup of previously revoked records without exposing them', async () => {
+    const id = 'CleanupTest1';
+    const imageKey = 'shares/' + id + '/artwork.png';
+    const cardKey = 'shares/' + id + '/card.jpg';
+    await env.ARTWORKS.put(imageKey, png(), { httpMetadata: { contentType: 'image/png' } });
+    await env.ARTWORKS.put(cardKey, jpeg(), { httpMetadata: { contentType: 'image/jpeg' } });
+    await env.DB.prepare(
+      `INSERT INTO shared_artworks
+       (id, title, author, image_key, image_type, card_key, delete_token_hash, revoked_at)
+       VALUES (?, '', '', ?, 'image/png', ?, '', CURRENT_TIMESTAMP)`,
+    ).bind(id, imageKey, cardKey).run();
+
+    expect((await SELF.fetch(ORIGIN + '/s/' + id)).status).toBe(404);
+    expect(await pruneRevokedShareAssets(env)).toBeGreaterThanOrEqual(1);
+    expect(await env.ARTWORKS.get(imageKey)).toBeNull();
+    expect(await env.ARTWORKS.get(cardKey)).toBeNull();
+    const row = await env.DB.prepare('SELECT assets_deleted_at FROM shared_artworks WHERE id = ?')
+      .bind(id).first<{ assets_deleted_at: string | null }>();
+    expect(row?.assets_deleted_at).toBeTruthy();
   });
 
   it('accepts an empty title and produces an immutable, separately addressable artwork', async () => {

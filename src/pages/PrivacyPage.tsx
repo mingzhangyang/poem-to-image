@@ -86,7 +86,7 @@ export function PrivacyPage() {
 
         <Section title="Data Retention">
           <p>We retain account and transaction records for account and billing operations. You can request access or deletion by contacting us, subject to applicable recordkeeping requirements.</p>
-          <p>Published artworks remain available until you revoke their share using the deletion capability saved in the publishing browser. Revocation immediately removes public access, deletes the stored artwork images and clears the stored title and author; a non-content revocation tombstone remains in the database. Copies already downloaded by visitors or cached by third-party social platforms cannot be recalled.</p>
+          <p>Published artworks remain available until you revoke their share using the deletion capability saved in the publishing browser. Revocation immediately removes public access and clears the stored title and author. We delete the corresponding artwork images from storage, retrying failed deletions during scheduled maintenance; a non-content revocation tombstone remains in the database. Copies already downloaded by visitors or cached by third-party social platforms cannot be recalled.</p>
         </Section>
 
         <Section title="Cookies">

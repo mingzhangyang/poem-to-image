@@ -227,10 +227,33 @@ export async function deleteShare(request: Request, env: WorkerEnv, id: string):
   // Revocation is effective at the DB gate before removing objects.
   try {
     await Promise.all([env.ARTWORKS.delete(row.image_key), env.ARTWORKS.delete(row.card_key)]);
+    await env.DB.prepare('UPDATE shared_artworks SET assets_deleted_at = CURRENT_TIMESTAMP WHERE id = ?').bind(id).run();
   } catch (error) {
     logError('share.cleanup_failed', error, { id });
   }
   return jsonResponse({ revoked: true });
+}
+
+/** Retry failed R2 cleanup from earlier revocations in small bounded cron batches. */
+export async function pruneRevokedShareAssets(env: WorkerEnv, maxBatch = 25): Promise<number> {
+  if (!available(env)) return 0;
+  const pending = await env.DB.prepare(
+    `SELECT id, image_key, card_key FROM shared_artworks
+     WHERE revoked_at IS NOT NULL AND assets_deleted_at IS NULL
+     ORDER BY revoked_at LIMIT ?`,
+  ).bind(maxBatch).all<Pick<ShareRecord, 'id' | 'image_key' | 'card_key'>>();
+  let removed = 0;
+  for (const row of pending.results) {
+    try {
+      await Promise.all([env.ARTWORKS.delete(row.image_key), env.ARTWORKS.delete(row.card_key)]);
+      await env.DB.prepare('UPDATE shared_artworks SET assets_deleted_at = CURRENT_TIMESTAMP WHERE id = ?')
+        .bind(row.id).run();
+      removed++;
+    } catch (error) {
+      logError('share.cleanup_retry_failed', error, { id: row.id });
+    }
+  }
+  return removed;
 }
 
 export async function getShareImage(request: Request, env: WorkerEnv, id: string, variant: 'image' | 'card'): Promise<Response> {
