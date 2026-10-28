@@ -20,7 +20,7 @@ Sharing is deliberately separate from the existing **Share image** (native file 
 - `ARTWORKS` R2 binding (private): `shares/<id>/artwork.png|jpg`, `shares/<id>/card.jpg`.
 - `POST /api/shares`: anonymous multipart `artwork` (PNG/JPEG), `card` (JPEG), `title`, `author`; 201 returns ID, absolute link, creator-only deletion token.
 - `GET /api/shares/:id`: public metadata, never exposes deletion token/hash.
-- `DELETE /api/shares/:id`: creator-held `X-Share-Delete-Token` capability; disables D1 visibility before removing R2 objects; nonmatching token returns 404.
+- `DELETE /api/shares/:id`: creator-held `X-Share-Delete-Token` capability; disables D1 visibility and clears title, author and hashed deletion secret before removing R2 objects; nonmatching token returns 404.
 - `GET /s/:id`: server-rendered HTML shell with escaped title, description, canonical, OG/Twitter tags (1200×630 social card), JSON-LD. Invalid or revoked ID is an actual 404 with `noindex`.
 - `GET|HEAD /s/:id/image.png|jpg` and `/s/:id/card.jpg`: gated through active D1 record and returned with image MIME, `nosniff` and `no-store`. R2 objects are not made publicly accessible.
 

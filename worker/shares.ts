@@ -219,7 +219,8 @@ export async function deleteShare(request: Request, env: WorkerEnv, id: string):
   const row = await lookupShare(env.DB, id);
   if (!row) return notFound();
   const result = await env.DB.prepare(
-    `UPDATE shared_artworks SET revoked_at = CURRENT_TIMESTAMP
+    `UPDATE shared_artworks SET revoked_at = CURRENT_TIMESTAMP,
+       title = '', author = '', delete_token_hash = ''
      WHERE id = ? AND delete_token_hash = ? AND revoked_at IS NULL`,
   ).bind(id, hash).run();
   if (result.meta.changes !== 1) return notFound();

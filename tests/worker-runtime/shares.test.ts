@@ -91,8 +91,12 @@ describe('anonymous artwork sharing', () => {
     expect(await missingPage.text()).toContain('noindex');
     expect((await SELF.fetch(url)).headers.get('cache-control')).toBe('no-store');
 
-    const row = await env.DB.prepare('SELECT revoked_at FROM shared_artworks WHERE id = ?').bind(id).first<{ revoked_at: string | null }>();
+    const row = await env.DB.prepare('SELECT revoked_at, title, author, delete_token_hash FROM shared_artworks WHERE id = ?')
+      .bind(id).first<{ revoked_at: string | null; title: string; author: string; delete_token_hash: string }>();
     expect(row?.revoked_at).toBeTruthy();
+    expect(row?.title).toBe('');
+    expect(row?.author).toBe('');
+    expect(row?.delete_token_hash).toBe('');
   });
 
   it('rejects malformed images and cross-origin submissions', async () => {

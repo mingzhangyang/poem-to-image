@@ -41,7 +41,7 @@ export function PrivacyPage() {
       <main className="max-w-2xl mx-auto px-4 py-8 space-y-8">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Privacy Policy</h1>
-          <p className="text-sm text-gray-400 mt-1">Effective date: March 16, 2026</p>
+          <p className="text-sm text-gray-400 mt-1">Effective date: October 28, 2026</p>
         </div>
 
         <Section title="Overview">
@@ -56,7 +56,9 @@ export function PrivacyPage() {
           <p><strong className="text-gray-700">Account information</strong> — When you sign in, we collect your email address and a unique user ID via Clerk, our authentication provider. We do not store passwords.</p>
           <p><strong className="text-gray-700">Payment information</strong> — Purchases are processed by Stripe. We do not store your card number or payment details; Stripe handles all payment data under their own privacy policy.</p>
           <p><strong className="text-gray-700">Usage data</strong> — We store records of AI generation requests and credit transactions in order to maintain your credit balance and provide transaction history.</p>
-          <p><strong className="text-gray-700">Content</strong> — Poem text you submit for AI image generation is sent to AI providers (Google Gemini or OpenAI) to produce the image. We do not permanently store your poem content.</p>
+          <p><strong className="text-gray-700">Editor and AI content</strong> — Poem text sent for AI image generation is shared with the chosen provider (Google Gemini or OpenAI). Your ordinary unpublished editor drafts remain in this browser; we do not intentionally persist submitted poem text for AI generation.</p>
+          <p><strong className="text-gray-700">Artwork you choose to publish</strong> — When you explicitly publish a shareable artwork link, we store a flattened image of your artwork, its social-preview image, the title and author you entered, and the creation time on Cloudflare R2/D1. This publication is publicly accessible to anyone with the link. Publishing does not upload your editable editor project.</p>
+          <p><strong className="text-gray-700">Publishing abuse protection</strong> — We use a hashed, pseudonymous network address identifier for temporary per-hour and per-day publishing rate limits; expired counters are periodically deleted.</p>
         </Section>
 
         <Section title="How We Use Your Information">
@@ -66,6 +68,8 @@ export function PrivacyPage() {
             <li>To generate AI images based on your input</li>
             <li>To display your transaction history</li>
             <li>To improve the reliability and performance of the service</li>
+            <li>To serve public artwork you deliberately publish and generate its share-preview metadata</li>
+            <li>To enforce temporary anonymous publication limits</li>
           </ul>
         </Section>
 
@@ -74,18 +78,19 @@ export function PrivacyPage() {
           <ul className="list-disc list-inside space-y-1 mt-2">
             <li><strong className="text-gray-700">Clerk</strong> — Authentication and user management</li>
             <li><strong className="text-gray-700">Stripe</strong> — Payment processing</li>
-            <li><strong className="text-gray-700">Cloudflare</strong> — Hosting, edge computing, and database</li>
+            <li><strong className="text-gray-700">Cloudflare</strong> — Hosting, edge computing, D1 database and private R2 storage for public artwork snapshots</li>
             <li><strong className="text-gray-700">Google Gemini</strong> — AI image generation</li>
             <li><strong className="text-gray-700">OpenAI</strong> — AI image generation</li>
           </ul>
         </Section>
 
         <Section title="Data Retention">
-          <p>We retain your account and transaction data for as long as your account is active. You may request deletion of your account and associated data at any time by contacting us.</p>
+          <p>We retain account and transaction records for account and billing operations. You can request access or deletion by contacting us, subject to applicable recordkeeping requirements.</p>
+          <p>Published artworks remain available until you revoke their share using the deletion capability saved in the publishing browser. Revocation immediately removes public access, deletes the stored artwork images and clears the stored title and author; a non-content revocation tombstone remains in the database. Copies already downloaded by visitors or cached by third-party social platforms cannot be recalled.</p>
         </Section>
 
         <Section title="Cookies">
-          <p>We use cookies and similar technologies only as required by our authentication provider (Clerk) to maintain your session. We do not use cookies for advertising or third-party tracking.</p>
+          <p>Authentication sessions use cookies and similar technologies required by Clerk. We also use localStorage for editor drafts, language preferences and the anonymous share-deletion capability; this allows the publishing browser to revoke its links. We do not use these items for advertising or third-party tracking.</p>
         </Section>
 
         <Section title="Your Rights">
