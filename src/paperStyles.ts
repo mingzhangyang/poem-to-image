@@ -61,8 +61,9 @@ function tileSvg(id: PaperId): string {
     }
   }
   if (id === 'lined') {
-    // Lines are repeated on exactly the same 240px grid as the export tile.
-    for (let y = 40; y < TILE_SIZE; y += 40) {
+    // Six evenly spaced lines per 240px tile: the gap from y=220 to
+    // y=20 in the next tile is also 40px (no seam/skipped ruling).
+    for (let y = 20; y < TILE_SIZE; y += 40) {
       lines.push(`<path d="M0 ${y}H240" stroke="#7291AB" stroke-opacity=".23" stroke-width="1"/>`);
     }
     lines.push('<path d="M30 0V240" stroke="#B46D68" stroke-opacity=".18" stroke-width="1.5"/>');
