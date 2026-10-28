@@ -216,7 +216,7 @@ test('a stale uncertain publication can be cancelled before creating a new share
   await expect(removed).toBeVisible();
   expect(cancellations).toBe(1);
   expect(await page.evaluate(() => localStorage.getItem('inkpoem.share.pending.v1'))).toBeNull();
-  await removed.getByRole('button', { name: 'Close' }).click();
+  await removed.getByRole('button', { name: 'Close' }).last().click();
   await page.getByRole('button', { name: 'Export Image' }).click();
   await page.getByRole('dialog', { name: 'Export Image' })
     .getByRole('button', { name: 'Publish shareable link' }).click();
