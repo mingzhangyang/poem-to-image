@@ -4,6 +4,7 @@ import { logError } from '../logger';
 import type { AiProvider, BackgroundImageSource, BackgroundType, TemplateBackgroundConfig, TranslateFn } from '../types';
 import { inferBackgroundImageSource } from '../backgroundImageSource';
 import { DEFAULT_PAPER_ID, getPaperStyle, paperPreviewStyle, type PaperId } from '../paperStyles';
+import { DEFAULT_PAPER_ID, getPaperStyle, paperPreviewStyle, type PaperId } from '../paperStyles';
 import { useAiBackground } from './useAiBackground';
 
 const MAX_EXPORT_SCALE = 3;
@@ -37,6 +38,7 @@ interface UseBackgroundConfigParams {
 
 export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getToken, onBalanceChange }: UseBackgroundConfigParams) {
   const [backgroundType, setBackgroundType] = useState<BackgroundType>('solid');
+  const [paperId, setPaperId] = useState<PaperId>(DEFAULT_PAPER_ID);
   const [paperId, setPaperId] = useState<PaperId>(DEFAULT_PAPER_ID);
   const [backgroundColor, setBackgroundColor] = useState('#f8fafc');
   const [gradientColor1, setGradientColor1] = useState('#e0e7ff');
@@ -199,6 +201,8 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getTok
     switch (backgroundType) {
       case 'solid':
         return { backgroundColor };
+      case 'paper':
+        return paperPreviewStyle(paperId);
       case 'paper':
         return paperPreviewStyle(paperId);
       case 'gradient':
