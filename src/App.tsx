@@ -228,6 +228,7 @@ export default function App() {
     canvasHeight,
     background: {
       backgroundType: background.backgroundType,
+      paperId: background.paperId,
       backgroundColor: background.backgroundColor,
       gradientColor1: background.gradientColor1,
       gradientColor2: background.gradientColor2,
@@ -464,6 +465,7 @@ export default function App() {
     background: {
       hasPoemText: getPlainPoemText(poem).trim().length > 0,
       backgroundType: background.backgroundType,
+      paperId: background.paperId,
       backgroundColor: background.backgroundColor,
       gradientColor1: background.gradientColor1,
       gradientColor2: background.gradientColor2,
@@ -478,6 +480,7 @@ export default function App() {
       isGeneratingAI: background.isGeneratingAI,
       fileInputRef: background.fileInputRef,
       onBackgroundTypeChange: background.setBackgroundType,
+      onPaperIdChange: background.setPaperId,
       onBackgroundColorChange: background.setBackgroundColor,
       onGradientColor1Change: background.setGradientColor1,
       onGradientColor2Change: background.setGradientColor2,
