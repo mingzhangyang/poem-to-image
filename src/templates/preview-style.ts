@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
 import type { EditorTemplateDefinition } from '../types';
+import { paperPreviewStyle } from '../paperStyles';
 
 export function getTemplatePreviewStyle(
   template: Pick<EditorTemplateDefinition, 'background'>,
@@ -12,6 +13,10 @@ export function getTemplatePreviewStyle(
       backgroundSize: background.backgroundSize === 'stretch' ? '100% 100%' : (background.backgroundSize ?? 'cover'),
       backgroundPosition: background.backgroundPosition ?? 'center',
     };
+  }
+
+  if (background.backgroundType === 'paper') {
+    return paperPreviewStyle(background.paperId);
   }
 
   if (background.backgroundType === 'gradient') {
