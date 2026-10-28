@@ -88,7 +88,7 @@ async function lookupShare(db: D1Database, id: string): Promise<ShareRecord | nu
   if (!isShareId(id)) return null;
   return db.prepare(
     `SELECT id, title, author, image_key, image_type, card_key, created_at
-     FROM shared_artworks WHERE id = ? AND revoked_at IS NULL`,
+     FROM shared_artworks WHERE id = ? AND published_at IS NOT NULL AND revoked_at IS NULL`,
   ).bind(id).first<ShareRecord>();
 }
 
@@ -139,15 +139,19 @@ async function publishLimit(request: Request, db: D1Database): Promise<Response 
   return null;
 }
 
-interface ExistingShare extends ShareRecord {
+interface ExistingShare extends Omit<ShareRecord, 'image_key' | 'image_type' | 'card_key'> {
+  image_key: string | null;
+  image_type: string | null;
+  card_key: string | null;
   delete_token_hash: string;
-  content_fingerprint: string;
+  content_fingerprint: string | null;
+  published_at: string | null;
   revoked_at: string | null;
 }
 
 async function findShareById(db: D1Database, id: string): Promise<ExistingShare | null> {
   return db.prepare(
-    'SELECT id, title, author, image_key, image_type, card_key, created_at, delete_token_hash, content_fingerprint, revoked_at FROM shared_artworks WHERE id = ?',
+    'SELECT id, title, author, image_key, image_type, card_key, created_at, delete_token_hash, content_fingerprint, published_at, revoked_at FROM shared_artworks WHERE id = ?',
   ).bind(id).first<ExistingShare>();
 }
 
@@ -172,9 +176,9 @@ function successfulPublication(request: Request, id: string, deleteToken: string
 /**
  * The browser generates a random share identifier and deletion key, then saves
  * them BEFORE upload. Repeated requests with the same credentials and content
- * get the original snapshot rather than publishing another one. Concurrent
- * attempts write to distinct R2 paths and race on the D1 primary key; only the
- * winning attempt's paths become addressable.
+ * get the original snapshot rather than publishing another one. The D1
+ * reservation is created before R2 upload; DELETE can durably cancel it and
+ * prevent any delayed or in-flight POST from publishing after cancellation.
  */
 export async function publishShare(request: Request, env: WorkerEnv): Promise<Response> {
   if (!available(env)) return jsonResponse({ error: 'Sharing is not configured.' }, 503);
@@ -223,24 +227,35 @@ export async function publishShare(request: Request, env: WorkerEnv): Promise<Re
   ]));
 
   const existing = await findShareById(env.DB, id);
-  if (existing) {
-    return isIdempotentReplay(existing, deleteHash, fingerprint)
-      ? successfulPublication(request, id, deleteToken, 200)
-      : shareConflict(existing, deleteHash);
+  if (!existing) {
+    const limited = await publishLimit(request, env.DB);
+    if (limited) return limited;
+    // Reserve the ID in D1 BEFORE uploading to R2. A DELETE can now atomically
+    // cancel this reservation, preventing any in-flight upload from publishing.
+    await env.DB.prepare(
+      'INSERT OR IGNORE INTO shared_artworks (id, title, author, delete_token_hash, content_fingerprint) VALUES (?, ?, ?, ?, ?)',
+    ).bind(id, title, author, deleteHash, fingerprint).run();
   }
-  const limited = await publishLimit(request, env.DB);
-  if (limited) return limited;
 
-  // A retry may race with the first request even if both observed no D1 row.
-  // Unique attempt paths prevent the losing request from overwriting the
-  // already committed immutable artwork.
+  const reservation = await findShareById(env.DB, id);
+  if (!reservation) return jsonResponse({ error: 'Reservation unavailable.', code: 'PUBLISH_UNCERTAIN' }, 503);
+  if (reservation.revoked_at) {
+    return jsonResponse({ error: 'This publication was cancelled.', code: 'SHARE_CANCELLED' }, 409);
+  }
+  if (!isIdempotentReplay(reservation, deleteHash, fingerprint)) {
+    return shareConflict(reservation, deleteHash);
+  }
+  if (reservation.published_at) return successfulPublication(request, id, deleteToken, 200);
+
+  // Two concurrent requests may share a reservation but must never write to
+  // the same R2 key. Finalization is a conditional, single-row D1 UPDATE.
   const attempt = crypto.randomUUID();
   const prefix = 'shares/' + id + '/' + attempt + '/';
   const imageKey = prefix + 'artwork.' + (isPng(artwork) ? 'png' : 'jpg');
   const cardKey = prefix + 'card.jpg';
   let artworkUploaded = false;
   let cardUploaded = false;
-  let databaseWriteAttempted = false;
+  let finalizationAttempted = false;
 
   const cleanOwnUpload = async (): Promise<void> => {
     try {
@@ -256,11 +271,25 @@ export async function publishShare(request: Request, env: WorkerEnv): Promise<Re
     artworkUploaded = true;
     await env.ARTWORKS.put(cardKey, cardBytes, { httpMetadata: { contentType: 'image/jpeg' } });
     cardUploaded = true;
-    databaseWriteAttempted = true;
-    await env.DB.prepare(
-      'INSERT INTO shared_artworks (id, title, author, image_key, image_type, card_key, delete_token_hash, content_fingerprint) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-    ).bind(id, title, author, imageKey, artwork.type, cardKey, deleteHash, fingerprint).run();
-    return successfulPublication(request, id, deleteToken, 201);
+    finalizationAttempted = true;
+    const finalized = await env.DB.prepare(
+      \`UPDATE shared_artworks
+       SET image_key = ?, image_type = ?, card_key = ?, published_at = CURRENT_TIMESTAMP
+       WHERE id = ? AND published_at IS NULL AND revoked_at IS NULL
+         AND delete_token_hash = ? AND content_fingerprint = ?\`,
+    ).bind(imageKey, artwork.type, cardKey, id, deleteHash, fingerprint).run();
+    if (finalized.meta.changes === 1) {
+      return successfulPublication(request, id, deleteToken, 201);
+    }
+    const winner = await findShareById(env.DB, id);
+    await cleanOwnUpload();
+    if (winner?.revoked_at) {
+      return jsonResponse({ error: 'This publication was cancelled.', code: 'SHARE_CANCELLED' }, 409);
+    }
+    if (winner?.published_at && isIdempotentReplay(winner, deleteHash, fingerprint)) {
+      return successfulPublication(request, id, deleteToken, 200);
+    }
+    return jsonResponse({ error: 'Could not finalize artwork.', code: 'PUBLISH_UNCERTAIN' }, 502);
   } catch (error) {
     logError('share.publish_failed', error, { id, attempt });
     let winner: ExistingShare | null = null;
@@ -272,17 +301,18 @@ export async function publishShare(request: Request, env: WorkerEnv): Promise<Re
       logError('share.publish_reconciliation_failed', lookupError, { id });
     }
 
-    // A commit may have succeeded even when its acknowledgement was lost.
-    if (winner?.image_key === imageKey && isIdempotentReplay(winner, deleteHash, fingerprint)) {
+    if (winner?.image_key === imageKey && winner.published_at
+      && isIdempotentReplay(winner, deleteHash, fingerprint)) {
       return successfulPublication(request, id, deleteToken, 200);
     }
-    // Never delete a key whose D1 commit could have succeeded but cannot be
-    // checked. Otherwise retries could serve a permanently broken snapshot.
-    if (!databaseWriteAttempted || didCheckDatabase) await cleanOwnUpload();
-    if (winner) {
-      return isIdempotentReplay(winner, deleteHash, fingerprint)
-        ? successfulPublication(request, id, deleteToken, 200)
-        : shareConflict(winner, deleteHash);
+    // If a D1 UPDATE may have committed but cannot be checked, do not delete
+    // an image that might have become the canonical snapshot.
+    if (!finalizationAttempted || didCheckDatabase) await cleanOwnUpload();
+    if (winner?.revoked_at) {
+      return jsonResponse({ error: 'This publication was cancelled.', code: 'SHARE_CANCELLED' }, 409);
+    }
+    if (winner?.published_at && isIdempotentReplay(winner, deleteHash, fingerprint)) {
+      return successfulPublication(request, id, deleteToken, 200);
     }
     return jsonResponse({ error: 'Could not confirm artwork publication.', code: 'PUBLISH_UNCERTAIN' }, 502);
   }
@@ -303,20 +333,49 @@ export async function deleteShare(request: Request, env: WorkerEnv, id: string):
   const token = request.headers.get('X-Share-Delete-Token') ?? '';
   if (!/^[a-f0-9]{64}$/.test(token)) return notFound();
   const hash = await tokenHash(token);
-  const row = await lookupShare(env.DB, id);
-  if (!row) return notFound();
-  const result = await env.DB.prepare(
-    `UPDATE shared_artworks SET revoked_at = CURRENT_TIMESTAMP,
-       title = '', author = '', delete_token_hash = ''
-     WHERE id = ? AND delete_token_hash = ? AND revoked_at IS NULL`,
+
+  // A cancellation must be durable even if the POST has not reached D1 yet.
+  // First-writer-wins on the random ID: DELETE inserts a revocation tombstone
+  // that blocks any delayed POST from creating a reservation and publishing.
+  await env.DB.prepare(
+    \`INSERT OR IGNORE INTO shared_artworks
+     (id, delete_token_hash, revoked_at, assets_deleted_at)
+     VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)\`,
   ).bind(id, hash).run();
-  if (result.meta.changes !== 1) return notFound();
-  // Revocation is effective at the DB gate before removing objects.
-  try {
-    await Promise.all([env.ARTWORKS.delete(row.image_key), env.ARTWORKS.delete(row.card_key)]);
-    await env.DB.prepare('UPDATE shared_artworks SET assets_deleted_at = CURRENT_TIMESTAMP WHERE id = ?').bind(id).run();
-  } catch (error) {
-    logError('share.cleanup_failed', error, { id });
+
+  let row = await findShareById(env.DB, id);
+  if (!row || row.delete_token_hash !== hash) return notFound();
+  if (!row.revoked_at) {
+    const result = await env.DB.prepare(
+      \`UPDATE shared_artworks
+       SET revoked_at = CURRENT_TIMESTAMP, title = '', author = ''
+       WHERE id = ? AND delete_token_hash = ? AND revoked_at IS NULL\`,
+    ).bind(id, hash).run();
+    if (result.meta.changes !== 1) {
+      row = await findShareById(env.DB, id);
+      if (!row || row.delete_token_hash !== hash || !row.revoked_at) return notFound();
+    }
+  }
+
+  // Re-read after the atomic revoke: publishing may have finalized between
+  // our initial SELECT and UPDATE. Only the post-revocation row tells us which
+  // R2 keys must be deleted.
+  row = await findShareById(env.DB, id);
+  if (!row || row.delete_token_hash !== hash || !row.revoked_at) return notFound();
+  if (row.image_key && row.card_key) {
+    try {
+      await Promise.all([env.ARTWORKS.delete(row.image_key), env.ARTWORKS.delete(row.card_key)]);
+      await env.DB.prepare(
+        'UPDATE shared_artworks SET assets_deleted_at = CURRENT_TIMESTAMP WHERE id = ?',
+      ).bind(id).run();
+    } catch (error) {
+      logError('share.cleanup_failed', error, { id });
+      // The scheduled maintenance task retries failed object deletion.
+    }
+  } else {
+    await env.DB.prepare(
+      'UPDATE shared_artworks SET assets_deleted_at = CURRENT_TIMESTAMP WHERE id = ?',
+    ).bind(id).run();
   }
   return jsonResponse({ revoked: true });
 }

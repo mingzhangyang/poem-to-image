@@ -120,7 +120,9 @@ describe('anonymous artwork sharing', () => {
     expect(row?.revoked_at).toBeTruthy();
     expect(row?.title).toBe('');
     expect(row?.author).toBe('');
-    expect(row?.delete_token_hash).toBe('');
+    // Tombstones retain only the hashed capability for idempotent DELETE and
+    // to block delayed POST requests that still hold the original credentials.
+    expect(row?.delete_token_hash).toMatch(/^[a-f0-9]{64}$/);
   });
 
   it('safely recovers a lost publication response using the same client credentials', async () => {

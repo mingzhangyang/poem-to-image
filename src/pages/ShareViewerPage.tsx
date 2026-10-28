@@ -3,6 +3,7 @@ import { Check, Copy, Download, ExternalLink, Loader2, Share2, Trash2 } from 'lu
 import { useParams } from 'react-router-dom';
 import { readPreferredLanguage } from '../hooks/useLang';
 import { SHARE_OWNER_KEY_PREFIX, shareCopy } from '../sharing/copy';
+import { removePublishCredentials } from '../sharing/publishProtocol';
 
 interface PublicArtwork {
   id: string; title: string; author: string; createdAt: string;
@@ -70,7 +71,7 @@ export default function ShareViewerPage() {
         method: 'DELETE', headers: { 'X-Share-Delete-Token': token },
       });
       if (!response.ok) throw new Error('Revoke failed');
-      try { localStorage.removeItem(SHARE_OWNER_KEY_PREFIX + artwork.id); } catch { /* storage denied */ }
+      removePublishCredentials(localStorage, artwork.id, token);
       setDeleteToken(null); setManualToken(''); setArtwork(null); setNotFound(true);
     } catch { setError(copy.revokeError); }
     finally { setRevoking(false); }

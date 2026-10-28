@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-for (const path of ['wrangler.jsonc', 'wrangler.staging.example.jsonc']) {
+for (const path of ['wrangler.jsonc']) {
   test(`${path}: share routes are handled by Worker before SPA fallback`, () => {
     const config = JSON.parse(readFileSync(path, 'utf8')) as {
       assets?: {

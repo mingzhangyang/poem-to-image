@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS orders (
   failure_reason TEXT,
   payment_confirmed_at TEXT,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  published_at TEXT,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id)
 );
@@ -84,11 +85,11 @@ CREATE TABLE IF NOT EXISTS shared_artworks (
   id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
   author TEXT NOT NULL,
-  image_key TEXT NOT NULL UNIQUE,
-  image_type TEXT NOT NULL,
-  card_key TEXT NOT NULL UNIQUE,
+  image_key TEXT UNIQUE,
+  image_type TEXT,
+  card_key TEXT UNIQUE,
   delete_token_hash TEXT NOT NULL,
-  content_fingerprint TEXT NOT NULL,
+  content_fingerprint TEXT,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   revoked_at TEXT,
   assets_deleted_at TEXT
