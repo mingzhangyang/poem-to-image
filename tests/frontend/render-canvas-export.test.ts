@@ -48,6 +48,11 @@ class RecordingContext {
   fillText(text: string, x: number, y: number) { this.record('fillText', text, x, y); }
   drawImage(...a: unknown[]) { this.record('drawImage', ...a); }
 
+  createPattern(image: unknown, repetition: string) {
+    this.record('createPattern', repetition);
+    return { image, repetition };
+  }
+
   createLinearGradient(...a: number[]) {
     this.record('createLinearGradient', ...a);
     return { addColorStop: () => {} };
@@ -68,6 +73,7 @@ class RecordingContext {
 }
 
 const createdContexts: RecordingContext[] = [];
+const requestedImages: string[] = [];
 
 class FakeCanvas {
   width = 0;
@@ -88,7 +94,8 @@ class FakeImage {
   naturalHeight = 400;
   onload: (() => void) | null = null;
   onerror: (() => void) | null = null;
-  set src(_value: string) {
+  set src(value: string) {
+    requestedImages.push(value);
     queueMicrotask(() => this.onload?.());
   }
 }
@@ -120,6 +127,7 @@ after(() => {
 
 afterEach(() => {
   createdContexts.length = 0;
+  requestedImages.length = 0;
 });
 
 // Imported after the DOM stubs are declared; the module itself is side-effect free,
@@ -266,6 +274,22 @@ test('border strokeRect appears only when showBorder is true', async () => {
     },
   }));
   assert.equal(mainTrace().some((o) => o.op === 'strokeRect'), true);
+});
+
+test('paper texture uses the preview tile and repeats it behind the poem', async () => {
+  const { paperTextureUrl } = await import('../../src/paperStyles');
+  const base = makeScene();
+  await renderCanvasExport(makeScene({
+    background: { ...base.background, backgroundType: 'paper', paperId: 'rice' },
+  }));
+  assert.ok(requestedImages.includes(paperTextureUrl('rice')), 'export must load the preview tile');
+  const trace = mainTrace();
+  const pattern = trace.findIndex((item) => item.op === 'createPattern');
+  const poem = trace.findIndex((item) => item.op === 'fillText');
+  assert.ok(pattern >= 0, 'export must paint a repeating texture');
+  assert.ok(pattern < poem, 'paper must render behind text');
+  assert.deepEqual(trace[pattern].args, ['repeat']);
+  assert.equal(trace.filter((item) => item.op === 'fillRect').length, 2, 'paper and tile cover the canvas');
 });
 
 test('transparent background clears instead of filling', async () => {
