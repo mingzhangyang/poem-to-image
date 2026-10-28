@@ -20,7 +20,7 @@ interface TestCredentials { id: string; deleteToken: string }
 
 function makeCredentials(): TestCredentials {
   const bytes = crypto.getRandomValues(new Uint8Array(9));
-  const id = btoa(String.fromCharCode(...bytes)).replace(/\\+/g, '-').replace(/\\//g, '_');
+  const id = btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_');
   const deleteToken = Array.from(crypto.getRandomValues(new Uint8Array(32)), (b) =>
     b.toString(16).padStart(2, '0')).join('');
   return { id, deleteToken };
