@@ -201,9 +201,12 @@ test('public read-only viewer needs no account and creator can revoke from the o
 
 test('transient metadata errors show a retry action rather than a false 404', async ({ page }) => {
   let attempts = 0;
+  let serviceUnavailable = true;
   await page.route('**/api/shares/' + shareId, async (route) => {
     attempts++;
-    if (attempts === 1) {
+    // React StrictMode may start and abort the first request in development.
+    // Keep all initial requests unavailable until the user explicitly retries.
+    if (serviceUnavailable) {
       await route.fulfill({ status: 503, contentType: 'application/json', body: '{"error":"Unavailable"}' });
       return;
     }
@@ -220,11 +223,12 @@ test('transient metadata errors show a retry action rather than a false 404', as
   await page.goto('/s/' + shareId, { waitUntil: 'domcontentloaded' });
   await expect(page.getByRole('heading', { name: 'Could not load the artwork' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Artwork unavailable' })).toHaveCount(0);
+  serviceUnavailable = false;
   await page.getByRole('button', { name: 'Try loading again' }).click();
   await expect(page.getByRole('heading', { name: 'Recovered view' })).toBeVisible();
   await expect(page.getByRole('textbox', { name: 'Copy link' }))
     .toHaveValue(root + '/s/' + shareId);
-  expect(attempts).toBe(2);
+  expect(attempts).toBeGreaterThanOrEqual(2);
 });
 
 test('an actual missing share still renders the unavailable state', async ({ page }) => {
