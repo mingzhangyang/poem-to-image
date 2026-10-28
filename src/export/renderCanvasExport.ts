@@ -1,5 +1,6 @@
 import { createStructuredPoemLayout, getPlainPoemText } from '../poemContent';
 import { ensureFontReady } from '../fontLoader';
+import { getStampCharacters } from '../stampRendering';
 import { getCanvasPositioningRect } from '../positioningRect';
 import { createCanvasTextMeasurer, createTextLayout } from '../textLayout';
 import { drawSignatureToCanvas, ensureSignatureFontsLoaded, getSignatureCanvasSize } from '../signatureRendering';
@@ -357,7 +358,9 @@ export async function renderCanvasExport(inputScene: CanvasExportScene, options:
   ].join('\n');
   await ensureFontReady(scene.typography.fontFamily, primaryText);
   if (scene.decorations.showStamp) {
-    await ensureFontReady(scene.decorations.stamp.fontFamily, scene.decorations.stamp.text);
+    // Preload precisely the glyphs drawn by drawStampText, including its
+    // '印' fallback for empty text and the four-character limit.
+    await ensureFontReady(scene.decorations.stamp.fontFamily, getStampCharacters(scene.decorations.stamp.text).join(''));
   }
   if ('fonts' in document) await document.fonts.ready;
 
