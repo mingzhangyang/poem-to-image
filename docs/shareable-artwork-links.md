@@ -10,7 +10,7 @@ InkPoem can publish an **immutable, public, read-only image snapshot** at `https
 4. InkPoem renders the exact work using the existing canvas exporter, creates a 1200×630 JPEG social card and uploads both images through a bounded multipart request.
 5. The Worker saves the two images in a private R2 bucket and the metadata in D1. The returned 12-character random ID forms `/s/:id`; the secret revocation token is only returned to the creating browser.
 6. Viewers can open the link without signing in, see the read-only image, download it, share the link and follow a link back to InkPoem.
-7. The creator can remove the share from the same browser. The revocation secret is kept in localStorage on that device; clearing site data loses revocation access.
+7. The creator can remove the share from the publishing browser using the revocation key kept in localStorage. If the browser fails to save that key after publication, the client first attempts to revoke the new share automatically. If that rollback cannot be confirmed, the publishing dialog retains the private key in memory and **blocks dismissing the dialog** until the creator explicitly confirms securely saving a backup; it also offers retrying local storage or revoking immediately. A backed-up key can be pasted into the share page from another browser to revoke the artwork. Never append the key to a shared link or send it to other viewers.
 
 Sharing is deliberately separate from the existing **Share image** (native file share), **Copy image**, **Download**, and social-platform exports. Existing workflows remain intact. Once published, the snapshot is immutable even if the editor state changes. New publication creates a new link.
 
@@ -33,7 +33,7 @@ The viewer is a separate React route and is deliberately outside the Clerk provi
 - Image size limits: artwork 6 MiB, JPEG card 1.5 MB, total request 9 MiB. PNG signature and IHDR size checks; JPEG signature check; maximum allowed PNG width/height 4096. `Content-Type` and actual file signature must agree.
 - At most 5 publication attempts/hour and 20/day per `CF-Connecting-IP`, with a hashed bucket identifier. This is a baseline, not a bot-proof CAPTCHA; evaluate Turnstile if real abuse appears.
 - Origin checks defend against ordinary cross-origin browser submissions and removal calls; curl/no-Origin publishing remains supported. Local Vite development also permits loopback-to-loopback origin forwarding (ports 3000/8787); production never permits unrelated origins.
-- Anonymous publishing requires working localStorage for the browser-held revocation capability; browsers that block storage must allow site data before publishing.
+- Anonymous publishing probes browser localStorage before uploading and verifies a full removal-key write after the public share exists. If that write fails, the client attempts an immediate server-side rollback. If rollback also fails, the dialog shows the private removal key and public URL and requires explicit backup acknowledgment before dismissing; users can retry persistence, revoke immediately, or paste the key into the viewer later. Never include the private key in a share URL or native share payload.
 - Published images can be downloaded and redistributed by visitors; revocation cannot remove third-party copies or cached social previews. Cache-Control is `no-store` for app-served public pages and images.
 - R2 writes happen before D1 insert. On failure, the Worker best-effort cleans up uploaded R2 objects; unreachable orphans may require maintenance if R2 deletion also fails.
 - Revocation clears public metadata and disables access immediately, then deletes R2 assets. Failed deletions are retried by the existing hourly maintenance cron in bounded batches; `assets_deleted_at` tracks completion.
@@ -71,9 +71,11 @@ Only deploy to production after CI is green, staging proves full publish/view/OG
 - `npm run test:e2e` (desktop and mobile export UI)
 - Anonymous create succeeds with a 12-char ID and returns an unguessable management capability.
 - Deep-link `/s/:id` works in private browsing; it never invokes Clerk.
-- Browser and network crawlers receive title/description/canonical and unique OG image **in server HTML**.
+- Browser and network crawlers receive title/description/canonical and unique OG image **in server HTML**. Cloudflare `assets.run_worker_first: ["/s/*"]` in production and staging ensures the Worker actually handles share HTML and missing/revoked 404s before SPA asset routing.
 - PNG and JPEG artwork display; thumbnail is a 1200×630 JPEG and is not broken.
-- Wrong/absent revocation token cannot remove an artwork.
+- Wrong/absent revocation token cannot remove an artwork. A creator holding a backed-up private token can revoke from a different browser, including when localStorage was lost.
 - Revoking instantly fails new D1-gated page, API and asset requests; missing ID is actual 404, not SPA soft-404.
 - Malformed, cross-origin, oversized and rate-limited publish requests fail clearly.
+- If the original browser rejects the removal-token write after the Worker returns 201, an automatic DELETE succeeds without leaving a live share. If DELETE fails, the private key remains visible with retry/revoke options and an explicit backup acknowledgment gate.
+- JSON-LD serializes literal dollar sequences (`$$`, `$&`, `$'`) and HTML metacharacters without corrupting structured data.
 - Native **Share image** and **Copy image** remain unchanged.

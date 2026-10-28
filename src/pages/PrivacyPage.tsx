@@ -86,11 +86,11 @@ export function PrivacyPage() {
 
         <Section title="Data Retention">
           <p>We retain account and transaction records for account and billing operations. You can request access or deletion by contacting us, subject to applicable recordkeeping requirements.</p>
-          <p>Published artworks remain available until you revoke their share using the deletion capability saved in the publishing browser. Revocation immediately removes public access and clears the stored title and author. We delete the corresponding artwork images from storage, retrying failed deletions during scheduled maintenance; a non-content revocation tombstone remains in the database. Copies already downloaded by visitors or cached by third-party social platforms cannot be recalled.</p>
+          <p>Published artworks remain available until you revoke their share using the private deletion capability saved in the publishing browser or independently backed up by you. Do not include that key in a publicly shared link. Revocation immediately removes public access and clears the stored title and author. We delete the corresponding artwork images from storage, retrying failed deletions during scheduled maintenance; a non-content revocation tombstone remains in the database. Copies already downloaded by visitors or cached by third-party social platforms cannot be recalled.</p>
         </Section>
 
         <Section title="Cookies">
-          <p>Authentication sessions use cookies and similar technologies required by Clerk. We also use localStorage for editor drafts, language preferences and the anonymous share-deletion capability; this allows the publishing browser to revoke its links. We do not use these items for advertising or third-party tracking.</p>
+          <p>Authentication sessions use cookies and similar technologies required by Clerk. We also use localStorage for editor drafts, language preferences and the anonymous share-deletion capability; this allows the publishing browser to revoke its links. You can also securely back up the private deletion capability to revoke from another browser. We do not use these items for advertising or third-party tracking.</p>
         </Section>
 
         <Section title="Your Rights">
