@@ -2,7 +2,7 @@ import { Suspense, StrictMode, lazy } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { NoAuthProvider } from './context/auth';
-import App from './App.tsx';
+const App = lazy(async () => ({ default: (await import('./App.tsx')).default }));
 import { ToastProvider } from './components/ToastProvider';
 import './index.css';
 

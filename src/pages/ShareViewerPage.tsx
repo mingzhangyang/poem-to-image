@@ -15,6 +15,8 @@ export default function ShareViewerPage() {
   const [artwork, setArtwork] = useState<PublicArtwork | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const [copied, setCopied] = useState(false);
   const [revoking, setRevoking] = useState(false);
   const [error, setError] = useState('');
@@ -23,19 +25,30 @@ export default function ShareViewerPage() {
   const linkRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     const controller = new AbortController();
-    setLoading(true); setNotFound(false); setArtwork(null); setError(''); setManualToken('');
+    setLoading(true); setNotFound(false); setLoadError(false);
+    setArtwork(null); setError(''); setManualToken('');
     try { setDeleteToken(localStorage.getItem(SHARE_OWNER_KEY_PREFIX + id)); }
     catch { setDeleteToken(null); }
     void fetch('/api/shares/' + encodeURIComponent(id), { signal: controller.signal })
-      .then(async (response) => {
-        if (!response.ok) throw new Error(String(response.status));
+      .then(async (response): Promise<PublicArtwork | null> => {
+        if (response.status === 404) {
+          if (!controller.signal.aborted) setNotFound(true);
+          return null;
+        }
+        if (!response.ok) throw new Error('Metadata service unavailable');
         return response.json() as Promise<PublicArtwork>;
       })
-      .then((value) => { if (!controller.signal.aborted) setArtwork(value); })
-      .catch(() => { if (!controller.signal.aborted) setNotFound(true); })
+      .then((value) => {
+        if (!controller.signal.aborted && value) {
+          if (value.id !== id) throw new Error('Mismatched artwork identifier');
+          // A local Vite proxy must not leak the Worker's :8787 URL.
+          setArtwork({ ...value, url: new URL('/s/' + id, window.location.origin).toString() });
+        }
+      })
+      .catch(() => { if (!controller.signal.aborted) setLoadError(true); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [id]);
+  }, [id, retryCount]);
 
   const handleCopy = async () => {
     if (!artwork) return;
@@ -72,6 +85,15 @@ export default function ShareViewerPage() {
       <main className="mx-auto flex w-full max-w-5xl flex-col items-center px-4 pb-16 pt-4 sm:px-8">
         {loading ? (
           <div role="status" className="flex min-h-96 items-center gap-2 text-slate-600"><Loader2 size={20} className="animate-spin" />{copy.loading}</div>
+        ) : loadError ? (
+          <div role="alert" className="flex min-h-96 flex-col items-center justify-center gap-3 text-center">
+            <h1 className="text-2xl font-semibold">{copy.loadError}</h1>
+            <p className="max-w-md text-slate-600">{copy.loadErrorHint}</p>
+            <button type="button" onClick={() => setRetryCount((count) => count + 1)}
+              className="mt-4 min-h-11 rounded-xl bg-teal-900 px-5 py-2 text-sm font-medium text-white hover:bg-teal-800">
+              {copy.loadRetry}
+            </button>
+          </div>
         ) : notFound || !artwork ? (
           <div className="flex min-h-96 flex-col items-center justify-center gap-3 text-center">
             <h1 className="text-2xl font-semibold">{copy.linkUnavailable}</h1>

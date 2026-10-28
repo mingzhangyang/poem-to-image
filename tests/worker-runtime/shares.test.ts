@@ -136,6 +136,34 @@ describe('anonymous artwork sharing', () => {
     expect(malformedOrigin.status).toBe(403);
   });
 
+  it('serves share HTML from the root app shell (not a redirected index.html)', async () => {
+    const response = await publish('Live document', 'Author');
+    const { url } = await response.json() as { url: string };
+    const page = await SELF.fetch(url);
+    expect(page.status).toBe(200);
+    expect(await page.text()).toContain('<div id="root"></div>');
+  });
+
+  it('uses the browser-facing loopback origin for development links', async () => {
+    const response = await SELF.fetch('http://127.0.0.1:8787/api/shares', {
+      method: 'POST',
+      headers: { Origin: 'http://127.0.0.1:3000' },
+      body: form(),
+    });
+    expect(response.status).toBe(201);
+    const data = await response.json() as { id: string; url: string };
+    expect(data.url).toBe('http://127.0.0.1:3000/s/' + data.id);
+    const metadata = await SELF.fetch('http://127.0.0.1:8787/api/shares/' + data.id);
+    expect(metadata.status).toBe(200);
+  });
+
+  it('indexes pending cleanup rows without scanning the entire artwork table', async () => {
+    const index = await env.DB.prepare(
+      "SELECT sql FROM sqlite_master WHERE type = 'index' AND name = 'idx_shared_artworks_cleanup_pending'",
+    ).first<{ sql: string }>();
+    expect(index?.sql).toContain('assets_deleted_at IS NULL');
+  });
+
   it('returns 404 for malformed share IDs and never falls back to the editor', async () => {
     const response = await SELF.fetch(ORIGIN + '/s/invalid');
     expect(response.status).toBe(404);

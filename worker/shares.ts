@@ -62,6 +62,19 @@ async function tokenHash(token: string): Promise<string> {
 }
 
 function artworkUrl(request: Request, id: string): string {
+  // Vite :3000 proxies /api to Worker :8787 with changeOrigin. In local
+  // development only, use the browser's validated loopback Origin so the
+  // creator's localStorage token and public viewer share the same origin.
+  const origin = request.headers.get('origin');
+  if (origin && hasAllowedOrigin(request)) {
+    const frontend = new URL(origin);
+    const worker = new URL(request.url);
+    const loopback = new Set(['localhost', '127.0.0.1', '[::1]']);
+    if (frontend.protocol === 'http:' && worker.protocol === 'http:'
+      && loopback.has(frontend.hostname) && loopback.has(worker.hostname)) {
+      return new URL('/s/' + id, frontend).toString();
+    }
+  }
   return new URL('/s/' + id, request.url).toString();
 }
 
@@ -296,7 +309,7 @@ export async function getShareHtml(request: Request, env: WorkerEnv, id: string)
       { status: 404, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } },
     ));
   }
-  const shell = await env.ASSETS.fetch(new Request(new URL('/index.html', request.url), { method: 'GET' }));
+  const shell = await env.ASSETS.fetch(new Request(new URL('/', request.url), { method: 'GET' }));
   if (!shell.ok) return applySecurityHeaders(new Response('App shell unavailable', { status: 503 }));
   const url = artworkUrl(request, id);
   const title = row.title + ' · InkPoem';

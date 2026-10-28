@@ -12,3 +12,5 @@ CREATE TABLE IF NOT EXISTS shared_artworks (
   assets_deleted_at TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_shared_artworks_created ON shared_artworks(created_at);
+CREATE INDEX IF NOT EXISTS idx_shared_artworks_cleanup_pending ON shared_artworks(revoked_at)
+  WHERE revoked_at IS NOT NULL AND assets_deleted_at IS NULL;

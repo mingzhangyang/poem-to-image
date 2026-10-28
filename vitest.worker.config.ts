@@ -19,13 +19,18 @@ export default defineConfig(async () => {
             STRIPE_WEBHOOK_SECRET: 'test_webhook_secret',
           },
           serviceBindings: {
-            ASSETS: async () => new Response(
-              '<!doctype html><html><head><title>InkPoem test</title>'
-              + '<meta property="og:image" content="/preview.png" />'
-              + '<link rel="canonical" href="https://inkpoem.test/" />'
-              + '</head><body><div id="root"></div></body></html>',
-              { headers: { 'Content-Type': 'text/html; charset=utf-8' } },
-            ),
+            ASSETS: async (request: Request) => {
+              const path = new URL(request.url).pathname;
+              if (path === '/index.html') return Response.redirect(new URL('/', request.url), 307);
+              if (path !== '/') return new Response('Asset not found', { status: 404 });
+              return new Response(
+                '<!doctype html><html><head><title>InkPoem test</title>'
+                + '<meta property="og:image" content="/preview.png" />'
+                + '<link rel="canonical" href="https://inkpoem.test/" />'
+                + '</head><body><div id="root"></div></body></html>',
+                { headers: { 'Content-Type': 'text/html; charset=utf-8' } },
+              );
+            },
           },
         },
       }),

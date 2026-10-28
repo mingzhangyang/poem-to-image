@@ -117,3 +117,5 @@ CREATE INDEX IF NOT EXISTS idx_orders_paid_pending ON orders(status, payment_con
 CREATE INDEX IF NOT EXISTS idx_billing_events_reconciliation ON billing_events(status, created_at);
 CREATE INDEX IF NOT EXISTS idx_rate_limits_expires_at ON rate_limits(expires_at);
 CREATE INDEX IF NOT EXISTS idx_shared_artworks_created ON shared_artworks(created_at);
+CREATE INDEX IF NOT EXISTS idx_shared_artworks_cleanup_pending ON shared_artworks(revoked_at)
+  WHERE revoked_at IS NOT NULL AND assets_deleted_at IS NULL;
