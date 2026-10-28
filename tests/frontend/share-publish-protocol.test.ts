@@ -8,6 +8,7 @@ import {
   pendingCredentials,
   preparePublishCredentials,
   removePublishCredentials,
+  removePublishCredentialsSafely,
 } from '../../src/sharing/publishProtocol';
 import { SHARE_OWNER_KEY_PREFIX } from '../../src/sharing/copy';
 
@@ -93,4 +94,16 @@ test('the same images and metadata have a stable fingerprint', async () => {
   const changed = await fingerprintArtwork(new Blob(['changed'], { type: 'image/png' }), card, 'Sample', 'Poet');
   assert.equal(first, second);
   assert.notEqual(first, changed);
+});
+
+test('storage property access denial never changes a confirmed revocation outcome', () => {
+  const storage = new MemoryStorage();
+  const share = preparePublishCredentials(storage, 'a'.repeat(64));
+  assert.doesNotThrow(() => removePublishCredentialsSafely(share.id, share.deleteToken, () => {
+    throw new DOMException('Blocked by browser policy', 'SecurityError');
+  }));
+  // The same helper still removes both credentials whenever storage works.
+  removePublishCredentialsSafely(share.id, share.deleteToken, () => storage);
+  assert.equal(storage.getItem(SHARE_OWNER_KEY_PREFIX + share.id), null);
+  assert.equal(storage.getItem(PENDING_SHARE_KEY), null);
 });
