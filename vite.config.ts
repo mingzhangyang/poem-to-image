@@ -33,6 +33,11 @@ export default defineConfig({
     // Do not modify; file watching is disabled to prevent flickering during agent edits.
     hmr: process.env.DISABLE_HMR !== 'true',
     proxy: {
+      // Keep /s/:id as a Vite SPA page; proxy only its R2-backed images.
+      '^/s/[A-Za-z0-9_-]{12}/(?:image\\.(?:png|jpg)|card\\.jpg)(?:\\?.*)?$': {
+        target: 'http://127.0.0.1:8787',
+        changeOrigin: true,
+      },
       '/api': {
         target: 'http://127.0.0.1:8787',
         changeOrigin: true,

@@ -2,15 +2,17 @@ import { Suspense, StrictMode, lazy } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { NoAuthProvider } from './context/auth';
-import App from './App.tsx';
 import { ToastProvider } from './components/ToastProvider';
 import './index.css';
 
+const App = lazy(async () => ({ default: (await import('./App.tsx')).default }));
 const ClerkProvider = lazy(async () => ({ default: (await import('@clerk/react')).ClerkProvider }));
 const ClerkAuthBridge = lazy(async () => ({ default: (await import('./components/auth/ClerkAuthBridge')).ClerkAuthBridge }));
 const AccountPage = lazy(async () => ({ default: (await import('./pages/AccountPage.tsx')).AccountPage }));
 const PrivacyPage = lazy(async () => ({ default: (await import('./pages/PrivacyPage.tsx')).PrivacyPage }));
 const AboutPage = lazy(async () => ({ default: (await import('./pages/AboutPage.tsx')).AboutPage }));
+
+const ShareViewerPage = lazy(async () => ({ default: (await import('./pages/ShareViewerPage.tsx')).default }));
 
 const runtimeClerkKey = typeof window !== 'undefined'
   ? (window as { __INKPOEM_CLERK_PUBLISHABLE_KEY?: string }).__INKPOEM_CLERK_PUBLISHABLE_KEY
@@ -38,23 +40,26 @@ function AppRoutes() {
   );
 }
 
+function EditorWithAuth() {
+  return clerkPublishableKey ? (
+    <Suspense fallback={<RouteFallback />}>
+      <ClerkProvider publishableKey={clerkPublishableKey} afterSignOutUrl="/">
+        <ClerkAuthBridge><AppRoutes /></ClerkAuthBridge>
+      </ClerkProvider>
+    </Suspense>
+  ) : (
+    <NoAuthProvider><AppRoutes /></NoAuthProvider>
+  );
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <ToastProvider>
-        {clerkPublishableKey ? (
-          <Suspense fallback={<RouteFallback />}>
-            <ClerkProvider publishableKey={clerkPublishableKey} afterSignOutUrl="/">
-              <ClerkAuthBridge>
-                <AppRoutes />
-              </ClerkAuthBridge>
-            </ClerkProvider>
-          </Suspense>
-        ) : (
-          <NoAuthProvider>
-            <AppRoutes />
-          </NoAuthProvider>
-        )}
+        <Routes>
+          <Route path="/s/:id" element={<Suspense fallback={<RouteFallback />}><ShareViewerPage /></Suspense>} />
+          <Route path="/*" element={<EditorWithAuth />} />
+        </Routes>
       </ToastProvider>
     </BrowserRouter>
   </StrictMode>

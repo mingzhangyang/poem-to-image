@@ -46,6 +46,8 @@ export function Sidebar({
   onDownload,
   onShare,
   onCopy,
+  onPublishLink,
+  publishLinkLabel,
   onShareToSocial,
   isExporting,
   isSharing,
@@ -58,6 +60,10 @@ export function Sidebar({
   const isMobileControlsOpen = activeMobilePanel !== null;
   const mobileDialogRef = useRef<HTMLElement>(null);
   const closeMobilePanel = useCallback(() => setActiveMobilePanel(null), []);
+  const handlePublishFromMobile = () => {
+    closeMobilePanel();
+    onPublishLink();
+  };
 
   useDialogA11y({ isOpen: isMobileControlsOpen, dialogRef: mobileDialogRef, onClose: closeMobilePanel });
 
@@ -252,6 +258,8 @@ export function Sidebar({
             onDownload={onDownload}
             onShare={onShare}
             onCopy={onCopy}
+            onPublishLink={handlePublishFromMobile}
+            publishLinkLabel={publishLinkLabel}
             isExporting={isExporting}
             isSharing={isSharing}
             canShare={canShare}

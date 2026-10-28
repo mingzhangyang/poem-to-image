@@ -67,6 +67,8 @@ export function CanvasPreview({
   onDownload,
   onShare,
   onCopy,
+  onPublishLink,
+  publishLinkLabel,
   isExporting,
   isSharing,
   canShare,
@@ -199,6 +201,11 @@ export function CanvasPreview({
   const handleCopyFromModal = () => {
     void onCopy();
     closeExportModal();
+  };
+
+  const handlePublishFromModal = () => {
+    closeExportModal();
+    onPublishLink();
   };
 
   const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -419,6 +426,8 @@ export function CanvasPreview({
                     onDownload={handleSaveFromModal}
                     onShare={handleShareFromModal}
                     onCopy={handleCopyFromModal}
+                    onPublishLink={handlePublishFromModal}
+                    publishLinkLabel={publishLinkLabel}
                     isExporting={isExporting}
                     isSharing={isSharing}
                     canShare={canShare}

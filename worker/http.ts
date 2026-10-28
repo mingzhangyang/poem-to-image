@@ -74,13 +74,13 @@ function declaredContentLength(request: Request): number | null {
   return Number.isSafeInteger(value) && value >= 0 ? value : null;
 }
 
-export async function readBoundedText(request: Request, limitBytes: number): Promise<string> {
+export async function readBoundedBytes(request: Request, limitBytes: number): Promise<Uint8Array> {
   const contentLength = declaredContentLength(request);
   if (contentLength !== null && contentLength > limitBytes) {
     throw new PayloadTooLargeError(limitBytes);
   }
 
-  if (!request.body) return '';
+  if (!request.body) return new Uint8Array(0);
 
   const reader = request.body.getReader();
   const chunks: Uint8Array[] = [];
@@ -108,6 +108,11 @@ export async function readBoundedText(request: Request, limitBytes: number): Pro
     offset += chunk.byteLength;
   }
 
+  return bytes;
+}
+
+export async function readBoundedText(request: Request, limitBytes: number): Promise<string> {
+  const bytes = await readBoundedBytes(request, limitBytes);
   try {
     return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
   } catch {

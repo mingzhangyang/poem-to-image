@@ -247,6 +247,58 @@ export function useImageExporter(
     return exportCanvasToBlob(canvas, overrideFormat ?? exportFormat);
   }, [exportFormat, renderOutputCanvas]);
 
+  const createShareAssets = useCallback(async (): Promise<{ artwork: Blob; card: Blob }> => {
+    const canvas = await renderOutputCanvas({ scale: 1 });
+    let artwork = await exportCanvasToBlob(canvas, 'png');
+    if (!artwork || artwork.size > 6 * 1024 * 1024) {
+      artwork = await exportCanvasToBlob(canvas, 'jpg');
+    }
+    if (!artwork || artwork.size > 6 * 1024 * 1024) {
+      throw new Error('IMAGE_TOO_LARGE');
+    }
+
+    const cardCanvas = document.createElement('canvas');
+    cardCanvas.width = 1200;
+    cardCanvas.height = 630;
+    const ctx = cardCanvas.getContext('2d');
+    if (!ctx) throw new Error('CARD_RENDER_FAILED');
+    ctx.fillStyle = '#f7f4ed';
+    ctx.fillRect(0, 0, 1200, 630);
+    // Keep the entire image visible, including all poem text and decorations.
+    const fit = Math.min(540 / canvas.width, 560 / canvas.height);
+    const dw = canvas.width * fit;
+    const dh = canvas.height * fit;
+    const x = 880 - dw / 2;
+    const y = 315 - dh / 2;
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(x - 6, y - 6, dw + 12, dh + 12);
+    ctx.drawImage(canvas, x, y, dw, dh);
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = '#146f68';
+    ctx.font = '700 27px system-ui, sans-serif';
+    ctx.fillText('InkPoem', 58, 74);
+    const shorten = (value: string, width: number, font: string): string => {
+      ctx.font = font;
+      if (ctx.measureText(value).width <= width) return value;
+      let candidate = value;
+      while (candidate.length && ctx.measureText(candidate + '…').width > width) {
+        candidate = candidate.slice(0, -1);
+      }
+      return candidate + '…';
+    };
+    const title = scene.typography.poem.title.trim() || 'Untitled poem';
+    ctx.fillStyle = '#183d3d';
+    ctx.fillText(shorten(title, 430, '700 43px system-ui, sans-serif'), 58, 236);
+    const author = scene.typography.poem.author.trim();
+    if (author) {
+      ctx.fillStyle = '#61736d';
+      ctx.fillText(shorten(author, 430, '24px system-ui, sans-serif'), 58, 311);
+    }
+    const card = await exportCanvasToBlob(cardCanvas, 'jpg');
+    if (!card || card.size > 1_500_000) throw new Error('CARD_RENDER_FAILED');
+    return { artwork, card };
+  }, [renderOutputCanvas, scene.typography.poem.title, scene.typography.poem.author]);
+
   const exportImage = useCallback(async (): Promise<boolean> => {
     if (isExporting || isSharing) {
       return false;
@@ -423,5 +475,5 @@ export function useImageExporter(
     }
   }, [createOutputBlob, exportFormat, exportScale, isExporting, isSharing, scene.typography.poem.title]);
 
-  return { exportImage, exportBatchImages, shareImage, copyImage, shareToSocialPlatform, isExporting, isSharing, canShare };
+  return { exportImage, exportBatchImages, shareImage, copyImage, shareToSocialPlatform, createShareAssets, isExporting, isSharing, canShare };
 }
