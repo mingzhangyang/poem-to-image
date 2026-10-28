@@ -41,7 +41,7 @@ test('anonymous editor pre-saves ID and token before publishing on mobile and de
     requestWasReceived = true;
     await route.fulfill({
       status: 201, contentType: 'application/json',
-      body: JSON.stringify({ id: publishedId, url: root + '/s/' + publishedId, deleteToken: ownerToken }),
+      body: JSON.stringify({ id: publishedId, url: 'http://127.0.0.1:8787/s/' + publishedId, deleteToken: ownerToken }),
     });
   });
 
@@ -196,4 +196,42 @@ test('public read-only viewer needs no account and creator can revoke from the o
   await page.getByRole('button', { name: 'Remove this share' }).click();
   await expect(page.getByRole('heading', { name: 'Artwork unavailable' })).toBeVisible();
   expect(await page.evaluate((id) => localStorage.getItem('inkpoem.share.owner.' + id), shareId)).toBeNull();
+});
+
+
+test('transient metadata errors show a retry action rather than a false 404', async ({ page }) => {
+  let attempts = 0;
+  await page.route('**/api/shares/' + shareId, async (route) => {
+    attempts++;
+    if (attempts === 1) {
+      await route.fulfill({ status: 503, contentType: 'application/json', body: '{"error":"Unavailable"}' });
+      return;
+    }
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: shareId, title: 'Recovered view', author: 'Poet',
+        createdAt: '2026-10-28T18:00:00Z',
+        url: 'http://127.0.0.1:8787/s/' + shareId,
+        imageUrl: '/preview.png', cardUrl: '/preview.png',
+      }),
+    });
+  });
+  await page.goto('/s/' + shareId, { waitUntil: 'domcontentloaded' });
+  await expect(page.getByRole('heading', { name: 'Could not load the artwork' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Artwork unavailable' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Try loading again' }).click();
+  await expect(page.getByRole('heading', { name: 'Recovered view' })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'Copy link' }))
+    .toHaveValue(root + '/s/' + shareId);
+  expect(attempts).toBe(2);
+});
+
+test('an actual missing share still renders the unavailable state', async ({ page }) => {
+  await page.route('**/api/shares/' + shareId, async (route) => {
+    await route.fulfill({ status: 404, contentType: 'application/json', body: '{"code":"NOT_FOUND"}' });
+  });
+  await page.goto('/s/' + shareId, { waitUntil: 'domcontentloaded' });
+  await expect(page.getByRole('heading', { name: 'Artwork unavailable' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Try loading again' })).toHaveCount(0);
 });
