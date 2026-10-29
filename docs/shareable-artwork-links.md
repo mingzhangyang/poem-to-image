@@ -69,7 +69,19 @@ it should succeed even if no prior POST reached the Worker.
    page is unavailable, inspect the Worker route/deployment and read
    the canonical R2 objects using their private keys; do not make the
    bucket publicly readable.
-4. After fixing the production deployment, publish one disposable
+4. If readiness passes but both POST and DELETE still fail, inspect
+   **only response metadata** in the browser Network panel: status,
+   content type, `X-Request-ID` and `CF-Ray`. A JSON `403 Invalid origin`
+   with `X-Request-ID` is a Worker origin check; a challenge/HTML
+   response without the Worker header may instead indicate a Cloudflare
+   security/WAF rule. Check Cloudflare Security Events before changing
+   application code or repeating destructive actions. For a 500 with
+   `X-Request-ID`, correlate that ID with Worker logs; for a 502
+   `PUBLISH_UNCERTAIN`, investigate R2 writes and D1 finalization.
+   **Do not copy request headers or multipart request bodies** because
+   they contain the private deletion key. If contacting support, redact
+   them completely.
+5. After fixing the production deployment, publish one disposable
    **new** artwork, open the share URL anonymously, confirm both the
    artwork image and social card return 200, then revoke it. Recheck
    the page, API and image paths return 404. Do not mark the feature
