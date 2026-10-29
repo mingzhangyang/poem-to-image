@@ -403,11 +403,16 @@ export async function verifyShareForRecovery(request: Request, env: WorkerEnv, i
   if (!hasAllowedOrigin(request)) return jsonResponse({ error: 'Invalid origin.', code: 'INVALID_ORIGIN' }, 403);
 
   const token = request.headers.get('X-Share-Delete-Token') ?? '';
-  const fingerprint = request.headers.get('X-Share-Fingerprint') ?? '';
-  if (!/^[a-f0-9]{64}$/.test(token) || !/^[a-f0-9]{64}$/.test(fingerprint)) return notFound();
+  const fingerprint = request.headers.get('X-Share-Fingerprint');
+  // Newer records prove the identical artwork by fingerprint. Legacy
+  // pre-IndexedDB browsers only retained the private creator capability.
+  // They can confirm ownership, but must not re-publish a different image.
+  if (!/^[a-f0-9]{64}$/.test(token)
+    || (fingerprint !== null && !/^[a-f0-9]{64}$/.test(fingerprint))) return notFound();
   const hash = await tokenHash(token);
   const row = await findShareById(env.DB, id);
-  if (!row || row.revoked_at || row.delete_token_hash !== hash || row.content_fingerprint !== fingerprint) {
+  if (!row || row.revoked_at || row.delete_token_hash !== hash
+    || (fingerprint !== null && row.content_fingerprint !== fingerprint)) {
     return notFound();
   }
   if (!row.published_at) return jsonResponse({ status: 'pending' }, 202);
