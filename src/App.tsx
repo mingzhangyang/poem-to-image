@@ -30,9 +30,11 @@ import type { ExpandedSections, ExportFormat, ExportScale } from './types';
 import { PublishDialog, type PublishedShare } from './sharing/PublishDialog';
 import { shareCopy } from './sharing/copy';
 import {
-  PendingShareConflict, completePublishCredentials, fingerprintArtwork,
-  preparePublishCredentials, removePublishCredentialsSafely,
+  PendingShareConflict, fingerprintArtwork, removePublishCredentialsSafely,
 } from './sharing/publishProtocol';
+import {
+  prepareLocalShare, markLocalSharePublished, markLocalShareRevokedSafely,
+} from './sharing/shareLibrary';
 
 const ONBOARDING_DISMISSED_STORAGE_KEY = 'poem-to-image.onboarding-dismissed';
 const OnboardingModal = lazy(async () => ({ default: (await import('./components/OnboardingModal')).OnboardingModal }));
@@ -102,6 +104,7 @@ export default function App() {
   const [editorOpenRequestId, setEditorOpenRequestId] = useState(0);
   const [previewZoom, setPreviewZoom] = useState(1);
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
+  const [shareLibraryOpen, setShareLibraryOpen] = useState(false);
 
   const handleCloseOnboarding = () => {
     setIsOnboardingOpen(false);
@@ -402,7 +405,7 @@ export default function App() {
 
     let credentials;
     try {
-      credentials = preparePublishCredentials(localStorage, fingerprint);
+      credentials = await prepareLocalShare(fingerprint, title, author);
     } catch (error) {
       if (error instanceof PendingShareConflict) {
         // Never silently replace credentials for a possibly public prior
@@ -421,11 +424,12 @@ export default function App() {
       deleteToken: credentials.deleteToken, statusUnknown: true, failureDetail,
     });
 
-    const confirmed = (): PublishedShare => {
+    const confirmed = async (): Promise<PublishedShare> => {
       try {
-        completePublishCredentials(localStorage, credentials);
+        await markLocalSharePublished(credentials.id, credentials.deleteToken, title, author);
       } catch {
-        // Revocation capability is still available for explicit backup.
+        // Publishing succeeded remotely but we could not update local history.
+        // Keep the key in this recovery dialog for an independent backup.
         return { id: credentials.id, url: link(credentials.id),
           deleteToken: credentials.deleteToken, recoveryRequired: true };
       }
@@ -470,7 +474,7 @@ export default function App() {
       }
     };
     const uncertainUnlessPublished = async (failureDetail: string): Promise<PublishedShare> =>
-      await confirmPublished() ? confirmed() : unknown(failureDetail);
+      await confirmPublished() ? await confirmed() : unknown(failureDetail);
 
     const form = new FormData();
     form.append('id', credentials.id);
@@ -497,6 +501,7 @@ export default function App() {
     }
     if (!response.ok) {
       if (body.code === 'SHARE_CANCELLED') {
+        await markLocalShareRevokedSafely(credentials.id, credentials.deleteToken);
         removePublishCredentialsSafely(credentials.id, credentials.deleteToken);
         throw new Error('SHARE_CANCELLED');
       }
@@ -514,7 +519,7 @@ export default function App() {
     if (body.id !== credentials.id || body.deleteToken !== credentials.deleteToken) {
       return uncertainUnlessPublished('HTTP ' + response.status + ' · INVALID_RESPONSE');
     }
-    return confirmed();
+    return await confirmed();
   };
 
   const handleDownload = async () => {
@@ -676,8 +681,10 @@ export default function App() {
     onDownload: handleDownload,
     onShare: handleShare,
     onCopy: handleCopy,
-    onPublishLink: () => setPublishDialogOpen(true),
+    onPublishLink: () => { setShareLibraryOpen(false); setPublishDialogOpen(true); },
     publishLinkLabel: shareCopy[language].publishLink,
+    onManageShares: () => { setShareLibraryOpen(true); setPublishDialogOpen(true); },
+    manageSharesLabel: shareCopy[language].manageShares,
     onShareToSocial: handleShareToSocial,
     isExporting,
     isSharing,
@@ -727,6 +734,7 @@ export default function App() {
         language={language}
         isOpen={publishDialogOpen}
         onClose={() => setPublishDialogOpen(false)}
+        initialLibrary={shareLibraryOpen}
         publish={publishArtwork}
       />
 
