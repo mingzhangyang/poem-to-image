@@ -377,6 +377,37 @@ export async function getShareApi(request: Request, env: WorkerEnv, id: string):
   return row ? jsonResponse(publicShare(request, row)) : notFound();
 }
 
+/**
+ * Read-only confirmation of an ambiguous POST, authenticated with the
+ * pre-persisted creator capability and *exact* rendered content fingerprint.
+ * Public GET metadata alone cannot prove ownership of a colliding ID.
+ * The credentials never appear in a URL, query string, or response body.
+ */
+export async function verifyShareForRecovery(request: Request, env: WorkerEnv, id: string): Promise<Response> {
+  if (request.method !== 'POST') return methodNotAllowed(['POST']);
+  if (!available(env)) return jsonResponse({ error: 'Sharing is not configured.', code: 'SHARING_NOT_CONFIGURED' }, 503);
+  if (!isShareId(id)) return notFound();
+  if (!hasAllowedOrigin(request)) return jsonResponse({ error: 'Invalid origin.', code: 'INVALID_ORIGIN' }, 403);
+
+  const token = request.headers.get('X-Share-Delete-Token') ?? '';
+  const fingerprint = request.headers.get('X-Share-Fingerprint') ?? '';
+  if (!/^[a-f0-9]{64}$/.test(token) || !/^[a-f0-9]{64}$/.test(fingerprint)) return notFound();
+  const hash = await tokenHash(token);
+  const row = await findShareById(env.DB, id);
+  if (!row || row.revoked_at || row.delete_token_hash !== hash || row.content_fingerprint !== fingerprint) {
+    return notFound();
+  }
+  if (!row.published_at) return jsonResponse({ status: 'pending' }, 202);
+  if (!row.image_key || !row.image_type || !row.card_key) {
+    return jsonResponse({ error: 'Share assets unavailable.', code: 'SHARE_INCOMPLETE' }, 503);
+  }
+  return jsonResponse({
+    status: 'published',
+    imageUrl: imagePath(id, row.image_type),
+    cardUrl: '/s/' + id + '/card.jpg',
+  });
+}
+
 async function limitUnknownCancellation(request: Request, db: D1Database): Promise<Response | null> {
   // Cancellation must support an ID whose POST never reached the Worker.
   // Bound creation of unauthenticated tombstones to avoid unbounded D1 growth.
