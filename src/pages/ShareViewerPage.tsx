@@ -4,6 +4,7 @@ import { useParams } from 'react-router-dom';
 import { readPreferredLanguage } from '../hooks/useLang';
 import { SHARE_OWNER_KEY_PREFIX, shareCopy } from '../sharing/copy';
 import { removePublishCredentialsSafely } from '../sharing/publishProtocol';
+import { findLocalShare, markLocalShareRevokedSafely } from '../sharing/shareLibrary';
 
 interface PublicArtwork {
   id: string; title: string; author: string; createdAt: string;
@@ -28,8 +29,18 @@ export default function ShareViewerPage() {
     const controller = new AbortController();
     setLoading(true); setNotFound(false); setLoadError(false);
     setArtwork(null); setError(''); setManualToken('');
-    try { setDeleteToken(localStorage.getItem(SHARE_OWNER_KEY_PREFIX + id)); }
-    catch { setDeleteToken(null); }
+    setDeleteToken(null);
+    void findLocalShare(id).then((local) => {
+      if (!controller.signal.aborted) {
+        setDeleteToken(local?.state === 'revoked' ? null : (local?.deleteToken ?? null));
+      }
+    }).catch(() => {
+      // An IndexedDB error must not prevent manual revocation with a saved
+      // key, or recovery of an unmigrated localStorage owner capability.
+      if (controller.signal.aborted) return;
+      try { setDeleteToken(localStorage.getItem(SHARE_OWNER_KEY_PREFIX + id)); }
+      catch { setDeleteToken(null); }
+    });
     void fetch('/api/shares/' + encodeURIComponent(id), { signal: controller.signal })
       .then(async (response): Promise<PublicArtwork | null> => {
         if (response.status === 404) {
@@ -71,6 +82,7 @@ export default function ShareViewerPage() {
         method: 'DELETE', headers: { 'X-Share-Delete-Token': token },
       });
       if (!response.ok) throw new Error('Revoke failed');
+      await markLocalShareRevokedSafely(artwork.id, token);
       removePublishCredentialsSafely(artwork.id, token);
       setDeleteToken(null); setManualToken(''); setArtwork(null); setNotFound(true);
     } catch { setError(copy.revokeError); }
