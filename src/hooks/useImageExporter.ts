@@ -4,40 +4,13 @@ import { renderCanvasExport } from '../export/renderCanvasExport';
 import type { PaperId } from '../paperStyles';
 import type { BackgroundType } from '../types';
 import { createExportFilename } from '../export/exportFilename';
-import type { BorderStyle, CustomText, ExportFormat, ExportScale, LogoConfig, PoemContentData, PoemLayerStyle, PositionedElement, SignatureConfig, SocialPlatform, StampConfig, TextAlign, WritingMode } from '../types';
-
-interface SocialPlatformConfig {
-  format: ExportFormat;
-  scale: ExportScale;
-  url: string | null;
-}
+import type { BorderStyle, CustomText, ExportFormat, ExportScale, LogoConfig, PoemContentData, PoemLayerStyle, PositionedElement, SignatureConfig, StampConfig, TextAlign, WritingMode } from '../types';
 
 interface BatchExportPreset {
   id: string;
   sceneLabel: string;
   width: number;
   height: number;
-}
-
-const SOCIAL_PLATFORM_CONFIG: Record<SocialPlatform, SocialPlatformConfig> = {
-  wechat:       { format: 'jpg', scale: 2, url: null },
-  weibo:        { format: 'jpg', scale: 2, url: 'https://weibo.com/' },
-  xiaohongshu:  { format: 'jpg', scale: 2, url: 'https://creator.xiaohongshu.com/publish/publish' },
-  twitter:      { format: 'jpg', scale: 2, url: 'https://x.com/intent/tweet' },
-  instagram:    { format: 'jpg', scale: 2, url: 'https://www.instagram.com/' },
-  facebook:     { format: 'jpg', scale: 2, url: 'https://www.facebook.com/' },
-};
-
-async function copyImageToClipboard(blob: Blob): Promise<boolean> {
-  if (typeof navigator === 'undefined' || !navigator.clipboard?.write) {
-    return false;
-  }
-  try {
-    await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 interface UseImageExporterBackgroundOptions {
@@ -398,45 +371,6 @@ export function useImageExporter(
     }
   }, [canShare, createOutputBlob, exportFormat, isExporting, isSharing, scene.typography.poem.title]);
 
-  const shareToSocialPlatform = useCallback(async (platform: SocialPlatform): Promise<'clipboard' | 'downloaded' | 'cancelled'> => {
-    if (isExporting || isSharing) {
-      return 'downloaded';
-    }
-
-    setIsSharing(true);
-
-    try {
-      const { format, scale, url } = SOCIAL_PLATFORM_CONFIG[platform];
-      const blob = await createOutputBlob(format, { scale });
-
-      if (!blob) {
-        return 'downloaded';
-      }
-
-      const copied = await copyImageToClipboard(blob);
-
-      if (!copied) {
-        const saved = await saveBlob(blob, format, scene.typography.poem.title);
-        if (!saved) {
-          return 'cancelled';
-        }
-      }
-
-      if (url) {
-        setTimeout(() => {
-          window.open(url, '_blank', 'noopener,noreferrer');
-        }, 400);
-      }
-
-      return copied ? 'clipboard' : 'downloaded';
-    } catch (error) {
-      logError('Failed to share to social platform', error);
-      return 'downloaded';
-    } finally {
-      setIsSharing(false);
-    }
-  }, [createOutputBlob, isExporting, isSharing, scene.typography.poem.title]);
-
   const exportBatchImages = useCallback(async (presets: BatchExportPreset[]): Promise<number> => {
     if (isExporting || isSharing || presets.length === 0) {
       return 0;
@@ -475,5 +409,5 @@ export function useImageExporter(
     }
   }, [createOutputBlob, exportFormat, exportScale, isExporting, isSharing, scene.typography.poem.title]);
 
-  return { exportImage, exportBatchImages, shareImage, copyImage, shareToSocialPlatform, createShareAssets, isExporting, isSharing, canShare };
+  return { exportImage, exportBatchImages, shareImage, copyImage, createShareAssets, isExporting, isSharing, canShare };
 }
