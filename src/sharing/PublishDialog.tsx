@@ -1,8 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Check, Copy, ExternalLink, Link2, Loader2, Trash2, X } from 'lucide-react';
 import { useDialogA11y } from '../hooks/useDialogA11y';
-import { SHARE_OWNER_KEY_PREFIX, shareCopy } from './copy';
+import { shareCopy } from './copy';
 import { removePublishCredentialsSafely } from './publishProtocol';
+import {
+  checkLocalShareStatus, listLocalShares, markLocalSharePublished,
+  markLocalShareRevokedSafely, type LocalShare,
+} from './shareLibrary';
 import type { Language } from '../translations';
 
 export interface PublishedShare {
@@ -26,9 +30,10 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   publish: () => Promise<PublishedShare>;
+  initialLibrary?: boolean;
 }
 
-export function PublishDialog({ language, isOpen, onClose, publish }: Props) {
+export function PublishDialog({ language, isOpen, onClose, publish, initialLibrary = false }: Props) {
   const copy = shareCopy[language];
   const dialogRef = useRef<HTMLDivElement>(null);
   const urlRef = useRef<HTMLInputElement>(null);
@@ -42,25 +47,54 @@ export function PublishDialog({ language, isOpen, onClose, publish }: Props) {
   const [recoveryCopied, setRecoveryCopied] = useState(false);
   const [backupConfirmed, setBackupConfirmed] = useState(false);
   const [error, setError] = useState('');
+  const [showLibrary, setShowLibrary] = useState(initialLibrary);
+  const [records, setRecords] = useState<LocalShare[]>([]);
+  const [libraryBusy, setLibraryBusy] = useState(false);
+  const [libraryAction, setLibraryAction] = useState('');
+  const [libraryError, setLibraryError] = useState('');
+  const [exposedKey, setExposedKey] = useState<string | null>(null);
+  const libraryLoadRef = useRef(0);
 
   // A live share without persistent revocation credentials cannot be dismissed
   // accidentally. The user must first confirm an independent backup or revoke.
   const unresolved = !!(result?.recoveryRequired || result?.statusUnknown);
-  const needsBackup = unresolved && !backupConfirmed;
-  const canClose = !inFlightRef.current && !publishing && !recoveryBusy && !needsBackup;
+  // Uncertain publications already have a committed IndexedDB owner record.
+  // Only failed local publication-state persistence requires external backup.
+  const needsBackup = !!result?.recoveryRequired && !backupConfirmed;
+  const canClose = !inFlightRef.current && !publishing && !recoveryBusy
+    && !libraryAction && !needsBackup;
   const close = () => { if (canClose) onClose(); };
   useDialogA11y({ isOpen, dialogRef, onClose: close });
 
   useEffect(() => {
-    if (!isOpen) {
+    if (isOpen) {
+      setShowLibrary(initialLibrary);
+    } else {
       setResult(null);
       setRevoked(false);
       setCopied(false);
       setRecoveryCopied(false);
       setBackupConfirmed(false);
       setError('');
+      setLibraryError('');
+      setExposedKey(null);
     }
-  }, [isOpen]);
+  }, [isOpen, initialLibrary]);
+
+  useEffect(() => {
+    if (!isOpen || !showLibrary) return;
+    const ticket = ++libraryLoadRef.current;
+    setLibraryBusy(true);
+    setLibraryError('');
+    void listLocalShares().then((all) => {
+      if (ticket === libraryLoadRef.current) setRecords(all);
+    }).catch(() => {
+      if (ticket === libraryLoadRef.current) setLibraryError(copy.recoveryStorageUnavailable);
+    }).finally(() => {
+      if (ticket === libraryLoadRef.current) setLibraryBusy(false);
+    });
+    return () => { libraryLoadRef.current++; };
+  }, [isOpen, showLibrary, copy.recoveryStorageUnavailable]);
 
   const handlePublish = async () => {
     if (inFlightRef.current) return;
@@ -106,18 +140,16 @@ export function PublishDialog({ language, isOpen, onClose, publish }: Props) {
     }
   };
 
-  const handleRetrySave = () => {
+  const handleRetrySave = async () => {
     if (!result) return;
     if (result.statusUnknown) {
       if (result.pendingChanged) return;
-      void handlePublish(); // Uses the pre-persisted ID/token; never republishes another ID.
+      await handlePublish(); // Reuses the exact IndexedDB ID and content fingerprint.
       return;
     }
     if (!result.recoveryRequired) return;
     try {
-      const key = SHARE_OWNER_KEY_PREFIX + result.id;
-      localStorage.setItem(key, result.deleteToken);
-      if (localStorage.getItem(key) !== result.deleteToken) throw new Error('UNSAVED');
+      await markLocalSharePublished(result.id, result.deleteToken);
       setResult({ ...result, recoveryRequired: false });
       setError('');
     } catch {
@@ -135,6 +167,7 @@ export function PublishDialog({ language, isOpen, onClose, publish }: Props) {
         headers: { 'X-Share-Delete-Token': result.deleteToken },
       });
       if (!response.ok) throw new Error('HTTP ' + response.status);
+      await markLocalShareRevokedSafely(result.id, result.deleteToken);
       removePublishCredentialsSafely(result.id, result.deleteToken);
       setResult(null);
       setRevoked(true);
@@ -145,6 +178,55 @@ export function PublishDialog({ language, isOpen, onClose, publish }: Props) {
       setError(copy.recoveryRevokeFailed + detail);
     } finally {
       setRecoveryBusy(false);
+    }
+  };
+
+  const refreshRecords = async () => {
+    setRecords(await listLocalShares());
+  };
+
+  const handleCheckLocal = async (share: LocalShare) => {
+    if (libraryAction) return;
+    setLibraryAction(share.id);
+    setLibraryError('');
+    try {
+      await checkLocalShareStatus(share);
+      await refreshRecords();
+    } catch (caught) {
+      setLibraryError(caught instanceof Error ? caught.message : copy.loadError);
+    } finally {
+      setLibraryAction('');
+    }
+  };
+
+  const handleRemoveLocal = async (share: LocalShare) => {
+    if (libraryAction || !window.confirm(copy.revokeConfirm)) return;
+    setLibraryAction(share.id);
+    setLibraryError('');
+    try {
+      const response = await fetch('/api/shares/' + encodeURIComponent(share.id), {
+        method: 'DELETE', headers: { 'X-Share-Delete-Token': share.deleteToken },
+      });
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      await markLocalShareRevokedSafely(share.id, share.deleteToken);
+      removePublishCredentialsSafely(share.id, share.deleteToken);
+      setRecords((current) => current.filter((item) => item.id !== share.id));
+      setExposedKey(null);
+    } catch (caught) {
+      const detail = caught instanceof Error ? caught.message : '';
+      setLibraryError(copy.recoveryRevokeFailed + (detail ? ' (' + detail + ')' : ''));
+    } finally {
+      setLibraryAction('');
+    }
+  };
+
+  const handleCopyLocal = async (value: string, revealId?: string) => {
+    try { await navigator.clipboard.writeText(value); }
+    catch {
+      // Display the private key only on explicit request when clipboard access
+      // is denied. Never append it to a public URL or browser history.
+      if (revealId) setExposedKey(revealId);
+      else setLibraryError(copy.copyFailed);
     }
   };
 
@@ -162,14 +244,70 @@ export function PublishDialog({ language, isOpen, onClose, publish }: Props) {
         <div className="mb-5 flex items-center gap-3 text-(--app-accent-800)">
           <span className="rounded-2xl bg-(--app-accent-50) p-3"><Link2 size={22} /></span>
           <h2 id="publish-dialog-title" className="pr-9 text-xl font-semibold">
-            {revoked ? copy.recoveryRevoked
+            {showLibrary ? copy.manageShares
+              : revoked ? copy.recoveryRevoked
               : result?.statusUnknown ? copy.pendingTitle
                 : result?.recoveryRequired ? copy.recoveryTitle
                 : result ? copy.published : copy.publishTitle}
           </h2>
         </div>
 
-        {revoked ? (
+        {showLibrary ? (
+          <div className="space-y-4">
+            <p className="text-xs leading-5 text-(--app-accent-600)">{copy.libraryLocalOnly}</p>
+            {libraryBusy ? <p role="status" className="text-sm text-(--app-accent-700)">{copy.loading}</p> : null}
+            {libraryError ? <p role="alert" className="text-sm text-red-700">{libraryError}</p> : null}
+            {!libraryBusy && records.length === 0 ? (
+              <p className="rounded-xl border border-(--app-accent-200) p-4 text-sm text-(--app-accent-700)">{copy.libraryEmpty}</p>
+            ) : null}
+            <div className="max-h-[50vh] space-y-3 overflow-y-auto">
+              {records.map((share) => (
+                <div key={share.id} className="space-y-2 rounded-xl border border-(--app-accent-200) bg-white/75 p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="min-w-0 truncate font-medium text-(--app-accent-900)">
+                      {share.title || share.id}
+                    </p>
+                    <span className="shrink-0 text-xs text-(--app-accent-600)">
+                      {share.state === 'published' ? copy.libraryPublished
+                        : share.state === 'pending' ? copy.libraryPending : copy.libraryUnverified}
+                    </span>
+                  </div>
+                  <a className="block break-all text-xs text-teal-800 underline"
+                    href={'/s/' + share.id} target="_blank" rel="noopener noreferrer">
+                    {new URL('/s/' + share.id, window.location.origin).toString()}
+                  </a>
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" onClick={() => void handleCopyLocal(new URL('/s/' + share.id, window.location.origin).toString())}
+                      className="app-button-secondary rounded-lg px-3 py-2 text-xs">{copy.copy}</button>
+                    <button type="button" onClick={() => void handleCopyLocal(share.deleteToken, share.id)}
+                      className="app-button-secondary rounded-lg px-3 py-2 text-xs">{copy.recoveryCopy}</button>
+                    <button type="button" disabled={!!libraryAction} onClick={() => void handleCheckLocal(share)}
+                      className="app-button-secondary rounded-lg px-3 py-2 text-xs disabled:opacity-50">
+                      {libraryAction === share.id ? copy.loading : copy.libraryCheck}
+                    </button>
+                    <button type="button" disabled={!!libraryAction} onClick={() => void handleRemoveLocal(share)}
+                      className="rounded-lg border border-red-200 px-3 py-2 text-xs text-red-800 disabled:opacity-50">{copy.revoke}</button>
+                  </div>
+                  {exposedKey === share.id ? (
+                    <label className="block text-xs text-(--app-accent-700)">
+                      {copy.recoveryKey}
+                      <input readOnly value={share.deleteToken} aria-label={copy.recoveryKey}
+                        onFocus={(event) => event.target.select()}
+                        className="mt-1 w-full rounded-lg border border-amber-300 p-2 font-mono text-xs text-slate-900" />
+                    </label>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+            <button type="button" disabled={!!libraryAction}
+              onClick={() => { setShowLibrary(false); setLibraryError(''); }}
+              className="app-button-primary w-full rounded-xl px-4 py-3 font-semibold disabled:opacity-50">
+              {copy.libraryNew}
+            </button>
+            <button type="button" onClick={close} disabled={!canClose}
+              className="block w-full py-2 text-sm text-(--app-accent-700)">{copy.close}</button>
+          </div>
+        ) : revoked ? (
           <div className="space-y-5">
             <p role="status" className="text-sm text-(--app-accent-700)">{copy.recoveryRevoked}</p>
             <button type="button" onClick={close}
@@ -201,7 +339,7 @@ export function PublishDialog({ language, isOpen, onClose, publish }: Props) {
             {error ? <p role="alert" className="text-sm text-red-700">{error}</p> : null}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {!result.pendingChanged ? (
-                <button type="button" onClick={handleRetrySave} disabled={recoveryBusy || publishing}
+                <button type="button" onClick={() => void handleRetrySave()} disabled={recoveryBusy || publishing}
                   className="app-button-secondary rounded-xl px-4 py-3 text-sm font-semibold disabled:opacity-50">
                   {publishing ? copy.publishing : result.statusUnknown ? copy.pendingRetry : copy.recoveryRetry}
                 </button>
@@ -234,6 +372,8 @@ export function PublishDialog({ language, isOpen, onClose, publish }: Props) {
               </button>
             </div>
             <p className="text-xs leading-5 text-(--app-accent-600)">{copy.localManage}</p>
+            <button type="button" onClick={() => setShowLibrary(true)}
+              className="app-button-secondary w-full rounded-xl px-4 py-3 text-sm font-semibold">{copy.manageShares}</button>
             <a href={result.url} target="_blank" rel="noopener noreferrer"
               className="app-button-secondary flex items-center justify-center gap-2 rounded-xl px-4 py-3 font-semibold">
               <ExternalLink size={17} />{copy.view}
