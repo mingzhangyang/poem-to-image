@@ -16,6 +16,7 @@ export interface LocalShare {
   id: string;
   deleteToken: string;
   fingerprint: string | null;
+  expiry?: '7d' | '30d' | 'never';
   title: string;
   author: string;
   state: LocalShareState;
@@ -179,7 +180,7 @@ function createToken(): string {
  * No network upload is allowed until this transaction commits.
  */
 export async function prepareLocalShare(
-  fingerprint: string, title: string, author: string,
+  fingerprint: string, title: string, author: string, expiry: '7d' | '30d' | 'never' = 'never',
 ): Promise<PublishCredentials> {
   if (!FINGERPRINT.test(fingerprint)) throw storageError();
   await migrateLegacy();
@@ -187,11 +188,11 @@ export async function prepareLocalShare(
     const read = store.getAll();
     read.onsuccess = () => {
       const records = read.result as LocalShare[];
-      const pending = records.find((entry) => entry.state === 'pending' && entry.fingerprint === fingerprint);
+      const pending = records.find((entry) => entry.state === 'pending' && entry.fingerprint === fingerprint && (entry.expiry ?? 'never') === expiry);
       // Preserve immutable publication identity when publishing the same
       // snapshot again, instead of creating a new link after closing a dialog.
       const existing = pending ?? records.find((entry) =>
-        entry.state === 'published' && entry.fingerprint === fingerprint);
+        entry.state === 'published' && entry.fingerprint === fingerprint && (entry.expiry ?? 'never') === expiry);
       const id = existing?.id ?? createId();
       if (records.some((entry) => entry.id === id && entry !== existing)) {
         fail(storageError());
@@ -206,7 +207,7 @@ export async function prepareLocalShare(
       const now = new Date().toISOString();
       store.put({
         id, deleteToken: credentials.deleteToken, fingerprint,
-        title, author,
+        title, author, expiry,
         state: existing?.state === 'published' ? 'published' : 'pending',
         createdAt: existing?.createdAt ?? now,
         updatedAt: now,
