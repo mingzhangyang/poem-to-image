@@ -261,12 +261,12 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
 
         {!showLibrary && !result && !revoked ? (
           <label className="mb-3 block text-sm text-(--app-accent-800)">
-            {language === 'zh' ? '分享有效期' : 'Share expiration'}
+            {(language === 'zh-CN' || language === 'zh-TW') ? '分享有效期' : 'Share expiration'}
             <select value={expiry} onChange={(event) => setExpiry(event.target.value as '7d' | '30d' | 'never')}
               disabled={publishing} className="mt-1 block w-full rounded-lg border p-2">
-              <option value="7d">{language === 'zh' ? '一周' : 'One week'}</option>
-              <option value="30d">{language === 'zh' ? '一个月' : 'One month'}</option>
-              <option value="never">{language === 'zh' ? '永不过期' : 'Never'}</option>
+              <option value="7d">{(language === 'zh-CN' || language === 'zh-TW') ? '一周' : 'One week'}</option>
+              <option value="30d">{(language === 'zh-CN' || language === 'zh-TW') ? '一个月' : 'One month'}</option>
+              <option value="never">{(language === 'zh-CN' || language === 'zh-TW') ? '永不过期' : 'Never'}</option>
             </select>
           </label>
         ) : null}
