@@ -31,10 +31,14 @@ function storageError(): Error { return new Error('STORAGE_UNAVAILABLE'); }
 
 function openDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    if (typeof indexedDB === 'undefined') { reject(storageError()); return; }
     let request: IDBOpenDBRequest;
-    try { request = indexedDB.open(SHARE_LIBRARY_DB, 1); }
-    catch { reject(storageError()); return; }
+    try {
+      if (typeof indexedDB === 'undefined') throw storageError();
+      request = indexedDB.open(SHARE_LIBRARY_DB, 1);
+    } catch {
+      reject(storageError());
+      return;
+    }
     request.onupgradeneeded = () => {
       const db = request.result;
       if (!db.objectStoreNames.contains(SHARE_LIBRARY_STORE)) {
@@ -55,7 +59,7 @@ async function transaction<T>(
   const db = await openDatabase();
   return new Promise<T>((resolve, reject) => {
     let tx: IDBTransaction;
-    try { tx = db.transaction(SHARE_LIBRARY_STORE, mode, mode === 'readwrite' ? { durability: 'strict' } : undefined); }
+    try { tx = db.transaction(SHARE_LIBRARY_STORE, mode); }
     catch { db.close(); reject(storageError()); return; }
     let value: T;
     let failure: Error | null = null;
