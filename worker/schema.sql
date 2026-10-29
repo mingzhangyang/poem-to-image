@@ -92,7 +92,9 @@ CREATE TABLE IF NOT EXISTS shared_artworks (
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   published_at TEXT,
   revoked_at TEXT,
-  assets_deleted_at TEXT
+  assets_deleted_at TEXT,
+  expiry_policy TEXT NOT NULL DEFAULT 'never' CHECK (expiry_policy IN ('7d', '30d', 'never')),
+  expires_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS rate_limits (
@@ -134,3 +136,5 @@ CREATE INDEX IF NOT EXISTS idx_shared_artwork_attempts_created
 CREATE INDEX IF NOT EXISTS idx_shared_artworks_created ON shared_artworks(created_at);
 CREATE INDEX IF NOT EXISTS idx_shared_artworks_cleanup_pending ON shared_artworks(revoked_at)
   WHERE revoked_at IS NOT NULL AND assets_deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_shared_artworks_expiration ON shared_artworks(expires_at)
+  WHERE expires_at IS NOT NULL AND revoked_at IS NULL;

@@ -10,6 +10,8 @@ export const MAX_CARD_BYTES = 1_500_000;
 const SHARE_ID_PATTERN = /^[A-Za-z0-9_-]{12}$/;
 const TITLE_LIMIT = 120;
 const AUTHOR_LIMIT = 100;
+type ShareExpiry = '7d' | '30d' | 'never';
+const validExpiry = (value: unknown): value is ShareExpiry => value === '7d' || value === '30d' || value === 'never';
 
 interface ShareRecord {
   id: string;
@@ -19,6 +21,8 @@ interface ShareRecord {
   image_type: string;
   card_key: string;
   created_at: string;
+  expiry_policy: ShareExpiry;
+  expires_at: string | null;
 }
 
 function available(env: WorkerEnv): boolean {
@@ -61,7 +65,7 @@ export async function getShareReadiness(request: Request, env: WorkerEnv): Promi
     await env.DB.prepare(
       `SELECT id, title, author, image_key, image_type, card_key,
               delete_token_hash, content_fingerprint, created_at,
-              published_at, revoked_at, assets_deleted_at
+              published_at, revoked_at, assets_deleted_at, expiry_policy, expires_at
        FROM shared_artworks LIMIT 1`,
     ).all();
     await env.DB.prepare(
@@ -124,6 +128,7 @@ function publicShare(request: Request, row: ShareRecord) {
     title: row.title,
     author: row.author,
     createdAt: row.created_at,
+    expiresAt: row.expires_at,
     url: artworkUrl(request, row.id),
     imageUrl: imagePath(row.id, row.image_type),
     cardUrl: '/s/' + row.id + '/card.jpg',
@@ -133,8 +138,9 @@ function publicShare(request: Request, row: ShareRecord) {
 async function lookupShare(db: D1Database, id: string): Promise<ShareRecord | null> {
   if (!isShareId(id)) return null;
   return db.prepare(
-    `SELECT id, title, author, image_key, image_type, card_key, created_at
-     FROM shared_artworks WHERE id = ? AND published_at IS NOT NULL AND revoked_at IS NULL`,
+    `SELECT id, title, author, image_key, image_type, card_key, created_at, expiry_policy, expires_at
+     FROM shared_artworks WHERE id = ? AND published_at IS NOT NULL AND revoked_at IS NULL
+       AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)`,
   ).bind(id).first<ShareRecord>();
 }
 
@@ -197,12 +203,12 @@ interface ExistingShare extends Omit<ShareRecord, 'image_key' | 'image_type' | '
 
 async function findShareById(db: D1Database, id: string): Promise<ExistingShare | null> {
   return db.prepare(
-    'SELECT id, title, author, image_key, image_type, card_key, created_at, delete_token_hash, content_fingerprint, published_at, revoked_at FROM shared_artworks WHERE id = ?',
+    'SELECT id, title, author, image_key, image_type, card_key, created_at, delete_token_hash, content_fingerprint, published_at, revoked_at, expiry_policy, expires_at FROM shared_artworks WHERE id = ?',
   ).bind(id).first<ExistingShare>();
 }
 
-function isIdempotentReplay(row: ExistingShare, hash: string, fingerprint: string): boolean {
-  return !row.revoked_at && row.delete_token_hash === hash && row.content_fingerprint === fingerprint;
+function isIdempotentReplay(row: ExistingShare, hash: string, fingerprint: string, expiry: ShareExpiry): boolean {
+  return !row.revoked_at && row.delete_token_hash === hash && row.content_fingerprint === fingerprint && row.expiry_policy === expiry;
 }
 
 function shareConflict(row: ExistingShare, hash: string): Response {
@@ -251,8 +257,10 @@ export async function publishShare(request: Request, env: WorkerEnv): Promise<Re
   const card = form.get('card');
   const rawTitle = form.get('title');
   const rawAuthor = form.get('author');
+  const expiry = form.get('expiry') ?? 'never';
   if (typeof id !== 'string' || !isShareId(id)
     || typeof deleteToken !== 'string' || !/^[a-f0-9]{64}$/.test(deleteToken)
+    || !validExpiry(expiry)
     || !(artwork instanceof File) || !(card instanceof File)
     || typeof rawTitle !== 'string' || typeof rawAuthor !== 'string'
     || rawTitle.trim().length > TITLE_LIMIT || rawAuthor.trim().length > AUTHOR_LIMIT
@@ -279,8 +287,8 @@ export async function publishShare(request: Request, env: WorkerEnv): Promise<Re
     // Reserve the ID in D1 BEFORE uploading to R2. A DELETE can now atomically
     // cancel this reservation, preventing any in-flight upload from publishing.
     await env.DB.prepare(
-      'INSERT OR IGNORE INTO shared_artworks (id, title, author, delete_token_hash, content_fingerprint) VALUES (?, ?, ?, ?, ?)',
-    ).bind(id, title, author, deleteHash, fingerprint).run();
+      `INSERT OR IGNORE INTO shared_artworks (id, title, author, delete_token_hash, content_fingerprint, expiry_policy, expires_at) VALUES (?, ?, ?, ?, ?, ?, CASE ? WHEN '7d' THEN datetime('now', '+7 days') WHEN '30d' THEN datetime('now', '+30 days') ELSE NULL END)`,
+    ).bind(id, title, author, deleteHash, fingerprint, expiry, expiry).run();
   }
 
   const reservation = await findShareById(env.DB, id);
@@ -288,9 +296,10 @@ export async function publishShare(request: Request, env: WorkerEnv): Promise<Re
   if (reservation.revoked_at) {
     return jsonResponse({ error: 'This publication was cancelled.', code: 'SHARE_CANCELLED' }, 409);
   }
-  if (!isIdempotentReplay(reservation, deleteHash, fingerprint)) {
+  if (!isIdempotentReplay(reservation, deleteHash, fingerprint, expiry)) {
     return shareConflict(reservation, deleteHash);
   }
+  if (reservation.expires_at && reservation.expires_at <= new Date().toISOString().replace('T', ' ').slice(0, 19)) return jsonResponse({ code: 'SHARE_EXPIRED' }, 410);
   if (reservation.published_at) return successfulPublication(request, id, deleteToken, 200);
 
   // Two concurrent requests may share a reservation but must never write to
@@ -339,6 +348,7 @@ export async function publishShare(request: Request, env: WorkerEnv): Promise<Re
       `UPDATE shared_artworks
        SET image_key = ?, image_type = ?, card_key = ?, published_at = CURRENT_TIMESTAMP
        WHERE id = ? AND published_at IS NULL AND revoked_at IS NULL
+         AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)
          AND delete_token_hash = ? AND content_fingerprint = ?`,
     ).bind(imageKey, artwork.type, cardKey, id, deleteHash, fingerprint).run();
     if (finalized.meta.changes === 1) {
@@ -350,7 +360,7 @@ export async function publishShare(request: Request, env: WorkerEnv): Promise<Re
     if (winner?.revoked_at) {
       return jsonResponse({ error: 'This publication was cancelled.', code: 'SHARE_CANCELLED' }, 409);
     }
-    if (winner?.published_at && isIdempotentReplay(winner, deleteHash, fingerprint)) {
+    if (winner?.published_at && isIdempotentReplay(winner, deleteHash, fingerprint, expiry)) {
       return successfulPublication(request, id, deleteToken, 200);
     }
     return jsonResponse({ error: 'Could not finalize artwork.', code: 'PUBLISH_UNCERTAIN' }, 502);
@@ -366,7 +376,7 @@ export async function publishShare(request: Request, env: WorkerEnv): Promise<Re
     }
 
     if (winner?.image_key === imageKey && winner.published_at
-      && isIdempotentReplay(winner, deleteHash, fingerprint)) {
+      && isIdempotentReplay(winner, deleteHash, fingerprint, expiry)) {
       await forgetAttempt();
       return successfulPublication(request, id, deleteToken, 200);
     }
@@ -376,7 +386,7 @@ export async function publishShare(request: Request, env: WorkerEnv): Promise<Re
     if (winner?.revoked_at) {
       return jsonResponse({ error: 'This publication was cancelled.', code: 'SHARE_CANCELLED' }, 409);
     }
-    if (winner?.published_at && isIdempotentReplay(winner, deleteHash, fingerprint)) {
+    if (winner?.published_at && isIdempotentReplay(winner, deleteHash, fingerprint, expiry)) {
       return successfulPublication(request, id, deleteToken, 200);
     }
     return jsonResponse({ error: 'Could not confirm artwork publication.', code: 'PUBLISH_UNCERTAIN' }, 502);
@@ -411,7 +421,7 @@ export async function verifyShareForRecovery(request: Request, env: WorkerEnv, i
     || (fingerprint !== null && !/^[a-f0-9]{64}$/.test(fingerprint))) return notFound();
   const hash = await tokenHash(token);
   const row = await findShareById(env.DB, id);
-  if (!row || row.revoked_at || row.delete_token_hash !== hash
+  if (!row || row.revoked_at || (row.expires_at !== null && row.expires_at <= new Date().toISOString().replace('T', ' ').slice(0, 19)) || row.delete_token_hash !== hash
     || (fingerprint !== null && row.content_fingerprint !== fingerprint)) {
     return notFound();
   }

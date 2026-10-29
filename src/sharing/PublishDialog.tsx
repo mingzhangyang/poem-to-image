@@ -29,7 +29,7 @@ interface Props {
   language: Language;
   isOpen: boolean;
   onClose: () => void;
-  publish: () => Promise<PublishedShare>;
+  publish: (expiry: '7d' | '30d' | 'never') => Promise<PublishedShare>;
   initialLibrary?: boolean;
 }
 
@@ -41,6 +41,7 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
   const inFlightRef = useRef(false);
   const [result, setResult] = useState<PublishedShare | null>(null);
   const [publishing, setPublishing] = useState(false);
+  const [expiry, setExpiry] = useState<'7d' | '30d' | 'never'>('30d');
   const [recoveryBusy, setRecoveryBusy] = useState(false);
   const [revoked, setRevoked] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -103,7 +104,7 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
     setPublishing(true);
     setError('');
     try {
-      setResult(await publish());
+      setResult(await publish(expiry));
     } catch (caught) {
       const code = caught instanceof Error ? caught.message : '';
       setError(code === 'RATE_LIMITED' ? copy.limitError
@@ -258,6 +259,17 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
           </h2>
         </div>
 
+        {!showLibrary && !result && !revoked ? (
+          <label className="mb-3 block text-sm text-(--app-accent-800)">
+            {(language === 'zh-CN' || language === 'zh-TW') ? '分享有效期' : 'Share expiration'}
+            <select value={expiry} onChange={(event) => setExpiry(event.target.value as '7d' | '30d' | 'never')}
+              disabled={publishing} className="mt-1 block w-full rounded-lg border p-2">
+              <option value="7d">{(language === 'zh-CN' || language === 'zh-TW') ? '一周' : 'One week'}</option>
+              <option value="30d">{(language === 'zh-CN' || language === 'zh-TW') ? '一个月' : 'One month'}</option>
+              <option value="never">{(language === 'zh-CN' || language === 'zh-TW') ? '永不过期' : 'Never'}</option>
+            </select>
+          </label>
+        ) : null}
         {showLibrary ? (
           <div className="space-y-4">
             <p className="text-xs leading-5 text-(--app-accent-600)">{copy.libraryLocalOnly}</p>

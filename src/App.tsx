@@ -33,7 +33,7 @@ import {
   PendingShareConflict, fingerprintArtwork, removePublishCredentialsSafely,
 } from './sharing/publishProtocol';
 import {
-  prepareLocalShare, markLocalSharePublished, markLocalShareRevokedSafely,
+  prepareLocalShare, markLocalSharePublished, markLocalShareExpired, markLocalShareRevokedSafely,
 } from './sharing/shareLibrary';
 
 const ONBOARDING_DISMISSED_STORAGE_KEY = 'poem-to-image.onboarding-dismissed';
@@ -395,7 +395,7 @@ export default function App() {
     canShare,
   } = useImageExporter(exportFormat, exportScale, exportScene, waitForSceneSettled);
 
-  const publishArtwork = async (): Promise<PublishedShare> => {
+  const publishArtwork = async (expiry: '7d' | '30d' | 'never' = 'never'): Promise<PublishedShare> => {
     const { artwork, card } = await createShareAssets();
     const title = poem.title.trim().slice(0, 120);
     const author = poem.author.trim().slice(0, 100);
@@ -404,7 +404,7 @@ export default function App() {
 
     let credentials;
     try {
-      credentials = await prepareLocalShare(fingerprint, title, author);
+      credentials = await prepareLocalShare(fingerprint, title, author, expiry);
     } catch (error) {
       if (error instanceof PendingShareConflict) {
         // Never silently replace credentials for a possibly public prior
@@ -482,6 +482,7 @@ export default function App() {
     form.append('card', card, 'card.jpg');
     form.append('title', title);
     form.append('author', author);
+    form.append('expiry', expiry);
 
     let response: Response;
     try {
@@ -499,6 +500,10 @@ export default function App() {
       return uncertainUnlessPublished('HTTP ' + response.status + ' · INVALID_RESPONSE');
     }
     if (!response.ok) {
+      if (response.status === 410 && body.code === 'SHARE_EXPIRED') {
+        await markLocalShareExpired(credentials.id, credentials.deleteToken);
+        throw new Error('SHARE_EXPIRED');
+      }
       if (body.code === 'SHARE_CANCELLED') {
         await markLocalShareRevokedSafely(credentials.id, credentials.deleteToken);
         removePublishCredentialsSafely(credentials.id, credentials.deleteToken);

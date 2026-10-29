@@ -1,5 +1,5 @@
 import { SHARE_OWNER_KEY_PREFIX } from './copy';
-import { PENDING_SHARE_KEY, pendingCredentials, PendingShareConflict, type PublishCredentials } from './publishProtocol';
+import { PENDING_SHARE_KEY, pendingCredentials, type PublishCredentials } from './publishProtocol';
 
 /**
  * Local, browser-only registry of creator capabilities and share metadata.
@@ -10,12 +10,13 @@ import { PENDING_SHARE_KEY, pendingCredentials, PendingShareConflict, type Publi
 export const SHARE_LIBRARY_DB = 'inkpoem-share-library';
 export const SHARE_LIBRARY_STORE = 'shares';
 
-export type LocalShareState = 'pending' | 'published' | 'unverified' | 'revoked';
+export type LocalShareState = 'pending' | 'published' | 'unverified' | 'expired' | 'revoked';
 
 export interface LocalShare {
   id: string;
   deleteToken: string;
   fingerprint: string | null;
+  expiry?: '7d' | '30d' | 'never';
   title: string;
   author: string;
   state: LocalShareState;
@@ -179,7 +180,7 @@ function createToken(): string {
  * No network upload is allowed until this transaction commits.
  */
 export async function prepareLocalShare(
-  fingerprint: string, title: string, author: string,
+  fingerprint: string, title: string, author: string, expiry: '7d' | '30d' | 'never' = 'never',
 ): Promise<PublishCredentials> {
   if (!FINGERPRINT.test(fingerprint)) throw storageError();
   await migrateLegacy();
@@ -187,18 +188,14 @@ export async function prepareLocalShare(
     const read = store.getAll();
     read.onsuccess = () => {
       const records = read.result as LocalShare[];
-      const pending = records.find((entry) => entry.state === 'pending');
-      if (pending && pending.fingerprint !== fingerprint) {
-        fail(new PendingShareConflict({
-          id: pending.id, deleteToken: pending.deleteToken,
-          fingerprint: pending.fingerprint ?? '',
-        }));
-        return;
-      }
-      // Preserve immutable publication identity when publishing the same
-      // snapshot again, instead of creating a new link after closing a dialog.
+      // The Worker owns the authoritative expiration clock. Local createdAt
+      // can predate server reservation, so it cannot determine expiration.
+      // Missing expiry on legacy records means 'never'.
+      const matches = (entry: LocalShare) =>
+        entry.fingerprint === fingerprint && (entry.expiry ?? 'never') === expiry;
+      const pending = records.find((entry) => entry.state === 'pending' && matches(entry));
       const existing = pending ?? records.find((entry) =>
-        entry.state === 'published' && entry.fingerprint === fingerprint);
+        entry.state === 'published' && matches(entry));
       const id = existing?.id ?? createId();
       if (records.some((entry) => entry.id === id && entry !== existing)) {
         fail(storageError());
@@ -213,7 +210,7 @@ export async function prepareLocalShare(
       const now = new Date().toISOString();
       store.put({
         id, deleteToken: credentials.deleteToken, fingerprint,
-        title, author,
+        title, author, expiry,
         state: existing?.state === 'published' ? 'published' : 'pending',
         createdAt: existing?.createdAt ?? now,
         updatedAt: now,
@@ -258,6 +255,14 @@ async function markLocalShareUnverified(id: string, token: string): Promise<void
     ...previous,
     state: previous.state === 'pending' ? 'pending' : 'unverified',
     updatedAt: new Date().toISOString(),
+  }));
+}
+
+/** Only a definitive 410 SHARE_EXPIRED may retire a reusable identity.
+ * Keep the creator capability for historical records and safe cleanup. */
+export async function markLocalShareExpired(id: string, token: string): Promise<void> {
+  await changeLocalShare(id, token, (previous) => ({
+    ...previous, state: 'expired', updatedAt: new Date().toISOString(),
   }));
 }
 
