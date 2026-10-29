@@ -93,6 +93,102 @@ test('anonymous editor pre-saves ID and token before publishing on mobile and de
   expect((await savedShare(page, publishedId))?.state).toBe('published');
 });
 
+test('My Shares persists a published link and its removal key after closing and refreshing', async ({ page }) => {
+  test.setTimeout(90_000);
+  let publishedId = '';
+  let publishedToken = '';
+  let deleted = false;
+  await page.route('**/api/shares', async (route) => {
+    publishedId = multipartValue(route.request().postDataBuffer(), 'id');
+    publishedToken = multipartValue(route.request().postDataBuffer(), 'deleteToken');
+    await route.fulfill({ status: 201, contentType: 'application/json',
+      body: JSON.stringify({ id: publishedId, deleteToken: publishedToken, url: root + '/s/' + publishedId }) });
+  });
+  await page.route('**/api/shares/*', async (route) => {
+    if (route.request().method() === 'DELETE') {
+      expect(route.request().headers()['x-share-delete-token']).toBe(publishedToken);
+      deleted = true;
+      await route.fulfill({ status: 200, contentType: 'application/json', body: '{"revoked":true}' });
+    } else {
+      await route.fulfill({ status: 404, contentType: 'application/json', body: '{"code":"NOT_FOUND"}' });
+    }
+  });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: 'Export Image' }).click();
+  await page.getByRole('dialog', { name: 'Export Image' })
+    .getByRole('button', { name: 'Publish shareable link' }).click();
+  await page.getByRole('dialog', { name: 'Publish this artwork' })
+    .getByRole('button', { name: 'Publish artwork', exact: true }).click();
+  const success = page.getByRole('dialog', { name: 'Your artwork is published' });
+  await expect(success).toBeVisible({ timeout: 40_000 });
+  await success.getByRole('button', { name: 'Close' }).last().click();
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: 'Export Image' }).click();
+  await page.getByRole('dialog', { name: 'Export Image' })
+    .getByRole('button', { name: 'My shares' }).click();
+  const library = page.getByRole('dialog', { name: 'My shares' });
+  await expect(library).toBeVisible();
+  await expect(library.getByRole('link', { name: root + '/s/' + publishedId })).toBeVisible();
+  await expect(library.getByText('Published', { exact: true })).toBeVisible();
+  expect((await savedShare(page, publishedId))?.deleteToken).toBe(publishedToken);
+  page.once('dialog', async (dialog) => { await dialog.accept(); });
+  await library.getByRole('button', { name: 'Remove this share' }).click();
+  await expect(library.getByText('No saved shares yet.')).toBeVisible();
+  expect(deleted).toBe(true);
+  const revokedRecord = await savedShare(page, publishedId);
+  expect(revokedRecord?.state).toBe('revoked');
+  expect(revokedRecord?.deleteToken).toBe('');
+});
+
+test('My Shares migrates existing legacy owner keys without publishing a second artwork', async ({ page }) => {
+  const legacyId = 'LegacyShare01';
+  const legacyToken = 'b'.repeat(64);
+  await page.addInitScript(({ id, token }) => {
+    localStorage.setItem('inkpoem.share.owner.' + id, token);
+  }, { id: legacyId, token: legacyToken });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: 'Export Image' }).click();
+  await page.getByRole('dialog', { name: 'Export Image' })
+    .getByRole('button', { name: 'My shares' }).click();
+  const library = page.getByRole('dialog', { name: 'My shares' });
+  await expect(library.getByRole('link', { name: root + '/s/' + legacyId })).toBeVisible();
+  await expect(library.getByText('Unverified', { exact: true })).toBeVisible();
+  expect((await savedShare(page, legacyId))?.deleteToken).toBe(legacyToken);
+  expect(await page.evaluate((id) => localStorage.getItem('inkpoem.share.owner.' + id), legacyId)).toBeNull();
+});
+
+test('a pending publication remains manageable after closing the recovery dialog', async ({ page }) => {
+  test.setTimeout(90_000);
+  let pendingId = '';
+  await page.route('**/api/shares', async (route) => {
+    pendingId = multipartValue(route.request().postDataBuffer(), 'id');
+    await route.fulfill({ status: 503, contentType: 'application/json', body: '{"code":"SHARE_SCHEMA_UNAVAILABLE"}' });
+  });
+  await page.route('**/api/shares/*/verify', async (route) => {
+    await route.fulfill({ status: 202, contentType: 'application/json', body: '{"status":"pending"}' });
+  });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: 'Export Image' }).click();
+  await page.getByRole('dialog', { name: 'Export Image' })
+    .getByRole('button', { name: 'Publish shareable link' }).click();
+  await page.getByRole('dialog', { name: 'Publish this artwork' })
+    .getByRole('button', { name: 'Publish artwork', exact: true }).click();
+  const uncertain = page.getByRole('dialog', { name: 'Publication status uncertain' });
+  await expect(uncertain).toBeVisible({ timeout: 40_000 });
+  await uncertain.getByRole('button', { name: 'Close' }).last().click();
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: 'Export Image' }).click();
+  await page.getByRole('dialog', { name: 'Export Image' })
+    .getByRole('button', { name: 'My shares' }).click();
+  const library = page.getByRole('dialog', { name: 'My shares' });
+  await expect(library.getByRole('link', { name: root + '/s/' + pendingId })).toBeVisible();
+  await expect(library.getByText('Pending', { exact: true })).toBeVisible();
+  expect((await savedShare(page, pendingId))?.state).toBe('pending');
+});
+
 test('never uploads when the browser cannot save its deletion capability', async ({ page }) => {
   test.setTimeout(90_000);
   await page.addInitScript(() => {
