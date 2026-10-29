@@ -1,6 +1,6 @@
 import { SELF, env } from 'cloudflare:test';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { pruneOrphanedShareAttempts, pruneRevokedShareAssets } from '../../worker/shares';
+import { getShareReadiness, pruneOrphanedShareAttempts, pruneRevokedShareAssets } from '../../worker/shares';
 import type { WorkerEnv } from '../../worker/env';
 
 const ORIGIN = 'https://inkpoem.test';
@@ -55,6 +55,42 @@ async function publish(title?: string, author?: string, creds?: TestCredentials)
     body: form(title, author, creds),
   });
 }
+
+describe('sharing production-readiness probe', () => {
+  it('confirms both migrated D1 tables and R2 read access before announcing readiness', async () => {
+    const response = await SELF.fetch(ORIGIN + '/api/health/sharing');
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ ready: true });
+  });
+
+  it('does not treat a bound D1 database with missing migration as healthy', async () => {
+    const broken = {
+      ...env,
+      DB: { prepare: () => { throw new Error('no such table: shared_artworks'); } },
+    } as unknown as WorkerEnv;
+    const response = await getShareReadiness(new Request(ORIGIN + '/api/health/sharing'), broken);
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ ready: false, code: 'SHARE_SCHEMA_UNAVAILABLE' });
+  });
+
+  it('returns a safe diagnostic when R2 is not bound or cannot be read', async () => {
+    const request = new Request(ORIGIN + '/api/health/sharing');
+    const missing = await getShareReadiness(request, { ...env, ARTWORKS: undefined } as unknown as WorkerEnv);
+    expect(missing.status).toBe(503);
+    expect(await missing.json()).toEqual({ ready: false, code: 'SHARE_STORAGE_UNAVAILABLE' });
+    const denied = await getShareReadiness(request, {
+      ...env,
+      ARTWORKS: { head: async () => { throw new Error('backend unavailable'); } },
+    } as unknown as WorkerEnv);
+    expect(denied.status).toBe(503);
+    expect(await denied.json()).toEqual({ ready: false, code: 'SHARE_STORAGE_UNAVAILABLE' });
+  });
+
+  it('allows only read-only GET checks', async () => {
+    const response = await SELF.fetch(ORIGIN + '/api/health/sharing', { method: 'POST' });
+    expect(response.status).toBe(405);
+  });
+});
 
 describe('anonymous artwork sharing', () => {
   // Rate limits are IP-scoped in production. Unit cases represent independent
