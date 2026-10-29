@@ -441,11 +441,13 @@ export default function App() {
         if (!result.ok) return false;
         const share = await result.json() as { id?: string; imageUrl?: string; cardUrl?: string };
         const base = '/s/' + credentials.id + '/';
-        if (share.id !== credentials.id || ![base + 'image.png', base + 'image.jpg'].includes(share.imageUrl ?? '')
-          || share.cardUrl !== base + 'card.jpg') return false;
+        const imageUrl = share.imageUrl ?? '';
+        const cardUrl = share.cardUrl ?? '';
+        if (share.id !== credentials.id || ![base + 'image.png', base + 'image.jpg'].includes(imageUrl)
+          || cardUrl !== base + 'card.jpg') return false;
         const [image, card] = await Promise.all([
-          fetch(share.imageUrl, { method: 'HEAD', cache: 'no-store' }),
-          fetch(share.cardUrl, { method: 'HEAD', cache: 'no-store' }),
+          fetch(imageUrl, { method: 'HEAD', cache: 'no-store' }),
+          fetch(cardUrl, { method: 'HEAD', cache: 'no-store' }),
         ]);
         return image.ok && card.ok;
       } catch {
