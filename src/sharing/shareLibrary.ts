@@ -1,5 +1,5 @@
 import { SHARE_OWNER_KEY_PREFIX } from './copy';
-import { PENDING_SHARE_KEY, pendingCredentials, PendingShareConflict, type PublishCredentials } from './publishProtocol';
+import { PENDING_SHARE_KEY, pendingCredentials, type PublishCredentials } from './publishProtocol';
 
 /**
  * Local, browser-only registry of creator capabilities and share metadata.
