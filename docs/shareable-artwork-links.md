@@ -5,7 +5,7 @@ Users may publish an immutable rendered snapshot at `https://inkpoem.com/s/<id>`
 ## Reader and creator flow
 
 1. Finish a poem, open Export / Share, select **Publish shareable link** and confirm the public-content warning.
-2. InkPoem renders the artwork and a 1200×630 JPEG preview. **Before any upload**, the browser generates a random 12-character share ID and 256-bit deletion capability, and verifies both can be stored in localStorage along with the exact rendered snapshot fingerprint.
+2. InkPoem renders the artwork and a 1200×630 JPEG preview. **Before any upload**, the browser generates a random 12-character share ID and 256-bit deletion capability, and commits the share ID, private removal key, metadata and exact rendered snapshot fingerprint to IndexedDB before any network upload.
 3. The Worker validates the multipart request and coordinates a D1 publication reservation followed by private R2 object uploads. A conditional D1 update publishes only one immutable snapshot per ID.
 4. The resulting `/s/:id` page is read-only, unauthenticated, downloadable and shareable; OG/Twitter metadata is inserted into server-delivered HTML.
 5. Creators can revoke a link from the original browser or use a securely backed-up deletion key on another device. The key **must never be included in the public URL**.
@@ -14,14 +14,14 @@ The existing **Share image**, **Copy image**, **Download** and social-platform e
 
 ## Failure-safe publication protocol
 
-The browser stores the share ID, removal capability and content fingerprint in `inkpoem.share.pending.v1` and the owner key in `inkpoem.share.owner.<id>` *before* issuing POST. It keeps these credentials until the publish outcome is confirmed or a server-confirmed cancellation occurs.
+The browser atomically stores the share ID, removal capability, metadata, content fingerprint and pending state in IndexedDB (`inkpoem-share-library` / `shares`) **before issuing POST**. Existing `inkpoem.share.pending.v1` / `inkpoem.share.owner.<id>` localStorage credentials are copied into IndexedDB before the old entries are cleared. A failed IndexedDB write stops the upload. The original capability is retained until a server-confirmed cancellation.
 
 - `POST /api/shares`: multipart `id`, `deleteToken`, `artwork`, `card`, `title`, `author`. Missing/invalid payloads are rejected. The Worker inserts a reserved D1 row before writing R2. First successful publish returns 201; an identical retry returns 200. A different fingerprint or owner token for an existing ID returns a 409 without overwriting the work.
 - Each concurrent attempt uploads to distinct random R2 paths, and the D1 conditional update atomically selects one winner. **Every attempt is recorded in `shared_artwork_upload_attempts` before its first R2 write.** Successful attempts remove their tracking row; failed losing/cancelled attempts delete both R2 keys and only then remove the row. Cleanup failures remain durable for the existing hourly maintenance cron. Reconciliation waits at least 60 minutes and checks whether D1 references either key before deleting, so published snapshots cannot be accidentally removed. A pending share is never publicly visible.
 - Network errors, unreadable responses, 429s and other ambiguous retry failures **never erase stored creator credentials**. The dialog displays a protected recovery state: retry the same unchanged snapshot, cancel the previous ID, or securely back up the key before closing.
 - When an uncertain pending publication blocks publishing edited artwork, the creator can cancel the old ID before attempting a new share. Cancelling a request that never reached the Worker is valid and idempotent; the Worker inserts a **revocation tombstone** into D1 if necessary. Thus even an older request arriving afterward cannot reserve or publish that ID. A cancellation in the middle of R2 upload wins over the final conditional D1 update.
-- `DELETE /api/shares/:id`: requires the private `X-Share-Delete-Token`. The Worker hashes the token, atomically revokes an existing reservation or published row, or records a tombstone when the ID was not seen previously; repeats using the same capability are accepted. The browser clears the matching pending record and owner key only after an acknowledged cancellation.
-- `POST /api/shares/:id/verify`: **read-only** recovery check for an ambiguous upload. Requires the original `X-Share-Delete-Token` and `X-Share-Fingerprint` headers; it proves that the pending browser ID belongs to the same creator and exact snapshot before confirming publication. A public GET alone cannot prove ownership when an ID collides.
+- `DELETE /api/shares/:id`: requires the private `X-Share-Delete-Token`. The Worker hashes the token, atomically revokes an existing reservation or published row, or records a tombstone when the ID was not seen previously; repeats using the same capability are accepted. The browser clears the matching IndexedDB capability and writes a revoked tombstone only after an acknowledged cancellation.
+- `POST /api/shares/:id/verify`: **read-only** recovery check for an ambiguous upload. Requires the original `X-Share-Delete-Token` header and, for modern share records, `X-Share-Fingerprint` to prove identical content. Legacy owner-key records without a fingerprint can verify ownership using the private token but cannot be replayed as a new upload. A public GET alone cannot prove ownership when an ID collides.
 - `GET /api/shares/:id`: public metadata only for fully published, not-revoked work. `GET /s/:id`: server-delivered HTML with escaped OG/Twitter/JSON-LD metadata and true 404/noindex for absent, pending or revoked IDs.
 - `GET|HEAD /s/:id/image.png|jpg`, `/s/:id/card.jpg`: private R2 reads gated by the published D1 record.
 
@@ -105,13 +105,29 @@ browser or a secure local backup until server-confirmed revocation.
 Do not repeatedly press Publish against an unhealthy deployment:
 the original browser pending state can be retried after recovery.
 
+## Browser-local My Shares library
+
+Open **Export / Share → My Shares** on desktop or mobile. The list survives
+closing the publish dialog and reloading the editor (on the same browser
+profile). It includes published, pending and migrated unverified records.
+Each entry offers its link, explicit private key backup, creator-authorized
+status verification, and token-authenticated revocation. A server-confirmed
+DELETE erases the local key and keeps a revoked tombstone so old credentials
+are not resurrected by migration. There is no user account, cloud backup or
+cross-device sync. Clearing site data also removes IndexedDB; a private key
+backup is still necessary for long-term revocation access.
+
+**Important:** The browser-held key is not encryption. Do not show or send it
+in public links or browser diagnostics. The share endpoint itself stores
+only the key hash, so a lost key cannot be recovered from the server.
+
 ## Privacy and abuse controls
 
 - Random ID entropy: 72 bits; private revocation key: 256 bits; only a hash is saved in D1.
 - Artwork max 6 MiB; social card max 1.5 MiB; total request max 9 MiB. PNG IHDR and JPEG SOF marker dimensions are validated (maximum 4096 pixels per axis); malformed, unsupported or truncated JPEG headers are rejected instead of relying solely on a three-byte signature.
 - Publication is rate-limited per hashed `CF-Connecting-IP` to five attempts per hour and 20 per day. Do not bypass these limits in production.
 - Normal cross-origin browser requests are rejected; localhost Vite proxy is explicitly supported for development. Private R2 buckets do not need a public custom domain.
-- The creator can lose browser-held revocation access by clearing site data unless they kept a separate private backup. Public images downloaded by others and third-party cached social previews cannot be recalled.
+- The creator can lose browser-held revocation access by clearing site data, or switching browsers/devices, unless they kept a separate private backup. IndexedDB records are browser-local and unencrypted. Public images downloaded by others and third-party cached social previews cannot be recalled.
 - No arbitrary editor drafts, templates, original uploaded assets or AI requests are sent by the share endpoint. Publish is an explicit user action.
 
 ## Production-only deployment — no staging environment
