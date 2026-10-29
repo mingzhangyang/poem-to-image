@@ -171,12 +171,14 @@ function downloadBlob(blob: Blob, filename: string) {
 }
 
 function supportsFileShare() {
-  if (typeof navigator === 'undefined' || typeof navigator.share !== 'function' || typeof File === 'undefined') {
+  // navigator.share alone may support URLs/text but not image files.
+  // Show the native-image share button only when the device explicitly
+  // confirms Web Share Level 2 file support.
+  if (typeof navigator === 'undefined'
+    || typeof navigator.share !== 'function'
+    || typeof navigator.canShare !== 'function'
+    || typeof File === 'undefined') {
     return false;
-  }
-
-  if (typeof navigator.canShare !== 'function') {
-    return true;
   }
 
   try {
