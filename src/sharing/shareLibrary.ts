@@ -1,5 +1,5 @@
 import { SHARE_OWNER_KEY_PREFIX } from './copy';
-import { PENDING_SHARE_KEY, pendingCredentials, type PublishCredentials } from './publishProtocol';
+import { PENDING_SHARE_KEY, pendingCredentials, PendingShareConflict, type PublishCredentials } from './publishProtocol';
 
 /**
  * Local, browser-only registry of creator capabilities and share metadata.
@@ -50,7 +50,7 @@ function openDatabase(): Promise<IDBDatabase> {
 /** Complete only when the transaction commits; never trust request success. */
 async function transaction<T>(
   mode: IDBTransactionMode,
-  operation: (store: IDBObjectStore, finish: (value: T) => void) => void,
+  operation: (store: IDBObjectStore, finish: (value: T) => void, fail: (error: Error) => void) => void,
 ): Promise<T> {
   const db = await openDatabase();
   return new Promise<T>((resolve, reject) => {
@@ -67,7 +67,7 @@ async function transaction<T>(
     tx.onabort = () => { db.close(); reject(failure ?? storageError()); };
     tx.onerror = () => { /* The abort event returns a sanitized storage error. */ };
     try {
-      operation(tx.objectStore(SHARE_LIBRARY_STORE), (result) => { value = result; });
+      operation(tx.objectStore(SHARE_LIBRARY_STORE), (result) => { value = result; }, fail);
     } catch { fail(storageError()); }
   });
 }
@@ -159,36 +159,62 @@ export async function findLocalShare(id: string): Promise<LocalShare | null> {
   });
 }
 
-/** A publish request is forbidden until this IndexedDB reservation has
- * committed, even though its legacy localStorage capability is pre-saved. */
-export async function reserveLocalShare(
-  credentials: PublishCredentials, title: string, author: string,
-): Promise<void> {
-  if (!ID.test(credentials.id) || !TOKEN.test(credentials.deleteToken)
-    || !FINGERPRINT.test(credentials.fingerprint)) throw storageError();
+function createId(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(9));
+  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_');
+}
+
+function createToken(): string {
+  return Array.from(crypto.getRandomValues(new Uint8Array(32)), (byte) =>
+    byte.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * The IndexedDB readwrite transaction serializes concurrent publish attempts
+ * across tabs: a different pending artwork cannot overwrite a saved key.
+ * No network upload is allowed until this transaction commits.
+ */
+export async function prepareLocalShare(
+  fingerprint: string, title: string, author: string,
+): Promise<PublishCredentials> {
+  if (!FINGERPRINT.test(fingerprint)) throw storageError();
   await migrateLegacy();
-  await transaction<void>('readwrite', (store, finish) => {
-    const request = store.get(credentials.id);
-    request.onsuccess = () => {
-      const previous = request.result as LocalShare | undefined;
-      if (previous && (previous.deleteToken !== credentials.deleteToken
-        || (previous.fingerprint && previous.fingerprint !== credentials.fingerprint)
-        || previous.state === 'revoked')) {
-        // Abort rather than overwriting an unrelated creator capability.
-        store.transaction.abort();
+  return transaction<PublishCredentials>('readwrite', (store, finish, fail) => {
+    const read = store.getAll();
+    read.onsuccess = () => {
+      const records = read.result as LocalShare[];
+      const pending = records.find((entry) => entry.state === 'pending');
+      if (pending && pending.fingerprint !== fingerprint) {
+        fail(new PendingShareConflict({
+          id: pending.id, deleteToken: pending.deleteToken,
+          fingerprint: pending.fingerprint ?? '',
+        }));
         return;
       }
+      // Preserve immutable publication identity when publishing the same
+      // snapshot again, instead of creating a new link after closing a dialog.
+      const existing = pending ?? records.find((entry) =>
+        entry.state === 'published' && entry.fingerprint === fingerprint);
+      const id = existing?.id ?? createId();
+      if (records.some((entry) => entry.id === id && entry !== existing)) {
+        fail(storageError());
+        return;
+      }
+      const credentials: PublishCredentials = {
+        id,
+        deleteToken: existing?.deleteToken ?? createToken(),
+        fingerprint,
+      };
+      if (!TOKEN.test(credentials.deleteToken)) { fail(storageError()); return; }
       const now = new Date().toISOString();
       store.put({
-        id: credentials.id,
-        deleteToken: credentials.deleteToken,
-        fingerprint: credentials.fingerprint,
+        id, deleteToken: credentials.deleteToken, fingerprint,
         title, author,
-        state: previous?.state === 'published' ? 'published' : 'pending',
-        createdAt: previous?.createdAt ?? now,
+        state: existing?.state === 'published' ? 'published' : 'pending',
+        createdAt: existing?.createdAt ?? now,
         updatedAt: now,
       } satisfies LocalShare);
-      finish();
+      finish(credentials);
     };
   });
 }
