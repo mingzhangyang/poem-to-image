@@ -286,8 +286,6 @@ export async function checkLocalShareStatus(share: LocalShare): Promise<'publish
   const deadline = setTimeout(() => controller.abort(), 8000);
   try {
     const base = '/s/' + share.id + '/';
-    let imageUrl: string;
-    let cardUrl: string;
     let title: string | undefined;
     let author: string | undefined;
     // A public share alone is not proof that a saved legacy key belongs to it.
@@ -304,8 +302,8 @@ export async function checkLocalShareStatus(share: LocalShare): Promise<'publish
     if (!response.ok) throw new Error('HTTP ' + response.status);
     const body = await response.json() as { status?: string; imageUrl?: string; cardUrl?: string };
     if (body.status !== 'published') return 'pending';
-    imageUrl = body.imageUrl ?? '';
-    cardUrl = body.cardUrl ?? '';
+    const imageUrl = body.imageUrl ?? '';
+    const cardUrl = body.cardUrl ?? '';
     if (!share.title) {
       const metadata = await fetch('/api/shares/' + share.id, {
         cache: 'no-store', signal: controller.signal,
