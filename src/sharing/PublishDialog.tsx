@@ -301,7 +301,14 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
               ))}
             </div>
             <button type="button" disabled={!!libraryAction}
-              onClick={() => { setShowLibrary(false); setLibraryError(''); }}
+              onClick={() => {
+                setShowLibrary(false);
+                setLibraryError('');
+                setResult(null);
+                setRevoked(false);
+                setError('');
+                setBackupConfirmed(false);
+              }}
               className="app-button-primary w-full rounded-xl px-4 py-3 font-semibold disabled:opacity-50">
               {copy.libraryNew}
             </button>
