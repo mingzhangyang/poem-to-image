@@ -10,7 +10,7 @@ import { PENDING_SHARE_KEY, pendingCredentials, type PublishCredentials } from '
 export const SHARE_LIBRARY_DB = 'inkpoem-share-library';
 export const SHARE_LIBRARY_STORE = 'shares';
 
-export type LocalShareState = 'pending' | 'published' | 'unverified' | 'revoked';
+export type LocalShareState = 'pending' | 'published' | 'unverified' | 'expired' | 'revoked';
 
 export interface LocalShare {
   id: string;
@@ -255,6 +255,14 @@ async function markLocalShareUnverified(id: string, token: string): Promise<void
     ...previous,
     state: previous.state === 'pending' ? 'pending' : 'unverified',
     updatedAt: new Date().toISOString(),
+  }));
+}
+
+/** Only a definitive 410 SHARE_EXPIRED may retire a reusable identity.
+ * Keep the creator capability for historical records and safe cleanup. */
+export async function markLocalShareExpired(id: string, token: string): Promise<void> {
+  await changeLocalShare(id, token, (previous) => ({
+    ...previous, state: 'expired', updatedAt: new Date().toISOString(),
   }));
 }
 
