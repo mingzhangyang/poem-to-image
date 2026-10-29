@@ -15,6 +15,8 @@ export interface PublishedShare {
   /** A request may have committed even though the response was lost.
    * Keep the pre-persisted ID and deletion capability and retry idempotently. */
   statusUnknown?: boolean;
+  /** Diagnostic status only; never includes a deletion key or server message. */
+  failureDetail?: string;
   /** A different canvas cannot safely replay the previous snapshot. */
   pendingChanged?: boolean;
 }
@@ -132,13 +134,15 @@ export function PublishDialog({ language, isOpen, onClose, publish }: Props) {
         method: 'DELETE',
         headers: { 'X-Share-Delete-Token': result.deleteToken },
       });
-      if (!response.ok) throw new Error('REVOKE_FAILED');
+      if (!response.ok) throw new Error('HTTP ' + response.status);
       removePublishCredentialsSafely(result.id, result.deleteToken);
       setResult(null);
       setRevoked(true);
-    } catch {
-      // Retain the private capability in the dialog for another attempt.
-      setError(copy.recoveryRevokeFailed);
+    } catch (caught) {
+      // Never clear the private key after an unconfirmed server response.
+      const detail = caught instanceof Error && /^HTTP [1-5][0-9]{2}$/.test(caught.message)
+        ? ' (' + caught.message + ')' : '';
+      setError(copy.recoveryRevokeFailed + detail);
     } finally {
       setRecoveryBusy(false);
     }
@@ -177,6 +181,11 @@ export function PublishDialog({ language, isOpen, onClose, publish }: Props) {
               {result.pendingChanged ? copy.pendingChangedWarning
                 : result.statusUnknown ? copy.pendingWarning : copy.recoveryWarning}
             </p>
+            {result.failureDetail ? (
+              <p role="status" className="rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 font-mono text-xs text-slate-700">
+                {result.failureDetail}
+              </p>
+            ) : null}
             <p className="break-all text-sm text-(--app-accent-700)">{result.url}</p>
             <label className="block space-y-2 text-sm font-semibold text-(--app-accent-800)">
               <span>{copy.recoveryKey}</span>
