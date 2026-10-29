@@ -191,8 +191,13 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
     setLibraryAction(share.id);
     setLibraryError('');
     try {
-      await checkLocalShareStatus(share);
+      const status = await checkLocalShareStatus(share);
       await refreshRecords();
+      // Do not leave the misleading "Published" status in IndexedDB after a
+      // 404 or missing image. The key is deliberately retained for recovery.
+      if (status !== 'published') {
+        setLibraryError(copy.libraryNotConfirmed + ' (' + share.id + ')');
+      }
     } catch (caught) {
       setLibraryError(caught instanceof Error ? caught.message : copy.loadError);
     } finally {
