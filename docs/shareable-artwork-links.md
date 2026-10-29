@@ -26,6 +26,66 @@ The browser stores the share ID, removal capability and content fingerprint in `
 
 Revocation immediately disables public reads and erases stored title/author. D1 retains an ID tombstone and the SHA-256 key hash so delayed publish requests and repeated deletes are handled safely. The hourly maintenance cron retries both canonical revoked-artwork deletion and abandoned upload-attempt cleanup; the two work queues are indexed and processed in bounded batches.
 
+## Production incident checklist: publish remains uncertain, share URL returns 404
+
+The application can persist a browser-side share ID and removal key **before any
+server-side write**. Reusing that ID on retry is only evidence that browser
+idempotency works, **not evidence that the artwork reached R2 or D1**.
+An `Artwork unavailable` HTML response is the Worker's 404 for a share
+without a fully published D1 row. A failed DELETE is separately actionable:
+it should succeed even if no prior POST reached the Worker.
+
+1. **After deploying the readiness fix**, check the read-only endpoint:
+   ```sh
+   curl -i https://inkpoem.com/api/health/sharing
+   ```
+   HTTP 200 with `{"ready":true}` confirms the live Worker can query
+   the `shared_artworks` and `shared_artwork_upload_attempts` tables
+   (including `published_at`) and access the private R2 bucket. HTTP
+   503 with `SHARE_DB_UNAVAILABLE`, `SHARE_SCHEMA_UNAVAILABLE` or
+   `SHARE_STORAGE_UNAVAILABLE` directs the next check. This is a
+   **readiness probe, not a successful publish test**.
+2. Confirm the production bindings and the numbered migration:
+   ```sh
+   npx wrangler r2 bucket list
+   npx wrangler d1 migrations list DB --remote --config wrangler.jsonc
+   # Only if migration 0005 is not yet applied:
+   npx wrangler d1 migrations apply DB --remote --config wrangler.jsonc
+   ```
+   The R2 bucket should be `inkpoem-shared-artworks`, bound as
+   `ARTWORKS`. Database `poem-to-image` should be bound as `DB`.
+   Do not recreate an existing bucket/database or reapply already-run
+   migrations by hand.
+3. Investigate the failed share ID without using a removal token:
+   ```sh
+   npx wrangler d1 execute DB --remote --config wrangler.jsonc --command="SELECT id, published_at, revoked_at, image_key IS NOT NULL AS has_image, card_key IS NOT NULL AS has_card FROM shared_artworks WHERE id = 'IuNUygyu6ULo';"
+   curl -i https://inkpoem.com/api/shares/IuNUygyu6ULo
+   curl -i https://inkpoem.com/s/IuNUygyu6ULo
+   ```
+   No row means the Worker never durably reserved that ID (or it is
+   querying a different database). A row with `published_at IS NULL`
+   means the publish did not finalize. `revoked_at IS NOT NULL` means
+   cancellation succeeded. If a published row exists but the public
+   page is unavailable, inspect the Worker route/deployment and read
+   the canonical R2 objects using their private keys; do not make the
+   bucket publicly readable.
+4. After fixing the production deployment, publish one disposable
+   **new** artwork, open the share URL anonymously, confirm both the
+   artwork image and social card return 200, then revoke it. Recheck
+   the page, API and image paths return 404. Do not mark the feature
+   ready merely because the preflight responds 200.
+
+Client-facing errors now distinguish `NETWORK_ERROR`, HTTP response
+codes and malformed responses while preserving the original pending ID
+and revocation key. On ambiguous failures the browser first attempts a
+read-only GET + both R2 HEADs before claiming that an upload completed.
+
+**Never** include the private deletion token in bug reports, URLs, GET
+requests, screenshots or terminal commands. Keep it in the original
+browser or a secure local backup until server-confirmed revocation.
+Do not repeatedly press Publish against an unhealthy deployment:
+the original browser pending state can be retried after recovery.
+
 ## Privacy and abuse controls
 
 - Random ID entropy: 72 bits; private revocation key: 256 bits; only a hash is saved in D1.
