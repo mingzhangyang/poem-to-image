@@ -93,6 +93,42 @@ test('anonymous editor pre-saves ID and token before publishing on mobile and de
   expect((await savedShare(page, publishedId))?.state).toBe('published');
 });
 
+
+test('export shows only the native system share action, not six platform shortcuts', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.addInitScript(() => {
+    (window as Window & { __nativeShareFiles?: string[] }).__nativeShareFiles = [];
+    Object.defineProperty(navigator, 'canShare', {
+      configurable: true, value: ({ files }: ShareData) => !!files?.length,
+    });
+    Object.defineProperty(navigator, 'share', {
+      configurable: true,
+      value: async ({ files }: ShareData) => {
+        (window as Window & { __nativeShareFiles?: string[] }).__nativeShareFiles =
+          (files ?? []).map((file) => file.name);
+      },
+    });
+  });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: 'Export Image' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Export Image' });
+  await expect(dialog).toBeVisible();
+  for (const name of ['WeChat', 'Weibo', 'Xiaohongshu', 'X', 'Instagram', 'Facebook']) {
+    await expect(dialog.getByRole('button', { name, exact: true })).toHaveCount(0);
+  }
+  const share = dialog.getByRole('button', { name: 'Share Image' });
+  await expect(share).toBeEnabled();
+  await share.click();
+  await expect.poll(() => page.evaluate(() =>
+    (window as Window & { __nativeShareFiles?: string[] }).__nativeShareFiles?.length ?? 0,
+  ), { timeout: 45_000 }).toBe(1);
+  const filename = await page.evaluate(() =>
+    (window as Window & { __nativeShareFiles?: string[] }).__nativeShareFiles?.[0] ?? '',
+  );
+  expect(filename).toMatch(/\.(png|jpg|webp)$/);
+});
+
 test('My Shares persists a published link and its removal key after closing and refreshing', async ({ page }) => {
   test.setTimeout(90_000);
   let publishedId = '';
