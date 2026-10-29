@@ -99,6 +99,40 @@ describe('anonymous artwork sharing', () => {
     await env.DB.prepare("DELETE FROM rate_limits WHERE key LIKE 'publish:%'").run();
   });
 
+  it('only confirms ambiguous publications for the original capability and exact content fingerprint', async () => {
+    const creds = makeCredentials();
+    const response = await publish('Owner proof', 'InkPoem', creds);
+    expect(response.status).toBe(201);
+    const row = await env.DB.prepare(
+      'SELECT content_fingerprint FROM shared_artworks WHERE id = ?',
+    ).bind(creds.id).first<{ content_fingerprint: string }>();
+    expect(row?.content_fingerprint).toMatch(/^[a-f0-9]{64}$/);
+
+    const url = ORIGIN + '/api/shares/' + creds.id + '/verify';
+    const headers = {
+      Origin: ORIGIN,
+      'X-Share-Delete-Token': creds.deleteToken,
+      'X-Share-Fingerprint': row!.content_fingerprint,
+    };
+    const verified = await SELF.fetch(url, { method: 'POST', headers });
+    expect(verified.status).toBe(200);
+    expect(await verified.json()).toEqual({
+      status: 'published',
+      imageUrl: '/s/' + creds.id + '/image.png',
+      cardUrl: '/s/' + creds.id + '/card.jpg',
+    });
+
+    // A public, already-existing ID is not proof that a different creator
+    // owns the snapshot. A wrong key OR different canvas must not settle it.
+    const wrongOwner = await SELF.fetch(url, { method: 'POST',
+      headers: { ...headers, 'X-Share-Delete-Token': 'f'.repeat(64) } });
+    expect(wrongOwner.status).toBe(404);
+    const wrongContent = await SELF.fetch(url, { method: 'POST',
+      headers: { ...headers, 'X-Share-Fingerprint': 'f'.repeat(64) } });
+    expect(wrongContent.status).toBe(404);
+    expect((await SELF.fetch(url)).status).toBe(405);
+  });
+
   it('publishes a public snapshot, renders crawler metadata and revokes with its token', async () => {
     const response = await publish('Moon & <Stars>', 'Poet "A"');
     expect(response.status).toBe(201);
