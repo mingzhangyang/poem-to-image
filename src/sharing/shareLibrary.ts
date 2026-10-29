@@ -187,14 +187,7 @@ export async function prepareLocalShare(
     const read = store.getAll();
     read.onsuccess = () => {
       const records = read.result as LocalShare[];
-      const pending = records.find((entry) => entry.state === 'pending');
-      if (pending && pending.fingerprint !== fingerprint) {
-        fail(new PendingShareConflict({
-          id: pending.id, deleteToken: pending.deleteToken,
-          fingerprint: pending.fingerprint ?? '',
-        }));
-        return;
-      }
+      const pending = records.find((entry) => entry.state === 'pending' && entry.fingerprint === fingerprint);
       // Preserve immutable publication identity when publishing the same
       // snapshot again, instead of creating a new link after closing a dialog.
       const existing = pending ?? records.find((entry) =>
