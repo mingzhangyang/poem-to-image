@@ -432,18 +432,26 @@ export default function App() {
       return { id: credentials.id, url: link(credentials.id), deleteToken: credentials.deleteToken };
     };
 
-    // A dropped POST may have completed. A read-only probe can settle the
-    // transaction without uploading the same snapshot for a second time.
-    // Check both R2 objects as well as D1 metadata before claiming success.
+    // A dropped POST may have completed. A creator-authorized read-only
+    // verification checks BOTH the deletion capability and the exact image
+    // fingerprint. Public metadata alone could be somebody else's ID.
+    // Both R2 images must also be publicly readable before reporting success.
     const confirmPublished = async (): Promise<boolean> => {
       try {
-        const result = await fetch('/api/shares/' + encodeURIComponent(credentials.id), { cache: 'no-store' });
+        const result = await fetch('/api/shares/' + encodeURIComponent(credentials.id) + '/verify', {
+          method: 'POST',
+          headers: {
+            'X-Share-Delete-Token': credentials.deleteToken,
+            'X-Share-Fingerprint': credentials.fingerprint,
+          },
+          cache: 'no-store',
+        });
         if (!result.ok) return false;
-        const share = await result.json() as { id?: string; imageUrl?: string; cardUrl?: string };
+        const share = await result.json() as { status?: string; imageUrl?: string; cardUrl?: string };
         const base = '/s/' + credentials.id + '/';
         const imageUrl = share.imageUrl ?? '';
         const cardUrl = share.cardUrl ?? '';
-        if (share.id !== credentials.id || ![base + 'image.png', base + 'image.jpg'].includes(imageUrl)
+        if (share.status !== 'published' || ![base + 'image.png', base + 'image.jpg'].includes(imageUrl)
           || cardUrl !== base + 'card.jpg') return false;
         const [image, card] = await Promise.all([
           fetch(imageUrl, { method: 'HEAD', cache: 'no-store' }),
