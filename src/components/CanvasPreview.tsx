@@ -69,6 +69,8 @@ export function CanvasPreview({
   onCopy,
   onPublishLink,
   publishLinkLabel,
+  onManageShares,
+  manageSharesLabel,
   isExporting,
   isSharing,
   canShare,
