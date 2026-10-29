@@ -1,8 +1,26 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 const shareId = 'ABCDEF123456';
 const deletionToken = 'a'.repeat(64);
 const root = 'http://127.0.0.1:3000';
+
+async function savedShare(page: Page, id: string): Promise<{
+  id: string; deleteToken: string; fingerprint: string | null; state: string; title: string;
+} | null> {
+  return page.evaluate(async (shareId) => new Promise((resolve, reject) => {
+    const request = indexedDB.open('inkpoem-share-library', 1);
+    request.onerror = () => reject(new Error('Share library failed to open'));
+    request.onsuccess = () => {
+      const db = request.result;
+      const tx = db.transaction('shares', 'readonly');
+      const get = tx.objectStore('shares').get(shareId);
+      get.onsuccess = () => resolve(get.result ?? null);
+      get.onerror = () => reject(new Error('Share record lookup failed'));
+      tx.oncomplete = () => db.close();
+    };
+  }), id);
+}
+
 
 function multipartValue(payload: Buffer | null, field: string): string {
   const text = payload?.toString('latin1') ?? '';
@@ -69,18 +87,17 @@ test('anonymous editor pre-saves ID and token before publishing on mobile and de
   await expect(publishedDialog).toBeVisible({ timeout: 45_000 });
   expect(requestWasReceived).toBe(true);
   await expect(publishedDialog.getByRole('textbox', { name: 'Copy link' })).toHaveValue(root + '/s/' + publishedId);
-  expect(await page.evaluate((id) => localStorage.getItem('inkpoem.share.owner.' + id), publishedId)).toBe(ownerToken);
-  expect(await page.evaluate(() => localStorage.getItem('inkpoem.share.pending.v1'))).toBeNull();
+  expect((await savedShare(page, publishedId))?.deleteToken).toBe(ownerToken);
+  expect((await savedShare(page, publishedId))?.state).toBe('published');
 });
 
 test('never uploads when the browser cannot save its deletion capability', async ({ page }) => {
   test.setTimeout(90_000);
   await page.addInitScript(() => {
-    const setItem = Storage.prototype.setItem;
-    Storage.prototype.setItem = function (key: string, value: string) {
-      if (key.startsWith('inkpoem.share.owner.')) throw new DOMException('Storage quota reached', 'QuotaExceededError');
-      return setItem.call(this, key, value);
-    };
+    Object.defineProperty(window, 'indexedDB', {
+      configurable: true,
+      get() { throw new DOMException('Storage denied', 'SecurityError'); },
+    });
   });
   let publishRequests = 0;
   await page.route('**/api/shares', async (route) => {
@@ -136,7 +153,7 @@ test('a lost upload response can be confirmed read-only without a second upload'
   await expect(published).toBeVisible({ timeout: 40_000 });
   expect(uploads).toBe(1);
   expect(id).toMatch(/^[A-Za-z0-9_-]{12}$/);
-  expect(await page.evaluate(() => localStorage.getItem('inkpoem.share.pending.v1'))).toBeNull();
+  expect((await savedShare(page, id))?.state).toBe('published');
 });
 
 test('HTTP publish and revoke failures keep the private key and show the actual status', async ({ page }) => {
@@ -172,10 +189,10 @@ test('HTTP publish and revoke failures keep the private key and show the actual 
   const pending = page.getByRole('dialog', { name: 'Publication status uncertain' });
   await expect(pending).toBeVisible({ timeout: 40_000 });
   await expect(pending.getByRole('status')).toContainText('HTTP 503 · SHARE_SCHEMA_UNAVAILABLE');
-  expect(await page.evaluate(() => localStorage.getItem('inkpoem.share.pending.v1'))).toContain(id);
+  expect((await savedShare(page, id))?.state).toBe('pending');
   await pending.getByRole('button', { name: 'Remove public share now' }).click();
   await expect(pending.getByRole('alert').last()).toContainText('HTTP 503');
-  expect(await page.evaluate(() => localStorage.getItem('inkpoem.share.pending.v1'))).toContain(id);
+  expect((await savedShare(page, id))?.state).toBe('pending');
 });
 
 test('recovers a dropped response by retrying the same publication credentials', async ({ page }) => {
@@ -207,15 +224,15 @@ test('recovers a dropped response by retrying the same publication credentials',
   await expect(uncertain).toBeVisible({ timeout: 40_000 });
   expect(attempts).toHaveLength(1);
   const first = attempts[0];
-  expect(await page.evaluate((id) => localStorage.getItem('inkpoem.share.owner.' + id), first.id)).toBe(first.token);
-  expect(await page.evaluate(() => localStorage.getItem('inkpoem.share.pending.v1'))).toContain(first.id);
-  await expect(uncertain.getByRole('button', { name: 'Close' }).last()).toBeDisabled();
+  expect((await savedShare(page, first.id))?.deleteToken).toBe(first.token);
+  expect((await savedShare(page, first.id))?.state).toBe('pending');
+  await expect(uncertain.getByRole('button', { name: 'Close' }).last()).toBeEnabled();
   await uncertain.getByRole('button', { name: 'Retry the same publication' }).click();
   const published = page.getByRole('dialog', { name: 'Your artwork is published' });
   await expect(published).toBeVisible({ timeout: 40_000 });
   expect(attempts).toEqual([first, first]);
-  expect(await page.evaluate(() => localStorage.getItem('inkpoem.share.pending.v1'))).toBeNull();
-  expect(await page.evaluate((id) => localStorage.getItem('inkpoem.share.owner.' + id), first.id)).toBe(first.token);
+  expect((await savedShare(page, id))?.state).toBe('published');
+  expect((await savedShare(page, first.id))?.deleteToken).toBe(first.token);
 });
 
 test('a rate-limited replay preserves the first upload removal key', async ({ page }) => {
@@ -250,8 +267,8 @@ test('a rate-limited replay preserves the first upload removal key', async ({ pa
   await uncertain.getByRole('button', { name: 'Retry the same publication' }).click();
   await expect.poll(() => count).toBe(2);
   await expect(uncertain).toBeVisible();
-  expect(await page.evaluate((id) => localStorage.getItem('inkpoem.share.owner.' + id), firstId)).toBe(firstToken);
-  expect(await page.evaluate(() => localStorage.getItem('inkpoem.share.pending.v1'))).toContain(firstId);
+  expect((await savedShare(page, firstId))?.deleteToken).toBe(firstToken);
+  expect((await savedShare(page, firstId))?.state).toBe('pending');
 });
 
 test('a stale uncertain publication can be cancelled before creating a new share', async ({ page }) => {
@@ -295,7 +312,7 @@ test('a stale uncertain publication can be cancelled before creating a new share
   const removed = page.getByRole('dialog', { name: 'Public artwork removed' });
   await expect(removed).toBeVisible();
   expect(cancellations).toBe(1);
-  expect(await page.evaluate(() => localStorage.getItem('inkpoem.share.pending.v1'))).toBeNull();
+  expect((await savedShare(page, id))?.state).toBe('published');
   await removed.getByRole('button', { name: 'Close' }).last().click();
   await page.getByRole('button', { name: 'Export Image' }).click();
   await page.getByRole('dialog', { name: 'Export Image' })
@@ -402,7 +419,7 @@ test('public read-only viewer needs no account and creator can revoke from the o
   await page.getByRole('button', { name: 'Remove this share' }).click();
   await expect(page.getByRole('heading', { name: 'Artwork unavailable' })).toBeVisible();
   expect(await page.evaluate((id) => localStorage.getItem('inkpoem.share.owner.' + id), shareId)).toBeNull();
-  expect(await page.evaluate(() => localStorage.getItem('inkpoem.share.pending.v1'))).toBeNull();
+  expect((await savedShare(page, id))?.state).toBe('published');
 });
 
 
