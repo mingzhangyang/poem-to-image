@@ -395,7 +395,7 @@ export default function App() {
     canShare,
   } = useImageExporter(exportFormat, exportScale, exportScene, waitForSceneSettled);
 
-  const publishArtwork = async (): Promise<PublishedShare> => {
+  const publishArtwork = async (expiry: '7d' | '30d' | 'never' = 'never'): Promise<PublishedShare> => {
     const { artwork, card } = await createShareAssets();
     const title = poem.title.trim().slice(0, 120);
     const author = poem.author.trim().slice(0, 100);
@@ -404,7 +404,7 @@ export default function App() {
 
     let credentials;
     try {
-      credentials = await prepareLocalShare(fingerprint, title, author);
+      credentials = await prepareLocalShare(fingerprint, title, author, expiry);
     } catch (error) {
       if (error instanceof PendingShareConflict) {
         // Never silently replace credentials for a possibly public prior
@@ -482,6 +482,7 @@ export default function App() {
     form.append('card', card, 'card.jpg');
     form.append('title', title);
     form.append('author', author);
+    form.append('expiry', expiry);
 
     let response: Response;
     try {
