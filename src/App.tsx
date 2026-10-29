@@ -437,6 +437,10 @@ export default function App() {
     // fingerprint. Public metadata alone could be somebody else's ID.
     // Both R2 images must also be publicly readable before reporting success.
     const confirmPublished = async (): Promise<boolean> => {
+      const controller = new AbortController();
+      // One shared deadline covers the authenticated D1 check AND both R2 HEADs.
+      // A stuck optional probe must not lock the creator's recovery dialog.
+      const deadline = window.setTimeout(() => controller.abort(), 8_000);
       try {
         const result = await fetch('/api/shares/' + encodeURIComponent(credentials.id) + '/verify', {
           method: 'POST',
@@ -445,6 +449,7 @@ export default function App() {
             'X-Share-Fingerprint': credentials.fingerprint,
           },
           cache: 'no-store',
+          signal: controller.signal,
         });
         if (!result.ok) return false;
         const share = await result.json() as { status?: string; imageUrl?: string; cardUrl?: string };
@@ -454,12 +459,14 @@ export default function App() {
         if (share.status !== 'published' || ![base + 'image.png', base + 'image.jpg'].includes(imageUrl)
           || cardUrl !== base + 'card.jpg') return false;
         const [image, card] = await Promise.all([
-          fetch(imageUrl, { method: 'HEAD', cache: 'no-store' }),
-          fetch(cardUrl, { method: 'HEAD', cache: 'no-store' }),
+          fetch(imageUrl, { method: 'HEAD', cache: 'no-store', signal: controller.signal }),
+          fetch(cardUrl, { method: 'HEAD', cache: 'no-store', signal: controller.signal }),
         ]);
         return image.ok && card.ok;
       } catch {
         return false;
+      } finally {
+        window.clearTimeout(deadline);
       }
     };
     const uncertainUnlessPublished = async (failureDetail: string): Promise<PublishedShare> =>
@@ -492,6 +499,11 @@ export default function App() {
       if (body.code === 'SHARE_CANCELLED') {
         removePublishCredentialsSafely(credentials.id, credentials.deleteToken);
         throw new Error('SHARE_CANCELLED');
+      }
+      if (body.code === 'SHARE_CONTENT_MISMATCH' || body.code === 'SHARE_ID_CONFLICT') {
+        // The server explicitly rejected this snapshot or creator capability.
+        // A public artwork with the same ID must never override that conflict.
+        return unknown('HTTP ' + response.status + ' · ' + body.code);
       }
       // 4xx and 5xx responses must not be mislabeled as an interrupted
       // response. Keep the pending reservation until server-confirmed revoke.
