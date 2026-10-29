@@ -98,6 +98,79 @@ test('never uploads when the browser cannot save its deletion capability', async
   expect(publishRequests).toBe(0);
 });
 
+test('a lost upload response can be confirmed read-only without a second upload', async ({ page }) => {
+  test.setTimeout(90_000);
+  let id = '';
+  let uploads = 0;
+  await page.route('**/api/shares', async (route) => {
+    uploads++;
+    id = multipartValue(route.request().postDataBuffer(), 'id');
+    await route.abort('failed');
+  });
+  await page.route('**/api/shares/*', async (route) => {
+    const lookupId = route.request().url().split('/').pop();
+    await route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({
+        id: lookupId,
+        imageUrl: '/s/' + lookupId + '/image.png',
+        cardUrl: '/s/' + lookupId + '/card.jpg',
+      }),
+    });
+  });
+  await page.route('**/s/*', async (route) => {
+    expect(route.request().method()).toBe('HEAD');
+    await route.fulfill({ status: 200, body: '' });
+  });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: 'Export Image' }).click();
+  await page.getByRole('dialog', { name: 'Export Image' })
+    .getByRole('button', { name: 'Publish shareable link' }).click();
+  await page.getByRole('dialog', { name: 'Publish this artwork' })
+    .getByRole('button', { name: 'Publish artwork', exact: true }).click();
+
+  const published = page.getByRole('dialog', { name: 'Your artwork is published' });
+  await expect(published).toBeVisible({ timeout: 40_000 });
+  expect(uploads).toBe(1);
+  expect(id).toMatch(/^[A-Za-z0-9_-]{12}$/);
+  expect(await page.evaluate(() => localStorage.getItem('inkpoem.share.pending.v1'))).toBeNull();
+});
+
+test('HTTP publish and revoke failures keep the private key and show the actual status', async ({ page }) => {
+  test.setTimeout(90_000);
+  let id = '';
+  await page.route('**/api/shares', async (route) => {
+    id = multipartValue(route.request().postDataBuffer(), 'id');
+    await route.fulfill({
+      status: 503, contentType: 'application/json',
+      body: '{"code":"SHARE_SCHEMA_UNAVAILABLE"}',
+    });
+  });
+  await page.route('**/api/shares/*', async (route) => {
+    const isDelete = route.request().method() === 'DELETE';
+    await route.fulfill({
+      status: isDelete ? 503 : 404, contentType: 'application/json',
+      body: isDelete ? '{"code":"SHARE_SCHEMA_UNAVAILABLE"}' : '{"code":"NOT_FOUND"}',
+    });
+  });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: 'Export Image' }).click();
+  await page.getByRole('dialog', { name: 'Export Image' })
+    .getByRole('button', { name: 'Publish shareable link' }).click();
+  await page.getByRole('dialog', { name: 'Publish this artwork' })
+    .getByRole('button', { name: 'Publish artwork', exact: true }).click();
+
+  const pending = page.getByRole('dialog', { name: 'Publication status uncertain' });
+  await expect(pending).toBeVisible({ timeout: 40_000 });
+  await expect(pending.getByRole('status')).toContainText('HTTP 503 · SHARE_SCHEMA_UNAVAILABLE');
+  expect(await page.evaluate(() => localStorage.getItem('inkpoem.share.pending.v1'))).toContain(id);
+  await pending.getByRole('button', { name: 'Remove public share now' }).click();
+  await expect(pending.getByRole('alert')).toContainText('HTTP 503');
+  expect(await page.evaluate(() => localStorage.getItem('inkpoem.share.pending.v1'))).toContain(id);
+});
+
 test('recovers a dropped response by retrying the same publication credentials', async ({ page }) => {
   test.setTimeout(90_000);
   const attempts: Array<{ id: string; token: string }> = [];
