@@ -73,6 +73,43 @@ describe('sharing production-readiness probe', () => {
     expect(await response.json()).toEqual({ ready: false, code: 'SHARE_SCHEMA_UNAVAILABLE' });
   });
 
+  it('refuses readiness if a required revocation cleanup column is absent', async () => {
+    // Simulate an otherwise reachable/migrated database whose shared_artworks
+    // table lacks assets_deleted_at. The readiness projection must reference
+    // this column or the test would incorrectly return ready: true.
+    const incompleteDb = {
+      prepare(query: string) {
+        if (/\\bassets_deleted_at\\b/.test(query)) {
+          throw new Error('D1_ERROR: no such column: assets_deleted_at');
+        }
+        return env.DB.prepare(query);
+      },
+    } as unknown as D1Database;
+    const response = await getShareReadiness(
+      new Request(ORIGIN + '/api/health/sharing'),
+      { ...env, DB: incompleteDb } as WorkerEnv,
+    );
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ ready: false, code: 'SHARE_SCHEMA_UNAVAILABLE' });
+  });
+
+  it('refuses readiness if the upload attempt timestamp required by cleanup is absent', async () => {
+    const incompleteDb = {
+      prepare(query: string) {
+        if (/\\bcreated_at\\b/.test(query) && /\\bFROM shared_artwork_upload_attempts\\b/.test(query)) {
+          throw new Error('D1_ERROR: no such column: created_at');
+        }
+        return env.DB.prepare(query);
+      },
+    } as unknown as D1Database;
+    const response = await getShareReadiness(
+      new Request(ORIGIN + '/api/health/sharing'),
+      { ...env, DB: incompleteDb } as WorkerEnv,
+    );
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ ready: false, code: 'SHARE_SCHEMA_UNAVAILABLE' });
+  });
+
   it('returns a safe diagnostic when R2 is not bound or cannot be read', async () => {
     const request = new Request(ORIGIN + '/api/health/sharing');
     const missing = await getShareReadiness(request, { ...env, ARTWORKS: undefined } as unknown as WorkerEnv);
