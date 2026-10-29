@@ -7,7 +7,9 @@ const root = 'http://127.0.0.1:3000';
 async function savedShare(page: Page, id: string): Promise<{
   id: string; deleteToken: string; fingerprint: string | null; state: string; title: string;
 } | null> {
-  return page.evaluate(async (shareId) => new Promise((resolve, reject) => {
+  return page.evaluate(async (shareId) => new Promise<{
+    id: string; deleteToken: string; fingerprint: string | null; state: string; title: string;
+  } | null>((resolve, reject) => {
     const request = indexedDB.open('inkpoem-share-library', 1);
     request.onerror = () => reject(new Error('Share library failed to open'));
     request.onsuccess = () => {
