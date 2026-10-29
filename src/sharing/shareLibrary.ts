@@ -251,6 +251,16 @@ export async function markLocalSharePublished(
   }));
 }
 
+/** A failed verification cannot prove a share is still public. Preserve the
+ * private removal key and avoid presenting stale "Published" as current. */
+async function markLocalShareUnverified(id: string, token: string): Promise<void> {
+  await changeLocalShare(id, token, (previous) => ({
+    ...previous,
+    state: previous.state === 'pending' ? 'pending' : 'unverified',
+    updatedAt: new Date().toISOString(),
+  }));
+}
+
 /** Call only after a server-confirmed DELETE. A tombstone prevents leftover
  * legacy keys from recreating a revoked record and erases its private key. */
 export async function markLocalShareRevoked(id: string, token: string): Promise<void> {
@@ -281,13 +291,17 @@ export async function markLocalShareRevokedSafely(id: string, token: string): Pr
 
 /** A saved pending fingerprint authorizes status recovery, not arbitrary
  * republication of different artwork. Never send the private key in a URL. */
-export async function checkLocalShareStatus(share: LocalShare): Promise<'published' | 'pending'> {
+export async function checkLocalShareStatus(share: LocalShare): Promise<'published' | 'pending' | 'unverified'> {
   const controller = new AbortController();
   const deadline = setTimeout(() => controller.abort(), 8000);
   try {
     const base = '/s/' + share.id + '/';
     let title: string | undefined;
     let author: string | undefined;
+    const notConfirmed = async (): Promise<'pending' | 'unverified'> => {
+      await markLocalShareUnverified(share.id, share.deleteToken);
+      return share.state === 'pending' ? 'pending' : 'unverified';
+    };
     // A public share alone is not proof that a saved legacy key belongs to it.
     // For both new and old records, require the private capability to match.
     const response = await fetch('/api/shares/' + share.id + '/verify', {
@@ -298,10 +312,10 @@ export async function checkLocalShareStatus(share: LocalShare): Promise<'publish
           ? { 'X-Share-Fingerprint': share.fingerprint } : {}),
       },
     });
-    if (response.status === 202 || response.status === 404) return 'pending';
+    if (response.status === 202 || response.status === 404) return notConfirmed();
     if (!response.ok) throw new Error('HTTP ' + response.status);
     const body = await response.json() as { status?: string; imageUrl?: string; cardUrl?: string };
-    if (body.status !== 'published') return 'pending';
+    if (body.status !== 'published') return notConfirmed();
     const imageUrl = body.imageUrl ?? '';
     const cardUrl = body.cardUrl ?? '';
     if (!share.title) {
@@ -317,12 +331,12 @@ export async function checkLocalShareStatus(share: LocalShare): Promise<'publish
       }
     }
     if (!['image.png', 'image.jpg'].some((file) => imageUrl === base + file)
-      || cardUrl !== base + 'card.jpg') return 'pending';
+      || cardUrl !== base + 'card.jpg') return notConfirmed();
     const [image, card] = await Promise.all([
       fetch(imageUrl, { method: 'HEAD', cache: 'no-store', signal: controller.signal }),
       fetch(cardUrl, { method: 'HEAD', cache: 'no-store', signal: controller.signal }),
     ]);
-    if (!image.ok || !card.ok) return 'pending';
+    if (!image.ok || !card.ok) return notConfirmed();
     await markLocalSharePublished(share.id, share.deleteToken, title, author);
     return 'published';
   } finally {
