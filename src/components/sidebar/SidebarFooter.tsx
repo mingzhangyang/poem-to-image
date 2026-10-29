@@ -20,6 +20,8 @@ interface SidebarFooterProps {
   onCopy: () => void;
   onPublishLink: () => void;
   publishLinkLabel: string;
+  onManageShares: () => void;
+  manageSharesLabel: string;
   isExporting: boolean;
   isSharing: boolean;
   canShare: boolean;
@@ -117,6 +119,8 @@ export function SidebarFooter({
   onCopy,
   onPublishLink,
   publishLinkLabel,
+  onManageShares,
+  manageSharesLabel,
   isExporting,
   isSharing,
   canShare,
@@ -289,6 +293,11 @@ export function SidebarFooter({
             className="app-button-secondary flex w-full items-center justify-center gap-2 rounded-xl border border-(--app-accent-200) px-4 py-3 font-medium transition-all disabled:cursor-not-allowed disabled:opacity-60">
             <Link2 className="h-5 w-5" />
             {publishLinkLabel}
+          </button>
+          <button type="button" onClick={onManageShares}
+            className="app-button-secondary flex w-full items-center justify-center gap-2 rounded-xl border border-(--app-accent-200) px-4 py-3 font-medium transition-all">
+            <Link2 className="h-5 w-5" />
+            {manageSharesLabel}
           </button>
 
           {!canShare && shouldShowShareAction ? (
