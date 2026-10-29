@@ -191,6 +191,8 @@ test('My Shares migrates existing legacy owner keys without publishing a second 
   const library = page.getByRole('dialog', { name: 'My shares' });
   await expect(library.getByRole('link', { name: root + '/s/' + legacyId })).toBeVisible();
   await expect(library.getByText('Unverified', { exact: true })).toBeVisible();
+  await library.getByRole('button', { name: 'Publish a new artwork' }).click();
+  await expect(page.getByRole('dialog', { name: 'Publish this artwork' })).toBeVisible();
   expect((await savedShare(page, legacyId))?.deleteToken).toBe(legacyToken);
   expect(await page.evaluate((id) => localStorage.getItem('inkpoem.share.owner.' + id), legacyId)).toBeNull();
 });
