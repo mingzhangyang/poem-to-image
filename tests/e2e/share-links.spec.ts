@@ -111,8 +111,8 @@ test('export shows only the native system share action, not six platform shortcu
   });
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: 'Export Image' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Export Image' });
+  await page.getByRole('button', { name: 'Export & Share' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Export & Share' });
   await expect(dialog).toBeVisible();
   for (const name of ['WeChat', 'Weibo', 'Xiaohongshu', 'X', 'Instagram', 'Facebook']) {
     await expect(dialog.getByRole('button', { name, exact: true })).toHaveCount(0);
