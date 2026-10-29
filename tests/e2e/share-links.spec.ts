@@ -142,7 +142,7 @@ test('My Shares persists a published link and its removal key after closing and 
 });
 
 test('My Shares migrates existing legacy owner keys without publishing a second artwork', async ({ page }) => {
-  const legacyId = 'LegacyShare01';
+  const legacyId = 'LegacyShare1';
   const legacyToken = 'b'.repeat(64);
   await page.addInitScript(({ id, token }) => {
     localStorage.setItem('inkpoem.share.owner.' + id, token);
@@ -329,7 +329,7 @@ test('recovers a dropped response by retrying the same publication credentials',
   const published = page.getByRole('dialog', { name: 'Your artwork is published' });
   await expect(published).toBeVisible({ timeout: 40_000 });
   expect(attempts).toEqual([first, first]);
-  expect((await savedShare(page, id))?.state).toBe('published');
+  expect((await savedShare(page, first.id))?.state).toBe('published');
   expect((await savedShare(page, first.id))?.deleteToken).toBe(first.token);
 });
 
@@ -410,7 +410,7 @@ test('a stale uncertain publication can be cancelled before creating a new share
   const removed = page.getByRole('dialog', { name: 'Public artwork removed' });
   await expect(removed).toBeVisible();
   expect(cancellations).toBe(1);
-  expect((await savedShare(page, id))?.state).toBe('published');
+  expect((await savedShare(page, oldId))?.state).toBe('revoked');
   await removed.getByRole('button', { name: 'Close' }).last().click();
   await page.getByRole('button', { name: 'Export Image' }).click();
   await page.getByRole('dialog', { name: 'Export Image' })
@@ -517,7 +517,7 @@ test('public read-only viewer needs no account and creator can revoke from the o
   await page.getByRole('button', { name: 'Remove this share' }).click();
   await expect(page.getByRole('heading', { name: 'Artwork unavailable' })).toBeVisible();
   expect(await page.evaluate((id) => localStorage.getItem('inkpoem.share.owner.' + id), shareId)).toBeNull();
-  expect((await savedShare(page, id))?.state).toBe('published');
+  expect((await savedShare(page, shareId))?.state).toBe('revoked');
 });
 
 
