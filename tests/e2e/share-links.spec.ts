@@ -120,7 +120,7 @@ test('a lost upload response can be confirmed read-only without a second upload'
       }),
     });
   });
-  await page.route('**/s/*', async (route) => {
+  await page.route('**/s/*/*', async (route) => {
     expect(route.request().method()).toBe('HEAD');
     await route.fulfill({ status: 200, body: '' });
   });
