@@ -44,7 +44,6 @@ export type EditorTemplateId =
 ;
 export type ExportScale = 1 | 2 | 3;
 export type ExportFormat = 'png' | 'jpg' | 'webp';
-export type SocialPlatform = 'wechat' | 'weibo' | 'xiaohongshu' | 'twitter' | 'instagram' | 'facebook';
 
 export interface CustomText {
   id: string;
@@ -408,7 +407,6 @@ export interface SidebarProps {
   publishLinkLabel: string;
   onManageShares: () => void;
   manageSharesLabel: string;
-  onShareToSocial: (platform: SocialPlatform) => Promise<'clipboard' | 'downloaded' | 'cancelled'>;
   isExporting: boolean;
   isSharing: boolean;
   canShare: boolean;
@@ -469,7 +467,6 @@ export interface CanvasPreviewProps {
   publishLinkLabel: string;
   onManageShares: () => void;
   manageSharesLabel: string;
-  onShareToSocial: (platform: SocialPlatform) => Promise<'clipboard' | 'downloaded' | 'cancelled'>;
   isExporting: boolean;
   isSharing: boolean;
   canShare: boolean;
