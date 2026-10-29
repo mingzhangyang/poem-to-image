@@ -286,35 +286,33 @@ export async function checkLocalShareStatus(share: LocalShare): Promise<'publish
     let cardUrl: string;
     let title: string | undefined;
     let author: string | undefined;
-    if (share.fingerprint && FINGERPRINT.test(share.fingerprint)) {
-      const response = await fetch('/api/shares/' + share.id + '/verify', {
-        method: 'POST', cache: 'no-store', signal: controller.signal,
-        headers: {
-          'X-Share-Delete-Token': share.deleteToken,
-          'X-Share-Fingerprint': share.fingerprint,
-        },
-      });
-      if (response.status === 202 || response.status === 404) return 'pending';
-      if (!response.ok) throw new Error('HTTP ' + response.status);
-      const body = await response.json() as { status?: string; imageUrl?: string; cardUrl?: string };
-      if (body.status !== 'published') return 'pending';
-      imageUrl = body.imageUrl ?? '';
-      cardUrl = body.cardUrl ?? '';
-    } else {
-      // Old versions retained only the owner key, not a content fingerprint.
-      // Public existence is useful for display, but cannot prove ownership;
-      // keep the original capability until an explicit successful revoke.
-      const response = await fetch('/api/shares/' + share.id, {
+    // A public share alone is not proof that a saved legacy key belongs to it.
+    // For both new and old records, require the private capability to match.
+    const response = await fetch('/api/shares/' + share.id + '/verify', {
+      method: 'POST', cache: 'no-store', signal: controller.signal,
+      headers: {
+        'X-Share-Delete-Token': share.deleteToken,
+        ...(share.fingerprint && FINGERPRINT.test(share.fingerprint)
+          ? { 'X-Share-Fingerprint': share.fingerprint } : {}),
+      },
+    });
+    if (response.status === 202 || response.status === 404) return 'pending';
+    if (!response.ok) throw new Error('HTTP ' + response.status);
+    const body = await response.json() as { status?: string; imageUrl?: string; cardUrl?: string };
+    if (body.status !== 'published') return 'pending';
+    imageUrl = body.imageUrl ?? '';
+    cardUrl = body.cardUrl ?? '';
+    if (!share.title) {
+      const metadata = await fetch('/api/shares/' + share.id, {
         cache: 'no-store', signal: controller.signal,
       });
-      if (response.status === 404) return 'pending';
-      if (!response.ok) throw new Error('HTTP ' + response.status);
-      const body = await response.json() as { id?: string; imageUrl?: string; cardUrl?: string; title?: string; author?: string };
-      if (body.id !== share.id) return 'pending';
-      imageUrl = body.imageUrl ?? '';
-      cardUrl = body.cardUrl ?? '';
-      title = body.title;
-      author = body.author;
+      if (metadata.ok) {
+        const details = await metadata.json() as { id?: string; title?: string; author?: string };
+        if (details.id === share.id) {
+          title = typeof details.title === 'string' ? details.title : undefined;
+          author = typeof details.author === 'string' ? details.author : undefined;
+        }
+      }
     }
     if (!['image.png', 'image.jpg'].some((file) => imageUrl === base + file)
       || cardUrl !== base + 'card.jpg') return 'pending';
