@@ -167,7 +167,7 @@ test('HTTP publish and revoke failures keep the private key and show the actual 
   await expect(pending.getByRole('status')).toContainText('HTTP 503 · SHARE_SCHEMA_UNAVAILABLE');
   expect(await page.evaluate(() => localStorage.getItem('inkpoem.share.pending.v1'))).toContain(id);
   await pending.getByRole('button', { name: 'Remove public share now' }).click();
-  await expect(pending.getByRole('alert')).toContainText('HTTP 503');
+  await expect(pending.getByRole('alert').last()).toContainText('HTTP 503');
   expect(await page.evaluate(() => localStorage.getItem('inkpoem.share.pending.v1'))).toContain(id);
 });
 
