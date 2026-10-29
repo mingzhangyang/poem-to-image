@@ -84,16 +84,17 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
   useEffect(() => {
     if (!isOpen || !showLibrary) return;
     const ticket = ++libraryLoadRef.current;
+    let active = true;
     setLibraryBusy(true);
     setLibraryError('');
     void listLocalShares().then((all) => {
-      if (ticket === libraryLoadRef.current) setRecords(all);
+      if (active && ticket === libraryLoadRef.current) setRecords(all);
     }).catch(() => {
-      if (ticket === libraryLoadRef.current) setLibraryError(copy.recoveryStorageUnavailable);
+      if (active && ticket === libraryLoadRef.current) setLibraryError(copy.recoveryStorageUnavailable);
     }).finally(() => {
-      if (ticket === libraryLoadRef.current) setLibraryBusy(false);
+      if (active && ticket === libraryLoadRef.current) setLibraryBusy(false);
     });
-    return () => { libraryLoadRef.current++; };
+    return () => { active = false; };
   }, [isOpen, showLibrary, copy.recoveryStorageUnavailable]);
 
   const handlePublish = async () => {
