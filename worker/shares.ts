@@ -43,6 +43,38 @@ function hasAllowedOrigin(request: Request): boolean {
     && localHosts.has(requestUrl.hostname) && localHosts.has(browserOrigin.hostname);
 }
 
+/**
+ * Read-only production sharing preflight. Avoid returning database exceptions,
+ * bucket names, object keys or creator credentials to unauthenticated callers.
+ * In particular, a configured D1 binding is not proof migration 0005 ran.
+ */
+export async function getShareReadiness(request: Request, env: WorkerEnv): Promise<Response> {
+  if (request.method !== 'GET') return methodNotAllowed(['GET']);
+  if (!env.DB) return jsonResponse({ ready: false, code: 'SHARE_DB_UNAVAILABLE' }, 503);
+  if (!env.ARTWORKS) return jsonResponse({ ready: false, code: 'SHARE_STORAGE_UNAVAILABLE' }, 503);
+  try {
+    // Referencing these columns works even with an empty table and detects
+    // a missing/incomplete migration before the first user tries to publish.
+    await env.DB.prepare(
+      'SELECT published_at, revoked_at, image_key, card_key FROM shared_artworks LIMIT 1',
+    ).all();
+    await env.DB.prepare(
+      'SELECT attempt_id FROM shared_artwork_upload_attempts LIMIT 1',
+    ).all();
+  } catch (error) {
+    logError('share.health_database_failed', error);
+    return jsonResponse({ ready: false, code: 'SHARE_SCHEMA_UNAVAILABLE' }, 503);
+  }
+  try {
+    // HEAD is read-only, and a missing object is a successful reachability test.
+    await env.ARTWORKS.head('health/inkpoem-readiness-probe-nonexistent');
+  } catch (error) {
+    logError('share.health_storage_failed', error);
+    return jsonResponse({ ready: false, code: 'SHARE_STORAGE_UNAVAILABLE' }, 503);
+  }
+  return jsonResponse({ ready: true });
+}
+
 export function isShareId(id: string): boolean {
   return SHARE_ID_PATTERN.test(id);
 }
