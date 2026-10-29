@@ -56,10 +56,16 @@ export async function getShareReadiness(request: Request, env: WorkerEnv): Promi
     // Referencing these columns works even with an empty table and detects
     // a missing/incomplete migration before the first user tries to publish.
     await env.DB.prepare(
-      'SELECT published_at, revoked_at, image_key, card_key FROM shared_artworks LIMIT 1',
+      'SELECT id, image_key, image_type, card_key, delete_token_hash, content_fingerprint, published_at, revoked_at FROM shared_artworks LIMIT 1',
     ).all();
     await env.DB.prepare(
-      'SELECT attempt_id FROM shared_artwork_upload_attempts LIMIT 1',
+      'SELECT attempt_id, share_id, image_key, card_key FROM shared_artwork_upload_attempts LIMIT 1',
+    ).all();
+    // Both first-time publish and cancellation of an unknown ID consume a
+    // rate-limit bucket. A missing 0002 table can break both while /s/:id
+    // still responds with a normal "Artwork unavailable" 404.
+    await env.DB.prepare(
+      'SELECT key, bucket_start, count, expires_at FROM rate_limits LIMIT 1',
     ).all();
   } catch (error) {
     logError('share.health_database_failed', error);
