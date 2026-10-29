@@ -48,6 +48,8 @@ export function Sidebar({
   onCopy,
   onPublishLink,
   publishLinkLabel,
+  onManageShares,
+  manageSharesLabel,
   onShareToSocial,
   isExporting,
   isSharing,
@@ -63,6 +65,10 @@ export function Sidebar({
   const handlePublishFromMobile = () => {
     closeMobilePanel();
     onPublishLink();
+  };
+  const handleManageSharesFromMobile = () => {
+    closeMobilePanel();
+    onManageShares();
   };
 
   useDialogA11y({ isOpen: isMobileControlsOpen, dialogRef: mobileDialogRef, onClose: closeMobilePanel });
@@ -260,6 +266,8 @@ export function Sidebar({
             onCopy={onCopy}
             onPublishLink={handlePublishFromMobile}
             publishLinkLabel={publishLinkLabel}
+            onManageShares={handleManageSharesFromMobile}
+            manageSharesLabel={manageSharesLabel}
             isExporting={isExporting}
             isSharing={isSharing}
             canShare={canShare}
