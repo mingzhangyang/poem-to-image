@@ -13,7 +13,7 @@ import { applySecurityHeaders, bodyErrorResponse, jsonResponse, methodNotAllowed
 import { logError, logInfo, requestIdFor, withRequestId } from './observability';
 import type { WorkerEnv } from './env';
 import { runOperationalChecks } from './maintenance';
-import { publishShare, getShareApi, deleteShare, getShareImage, getShareHtml, getShareReadiness } from './shares';
+import { publishShare, getShareApi, deleteShare, getShareImage, getShareHtml, getShareReadiness, verifyShareForRecovery } from './shares';
 
 const MAX_AI_PROMPT_LENGTH = 500;
 const MAX_REQUEST_ID_LENGTH = 80;
@@ -369,6 +369,8 @@ async function routeRequest(request: Request, env: WorkerEnv): Promise<Response>
     // ── Public, immutable artwork shares ─────────────────────────────────
     if (pathname === '/api/health/sharing') return getShareReadiness(request, env);
     if (pathname === '/api/shares') return publishShare(request, env);
+    const shareRecovery = /^\/api\/shares\/([A-Za-z0-9_-]+)\/verify$/.exec(pathname);
+    if (shareRecovery) return verifyShareForRecovery(request, env, shareRecovery[1]);
     const shareApi = /^\/api\/shares\/([A-Za-z0-9_-]+)$/.exec(pathname);
     if (shareApi) {
       if (request.method === 'GET') return getShareApi(request, env, shareApi[1]);
