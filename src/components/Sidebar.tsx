@@ -253,6 +253,7 @@ export function Sidebar({
             isExporting={isExporting}
             isSharing={isSharing}
             canShare={canShare}
+            actionMode={canShare ? 'both' : 'save'}
             title={t(canShare ? 'exportAndShare' : 'exportImage')}
           />
         </div>
