@@ -129,6 +129,25 @@ test('export shows only the native system share action, not six platform shortcu
   expect(filename).toMatch(/\.(png|jpg|webp)$/);
 });
 
+test('text-only Web Share API never exposes an unusable native image-share button', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'share', {
+      configurable: true, value: async () => undefined,
+    });
+    Object.defineProperty(navigator, 'canShare', {
+      configurable: true, value: undefined,
+    });
+  });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: 'Export Image' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Export Image' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Share Image' })).toHaveCount(0);
+  await expect(dialog.getByRole('button', { name: 'Copy Image' })).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Publish shareable link' })).toBeVisible();
+});
+
 test('My Shares persists a published link and its removal key after closing and refreshing', async ({ page }) => {
   test.setTimeout(90_000);
   let publishedId = '';
