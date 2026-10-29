@@ -21,6 +21,7 @@ The browser stores the share ID, removal capability and content fingerprint in `
 - Network errors, unreadable responses, 429s and other ambiguous retry failures **never erase stored creator credentials**. The dialog displays a protected recovery state: retry the same unchanged snapshot, cancel the previous ID, or securely back up the key before closing.
 - When an uncertain pending publication blocks publishing edited artwork, the creator can cancel the old ID before attempting a new share. Cancelling a request that never reached the Worker is valid and idempotent; the Worker inserts a **revocation tombstone** into D1 if necessary. Thus even an older request arriving afterward cannot reserve or publish that ID. A cancellation in the middle of R2 upload wins over the final conditional D1 update.
 - `DELETE /api/shares/:id`: requires the private `X-Share-Delete-Token`. The Worker hashes the token, atomically revokes an existing reservation or published row, or records a tombstone when the ID was not seen previously; repeats using the same capability are accepted. The browser clears the matching pending record and owner key only after an acknowledged cancellation.
+- `POST /api/shares/:id/verify`: **read-only** recovery check for an ambiguous upload. Requires the original `X-Share-Delete-Token` and `X-Share-Fingerprint` headers; it proves that the pending browser ID belongs to the same creator and exact snapshot before confirming publication. A public GET alone cannot prove ownership when an ID collides.
 - `GET /api/shares/:id`: public metadata only for fully published, not-revoked work. `GET /s/:id`: server-delivered HTML with escaped OG/Twitter/JSON-LD metadata and true 404/noindex for absent, pending or revoked IDs.
 - `GET|HEAD /s/:id/image.png|jpg`, `/s/:id/card.jpg`: private R2 reads gated by the published D1 record.
 
@@ -90,7 +91,9 @@ it should succeed even if no prior POST reached the Worker.
 Client-facing errors now distinguish `NETWORK_ERROR`, HTTP response
 codes and malformed responses while preserving the original pending ID
 and revocation key. On ambiguous failures the browser first attempts a
-read-only GET + both R2 HEADs before claiming that an upload completed.
+creator-authorized, non-mutating verification POST (private token and
+fingerprint in headers, never in the URL) + both public R2 HEADs before
+claiming an upload completed. An unverified public link is not a success.
 
 **Never** include the private deletion token in bug reports, URLs, GET
 requests, screenshots or terminal commands. Keep it in the original
