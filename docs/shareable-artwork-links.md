@@ -41,8 +41,11 @@ it should succeed even if no prior POST reached the Worker.
    curl -i https://inkpoem.com/api/health/sharing
    ```
    HTTP 200 with `{"ready":true}` confirms the live Worker can query
-   the `shared_artworks` and `shared_artwork_upload_attempts` tables
-   (including `published_at`) and access the private R2 bucket. HTTP
+   the `shared_artworks`, `shared_artwork_upload_attempts` and
+   `rate_limits` tables (including `published_at`) and access the private
+   R2 bucket. The rate-limit table matters to both first-time POST and
+   DELETE of an unseen ID; without it, both mutations can fail while
+   a public share page still returns a normal 404. HTTP
    503 with `SHARE_DB_UNAVAILABLE`, `SHARE_SCHEMA_UNAVAILABLE` or
    `SHARE_STORAGE_UNAVAILABLE` directs the next check. This is a
    **readiness probe, not a successful publish test**.
@@ -50,7 +53,8 @@ it should succeed even if no prior POST reached the Worker.
    ```sh
    npx wrangler r2 bucket list
    npx wrangler d1 migrations list DB --remote --config wrangler.jsonc
-   # Only if migration 0005 is not yet applied:
+   # Confirm 0002 (rate_limits) as well as 0005 (shared_artworks).
+   # Only if numbered migrations are pending:
    npx wrangler d1 migrations apply DB --remote --config wrangler.jsonc
    ```
    The R2 bucket should be `inkpoem-shared-artworks`, bound as
