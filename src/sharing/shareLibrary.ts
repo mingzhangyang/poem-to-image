@@ -188,11 +188,11 @@ export async function prepareLocalShare(
     const read = store.getAll();
     read.onsuccess = () => {
       const records = read.result as LocalShare[];
-      const pending = records.find((entry) => entry.state === 'pending' && entry.fingerprint === fingerprint && (entry.expiry ?? 'never') === expiry);
+      const pending = records.find((entry) => entry.state === 'pending' && entry.fingerprint === fingerprint && (entry.expiry ?? 'never') === expiry && (entry.expiry === 'never' || (entry.expiry !== undefined && Date.now() < Date.parse(entry.createdAt) + (entry.expiry === '7d' ? 7 : 30) * 86_400_000)));
       // Preserve immutable publication identity when publishing the same
       // snapshot again, instead of creating a new link after closing a dialog.
       const existing = pending ?? records.find((entry) =>
-        entry.state === 'published' && entry.fingerprint === fingerprint && (entry.expiry ?? 'never') === expiry);
+        entry.state === 'published' && entry.fingerprint === fingerprint && (entry.expiry ?? 'never') === expiry && (entry.expiry === 'never' || (entry.expiry !== undefined && Date.now() < Date.parse(entry.createdAt) + (entry.expiry === '7d' ? 7 : 30) * 86_400_000)));
       const id = existing?.id ?? createId();
       if (records.some((entry) => entry.id === id && entry !== existing)) {
         fail(storageError());
