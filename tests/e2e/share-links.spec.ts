@@ -187,6 +187,16 @@ test('My Shares persists a published link and its removal key after closing and 
   await expect(library.getByRole('link', { name: root + '/s/' + publishedId })).toBeVisible();
   await expect(library.getByText('Published', { exact: true })).toBeVisible();
   expect((await savedShare(page, publishedId))?.deleteToken).toBe(publishedToken);
+  // Simulate an artwork removed elsewhere: a 404 must not leave stale
+  // "Published" status or erase the only local revocation capability.
+  await page.route('**/api/shares/*/verify', async (route) => {
+    await route.fulfill({ status: 404, contentType: 'application/json', body: '{"code":"NOT_FOUND"}' });
+  });
+  await library.getByRole('button', { name: 'Check status' }).click();
+  await expect(library.getByText('Unverified', { exact: true })).toBeVisible();
+  await expect(library.getByRole('alert')).toContainText('Publication could not be confirmed');
+  expect((await savedShare(page, publishedId))?.state).toBe('unverified');
+  expect((await savedShare(page, publishedId))?.deleteToken).toBe(publishedToken);
   page.once('dialog', async (dialog) => { await dialog.accept(); });
   await library.getByRole('button', { name: 'Remove this share' }).click();
   await expect(library.getByText('No saved shares yet.')).toBeVisible();
