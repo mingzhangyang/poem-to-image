@@ -287,7 +287,7 @@ export async function publishShare(request: Request, env: WorkerEnv): Promise<Re
     // Reserve the ID in D1 BEFORE uploading to R2. A DELETE can now atomically
     // cancel this reservation, preventing any in-flight upload from publishing.
     await env.DB.prepare(
-      'INSERT OR IGNORE INTO shared_artworks (id, title, author, delete_token_hash, content_fingerprint, expiry_policy, expires_at) VALUES (?, ?, ?, ?, ?, ?, CASE ? WHEN '7d' THEN datetime('now', '+7 days') WHEN '30d' THEN datetime('now', '+30 days') ELSE NULL END)',
+      'INSERT OR IGNORE INTO shared_artworks (id, title, author, delete_token_hash, content_fingerprint, expiry_policy, expires_at) VALUES (?, ?, ?, ?, ?, ?, CASE ? WHEN ''7d'' THEN datetime(''now'', ''+7 days'') WHEN ''30d'' THEN datetime(''now'', ''+30 days'') ELSE NULL END)',
     ).bind(id, title, author, deleteHash, fingerprint, expiry, expiry).run();
   }
 
