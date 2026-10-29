@@ -43,6 +43,51 @@ function hasAllowedOrigin(request: Request): boolean {
     && localHosts.has(requestUrl.hostname) && localHosts.has(browserOrigin.hostname);
 }
 
+/**
+ * Read-only production sharing preflight. Avoid returning database exceptions,
+ * bucket names, object keys or creator credentials to unauthenticated callers.
+ * In particular, a configured D1 binding is not proof migration 0005 ran.
+ */
+export async function getShareReadiness(request: Request, env: WorkerEnv): Promise<Response> {
+  if (request.method !== 'GET') return methodNotAllowed(['GET']);
+  if (!env.DB) return jsonResponse({ ready: false, code: 'SHARE_DB_UNAVAILABLE' }, 503);
+  if (!env.ARTWORKS) return jsonResponse({ ready: false, code: 'SHARE_STORAGE_UNAVAILABLE' }, 503);
+  try {
+    // Referencing these columns works even with an empty table and detects
+    // a missing/incomplete migration before the first user tries to publish.
+    // Use an explicit, exhaustive projection: SELECT * silently succeeds if
+    // a column required by publish/revoke/maintenance is absent. Keep this
+    // aligned with the full 0005 migration, including cleanup columns.
+    await env.DB.prepare(
+      `SELECT id, title, author, image_key, image_type, card_key,
+              delete_token_hash, content_fingerprint, created_at,
+              published_at, revoked_at, assets_deleted_at
+       FROM shared_artworks LIMIT 1`,
+    ).all();
+    await env.DB.prepare(
+      `SELECT attempt_id, share_id, image_key, card_key, created_at
+       FROM shared_artwork_upload_attempts LIMIT 1`,
+    ).all();
+    // Both first-time publish and cancellation of an unknown ID consume a
+    // rate-limit bucket. A missing 0002 table can break both while /s/:id
+    // still responds with a normal "Artwork unavailable" 404.
+    await env.DB.prepare(
+      'SELECT key, bucket_start, count, expires_at FROM rate_limits LIMIT 1',
+    ).all();
+  } catch (error) {
+    logError('share.health_database_failed', error);
+    return jsonResponse({ ready: false, code: 'SHARE_SCHEMA_UNAVAILABLE' }, 503);
+  }
+  try {
+    // HEAD is read-only, and a missing object is a successful reachability test.
+    await env.ARTWORKS.head('health/inkpoem-readiness-probe-nonexistent');
+  } catch (error) {
+    logError('share.health_storage_failed', error);
+    return jsonResponse({ ready: false, code: 'SHARE_STORAGE_UNAVAILABLE' }, 503);
+  }
+  return jsonResponse({ ready: true });
+}
+
 export function isShareId(id: string): boolean {
   return SHARE_ID_PATTERN.test(id);
 }
@@ -343,6 +388,42 @@ export async function getShareApi(request: Request, env: WorkerEnv, id: string):
   if (!available(env)) return jsonResponse({ error: 'Sharing is not configured.' }, 503);
   const row = await lookupShare(env.DB, id);
   return row ? jsonResponse(publicShare(request, row)) : notFound();
+}
+
+/**
+ * Read-only confirmation of an ambiguous POST, authenticated with the
+ * pre-persisted creator capability and *exact* rendered content fingerprint.
+ * Public GET metadata alone cannot prove ownership of a colliding ID.
+ * The credentials never appear in a URL, query string, or response body.
+ */
+export async function verifyShareForRecovery(request: Request, env: WorkerEnv, id: string): Promise<Response> {
+  if (request.method !== 'POST') return methodNotAllowed(['POST']);
+  if (!available(env)) return jsonResponse({ error: 'Sharing is not configured.', code: 'SHARING_NOT_CONFIGURED' }, 503);
+  if (!isShareId(id)) return notFound();
+  if (!hasAllowedOrigin(request)) return jsonResponse({ error: 'Invalid origin.', code: 'INVALID_ORIGIN' }, 403);
+
+  const token = request.headers.get('X-Share-Delete-Token') ?? '';
+  const fingerprint = request.headers.get('X-Share-Fingerprint');
+  // Newer records prove the identical artwork by fingerprint. Legacy
+  // pre-IndexedDB browsers only retained the private creator capability.
+  // They can confirm ownership, but must not re-publish a different image.
+  if (!/^[a-f0-9]{64}$/.test(token)
+    || (fingerprint !== null && !/^[a-f0-9]{64}$/.test(fingerprint))) return notFound();
+  const hash = await tokenHash(token);
+  const row = await findShareById(env.DB, id);
+  if (!row || row.revoked_at || row.delete_token_hash !== hash
+    || (fingerprint !== null && row.content_fingerprint !== fingerprint)) {
+    return notFound();
+  }
+  if (!row.published_at) return jsonResponse({ status: 'pending' }, 202);
+  if (!row.image_key || !row.image_type || !row.card_key) {
+    return jsonResponse({ error: 'Share assets unavailable.', code: 'SHARE_INCOMPLETE' }, 503);
+  }
+  return jsonResponse({
+    status: 'published',
+    imageUrl: imagePath(id, row.image_type),
+    cardUrl: '/s/' + id + '/card.jpg',
+  });
 }
 
 async function limitUnknownCancellation(request: Request, db: D1Database): Promise<Response | null> {

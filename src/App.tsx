@@ -30,9 +30,11 @@ import type { ExpandedSections, ExportFormat, ExportScale } from './types';
 import { PublishDialog, type PublishedShare } from './sharing/PublishDialog';
 import { shareCopy } from './sharing/copy';
 import {
-  PendingShareConflict, completePublishCredentials, fingerprintArtwork,
-  preparePublishCredentials, removePublishCredentialsSafely,
+  PendingShareConflict, fingerprintArtwork, removePublishCredentialsSafely,
 } from './sharing/publishProtocol';
+import {
+  prepareLocalShare, markLocalSharePublished, markLocalShareRevokedSafely,
+} from './sharing/shareLibrary';
 
 const ONBOARDING_DISMISSED_STORAGE_KEY = 'poem-to-image.onboarding-dismissed';
 const OnboardingModal = lazy(async () => ({ default: (await import('./components/OnboardingModal')).OnboardingModal }));
@@ -102,6 +104,7 @@ export default function App() {
   const [editorOpenRequestId, setEditorOpenRequestId] = useState(0);
   const [previewZoom, setPreviewZoom] = useState(1);
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
+  const [shareLibraryOpen, setShareLibraryOpen] = useState(false);
 
   const handleCloseOnboarding = () => {
     setIsOnboardingOpen(false);
@@ -387,7 +390,6 @@ export default function App() {
     shareImage: handleShare,
     copyImage,
     createShareAssets,
-    shareToSocialPlatform: handleShareToSocial,
     isExporting,
     isSharing,
     canShare,
@@ -402,7 +404,7 @@ export default function App() {
 
     let credentials;
     try {
-      credentials = preparePublishCredentials(localStorage, fingerprint);
+      credentials = await prepareLocalShare(fingerprint, title, author);
     } catch (error) {
       if (error instanceof PendingShareConflict) {
         // Never silently replace credentials for a possibly public prior
@@ -416,10 +418,63 @@ export default function App() {
       throw error;
     }
 
-    const unknown = (): PublishedShare => ({
+    const unknown = (failureDetail: string): PublishedShare => ({
       id: credentials.id, url: link(credentials.id),
-      deleteToken: credentials.deleteToken, statusUnknown: true,
+      deleteToken: credentials.deleteToken, statusUnknown: true, failureDetail,
     });
+
+    const confirmed = async (): Promise<PublishedShare> => {
+      try {
+        await markLocalSharePublished(credentials.id, credentials.deleteToken, title, author);
+      } catch {
+        // Publishing succeeded remotely but we could not update local history.
+        // Keep the key in this recovery dialog for an independent backup.
+        return { id: credentials.id, url: link(credentials.id),
+          deleteToken: credentials.deleteToken, recoveryRequired: true };
+      }
+      return { id: credentials.id, url: link(credentials.id), deleteToken: credentials.deleteToken };
+    };
+
+    // A dropped POST may have completed. A creator-authorized read-only
+    // verification checks BOTH the deletion capability and the exact image
+    // fingerprint. Public metadata alone could be somebody else's ID.
+    // Both R2 images must also be publicly readable before reporting success.
+    const confirmPublished = async (): Promise<boolean> => {
+      const controller = new AbortController();
+      // One shared deadline covers the authenticated D1 check AND both R2 HEADs.
+      // A stuck optional probe must not lock the creator's recovery dialog.
+      const deadline = window.setTimeout(() => controller.abort(), 8_000);
+      try {
+        const result = await fetch('/api/shares/' + encodeURIComponent(credentials.id) + '/verify', {
+          method: 'POST',
+          headers: {
+            'X-Share-Delete-Token': credentials.deleteToken,
+            'X-Share-Fingerprint': credentials.fingerprint,
+          },
+          cache: 'no-store',
+          signal: controller.signal,
+        });
+        if (!result.ok) return false;
+        const share = await result.json() as { status?: string; imageUrl?: string; cardUrl?: string };
+        const base = '/s/' + credentials.id + '/';
+        const imageUrl = share.imageUrl ?? '';
+        const cardUrl = share.cardUrl ?? '';
+        if (share.status !== 'published' || ![base + 'image.png', base + 'image.jpg'].includes(imageUrl)
+          || cardUrl !== base + 'card.jpg') return false;
+        const [image, card] = await Promise.all([
+          fetch(imageUrl, { method: 'HEAD', cache: 'no-store', signal: controller.signal }),
+          fetch(cardUrl, { method: 'HEAD', cache: 'no-store', signal: controller.signal }),
+        ]);
+        return image.ok && card.ok;
+      } catch {
+        return false;
+      } finally {
+        window.clearTimeout(deadline);
+      }
+    };
+    const uncertainUnlessPublished = async (failureDetail: string): Promise<PublishedShare> =>
+      await confirmPublished() ? await confirmed() : unknown(failureDetail);
+
     const form = new FormData();
     form.append('id', credentials.id);
     form.append('deleteToken', credentials.deleteToken);
@@ -432,38 +487,38 @@ export default function App() {
     try {
       response = await fetch('/api/shares', { method: 'POST', body: form });
     } catch {
-      // The Worker may already have committed. Keep the pre-stored ID and
-      // deletion token and do NOT create another share on retry.
-      return unknown();
+      // Keep the pre-stored ID and token: a transport failure may follow a
+      // successful server commit, which the read-only probe can detect.
+      return uncertainUnlessPublished('NETWORK_ERROR');
     }
 
     let body: Partial<PublishedShare> & { code?: string };
     try {
       body = await response.json() as Partial<PublishedShare> & { code?: string };
     } catch {
-      return unknown();
+      return uncertainUnlessPublished('HTTP ' + response.status + ' · INVALID_RESPONSE');
     }
     if (!response.ok) {
-      // A previous request with these credentials may still be committing to
-      // D1/R2. A 429, 400 or 409 for a later retry is NOT proof that the
-      // earlier attempt failed. Keep the owner key and pending reservation.
-      // The creator may safely retry or explicitly cancel the identifier.
       if (body.code === 'SHARE_CANCELLED') {
+        await markLocalShareRevokedSafely(credentials.id, credentials.deleteToken);
         removePublishCredentialsSafely(credentials.id, credentials.deleteToken);
         throw new Error('SHARE_CANCELLED');
       }
-      return unknown();
+      if (body.code === 'SHARE_CONTENT_MISMATCH' || body.code === 'SHARE_ID_CONFLICT') {
+        // The server explicitly rejected this snapshot or creator capability.
+        // A public artwork with the same ID must never override that conflict.
+        return unknown('HTTP ' + response.status + ' · ' + body.code);
+      }
+      // 4xx and 5xx responses must not be mislabeled as an interrupted
+      // response. Keep the pending reservation until server-confirmed revoke.
+      const code = typeof body.code === 'string' && /^[A-Z][A-Z0-9_]{1,63}$/.test(body.code)
+        ? ' · ' + body.code : '';
+      return uncertainUnlessPublished('HTTP ' + response.status + code);
     }
-    if (body.id !== credentials.id || body.deleteToken !== credentials.deleteToken) return unknown();
-    try {
-      completePublishCredentials(localStorage, credentials);
-    } catch {
-      // A blocked storage getter must not hide a confirmed publication.
-      // Keep the removal capability in the recovery dialog for manual backup.
-      return { id: credentials.id, url: link(credentials.id),
-        deleteToken: credentials.deleteToken, recoveryRequired: true };
+    if (body.id !== credentials.id || body.deleteToken !== credentials.deleteToken) {
+      return uncertainUnlessPublished('HTTP ' + response.status + ' · INVALID_RESPONSE');
     }
-    return { id: credentials.id, url: link(credentials.id), deleteToken: credentials.deleteToken };
+    return await confirmed();
   };
 
   const handleDownload = async () => {
@@ -625,9 +680,10 @@ export default function App() {
     onDownload: handleDownload,
     onShare: handleShare,
     onCopy: handleCopy,
-    onPublishLink: () => setPublishDialogOpen(true),
+    onPublishLink: () => { setShareLibraryOpen(false); setPublishDialogOpen(true); },
     publishLinkLabel: shareCopy[language].publishLink,
-    onShareToSocial: handleShareToSocial,
+    onManageShares: () => { setShareLibraryOpen(true); setPublishDialogOpen(true); },
+    manageSharesLabel: shareCopy[language].manageShares,
     isExporting,
     isSharing,
     canShare,
@@ -676,6 +732,7 @@ export default function App() {
         language={language}
         isOpen={publishDialogOpen}
         onClose={() => setPublishDialogOpen(false)}
+        initialLibrary={shareLibraryOpen}
         publish={publishArtwork}
       />
 

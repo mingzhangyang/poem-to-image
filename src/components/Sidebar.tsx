@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Download, Palette, Settings, Sparkles, Type, X } from 'lucide-react';
-import type { SidebarProps, SocialPlatform } from '../types';
+import type { SidebarProps } from '../types';
 import { BackgroundPanel } from './sidebar/BackgroundPanel';
 import { CanvasSizePanel } from './sidebar/CanvasSizePanel';
 import { ContentPanel } from './sidebar/ContentPanel';
@@ -48,21 +48,24 @@ export function Sidebar({
   onCopy,
   onPublishLink,
   publishLinkLabel,
-  onShareToSocial,
+  onManageShares,
+  manageSharesLabel,
   isExporting,
   isSharing,
   canShare,
 }: SidebarProps) {
   const [activeMobilePanel, setActiveMobilePanel] = useState<MobilePanel | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [socialFeedback, setSocialFeedback] = useState<'clipboard' | 'downloaded' | null>(null);
-  const [activeSocialPlatform, setActiveSocialPlatform] = useState<SocialPlatform | null>(null);
   const isMobileControlsOpen = activeMobilePanel !== null;
   const mobileDialogRef = useRef<HTMLElement>(null);
   const closeMobilePanel = useCallback(() => setActiveMobilePanel(null), []);
   const handlePublishFromMobile = () => {
     closeMobilePanel();
     onPublishLink();
+  };
+  const handleManageSharesFromMobile = () => {
+    closeMobilePanel();
+    onManageShares();
   };
 
   useDialogA11y({ isOpen: isMobileControlsOpen, dialogRef: mobileDialogRef, onClose: closeMobilePanel });
@@ -93,21 +96,6 @@ export function Sidebar({
     setActiveMobilePanel(panel);
   };
 
-  const handleShareToSocial = async (platform: SocialPlatform) => {
-    if (isExporting || isSharing) {
-      return;
-    }
-
-    setActiveSocialPlatform(platform);
-    setSocialFeedback(null);
-    const result = await onShareToSocial(platform);
-    setActiveSocialPlatform(null);
-
-    if (result !== 'cancelled') {
-      setSocialFeedback(result);
-      window.setTimeout(() => setSocialFeedback(null), 5000);
-    }
-  };
 
   const mobileButtonClassName = (panel: MobilePanel) => {
     const isActive = activeMobilePanel === panel;
@@ -260,14 +248,13 @@ export function Sidebar({
             onCopy={onCopy}
             onPublishLink={handlePublishFromMobile}
             publishLinkLabel={publishLinkLabel}
+            onManageShares={handleManageSharesFromMobile}
+            manageSharesLabel={manageSharesLabel}
             isExporting={isExporting}
             isSharing={isSharing}
             canShare={canShare}
+            actionMode={canShare ? 'both' : 'save'}
             title={t(canShare ? 'exportAndShare' : 'exportImage')}
-            showSocialActions
-            onShareToSocial={handleShareToSocial}
-            activeSocialPlatform={activeSocialPlatform}
-            socialFeedback={socialFeedback}
           />
         </div>
       );

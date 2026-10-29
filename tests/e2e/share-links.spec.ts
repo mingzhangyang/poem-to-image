@@ -1,8 +1,28 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 const shareId = 'ABCDEF123456';
 const deletionToken = 'a'.repeat(64);
 const root = 'http://127.0.0.1:3000';
+
+async function savedShare(page: Page, id: string): Promise<{
+  id: string; deleteToken: string; fingerprint: string | null; state: string; title: string;
+} | null> {
+  return page.evaluate(async (shareId) => new Promise<{
+    id: string; deleteToken: string; fingerprint: string | null; state: string; title: string;
+  } | null>((resolve, reject) => {
+    const request = indexedDB.open('inkpoem-share-library', 1);
+    request.onerror = () => reject(new Error('Share library failed to open'));
+    request.onsuccess = () => {
+      const db = request.result;
+      const tx = db.transaction('shares', 'readonly');
+      const get = tx.objectStore('shares').get(shareId);
+      get.onsuccess = () => resolve(get.result ?? null);
+      get.onerror = () => reject(new Error('Share record lookup failed'));
+      tx.oncomplete = () => db.close();
+    };
+  }), id);
+}
+
 
 function multipartValue(payload: Buffer | null, field: string): string {
   const text = payload?.toString('latin1') ?? '';
@@ -69,18 +89,180 @@ test('anonymous editor pre-saves ID and token before publishing on mobile and de
   await expect(publishedDialog).toBeVisible({ timeout: 45_000 });
   expect(requestWasReceived).toBe(true);
   await expect(publishedDialog.getByRole('textbox', { name: 'Copy link' })).toHaveValue(root + '/s/' + publishedId);
-  expect(await page.evaluate((id) => localStorage.getItem('inkpoem.share.owner.' + id), publishedId)).toBe(ownerToken);
-  expect(await page.evaluate(() => localStorage.getItem('inkpoem.share.pending.v1'))).toBeNull();
+  expect((await savedShare(page, publishedId))?.deleteToken).toBe(ownerToken);
+  expect((await savedShare(page, publishedId))?.state).toBe('published');
+});
+
+
+test('export shows only the native system share action, not six platform shortcuts', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.addInitScript(() => {
+    (window as Window & { __nativeShareFiles?: string[] }).__nativeShareFiles = [];
+    Object.defineProperty(navigator, 'canShare', {
+      configurable: true, value: ({ files }: ShareData) => !!files?.length,
+    });
+    Object.defineProperty(navigator, 'share', {
+      configurable: true,
+      value: async ({ files }: ShareData) => {
+        (window as Window & { __nativeShareFiles?: string[] }).__nativeShareFiles =
+          (files ?? []).map((file) => file.name);
+      },
+    });
+  });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: 'Export & Share' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Export & Share' });
+  await expect(dialog).toBeVisible();
+  for (const name of ['WeChat', 'Weibo', 'Xiaohongshu', 'X', 'Instagram', 'Facebook']) {
+    await expect(dialog.getByRole('button', { name, exact: true })).toHaveCount(0);
+  }
+  const share = dialog.getByRole('button', { name: 'Share Image' });
+  await expect(share).toBeEnabled();
+  await share.click();
+  await expect.poll(() => page.evaluate(() =>
+    (window as Window & { __nativeShareFiles?: string[] }).__nativeShareFiles?.length ?? 0,
+  ), { timeout: 45_000 }).toBe(1);
+  const filename = await page.evaluate(() =>
+    (window as Window & { __nativeShareFiles?: string[] }).__nativeShareFiles?.[0] ?? '',
+  );
+  expect(filename).toMatch(/\.(png|jpg|webp)$/);
+});
+
+test('text-only Web Share API never exposes an unusable native image-share button', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'share', {
+      configurable: true, value: async () => undefined,
+    });
+    Object.defineProperty(navigator, 'canShare', {
+      configurable: true, value: undefined,
+    });
+  });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: 'Export Image' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Export Image' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Share Image' })).toHaveCount(0);
+  await expect(dialog.getByRole('button', { name: 'Copy Image' })).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Publish shareable link' })).toBeVisible();
+});
+
+test('My Shares persists a published link and its removal key after closing and refreshing', async ({ page }) => {
+  test.setTimeout(90_000);
+  let publishedId = '';
+  let publishedToken = '';
+  let deleted = false;
+  await page.route('**/api/shares', async (route) => {
+    publishedId = multipartValue(route.request().postDataBuffer(), 'id');
+    publishedToken = multipartValue(route.request().postDataBuffer(), 'deleteToken');
+    await route.fulfill({ status: 201, contentType: 'application/json',
+      body: JSON.stringify({ id: publishedId, deleteToken: publishedToken, url: root + '/s/' + publishedId }) });
+  });
+  await page.route('**/api/shares/*', async (route) => {
+    if (route.request().method() === 'DELETE') {
+      expect(route.request().headers()['x-share-delete-token']).toBe(publishedToken);
+      deleted = true;
+      await route.fulfill({ status: 200, contentType: 'application/json', body: '{"revoked":true}' });
+    } else {
+      await route.fulfill({ status: 404, contentType: 'application/json', body: '{"code":"NOT_FOUND"}' });
+    }
+  });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: 'Export Image' }).click();
+  await page.getByRole('dialog', { name: 'Export Image' })
+    .getByRole('button', { name: 'Publish shareable link' }).click();
+  await page.getByRole('dialog', { name: 'Publish this artwork' })
+    .getByRole('button', { name: 'Publish artwork', exact: true }).click();
+  const success = page.getByRole('dialog', { name: 'Your artwork is published' });
+  await expect(success).toBeVisible({ timeout: 40_000 });
+  await success.getByRole('button', { name: 'Close' }).last().click();
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: 'Export Image' }).click();
+  await page.getByRole('dialog', { name: 'Export Image' })
+    .getByRole('button', { name: 'My shares' }).click();
+  const library = page.getByRole('dialog', { name: 'My shares' });
+  await expect(library).toBeVisible();
+  await expect(library.getByRole('link', { name: root + '/s/' + publishedId })).toBeVisible();
+  await expect(library.getByText('Published', { exact: true })).toBeVisible();
+  expect((await savedShare(page, publishedId))?.deleteToken).toBe(publishedToken);
+  // Simulate an artwork removed elsewhere: a 404 must not leave stale
+  // "Published" status or erase the only local revocation capability.
+  await page.route('**/api/shares/*/verify', async (route) => {
+    await route.fulfill({ status: 404, contentType: 'application/json', body: '{"code":"NOT_FOUND"}' });
+  });
+  await library.getByRole('button', { name: 'Check status' }).click();
+  await expect(library.getByText('Unverified', { exact: true })).toBeVisible();
+  await expect(library.getByRole('alert')).toContainText('Publication could not be confirmed');
+  expect((await savedShare(page, publishedId))?.state).toBe('unverified');
+  expect((await savedShare(page, publishedId))?.deleteToken).toBe(publishedToken);
+  page.once('dialog', async (dialog) => { await dialog.accept(); });
+  await library.getByRole('button', { name: 'Remove this share' }).click();
+  await expect(library.getByText('No saved shares yet.')).toBeVisible();
+  expect(deleted).toBe(true);
+  const revokedRecord = await savedShare(page, publishedId);
+  expect(revokedRecord?.state).toBe('revoked');
+  expect(revokedRecord?.deleteToken).toBe('');
+});
+
+test('My Shares migrates existing legacy owner keys without publishing a second artwork', async ({ page }) => {
+  const legacyId = 'LegacyShare1';
+  const legacyToken = 'b'.repeat(64);
+  await page.addInitScript(({ id, token }) => {
+    localStorage.setItem('inkpoem.share.owner.' + id, token);
+  }, { id: legacyId, token: legacyToken });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: 'Export Image' }).click();
+  await page.getByRole('dialog', { name: 'Export Image' })
+    .getByRole('button', { name: 'My shares' }).click();
+  const library = page.getByRole('dialog', { name: 'My shares' });
+  await expect(library.getByRole('link', { name: root + '/s/' + legacyId })).toBeVisible();
+  await expect(library.getByText('Unverified', { exact: true })).toBeVisible();
+  await library.getByRole('button', { name: 'Publish a new artwork' }).click();
+  await expect(page.getByRole('dialog', { name: 'Publish this artwork' })).toBeVisible();
+  expect((await savedShare(page, legacyId))?.deleteToken).toBe(legacyToken);
+  expect(await page.evaluate((id) => localStorage.getItem('inkpoem.share.owner.' + id), legacyId)).toBeNull();
+});
+
+test('a pending publication remains manageable after closing the recovery dialog', async ({ page }) => {
+  test.setTimeout(90_000);
+  let pendingId = '';
+  await page.route('**/api/shares', async (route) => {
+    pendingId = multipartValue(route.request().postDataBuffer(), 'id');
+    await route.fulfill({ status: 503, contentType: 'application/json', body: '{"code":"SHARE_SCHEMA_UNAVAILABLE"}' });
+  });
+  await page.route('**/api/shares/*/verify', async (route) => {
+    await route.fulfill({ status: 202, contentType: 'application/json', body: '{"status":"pending"}' });
+  });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: 'Export Image' }).click();
+  await page.getByRole('dialog', { name: 'Export Image' })
+    .getByRole('button', { name: 'Publish shareable link' }).click();
+  await page.getByRole('dialog', { name: 'Publish this artwork' })
+    .getByRole('button', { name: 'Publish artwork', exact: true }).click();
+  const uncertain = page.getByRole('dialog', { name: 'Publication status uncertain' });
+  await expect(uncertain).toBeVisible({ timeout: 40_000 });
+  await uncertain.getByRole('button', { name: 'Close' }).last().click();
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: 'Export Image' }).click();
+  await page.getByRole('dialog', { name: 'Export Image' })
+    .getByRole('button', { name: 'My shares' }).click();
+  const library = page.getByRole('dialog', { name: 'My shares' });
+  await expect(library.getByRole('link', { name: root + '/s/' + pendingId })).toBeVisible();
+  await expect(library.getByText('Pending', { exact: true })).toBeVisible();
+  expect((await savedShare(page, pendingId))?.state).toBe('pending');
 });
 
 test('never uploads when the browser cannot save its deletion capability', async ({ page }) => {
   test.setTimeout(90_000);
   await page.addInitScript(() => {
-    const setItem = Storage.prototype.setItem;
-    Storage.prototype.setItem = function (key: string, value: string) {
-      if (key.startsWith('inkpoem.share.owner.')) throw new DOMException('Storage quota reached', 'QuotaExceededError');
-      return setItem.call(this, key, value);
-    };
+    Object.defineProperty(window, 'indexedDB', {
+      configurable: true,
+      get() { throw new DOMException('Storage denied', 'SecurityError'); },
+    });
   });
   let publishRequests = 0;
   await page.route('**/api/shares', async (route) => {
@@ -96,6 +278,86 @@ test('never uploads when the browser cannot save its deletion capability', async
   await dialog.getByRole('button', { name: 'Publish artwork', exact: true }).click();
   await expect(dialog.getByRole('alert')).toContainText('Browser storage is unavailable', { timeout: 40_000 });
   expect(publishRequests).toBe(0);
+});
+
+test('a lost upload response can be confirmed read-only without a second upload', async ({ page }) => {
+  test.setTimeout(90_000);
+  let id = '';
+  let uploads = 0;
+  await page.route('**/api/shares', async (route) => {
+    uploads++;
+    id = multipartValue(route.request().postDataBuffer(), 'id');
+    await route.abort('failed');
+  });
+  await page.route('**/api/shares/*/verify', async (route) => {
+    expect(route.request().method()).toBe('POST');
+    expect(route.request().headers()['x-share-delete-token']).toMatch(/^[a-f0-9]{64}$/);
+    expect(route.request().headers()['x-share-fingerprint']).toMatch(/^[a-f0-9]{64}$/);
+    await route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({
+        status: 'published',
+        imageUrl: '/s/' + id + '/image.png',
+        cardUrl: '/s/' + id + '/card.jpg',
+      }),
+    });
+  });
+  await page.route('**/s/*/*', async (route) => {
+    expect(route.request().method()).toBe('HEAD');
+    await route.fulfill({ status: 200, body: '' });
+  });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: 'Export Image' }).click();
+  await page.getByRole('dialog', { name: 'Export Image' })
+    .getByRole('button', { name: 'Publish shareable link' }).click();
+  await page.getByRole('dialog', { name: 'Publish this artwork' })
+    .getByRole('button', { name: 'Publish artwork', exact: true }).click();
+
+  const published = page.getByRole('dialog', { name: 'Your artwork is published' });
+  await expect(published).toBeVisible({ timeout: 40_000 });
+  expect(uploads).toBe(1);
+  expect(id).toMatch(/^[A-Za-z0-9_-]{12}$/);
+  expect((await savedShare(page, id))?.state).toBe('published');
+});
+
+test('HTTP publish and revoke failures keep the private key and show the actual status', async ({ page }) => {
+  test.setTimeout(90_000);
+  let id = '';
+  await page.route('**/api/shares', async (route) => {
+    id = multipartValue(route.request().postDataBuffer(), 'id');
+    await route.fulfill({
+      status: 503, contentType: 'application/json',
+      body: '{"code":"SHARE_SCHEMA_UNAVAILABLE"}',
+    });
+  });
+  await page.route('**/api/shares/*/verify', async (route) => {
+    expect(route.request().method()).toBe('POST');
+    await route.fulfill({ status: 503, contentType: 'application/json',
+      body: '{"code":"SHARE_SCHEMA_UNAVAILABLE"}' });
+  });
+  await page.route('**/api/shares/*', async (route) => {
+    const isDelete = route.request().method() === 'DELETE';
+    await route.fulfill({
+      status: isDelete ? 503 : 404, contentType: 'application/json',
+      body: isDelete ? '{"code":"SHARE_SCHEMA_UNAVAILABLE"}' : '{"code":"NOT_FOUND"}',
+    });
+  });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: 'Export Image' }).click();
+  await page.getByRole('dialog', { name: 'Export Image' })
+    .getByRole('button', { name: 'Publish shareable link' }).click();
+  await page.getByRole('dialog', { name: 'Publish this artwork' })
+    .getByRole('button', { name: 'Publish artwork', exact: true }).click();
+
+  const pending = page.getByRole('dialog', { name: 'Publication status uncertain' });
+  await expect(pending).toBeVisible({ timeout: 40_000 });
+  await expect(pending.getByRole('status')).toContainText('HTTP 503 · SHARE_SCHEMA_UNAVAILABLE');
+  expect((await savedShare(page, id))?.state).toBe('pending');
+  await pending.getByRole('button', { name: 'Remove public share now' }).click();
+  await expect(pending.getByRole('alert').last()).toContainText('HTTP 503');
+  expect((await savedShare(page, id))?.state).toBe('pending');
 });
 
 test('recovers a dropped response by retrying the same publication credentials', async ({ page }) => {
@@ -127,15 +389,15 @@ test('recovers a dropped response by retrying the same publication credentials',
   await expect(uncertain).toBeVisible({ timeout: 40_000 });
   expect(attempts).toHaveLength(1);
   const first = attempts[0];
-  expect(await page.evaluate((id) => localStorage.getItem('inkpoem.share.owner.' + id), first.id)).toBe(first.token);
-  expect(await page.evaluate(() => localStorage.getItem('inkpoem.share.pending.v1'))).toContain(first.id);
-  await expect(uncertain.getByRole('button', { name: 'Close' }).last()).toBeDisabled();
+  expect((await savedShare(page, first.id))?.deleteToken).toBe(first.token);
+  expect((await savedShare(page, first.id))?.state).toBe('pending');
+  await expect(uncertain.getByRole('button', { name: 'Close' }).last()).toBeEnabled();
   await uncertain.getByRole('button', { name: 'Retry the same publication' }).click();
   const published = page.getByRole('dialog', { name: 'Your artwork is published' });
   await expect(published).toBeVisible({ timeout: 40_000 });
   expect(attempts).toEqual([first, first]);
-  expect(await page.evaluate(() => localStorage.getItem('inkpoem.share.pending.v1'))).toBeNull();
-  expect(await page.evaluate((id) => localStorage.getItem('inkpoem.share.owner.' + id), first.id)).toBe(first.token);
+  expect((await savedShare(page, first.id))?.state).toBe('published');
+  expect((await savedShare(page, first.id))?.deleteToken).toBe(first.token);
 });
 
 test('a rate-limited replay preserves the first upload removal key', async ({ page }) => {
@@ -170,8 +432,8 @@ test('a rate-limited replay preserves the first upload removal key', async ({ pa
   await uncertain.getByRole('button', { name: 'Retry the same publication' }).click();
   await expect.poll(() => count).toBe(2);
   await expect(uncertain).toBeVisible();
-  expect(await page.evaluate((id) => localStorage.getItem('inkpoem.share.owner.' + id), firstId)).toBe(firstToken);
-  expect(await page.evaluate(() => localStorage.getItem('inkpoem.share.pending.v1'))).toContain(firstId);
+  expect((await savedShare(page, firstId))?.deleteToken).toBe(firstToken);
+  expect((await savedShare(page, firstId))?.state).toBe('pending');
 });
 
 test('a stale uncertain publication can be cancelled before creating a new share', async ({ page }) => {
@@ -215,7 +477,7 @@ test('a stale uncertain publication can be cancelled before creating a new share
   const removed = page.getByRole('dialog', { name: 'Public artwork removed' });
   await expect(removed).toBeVisible();
   expect(cancellations).toBe(1);
-  expect(await page.evaluate(() => localStorage.getItem('inkpoem.share.pending.v1'))).toBeNull();
+  expect((await savedShare(page, oldId))?.state).toBe('revoked');
   await removed.getByRole('button', { name: 'Close' }).last().click();
   await page.getByRole('button', { name: 'Export Image' }).click();
   await page.getByRole('dialog', { name: 'Export Image' })
@@ -322,7 +584,7 @@ test('public read-only viewer needs no account and creator can revoke from the o
   await page.getByRole('button', { name: 'Remove this share' }).click();
   await expect(page.getByRole('heading', { name: 'Artwork unavailable' })).toBeVisible();
   expect(await page.evaluate((id) => localStorage.getItem('inkpoem.share.owner.' + id), shareId)).toBeNull();
-  expect(await page.evaluate(() => localStorage.getItem('inkpoem.share.pending.v1'))).toBeNull();
+  expect((await savedShare(page, shareId))?.state).toBe('revoked');
 });
 
 

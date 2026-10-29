@@ -1,6 +1,6 @@
 import { SELF, env } from 'cloudflare:test';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { pruneOrphanedShareAttempts, pruneRevokedShareAssets } from '../../worker/shares';
+import { getShareReadiness, pruneOrphanedShareAttempts, pruneRevokedShareAssets } from '../../worker/shares';
 import type { WorkerEnv } from '../../worker/env';
 
 const ORIGIN = 'https://inkpoem.test';
@@ -56,11 +56,118 @@ async function publish(title?: string, author?: string, creds?: TestCredentials)
   });
 }
 
+describe('sharing production-readiness probe', () => {
+  it('confirms both migrated D1 tables and R2 read access before announcing readiness', async () => {
+    const response = await SELF.fetch(ORIGIN + '/api/health/sharing');
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ ready: true });
+  });
+
+  it('does not treat a bound D1 database with missing migration as healthy', async () => {
+    const broken = {
+      ...env,
+      DB: { prepare: () => { throw new Error('no such table: shared_artworks'); } },
+    } as unknown as WorkerEnv;
+    const response = await getShareReadiness(new Request(ORIGIN + '/api/health/sharing'), broken);
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ ready: false, code: 'SHARE_SCHEMA_UNAVAILABLE' });
+  });
+
+  it('refuses readiness if a required revocation cleanup column is absent', async () => {
+    // Simulate an otherwise reachable/migrated database whose shared_artworks
+    // table lacks assets_deleted_at. The readiness projection must reference
+    // this column or the test would incorrectly return ready: true.
+    const incompleteDb = {
+      prepare(query: string) {
+        if (query.includes('assets_deleted_at')) {
+          throw new Error('D1_ERROR: no such column: assets_deleted_at');
+        }
+        return env.DB.prepare(query);
+      },
+    } as unknown as D1Database;
+    const response = await getShareReadiness(
+      new Request(ORIGIN + '/api/health/sharing'),
+      { ...env, DB: incompleteDb } as WorkerEnv,
+    );
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ ready: false, code: 'SHARE_SCHEMA_UNAVAILABLE' });
+  });
+
+  it('refuses readiness if the upload attempt timestamp required by cleanup is absent', async () => {
+    const incompleteDb = {
+      prepare(query: string) {
+        if (query.includes('created_at') && query.includes('FROM shared_artwork_upload_attempts')) {
+          throw new Error('D1_ERROR: no such column: created_at');
+        }
+        return env.DB.prepare(query);
+      },
+    } as unknown as D1Database;
+    const response = await getShareReadiness(
+      new Request(ORIGIN + '/api/health/sharing'),
+      { ...env, DB: incompleteDb } as WorkerEnv,
+    );
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ ready: false, code: 'SHARE_SCHEMA_UNAVAILABLE' });
+  });
+
+  it('returns a safe diagnostic when R2 is not bound or cannot be read', async () => {
+    const request = new Request(ORIGIN + '/api/health/sharing');
+    const missing = await getShareReadiness(request, { ...env, ARTWORKS: undefined } as unknown as WorkerEnv);
+    expect(missing.status).toBe(503);
+    expect(await missing.json()).toEqual({ ready: false, code: 'SHARE_STORAGE_UNAVAILABLE' });
+    const denied = await getShareReadiness(request, {
+      ...env,
+      ARTWORKS: { head: async () => { throw new Error('backend unavailable'); } },
+    } as unknown as WorkerEnv);
+    expect(denied.status).toBe(503);
+    expect(await denied.json()).toEqual({ ready: false, code: 'SHARE_STORAGE_UNAVAILABLE' });
+  });
+
+  it('allows only read-only GET checks', async () => {
+    const response = await SELF.fetch(ORIGIN + '/api/health/sharing', { method: 'POST' });
+    expect(response.status).toBe(405);
+  });
+});
+
 describe('anonymous artwork sharing', () => {
   // Rate limits are IP-scoped in production. Unit cases represent independent
   // visitors and must not exhaust a single anonymous test IP across cases.
   beforeEach(async () => {
     await env.DB.prepare("DELETE FROM rate_limits WHERE key LIKE 'publish:%'").run();
+  });
+
+  it('only confirms ambiguous publications for the original capability and exact content fingerprint', async () => {
+    const creds = makeCredentials();
+    const response = await publish('Owner proof', 'InkPoem', creds);
+    expect(response.status).toBe(201);
+    const row = await env.DB.prepare(
+      'SELECT content_fingerprint FROM shared_artworks WHERE id = ?',
+    ).bind(creds.id).first<{ content_fingerprint: string }>();
+    expect(row?.content_fingerprint).toMatch(/^[a-f0-9]{64}$/);
+
+    const url = ORIGIN + '/api/shares/' + creds.id + '/verify';
+    const headers = {
+      Origin: ORIGIN,
+      'X-Share-Delete-Token': creds.deleteToken,
+      'X-Share-Fingerprint': row!.content_fingerprint,
+    };
+    const verified = await SELF.fetch(url, { method: 'POST', headers });
+    expect(verified.status).toBe(200);
+    expect(await verified.json()).toEqual({
+      status: 'published',
+      imageUrl: '/s/' + creds.id + '/image.png',
+      cardUrl: '/s/' + creds.id + '/card.jpg',
+    });
+
+    // A public, already-existing ID is not proof that a different creator
+    // owns the snapshot. A wrong key OR different canvas must not settle it.
+    const wrongOwner = await SELF.fetch(url, { method: 'POST',
+      headers: { ...headers, 'X-Share-Delete-Token': 'f'.repeat(64) } });
+    expect(wrongOwner.status).toBe(404);
+    const wrongContent = await SELF.fetch(url, { method: 'POST',
+      headers: { ...headers, 'X-Share-Fingerprint': 'f'.repeat(64) } });
+    expect(wrongContent.status).toBe(404);
+    expect((await SELF.fetch(url)).status).toBe(405);
   });
 
   it('publishes a public snapshot, renders crawler metadata and revokes with its token', async () => {
