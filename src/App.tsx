@@ -33,7 +33,7 @@ import {
   PendingShareConflict, fingerprintArtwork, removePublishCredentialsSafely,
 } from './sharing/publishProtocol';
 import {
-  prepareLocalShare, markLocalSharePublished, markLocalShareRevokedSafely,
+  prepareLocalShare, markLocalSharePublished, markLocalShareExpired, markLocalShareRevokedSafely,
 } from './sharing/shareLibrary';
 
 const ONBOARDING_DISMISSED_STORAGE_KEY = 'poem-to-image.onboarding-dismissed';
@@ -500,6 +500,10 @@ export default function App() {
       return uncertainUnlessPublished('HTTP ' + response.status + ' · INVALID_RESPONSE');
     }
     if (!response.ok) {
+      if (response.status === 410 && body.code === 'SHARE_EXPIRED') {
+        await markLocalShareExpired(credentials.id, credentials.deleteToken);
+        throw new Error('SHARE_EXPIRED');
+      }
       if (body.code === 'SHARE_CANCELLED') {
         await markLocalShareRevokedSafely(credentials.id, credentials.deleteToken);
         removePublishCredentialsSafely(credentials.id, credentials.deleteToken);
