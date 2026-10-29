@@ -416,10 +416,45 @@ export default function App() {
       throw error;
     }
 
-    const unknown = (): PublishedShare => ({
+    const unknown = (failureDetail: string): PublishedShare => ({
       id: credentials.id, url: link(credentials.id),
-      deleteToken: credentials.deleteToken, statusUnknown: true,
+      deleteToken: credentials.deleteToken, statusUnknown: true, failureDetail,
     });
+
+    const confirmed = (): PublishedShare => {
+      try {
+        completePublishCredentials(localStorage, credentials);
+      } catch {
+        // Revocation capability is still available for explicit backup.
+        return { id: credentials.id, url: link(credentials.id),
+          deleteToken: credentials.deleteToken, recoveryRequired: true };
+      }
+      return { id: credentials.id, url: link(credentials.id), deleteToken: credentials.deleteToken };
+    };
+
+    // A dropped POST may have completed. A read-only probe can settle the
+    // transaction without uploading the same snapshot for a second time.
+    // Check both R2 objects as well as D1 metadata before claiming success.
+    const confirmPublished = async (): Promise<boolean> => {
+      try {
+        const result = await fetch('/api/shares/' + encodeURIComponent(credentials.id), { cache: 'no-store' });
+        if (!result.ok) return false;
+        const share = await result.json() as { id?: string; imageUrl?: string; cardUrl?: string };
+        const base = '/s/' + credentials.id + '/';
+        if (share.id !== credentials.id || ![base + 'image.png', base + 'image.jpg'].includes(share.imageUrl ?? '')
+          || share.cardUrl !== base + 'card.jpg') return false;
+        const [image, card] = await Promise.all([
+          fetch(share.imageUrl, { method: 'HEAD', cache: 'no-store' }),
+          fetch(share.cardUrl, { method: 'HEAD', cache: 'no-store' }),
+        ]);
+        return image.ok && card.ok;
+      } catch {
+        return false;
+      }
+    };
+    const uncertainUnlessPublished = async (failureDetail: string): Promise<PublishedShare> =>
+      await confirmPublished() ? confirmed() : unknown(failureDetail);
+
     const form = new FormData();
     form.append('id', credentials.id);
     form.append('deleteToken', credentials.deleteToken);
@@ -432,38 +467,32 @@ export default function App() {
     try {
       response = await fetch('/api/shares', { method: 'POST', body: form });
     } catch {
-      // The Worker may already have committed. Keep the pre-stored ID and
-      // deletion token and do NOT create another share on retry.
-      return unknown();
+      // Keep the pre-stored ID and token: a transport failure may follow a
+      // successful server commit, which the read-only probe can detect.
+      return uncertainUnlessPublished('NETWORK_ERROR');
     }
 
     let body: Partial<PublishedShare> & { code?: string };
     try {
       body = await response.json() as Partial<PublishedShare> & { code?: string };
     } catch {
-      return unknown();
+      return uncertainUnlessPublished('HTTP ' + response.status + ' · INVALID_RESPONSE');
     }
     if (!response.ok) {
-      // A previous request with these credentials may still be committing to
-      // D1/R2. A 429, 400 or 409 for a later retry is NOT proof that the
-      // earlier attempt failed. Keep the owner key and pending reservation.
-      // The creator may safely retry or explicitly cancel the identifier.
       if (body.code === 'SHARE_CANCELLED') {
         removePublishCredentialsSafely(credentials.id, credentials.deleteToken);
         throw new Error('SHARE_CANCELLED');
       }
-      return unknown();
+      // 4xx and 5xx responses must not be mislabeled as an interrupted
+      // response. Keep the pending reservation until server-confirmed revoke.
+      const code = typeof body.code === 'string' && /^[A-Z][A-Z0-9_]{1,63}$/.test(body.code)
+        ? ' · ' + body.code : '';
+      return uncertainUnlessPublished('HTTP ' + response.status + code);
     }
-    if (body.id !== credentials.id || body.deleteToken !== credentials.deleteToken) return unknown();
-    try {
-      completePublishCredentials(localStorage, credentials);
-    } catch {
-      // A blocked storage getter must not hide a confirmed publication.
-      // Keep the removal capability in the recovery dialog for manual backup.
-      return { id: credentials.id, url: link(credentials.id),
-        deleteToken: credentials.deleteToken, recoveryRequired: true };
+    if (body.id !== credentials.id || body.deleteToken !== credentials.deleteToken) {
+      return uncertainUnlessPublished('HTTP ' + response.status + ' · INVALID_RESPONSE');
     }
-    return { id: credentials.id, url: link(credentials.id), deleteToken: credentials.deleteToken };
+    return confirmed();
   };
 
   const handleDownload = async () => {
