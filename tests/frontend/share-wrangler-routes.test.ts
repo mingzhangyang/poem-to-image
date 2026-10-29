@@ -14,5 +14,6 @@ for (const path of ['wrangler.jsonc']) {
     const patterns = config.assets?.run_worker_first;
     assert.ok(Array.isArray(patterns), 'Expected explicit Worker-first route patterns');
     assert.ok(patterns.includes('/s/*'), 'Share pages and images must bypass SPA fallback');
+    assert.ok(patterns.includes('/api/*'), 'Every API request must invoke the Worker before SPA assets');
   });
 }
