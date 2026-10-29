@@ -42,7 +42,6 @@ interface UseEditorViewModelsParams {
   publishLinkLabel: string;
   onManageShares: () => void;
   manageSharesLabel: string;
-  onShareToSocial: CanvasPreviewProps['onShareToSocial'];
   isExporting: boolean;
   isSharing: boolean;
   canShare: boolean;
@@ -106,7 +105,6 @@ export function useEditorViewModels({
   publishLinkLabel,
   onManageShares,
   manageSharesLabel,
-  onShareToSocial,
   isExporting,
   isSharing,
   canShare,
@@ -171,7 +169,6 @@ export function useEditorViewModels({
     publishLinkLabel,
     onManageShares,
     manageSharesLabel,
-    onShareToSocial,
     isExporting,
     isSharing,
     canShare,
@@ -202,7 +199,6 @@ export function useEditorViewModels({
     publishLinkLabel,
     onManageShares,
     manageSharesLabel,
-    onShareToSocial,
     isExporting,
     isSharing,
     canShare,
@@ -263,7 +259,6 @@ export function useEditorViewModels({
     publishLinkLabel,
     onManageShares,
     manageSharesLabel,
-    onShareToSocial,
     isExporting,
     isSharing,
     canShare,
@@ -328,7 +323,6 @@ export function useEditorViewModels({
     publishLinkLabel,
     onManageShares,
     manageSharesLabel,
-    onShareToSocial,
     isExporting,
     isSharing,
     canShare,
