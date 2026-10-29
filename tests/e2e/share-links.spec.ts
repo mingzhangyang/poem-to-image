@@ -107,14 +107,16 @@ test('a lost upload response can be confirmed read-only without a second upload'
     id = multipartValue(route.request().postDataBuffer(), 'id');
     await route.abort('failed');
   });
-  await page.route('**/api/shares/*', async (route) => {
-    const lookupId = route.request().url().split('/').pop();
+  await page.route('**/api/shares/*/verify', async (route) => {
+    expect(route.request().method()).toBe('POST');
+    expect(route.request().headers()['x-share-delete-token']).toMatch(/^[a-f0-9]{64}$/);
+    expect(route.request().headers()['x-share-fingerprint']).toMatch(/^[a-f0-9]{64}$/);
     await route.fulfill({
       status: 200, contentType: 'application/json',
       body: JSON.stringify({
-        id: lookupId,
-        imageUrl: '/s/' + lookupId + '/image.png',
-        cardUrl: '/s/' + lookupId + '/card.jpg',
+        status: 'published',
+        imageUrl: '/s/' + id + '/image.png',
+        cardUrl: '/s/' + id + '/card.jpg',
       }),
     });
   });
@@ -146,6 +148,11 @@ test('HTTP publish and revoke failures keep the private key and show the actual 
       status: 503, contentType: 'application/json',
       body: '{"code":"SHARE_SCHEMA_UNAVAILABLE"}',
     });
+  });
+  await page.route('**/api/shares/*/verify', async (route) => {
+    expect(route.request().method()).toBe('POST');
+    await route.fulfill({ status: 503, contentType: 'application/json',
+      body: '{"code":"SHARE_SCHEMA_UNAVAILABLE"}' });
   });
   await page.route('**/api/shares/*', async (route) => {
     const isDelete = route.request().method() === 'DELETE';
