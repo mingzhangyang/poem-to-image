@@ -79,7 +79,7 @@ describe('sharing production-readiness probe', () => {
     // this column or the test would incorrectly return ready: true.
     const incompleteDb = {
       prepare(query: string) {
-        if (/\\bassets_deleted_at\\b/.test(query)) {
+        if (query.includes('assets_deleted_at')) {
           throw new Error('D1_ERROR: no such column: assets_deleted_at');
         }
         return env.DB.prepare(query);
@@ -96,7 +96,7 @@ describe('sharing production-readiness probe', () => {
   it('refuses readiness if the upload attempt timestamp required by cleanup is absent', async () => {
     const incompleteDb = {
       prepare(query: string) {
-        if (/\\bcreated_at\\b/.test(query) && /\\bFROM shared_artwork_upload_attempts\\b/.test(query)) {
+        if (query.includes('created_at') && query.includes('FROM shared_artwork_upload_attempts')) {
           throw new Error('D1_ERROR: no such column: created_at');
         }
         return env.DB.prepare(query);
