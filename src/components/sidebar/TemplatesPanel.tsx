@@ -7,6 +7,8 @@ import { ControlSection } from '../ControlSection';
 import { useDialogA11y } from '../../hooks/useDialogA11y';
 import { getTemplatePreviewStyle } from '../../templates/preview-style';
 import { TemplatePreview } from '../TemplatePreview';
+import { getTemplateDefinition, resolveTemplateForLanguage } from '../../templates';
+import type { Language } from '../../translations';
 
 const BUILT_IN_PREVIEW_LIMIT = 2;
 
@@ -19,6 +21,7 @@ interface TemplateGroup {
 
 interface TemplatesPanelProps {
   t: TranslateFn;
+  language: Language;
   expanded: ExpandedSections['templates'];
   onToggle: () => void;
   templates: TemplateSectionProps;
@@ -28,13 +31,15 @@ interface TemplatesPanelProps {
 interface BuiltInTemplateCardProps {
   key?: string | number;
   t: TranslateFn;
+  language: Language;
   template: BuiltInTemplate;
   isActive: boolean;
   onApply: (id: BuiltInTemplate['id']) => void;
   variant?: 'compact' | 'library';
 }
 
-function BuiltInTemplateCard({ t, template, isActive, onApply, variant = 'compact' }: BuiltInTemplateCardProps) {
+function BuiltInTemplateCard({ t, language, template, isActive, onApply, variant = 'compact' }: BuiltInTemplateCardProps) {
+  const previewTemplate = resolveTemplateForLanguage(template.id, language) ?? template;
   if (variant === 'library') {
     return (
       <button
@@ -48,7 +53,7 @@ function BuiltInTemplateCard({ t, template, isActive, onApply, variant = 'compac
             : 'border-[rgba(34,48,52,0.08)] hover:border-(--app-accent-200)'
         }`}
       >
-        <TemplatePreview template={template} className="absolute inset-0" />
+        <TemplatePreview template={previewTemplate} language={language} showPoemSample className="absolute inset-0" />
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(9,14,23,0.04)_0%,rgba(9,14,23,0.2)_100%)]" />
 
         <div className="absolute left-3 top-3 flex flex-wrap items-center gap-1.5">
@@ -96,7 +101,8 @@ function BuiltInTemplateCard({ t, template, isActive, onApply, variant = 'compac
       }`}
     >
       <TemplatePreview
-        template={template}
+        template={previewTemplate}
+        language={language}
         className="h-auto w-20 shrink-0 rounded-xl border border-[rgba(34,48,52,0.06)]"
       />
       <div className="flex min-w-0 flex-1 flex-col justify-between gap-2 py-0.5">
@@ -123,7 +129,7 @@ function BuiltInTemplateCard({ t, template, isActive, onApply, variant = 'compac
   );
 }
 
-export function TemplatesPanel({ t, expanded, onToggle, templates, currentBackgroundType }: TemplatesPanelProps) {
+export function TemplatesPanel({ t, language, expanded, onToggle, templates, currentBackgroundType }: TemplatesPanelProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [templateName, setTemplateName] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -134,8 +140,14 @@ export function TemplatesPanel({ t, expanded, onToggle, templates, currentBackgr
   const libraryDialogRef = useRef<HTMLDivElement>(null);
 
   const activeBuiltIn = templates.templates.find((template) => template.id === templates.activeTemplateId);
+  // A previously selected template may no longer be in the featured gallery.
+  // Keep its name and compact preview available without advertising it to new users.
+  const activeLegacyTemplate = !activeBuiltIn && templates.activeTemplateId
+    ? getTemplateDefinition(templates.activeTemplateId)
+    : null;
   const activeCustom = templates.customTemplates.find((item) => item.id === templates.activeCustomTemplateId);
-  const activeName = activeCustom?.name ?? (activeBuiltIn ? t(activeBuiltIn.nameKey) : null);
+  const activeSavedTemplate = activeBuiltIn ?? activeLegacyTemplate;
+  const activeName = activeCustom?.name ?? (activeSavedTemplate ? t(activeSavedTemplate.nameKey) : null);
 
   const groupedTemplates = useMemo<TemplateGroup[]>(() => {
     return templates.templates.reduce<TemplateGroup[]>((groups, template) => {
@@ -152,15 +164,16 @@ export function TemplatesPanel({ t, expanded, onToggle, templates, currentBackgr
   }, [templates.templates]);
 
   const previewBuiltIns = useMemo(() => {
-    if (!activeBuiltIn) {
+    const current = activeBuiltIn ?? activeLegacyTemplate;
+    if (!current) {
       return templates.templates.slice(0, BUILT_IN_PREVIEW_LIMIT);
     }
 
     return [
-      activeBuiltIn,
-      ...templates.templates.filter((template) => template.id !== activeBuiltIn.id),
+      current,
+      ...templates.templates.filter((template) => template.id !== current.id),
     ].slice(0, BUILT_IN_PREVIEW_LIMIT);
-  }, [activeBuiltIn, templates.templates]);
+  }, [activeBuiltIn, activeLegacyTemplate, templates.templates]);
 
   const isImageOrAiBg = currentBackgroundType === 'image' || currentBackgroundType === 'ai';
 
@@ -374,6 +387,7 @@ export function TemplatesPanel({ t, expanded, onToggle, templates, currentBackgr
             <div className="grid gap-3">
               {previewBuiltIns.map((template) => (
                 <BuiltInTemplateCard
+                  language={language}
                   key={template.id}
                   t={t}
                   template={template}
@@ -486,6 +500,7 @@ export function TemplatesPanel({ t, expanded, onToggle, templates, currentBackgr
                       <div className="flex flex-wrap gap-3">
                         {group.items.map((template) => (
                           <BuiltInTemplateCard
+                            language={language}
                             key={template.id}
                             t={t}
                             template={template}

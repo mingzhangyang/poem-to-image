@@ -9,20 +9,19 @@ import { templateTypographyOverrides } from './typography-overrides';
 
 export { ALL_EDITOR_TEMPLATES } from './definitions';
 
+// Gallery entries only. Legacy templates remain in ALL_EDITOR_TEMPLATES so
+// drafts and saved active-template markers can still be restored.
 const CURATED_EDITOR_TEMPLATE_IDS: EditorTemplateId[] = [
   'graceful-whitespace',
   'parchment-scroll',
   'wax-sealed-letter',
   'illuminated-manuscript',
-  'bamboo-scroll',
   'modern-minimal',
   'japanese-magazine',
-  'colorblock-cyan-magenta',
   'cyberpunk',
   'mountain-mist-photo',
   'ocean-dawn-photo',
   'city-night-photo',
-  'ink-pine-mist-photo',
 ];
 
 export const editorTemplates: EditorTemplateDefinition[] = CURATED_EDITOR_TEMPLATE_IDS
@@ -30,7 +29,7 @@ export const editorTemplates: EditorTemplateDefinition[] = CURATED_EDITOR_TEMPLA
   .filter((template): template is EditorTemplateDefinition => template !== undefined);
 
 export function getTemplateDefinition(templateId: EditorTemplateId) {
-  return editorTemplates.find((template) => template.id === templateId) ?? null;
+  return ALL_EDITOR_TEMPLATES.find((template) => template.id === templateId) ?? null;
 }
 
 export function resolveTemplateForLanguage(templateId: EditorTemplateId, language: Language) {

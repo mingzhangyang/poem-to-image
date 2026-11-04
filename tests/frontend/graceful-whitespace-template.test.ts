@@ -15,7 +15,7 @@ test('graceful whitespace is a curated classical template with editable paper an
   const template = getTemplateDefinition(ID);
   assert.ok(template);
   assert.equal(template.seriesKey, 'templateSeriesClassic');
-  assert.equal(editorTemplates.length, 13);
+  assert.ok(editorTemplates.some((item) => item.id === ID), 'template should be featured');
   assert.equal(ALL_EDITOR_TEMPLATES.filter((item) => item.id === ID).length, 1);
   assert.deepEqual(new Set(editorTemplates.map((item) => item.id)).size, editorTemplates.length);
   assert.equal(template.background.backgroundType, 'paper');
