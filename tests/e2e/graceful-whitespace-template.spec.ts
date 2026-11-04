@@ -64,7 +64,7 @@ test('saving as a custom template preserves the non-CJK seal in preview and afte
   const mobile = (page.viewportSize()?.width ?? 0) < 1024;
 
   await page.getByRole('button', { name: mobile ? 'Templates' : /^Templates/ }).click();
-  await page.getByRole('button', { name: /^More \\(/ }).click();
+  await page.getByRole('button', { name: /^More \(/ }).click();
   const library = page.getByRole('dialog', { name: 'Built-in Templates' });
   await library.getByRole('button', { name: /Graceful Whitespace/ }).click();
   await expect(library).toBeHidden();
@@ -88,7 +88,7 @@ test('saving as a custom template preserves the non-CJK seal in preview and afte
   await expect(seal).toBeVisible();
 
   // Switching to another preset must not leak the non-CJK permission.
-  await page.getByRole('button', { name: /^More \\(/ }).click();
+  await page.getByRole('button', { name: /^More \(/ }).click();
   await page.getByRole('dialog', { name: 'Built-in Templates' })
     .getByRole('button', { name: /Modern Minimal/ }).click();
   await expect(seal).toHaveCount(0);
