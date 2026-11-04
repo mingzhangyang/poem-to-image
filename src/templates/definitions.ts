@@ -294,6 +294,8 @@ export const ALL_EDITOR_TEMPLATES: EditorTemplateDefinition[] = [
       borderWidth: 2,
       showStamp: true,
       stamp: {
+        // This localized seal must also survive saving as a custom template.
+        allowNonCjk: true,
         text: '清韵',
         style: 'square',
         positionX: 26,

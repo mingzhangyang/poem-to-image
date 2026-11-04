@@ -65,13 +65,23 @@ test('gallery preview is a tiny local vector with no remote resources or scripts
   assert.doesNotMatch(svg, /<script|<image|<foreignObject|(?:xlink:)?href=/i);
 });
 
-test('localized Graceful Whitespace seals are available in every supported language without changing others', () => {
+test('localized seals are persisted with artwork, not a built-in template ID', () => {
   for (const language of LANGUAGES) {
-    assert.equal(isStampSupportedForEditor(language, ID), true, language);
+    const template = resolveTemplateForLanguage(ID, language);
+    assert.ok(template, language);
+    assert.equal(template.decorations.stamp.allowNonCjk, true, language);
+    assert.equal(isStampSupportedForEditor(language, template.decorations.stamp), true, language);
+
+    // This is the same JSON round trip used by drafts and custom templates.
+    const savedDecorations = JSON.parse(JSON.stringify(template.decorations)) as typeof template.decorations;
+    assert.equal(isStampSupportedForEditor(language, savedDecorations.stamp), true, language);
   }
+
   for (const language of ['en', 'es', 'fr', 'de'] as const) {
-    assert.equal(isStampSupportedForEditor(language, 'modern-minimal'), false, language);
-    assert.equal(isStampSupportedForEditor(language, null), false, language);
+    const other = resolveTemplateForLanguage('modern-minimal', language);
+    assert.ok(other);
+    assert.equal(isStampSupportedForEditor(language, other.decorations.stamp), false, language);
+    assert.equal(isStampSupportedForEditor(language, {}), false, language);
   }
 });
 

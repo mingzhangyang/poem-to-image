@@ -111,6 +111,9 @@ export interface SignatureConfig {
 }
 
 export interface StampConfig {
+  /** Explicit permission to render this seal outside CJK locales.
+   * Keep it with the stamp so drafts, custom templates and undo retain it. */
+  allowNonCjk?: boolean;
   text: string;
   style: StampStyle;
   colorScheme?: 'outline' | 'filled';

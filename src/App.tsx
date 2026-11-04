@@ -201,9 +201,9 @@ export default function App() {
       customTemplates,
     });
 
-  // The selected template may opt in to a localized seal outside CJK languages.
-  // Keep this shared boolean for the editor, export scene and font preload.
-  const stampSupported = isStampSupportedForEditor(language, activeTemplateId);
+  // Keep the seal opt-in with the actual artwork, including custom templates.
+  // This shared capability gates preview, export, controls and font preload.
+  const stampSupported = isStampSupportedForEditor(language, decorations.stamp);
 
   // Load Google Fonts on demand: the currently selected poem font, and the stamp
   // font when a stamp is shown. Other families are never fetched.
