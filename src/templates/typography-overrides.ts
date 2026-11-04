@@ -30,6 +30,12 @@ export const templateTypographyOverrides: Partial<Record<EditorTemplateId, Parti
   'pine-snow': illustratedTypography,
   'sunset-afterglow': illustratedTypography,
   'moonlit-landscape': illustratedTypography,
+  'daffodil-lake': illustratedTypography,
+  'autumn-forked-path': illustratedTypography,
+  'dover-beach': illustratedTypography,
+  'tudor-rose': illustratedTypography,
+  'feathered-hope': illustratedTypography,
+  'midnight-tyger': illustratedTypography,
   'western-pass': illustratedTypography,
   'ink-wash': {
     'zh-CN': {

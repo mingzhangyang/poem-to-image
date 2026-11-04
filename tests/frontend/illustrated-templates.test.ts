@@ -5,7 +5,7 @@ import test from 'node:test';
 import { editorTemplates, resolveTemplateForLanguage } from '../../src/templates';
 import { LANGUAGES } from '../../src/translations';
 
-const ids = ['song-floral', 'blue-green-landscape', 'art-nouveau', 'midnight-star-chart', 'botanical-specimen', 'indigo-washi', 'lone-fisherman', 'milky-way', 'tower-reaching-stars', 'chrysanthemum-south-mountain', 'great-river-east', 'willow-breeze', 'grassland-breeze', 'pine-snow', 'sunset-afterglow', 'moonlit-landscape', 'western-pass'] as const;
+const ids = ['song-floral', 'blue-green-landscape', 'art-nouveau', 'midnight-star-chart', 'botanical-specimen', 'indigo-washi', 'lone-fisherman', 'milky-way', 'tower-reaching-stars', 'chrysanthemum-south-mountain', 'great-river-east', 'willow-breeze', 'grassland-breeze', 'pine-snow', 'sunset-afterglow', 'moonlit-landscape', 'daffodil-lake', 'autumn-forked-path', 'dover-beach', 'tudor-rose', 'feathered-hope', 'midnight-tyger', 'western-pass'] as const;
 
 test('illustrated templates load local artwork with appropriate editable layouts in every language', async () => {
   for (const id of ids) {
@@ -44,4 +44,18 @@ test('snow, sunset, and moon keep their focal details when cropped', () => {
     assert.equal(template.seriesKey, 'templateSeriesPoeticScenes');
     assert.equal(template.background.backgroundPosition, position);
   }
+});
+
+test('English poetry backgrounds form a collection with readable editable typography', () => {
+  for (const id of ['daffodil-lake', 'autumn-forked-path', 'dover-beach', 'tudor-rose', 'feathered-hope', 'midnight-tyger'] as const) {
+    const template = resolveTemplateForLanguage(id, 'en');
+    assert.ok(template);
+    assert.equal(template.seriesKey, 'templateSeriesEnglishPoetry');
+    assert.equal(template.typography.writingMode, 'horizontal-tb');
+    assert.equal(template.decorations.showStamp, false);
+  }
+  const tyger = resolveTemplateForLanguage('midnight-tyger', 'en');
+  assert.ok(tyger);
+  assert.equal(tyger.typography.textColor, '#f8ead1');
+  assert.equal(tyger.background.backgroundPosition, 'center bottom');
 });

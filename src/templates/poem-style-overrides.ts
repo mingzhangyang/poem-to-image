@@ -29,6 +29,12 @@ export const templatePoemStyleOverrides: Partial<Record<EditorTemplateId, Partia
   'pine-snow': illustratedPoemStyles,
   'sunset-afterglow': illustratedPoemStyles,
   'moonlit-landscape': illustratedPoemStyles,
+  'daffodil-lake': illustratedPoemStyles,
+  'autumn-forked-path': illustratedPoemStyles,
+  'dover-beach': illustratedPoemStyles,
+  'tudor-rose': illustratedPoemStyles,
+  'feathered-hope': illustratedPoemStyles,
+  'midnight-tyger': illustratedPoemStyles,
   'western-pass': illustratedPoemStyles,
   'ink-wash': {
     'zh-CN': {

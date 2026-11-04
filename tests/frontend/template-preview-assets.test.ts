@@ -5,7 +5,7 @@ import test from 'node:test';
 import { ALL_EDITOR_TEMPLATES } from '../../src/templates/definitions';
 
 const MAX_PREVIEW_BYTES = 100_000;
-const MAX_TOTAL_PREVIEW_BYTES = 500_000;
+const MAX_TOTAL_PREVIEW_BYTES = 600_000;
 
 test('image-backed templates use bounded preview-specific assets', async () => {
   const imageTemplates = ALL_EDITOR_TEMPLATES.filter((template) => template.usesBackgroundImage);

@@ -65,4 +65,10 @@ Original artwork was generated using the built-in image generation tool for InkP
 | `pine-snow.webp` | Snow-laden pine boughs drooping gracefully above a bright, quiet winter landscape. |
 | `sunset-afterglow.webp` | Warm golden and rose sunset light over distant mountains and rolling meadow. |
 | `moonlit-landscape.webp` | A luminous moon above misty mountains and still water, painted in restrained ink wash. |
+| `daffodil-lake.webp` | Golden daffodils by a lake and distant fells, in English romantic watercolor. |
+| `autumn-forked-path.webp` | Two paths diverge beneath golden trees on warm textured paper. |
+| `dover-beach.webp` | Moonlight, white chalk cliffs and gentle surf in muted coastal watercolor. |
+| `tudor-rose.webp` | Tudor roses and antique gold vines frame a quiet vellum page. |
+| `feathered-hope.webp` | A songbird, feather and fine botanical details on ivory cotton paper. |
+| `midnight-tyger.webp` | A gold engraved tiger and branches surround a quiet midnight-blue center. |
 | `western-pass.webp` | An ancient frontier gate and departing traveler on a hazy western desert road. |

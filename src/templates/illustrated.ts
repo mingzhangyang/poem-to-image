@@ -2,6 +2,7 @@ import { DEFAULT_STAMP_FONT } from '../fontOptions';
 import type { EditorTemplateDefinition } from '../types';
 
 type IllustratedOptions = Pick<EditorTemplateDefinition, 'id' | 'nameKey' | 'descriptionKey' | 'previewImage' | 'accentFrom' | 'accentTo'> & {
+  seriesKey?: EditorTemplateDefinition['seriesKey'];
   paperColor: string;
   inkColor: string;
   poemY?: number;
@@ -11,10 +12,10 @@ type IllustratedOptions = Pick<EditorTemplateDefinition, 'id' | 'nameKey' | 'des
 
 // These templates share editable typography; the artwork itself contains no text.
 function illustrated(options: IllustratedOptions): EditorTemplateDefinition {
-  const { id, nameKey, descriptionKey, previewImage, accentFrom, accentTo, paperColor, inkColor, poemY = 50, backgroundPosition = 'center', scene = false } = options;
+  const { id, nameKey, descriptionKey, previewImage, accentFrom, accentTo, seriesKey, paperColor, inkColor, poemY = 50, backgroundPosition = 'center', scene = false } = options;
   return {
     id, nameKey, descriptionKey, previewImage, accentFrom, accentTo,
-    seriesKey: scene ? 'templateSeriesPoeticScenes' : 'templateSeriesIllustrated',
+    seriesKey: seriesKey ?? (scene ? 'templateSeriesPoeticScenes' : 'templateSeriesIllustrated'),
     usesBackgroundImage: true,
     background: {
       backgroundType: 'image', backgroundColor: paperColor,
@@ -74,6 +75,18 @@ export const illustratedTemplates: EditorTemplateDefinition[] = [
     previewImage: '/template-previews/sunset-afterglow.e652e478.webp', accentFrom: '#f5d3bf', accentTo: '#b68983', paperColor: '#f9e4d7', inkColor: '#49302e', poemY: 43, backgroundPosition: 'center bottom', scene: true }),
   illustrated({ id: 'moonlit-landscape', nameKey: 'templateMoonlitLandscape', descriptionKey: 'templateMoonlitLandscapeDesc',
     previewImage: '/template-previews/moonlit-landscape.cc2fbd98.webp', accentFrom: '#eceadf', accentTo: '#77889a', paperColor: '#f2f1e8', inkColor: '#243a4a', poemY: 48, backgroundPosition: 'center top', scene: true }),
+  illustrated({ id: 'daffodil-lake', nameKey: 'templateDaffodilLake', descriptionKey: 'templateDaffodilLakeDesc',
+    previewImage: '/template-previews/daffodil-lake.fa62ab80.webp', seriesKey: 'templateSeriesEnglishPoetry', accentFrom: '#e9e9ca', accentTo: '#9b9c6a', paperColor: '#f8f0dc', inkColor: '#313c31', poemY: 43, backgroundPosition: 'center' }),
+  illustrated({ id: 'autumn-forked-path', nameKey: 'templateAutumnFork', descriptionKey: 'templateAutumnForkDesc',
+    previewImage: '/template-previews/autumn-forked-path.7720f097.webp', seriesKey: 'templateSeriesEnglishPoetry', accentFrom: '#f1d4a7', accentTo: '#a87540', paperColor: '#f8e6c6', inkColor: '#493727', poemY: 43, backgroundPosition: 'center' }),
+  illustrated({ id: 'dover-beach', nameKey: 'templateDoverBeach', descriptionKey: 'templateDoverBeachDesc',
+    previewImage: '/template-previews/dover-beach.3448cf98.webp', seriesKey: 'templateSeriesEnglishPoetry', accentFrom: '#d4dbe5', accentTo: '#8592a8', paperColor: '#e7e7ed', inkColor: '#233447', poemY: 43, backgroundPosition: 'center' }),
+  illustrated({ id: 'tudor-rose', nameKey: 'templateTudorRose', descriptionKey: 'templateTudorRoseDesc',
+    previewImage: '/template-previews/tudor-rose.ddd7372e.webp', seriesKey: 'templateSeriesEnglishPoetry', accentFrom: '#e8d3ac', accentTo: '#95624c', paperColor: '#f5e6c8', inkColor: '#49362d', poemY: 50, backgroundPosition: 'center' }),
+  illustrated({ id: 'feathered-hope', nameKey: 'templateFeatheredHope', descriptionKey: 'templateFeatheredHopeDesc',
+    previewImage: '/template-previews/feathered-hope.a00e7022.webp', seriesKey: 'templateSeriesEnglishPoetry', accentFrom: '#e7dfcb', accentTo: '#8c9d8e', paperColor: '#f5eddd', inkColor: '#35453c', poemY: 47, backgroundPosition: 'center top' }),
+  illustrated({ id: 'midnight-tyger', nameKey: 'templateMidnightTyger', descriptionKey: 'templateMidnightTygerDesc',
+    previewImage: '/template-previews/midnight-tyger.bccb314d.webp', seriesKey: 'templateSeriesEnglishPoetry', accentFrom: '#17273a', accentTo: '#a87947', paperColor: '#101d2e', inkColor: '#f8ead1', poemY: 40, backgroundPosition: 'center bottom' }),
   illustrated({ id: 'western-pass', nameKey: 'templateWesternPass', descriptionKey: 'templateWesternPassDesc',
     previewImage: '/template-previews/western-pass.2df6373c.webp', accentFrom: '#ead7bd', accentTo: '#a28977', paperColor: '#f2e8d7', inkColor: '#493b32', poemY: 43, backgroundPosition: 'center bottom', scene: true }),
 ];
