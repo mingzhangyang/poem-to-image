@@ -6,7 +6,9 @@ test.beforeEach(async ({ page }) => {
   });
   await page.addInitScript(() => {
     localStorage.setItem('poem-to-image.onboarding-dismissed', 'true');
-    localStorage.setItem('poem-to-image.language', 'en');
+    if (!localStorage.getItem('poem-to-image.language')) {
+      localStorage.setItem('poem-to-image.language', 'en');
+    }
   });
 });
 
@@ -97,4 +99,26 @@ test('a custom copy keeps its handwriting and drops it when another template is 
     const draft = JSON.parse(localStorage.getItem('inkpoem.editor-state.v1') || 'null');
     return [draft?.decorations?.showStamp, draft?.decorations?.signatures?.[0]?.text, draft?.decorations?.signatures?.[0]?.font];
   })).toEqual([false, 'the poet', 'Mr Dafoe']);
+});
+
+test('Chinese variant previews exactly one poem and keeps its seal, without Latin handwriting', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.evaluate(() => localStorage.setItem('poem-to-image.language', 'zh-CN'));
+  await page.reload({ waitUntil: 'domcontentloaded' });
+
+  await page.getByRole('button', { name: /^模板主题/ }).click();
+  await page.getByRole('button', { name: /^更多 \(/ }).click();
+  const library = page.getByRole('dialog', { name: '系统模板' });
+  const card = library.getByRole('button', { name: /婉约留白/ });
+  await expect(card).toBeVisible();
+  // The expanded card uses live paper/text; SVG already contains a poem.
+  await expect(card.locator('img')).toHaveCount(0);
+  await expect(card.getByTestId('template-preview-sample')).toBeVisible();
+  await expect(card.getByTestId('template-preview-stamp')).toBeVisible();
+  await expect(card.getByTestId('template-preview-signature')).toHaveCount(0);
+
+  await card.click();
+  await expect(library).toBeHidden();
+  await expect(page.getByLabel('印章元素')).toBeVisible();
+  await expect(page.getByLabel('签名元素')).toHaveCount(0);
 });

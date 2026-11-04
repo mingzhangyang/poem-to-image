@@ -6,7 +6,7 @@ import { ensureFontLoaded } from '../fontLoader';
 import { ensureSignatureFontsLoaded } from '../signatureRendering';
 
 interface TemplatePreviewProps {
-  template: Pick<EditorTemplateDefinition, 'background' | 'previewImage' | 'typography' | 'decorations'>;
+  template: Pick<EditorTemplateDefinition, 'id' | 'background' | 'previewImage' | 'typography' | 'decorations'>;
   className?: string;
   language?: Language;
   /** Only the gallery preview includes sample text; the editing canvas remains unchanged. */
@@ -52,7 +52,16 @@ export function TemplatePreview({
     if (showPoemSample && hasSignatures) void ensureSignatureFontsLoaded();
   }, [showPoemSample, hasSignatures]);
 
-  const previewImage = template.previewImage;
+  // Graceful Whitespace's pre-rendered SVG contains Chinese poem glyphs.
+  // In the expanded gallery, show the localized poem on editable paper
+  // instead of superimposing a second poem over the SVG artwork.
+  const showLiveClassicPreview = showPoemSample && template.id === 'graceful-whitespace';
+  const showInlineStamp = showLiveClassicPreview && template.decorations.showStamp;
+  useEffect(() => {
+    if (showInlineStamp) ensureFontLoaded(template.decorations.stamp.fontFamily);
+  }, [showInlineStamp, template.decorations.stamp.fontFamily]);
+
+  const previewImage = showLiveClassicPreview ? undefined : template.previewImage;
   const objectFit = template.background.backgroundSize === 'stretch'
     ? 'fill'
     : (template.background.backgroundSize ?? 'cover');
@@ -98,6 +107,29 @@ export function TemplatePreview({
         >
           {PREVIEW_VERSES[language]}
         </div>
+      ) : null}
+      {showInlineStamp ? (
+        <span
+          aria-hidden="true"
+          data-testid="template-preview-stamp"
+          className="pointer-events-none absolute grid place-items-center rounded-[1px]"
+          style={{
+            left: `${template.decorations.stamp.positionX}%`,
+            top: `${template.decorations.stamp.positionY}%`,
+            transform: `translate(-50%, -50%) rotate(${template.decorations.stamp.rotation}deg)`,
+            width: `${Math.max(22, template.decorations.stamp.size * 0.45)}px`,
+            height: `${Math.max(22, template.decorations.stamp.size * 0.45)}px`,
+            border: `1.2px solid ${template.decorations.stamp.inkColor ?? '#ab605c'}`,
+            color: template.decorations.stamp.inkColor ?? '#ab605c',
+            opacity: template.decorations.stamp.opacity,
+            fontFamily: template.decorations.stamp.fontFamily,
+            fontSize: `${Math.max(11, template.decorations.stamp.size * 0.23)}px`,
+            lineHeight: 1.1,
+            writingMode: 'vertical-rl',
+          }}
+        >
+          {template.decorations.stamp.text}
+        </span>
       ) : null}
       {previewSignatures.map((sig) => (
         <span
