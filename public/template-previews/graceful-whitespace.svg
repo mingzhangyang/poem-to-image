@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="300" viewBox="0 0 240 300" role="img" aria-label="Gentle calligraphy on ivory paper with generous whitespace and a small red seal">
+  <rect width="240" height="300" fill="#FDFBF7"/>
+  <g fill="none" stroke="#BEB2A0" stroke-width=".45" stroke-linecap="round" opacity=".18">
+    <path d="M18 22l18 1 M73 42l11 -1 M198 38l15 0 M24 95l9 1 M64 141l19 -2 M40 202l14 1 M173 238l18 0 M91 277l12 -1"/>
+    <path d="M17 278l8 -1 M213 181l10 1 M109 31l15 -1 M32 168l12 0"/>
+  </g>
+  <g fill="#405148" font-family="serif" font-size="15" text-anchor="middle" opacity=".92">
+    <text x="181" y="64">云</text><text x="181" y="87">轻</text><text x="181" y="110">风</text><text x="181" y="133">静</text>
+    <text x="152" y="64">月</text><text x="152" y="87">落</text><text x="152" y="110">花</text><text x="152" y="133">明</text>
+    <text x="123" y="64">一</text><text x="123" y="87">笺</text><text x="123" y="110">秋</text><text x="123" y="133">声</text>
+  </g>
+  <g fill="#67726D" font-family="serif" font-size="10" opacity=".7"><text x="172" y="156">—</text><text x="156" y="170">诗意</text></g>
+  <g transform="rotate(-3 69 176)" stroke="#AB605C" opacity=".66">
+    <rect x="56" y="163" width="27" height="27" rx="1.5" fill="none" stroke-width="1.6"/>
+    <text x="69.5" y="181.5" font-family="serif" font-size="12" text-anchor="middle" fill="#AB605C" stroke="none">清</text>
+  </g>
+</svg>

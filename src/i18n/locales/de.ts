@@ -9,6 +9,8 @@ const de: TranslationMessages = {
     templateApplied: "Aktiv",
     templateInkWash: "Klassische Tusche",
     templateInkWashDesc: "Papierfarbene Töne, vertikales Layout und siegelartige Rahmen für klassische Gedichte.",
+    templateGracefulWhitespace: "Zarte Leere",
+    templateGracefulWhitespaceDesc: "Elfenbeinfarbenes Papier, großzügiger Freiraum und ein kleines rotes Siegel für leise Verse.",
     templateModernMinimal: "Modern Minimal",
     templateModernMinimalDesc: "Klare Abstände und reduzierte Farben für ein zeitgenössisches Poster.",
     templateCyberpunk: "Cyberpunk",

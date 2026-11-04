@@ -37,6 +37,7 @@ export type EditorTemplateId =
   | 'city-night-photo'
   | 'ink-pine-mist-photo'
   | 'colorblock-cyan-magenta'
+  | 'graceful-whitespace'
   | 'parchment-scroll'
   | 'wax-sealed-letter'
   | 'illuminated-manuscript'

@@ -115,6 +115,16 @@ const TEMPLATE_FONTS: Record<EditorTemplateId, Record<Language, string>> = {
     fr: '"Cormorant Garamond", serif',
     de: '"Spectral", serif',
   },
+  'graceful-whitespace': {
+    en: '"Cormorant Garamond", serif',
+    'zh-CN': '"Noto Serif SC", serif',
+    'zh-TW': '"Noto Serif TC", serif',
+    ja: '"Shippori Mincho", serif',
+    ko: '"Gowun Batang", serif',
+    es: '"Lora", serif',
+    fr: '"Cormorant Garamond", serif',
+    de: '"Spectral", serif',
+  },
   'modern-minimal': {
     en: '"Source Sans 3", sans-serif',
     'zh-CN': '"Noto Sans SC", sans-serif',

@@ -90,6 +90,16 @@ export const templateDecorationsOverrides: Partial<Record<EditorTemplateId, Part
     fr: { stamp: { text: 'Sceau' } },
     de: { stamp: { text: 'Siegel' } },
   },
+  'graceful-whitespace': {
+    en: { poemPosition: { positionX: 50, positionY: 46 }, stamp: { text: 'Poem', positionX: 80, positionY: 79 } },
+    'zh-CN': { stamp: { text: '清韵' } },
+    'zh-TW': { stamp: { text: '清韻' } },
+    ja: { stamp: { text: '詩' } },
+    ko: { poemPosition: { positionX: 50, positionY: 46 }, stamp: { text: '시', positionX: 80, positionY: 79 } },
+    es: { poemPosition: { positionX: 50, positionY: 46 }, stamp: { text: 'Vers', positionX: 80, positionY: 79 } },
+    fr: { poemPosition: { positionX: 50, positionY: 46 }, stamp: { text: 'Vers', positionX: 80, positionY: 79 } },
+    de: { poemPosition: { positionX: 50, positionY: 46 }, stamp: { text: 'Vers', positionX: 80, positionY: 79 } },
+  },
   'parchment-scroll': {
     en: { stamp: { text: 'Seal' } },
     'zh-CN': { stamp: { text: '札记' } },

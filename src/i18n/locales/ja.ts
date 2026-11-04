@@ -9,6 +9,8 @@ const ja: TranslationMessages = {
     templateApplied: "適用中",
     templateInkWash: "水墨クラシック",
     templateInkWashDesc: "和紙風の色味、縦組み、印章のような枠で古典詩向けの雰囲気にします。",
+    templateGracefulWhitespace: "余白の詩",
+    templateGracefulWhitespaceDesc: "淡い象牙色の紙と静かな縦組み、小さな朱印で繊細な詩情を引き立てます。",
     templateModernMinimal: "モダンミニマル",
     templateModernMinimalDesc: "余白を活かしたミニマルな配色と整った組版で、現代的なポスターに向きます。",
     templateCyberpunk: "サイバーパンク",
