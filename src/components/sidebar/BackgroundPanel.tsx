@@ -149,7 +149,7 @@ export function BackgroundPanel({ t, language, expanded, onToggle, background, b
                 <p className="text-xs font-semibold text-(--app-accent-600)">{t(group.labelKey)}</p>
                 <div className="grid grid-cols-4 gap-2" role="group" aria-label={t(group.labelKey)}>
                   {group.colors.map((swatch) => {
-                    const name = language === 'zh-TW' ? swatch.labelZhTW : language === 'zh-CN' ? swatch.labelZh : swatch.labelEn;
+                    const name = t(swatch.labelKey);
                     const isSelected = background.backgroundColor.toLowerCase() === swatch.hex.toLowerCase();
                     return (
                       <button
@@ -192,7 +192,7 @@ export function BackgroundPanel({ t, language, expanded, onToggle, background, b
               <p className="text-xs font-semibold text-(--app-accent-600)">{t('bgGradientPresets')}</p>
               <div className="grid grid-cols-2 gap-2" role="group" aria-label={t('bgGradientPresets')}>
                 {GRADIENT_PRESETS.map((preset) => {
-                  const name = language === 'zh-TW' ? preset.labelZhTW : language === 'zh-CN' ? preset.labelZh : preset.labelEn;
+                  const name = t(preset.labelKey);
                   const isSelected = background.gradientColor1.toLowerCase() === preset.from.toLowerCase()
                     && background.gradientColor2.toLowerCase() === preset.to.toLowerCase()
                     && background.gradientDirection === preset.direction;

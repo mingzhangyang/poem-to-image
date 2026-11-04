@@ -25,7 +25,7 @@ test('solid preset remains editable and persists through reload', async ({ page 
   const selected = page.getByRole('group', { name: 'Muted tones' }).getByRole('button', { name: 'Mist teal (#DCE7E5)' });
   await selected.click();
   await expect(selected).toHaveAttribute('aria-pressed', 'true');
-  const picker = page.locator('input[type="color"][aria-label="Solid"]');
+  const picker = page.locator('input[type="color"][aria-label="Solid"]:visible');
   await expect(picker).toHaveValue('#dce7e5');
   await picker.fill('#f1e7e2');
   await expect(selected).toHaveAttribute('aria-pressed', 'false');
@@ -38,7 +38,7 @@ test('solid preset remains editable and persists through reload', async ({ page 
   } else {
     await page.getByRole('button', { name: /^Background/ }).click();
   }
-  await expect(page.locator('input[type="color"][aria-label="Solid"]')).toHaveValue('#f1e7e2');
+  await expect(page.locator('input[type="color"][aria-label="Solid"]:visible')).toHaveValue('#f1e7e2');
 });
 
 test('gradient preset updates both colors and direction; user edits remain possible', async ({ page }) => {
@@ -47,8 +47,8 @@ test('gradient preset updates both colors and direction; user edits remain possi
   const selected = page.getByRole('group', { name: 'Curated gradients' }).getByRole('button', { name: 'Misty hills' });
   await selected.click();
   await expect(selected).toHaveAttribute('aria-pressed', 'true');
-  const first = page.locator('input[type="color"][aria-label="Gradient 1"]');
-  const second = page.locator('input[type="color"][aria-label="Gradient 2"]');
+  const first = page.locator('input[type="color"][aria-label="Gradient 1"]:visible');
+  const second = page.locator('input[type="color"][aria-label="Gradient 2"]:visible');
   await expect(first).toHaveValue('#f6f4ee');
   await expect(second).toHaveValue('#c5d8d2');
   await expect(page.getByRole('combobox', { name: 'Gradient' })).toHaveValue('to bottom right');
