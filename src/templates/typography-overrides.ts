@@ -1,7 +1,32 @@
 import type { EditorTemplateId, TemplateTypographyConfig } from '../types';
 import type { Language } from '../translations';
 
+// East Asian scripts get vertical composition; Latin and Korean stay horizontal.
+const illustratedTypography: Partial<Record<Language, Partial<TemplateTypographyConfig>>> = {
+  'zh-CN': { writingMode: 'vertical-rl', fontSize: 36, padding: 112, lineHeight: 1.95, letterSpacing: 7 },
+  'zh-TW': { writingMode: 'vertical-rl', fontSize: 36, padding: 112, lineHeight: 1.95, letterSpacing: 7 },
+  ja: { writingMode: 'vertical-rl', fontSize: 35, padding: 112, lineHeight: 1.9, letterSpacing: 6 },
+  ko: { writingMode: 'horizontal-tb', fontSize: 32, padding: 100, lineHeight: 1.8, letterSpacing: 0 },
+  en: { writingMode: 'horizontal-tb', fontSize: 32, padding: 100, lineHeight: 1.8, letterSpacing: 0 },
+  es: { writingMode: 'horizontal-tb', fontSize: 32, padding: 100, lineHeight: 1.8, letterSpacing: 0 },
+  fr: { writingMode: 'horizontal-tb', fontSize: 32, padding: 100, lineHeight: 1.8, letterSpacing: 0 },
+  de: { writingMode: 'horizontal-tb', fontSize: 32, padding: 100, lineHeight: 1.8, letterSpacing: 0 },
+};
+
 export const templateTypographyOverrides: Partial<Record<EditorTemplateId, Partial<Record<Language, Partial<TemplateTypographyConfig>>>>> = {
+  'song-floral': illustratedTypography,
+  'blue-green-landscape': illustratedTypography,
+  'art-nouveau': illustratedTypography,
+  'midnight-star-chart': illustratedTypography,
+  'botanical-specimen': illustratedTypography,
+  'indigo-washi': illustratedTypography,
+  'lone-fisherman': illustratedTypography,
+  'milky-way': illustratedTypography,
+  'tower-reaching-stars': illustratedTypography,
+  'chrysanthemum-south-mountain': illustratedTypography,
+  'great-river-east': illustratedTypography,
+  'willow-breeze': illustratedTypography,
+  'western-pass': illustratedTypography,
   'ink-wash': {
     'zh-CN': {
       writingMode: 'vertical-rl',

@@ -71,6 +71,22 @@ test('horizontal: wrapping breaks a long line at wrapWidth', () => {
   assert.equal(items[1].y, 30);
 });
 
+test('horizontal: wrapping keeps words together when they fit on a line', () => {
+  const layout = createTextLayout(
+    { text: 'buds of May,\n春山明月', writingMode: 'horizontal-tb', fontSize: 20, lineHeight: 1.5, letterSpacing: 0, wrapWidth: 70 },
+    fakeMeasurer(10),
+  );
+  assert.deepEqual(horizontalItems(layout.items).map((item) => item.text), ['buds of', 'May,', '春山明月']);
+});
+
+test('horizontal: very long words still wrap without losing characters', () => {
+  const layout = createTextLayout(
+    { text: 'a beautifully long word', writingMode: 'horizontal-tb', fontSize: 20, lineHeight: 1.5, letterSpacing: 0, wrapWidth: 50 },
+    fakeMeasurer(10),
+  );
+  assert.deepEqual(horizontalItems(layout.items).map((item) => item.text), ['a', 'beaut', 'ifull', 'y', 'long', 'word']);
+});
+
 test('horizontal: columns distribute lines and offset x by column width + gap', () => {
   const layout = createTextLayout(
     { text: 'a\nb\nc\nd', writingMode: 'horizontal-tb', fontSize: 20, lineHeight: 1.5, letterSpacing: 0, columns: 2, columnGap: 5 },

@@ -423,3 +423,32 @@ test('image background honors backgroundSize in the export', async () => {
   const [, , , coverWidth, coverHeight] = covered!.args as number[];
   assert.deepEqual([coverWidth, coverHeight], [800, 800]);
 });
+
+test('image export preserves a top- or bottom-anchored crop', async () => {
+  for (const [position, expectedY] of [['center top', 0], ['center bottom', -200]] as const) {
+    createdContexts.length = 0;
+    const base = makeScene();
+    await renderCanvasExport({
+      ...base, canvasWidth: 800, canvasHeight: 600,
+      background: { ...base.background, backgroundType: 'image', backgroundImage: `data:image/png;base64,${position}`, backgroundPosition: position },
+    }, { skipPoem: true });
+    const drawn = mainTrace().find((operation) => operation.op === 'drawImage');
+    assert.ok(drawn);
+    const [x, y, width, height] = drawn.args.slice(1) as number[];
+    assert.ok(x === 0 && y === expectedY);
+    assert.deepEqual([width, height], [800, 800]);
+  }
+});
+
+test('blur scales the positioned image layer around the canvas center', async () => {
+  const base = makeScene();
+  await renderCanvasExport({
+    ...base, canvasWidth: 800, canvasHeight: 600,
+    background: { ...base.background, backgroundType: 'image', backgroundImage: 'data:image/png;base64,blur-anchor', backgroundPosition: 'center bottom', bgBlur: 2 },
+  }, { skipPoem: true });
+  const drawn = mainTrace().find((operation) => operation.op === 'drawImage');
+  assert.ok(drawn);
+  const [x, y, width, height] = drawn.args.slice(1) as number[];
+  assert.ok(Math.abs(x + 40) < 0.001 && Math.abs(y + 250) < 0.001);
+  assert.ok(Math.abs(width - 880) < 0.001 && Math.abs(height - 880) < 0.001);
+});

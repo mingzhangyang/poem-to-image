@@ -248,6 +248,7 @@ export default function App() {
       backgroundImage: background.backgroundImage,
       backgroundImageSource: background.backgroundImageSource,
       backgroundSize: background.backgroundSize,
+      backgroundPosition: background.backgroundPosition,
       bgBrightness: background.bgBrightness,
       bgBlur: background.bgBlur,
     },

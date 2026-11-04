@@ -104,7 +104,31 @@ const LANGUAGE_RECOMMENDED_FONTS: Record<Language, string[]> = {
   ],
 };
 
+const ILLUSTRATED_SERIF_FONTS: Record<Language, string> = {
+  en: '"Cormorant Garamond", serif',
+  'zh-CN': '"Noto Serif SC", serif',
+  'zh-TW': '"Noto Serif TC", serif',
+  ja: '"Shippori Mincho", serif',
+  ko: '"Gowun Batang", serif',
+  es: '"Lora", serif',
+  fr: '"Cormorant Garamond", serif',
+  de: '"Spectral", serif',
+};
+
 const TEMPLATE_FONTS: Record<EditorTemplateId, Record<Language, string>> = {
+  'song-floral': ILLUSTRATED_SERIF_FONTS,
+  'blue-green-landscape': ILLUSTRATED_SERIF_FONTS,
+  'art-nouveau': ILLUSTRATED_SERIF_FONTS,
+  'midnight-star-chart': ILLUSTRATED_SERIF_FONTS,
+  'botanical-specimen': ILLUSTRATED_SERIF_FONTS,
+  'indigo-washi': ILLUSTRATED_SERIF_FONTS,
+  'lone-fisherman': ILLUSTRATED_SERIF_FONTS,
+  'milky-way': ILLUSTRATED_SERIF_FONTS,
+  'tower-reaching-stars': ILLUSTRATED_SERIF_FONTS,
+  'chrysanthemum-south-mountain': ILLUSTRATED_SERIF_FONTS,
+  'great-river-east': ILLUSTRATED_SERIF_FONTS,
+  'willow-breeze': ILLUSTRATED_SERIF_FONTS,
+  'western-pass': ILLUSTRATED_SERIF_FONTS,
   'ink-wash': {
     en: '"Cormorant Garamond", serif',
     'zh-CN': '"LXGW WenKai Screen", "Noto Serif SC", serif',

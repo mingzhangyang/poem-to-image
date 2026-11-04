@@ -248,25 +248,40 @@ function wrapHorizontalParagraph(measurer: TextLayoutMeasurer, paragraph: string
   let currentLine = '';
   let currentWidth = 0;
 
-  Array.from(paragraph).forEach((character) => {
+  const characters = Array.from(paragraph);
+  let index = 0;
+  while (index < characters.length) {
+    const character = characters[index];
     const characterWidth = measurer.measureText(character).width;
     const nextWidth = currentLine ? currentWidth + letterSpacing + characterWidth : characterWidth;
 
     if (currentLine && nextWidth > maxWidth) {
-      wrappedLines.push(currentLine);
-      if (character.trim()) {
-        currentLine = character;
-        currentWidth = characterWidth;
-      } else {
+      // Prefer a word boundary, while retaining character-level fallback for
+      // long words and scripts which do not put spaces between words.
+      if (character === ' ' || character === '\t') {
+        wrappedLines.push(currentLine.trimEnd());
         currentLine = '';
         currentWidth = 0;
+        index += 1;
+      } else {
+        const breakAt = Math.max(currentLine.lastIndexOf(' '), currentLine.lastIndexOf('\t'));
+        if (breakAt > 0) {
+          wrappedLines.push(currentLine.slice(0, breakAt).trimEnd());
+          currentLine = currentLine.slice(breakAt + 1).trimStart();
+          currentWidth = currentLine ? measureTextWidth(measurer, currentLine, letterSpacing) : 0;
+        } else {
+          wrappedLines.push(currentLine);
+          currentLine = '';
+          currentWidth = 0;
+        }
       }
-      return;
+      continue;
     }
 
     currentLine = `${currentLine}${character}`;
     currentWidth = nextWidth;
-  });
+    index += 1;
+  }
 
   if (currentLine || wrappedLines.length === 0) {
     wrappedLines.push(currentLine);

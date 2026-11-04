@@ -39,3 +39,24 @@ These are the active raster backgrounds used by curated templates. Earlier Pexel
 - Used by `bamboo-scroll`.
 - Generated on 2026-05-27 with the built-in image generation workflow.
 - Prompt summary: realistic ancient Chinese bamboo slip book with 9-12 wide flat bamboo slips, uneven ends, dark binding cords through small holes, readable central area for vertical poem text; no round bamboo poles, text, calligraphy, symbols, logos, or watermark.
+
+
+## Illustrated stationery collection (2026-11-04)
+
+Original artwork was generated using the built-in image generation tool for InkPoem. Each full-resolution background is an optimized WebP (1024 × 1536); the gallery uses a separate smaller WebP. All artwork was requested with a quiet area for editable text and without embedded writing, seals, signatures, or watermarks.
+
+| Background file | Generation brief |
+|---|---|
+| `song-floral.webp` | Warm xuan paper, delicate Song-inspired plum blossoms at the corners, pale ink and gold. |
+| `blue-green-landscape.webp` | Traditional blue-green mountains in mineral pigments along the lower margin, fading into mist. |
+| `art-nouveau.webp` | Art Nouveau irises and bronze-green flowing botanical ornaments around ivory paper. |
+| `midnight-star-chart.webp` | Fine gold stars and celestial arcs around a quiet midnight-blue writing area. |
+| `botanical-specimen.webp` | A fine pressed botanical specimen along the edge of warm ivory cotton paper. |
+| `indigo-washi.webp` | Indigo leaves and waves along the margins of textured pale washi. |
+| `lone-fisherman.webp` | A tiny solitary angler in straw cape and hat on a snowy river, in Chinese ink wash. |
+| `milky-way.webp` | A luminous indigo, violet, and silver-blue Milky Way around a dark quiet center. |
+| `tower-reaching-stars.webp` | A distant Chinese pavilion and tiny figure reaching toward stars in a misty blue sky. |
+| `chrysanthemum-south-mountain.webp` | Golden chrysanthemums and a bamboo fence in front of distant autumn mountains. |
+| `great-river-east.webp` | A grand river flowing between misty mountains, rendered in ink and pale mineral colors. |
+| `willow-breeze.webp` | Delicate spring-green willow boughs above a misty river, on warm xuan paper. |
+| `western-pass.webp` | An ancient frontier gate and departing traveler on a hazy western desert road. |

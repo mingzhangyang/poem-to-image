@@ -8,9 +8,13 @@ import {
   resolveTemplateForLanguage,
 } from '../../src/templates';
 
-const HIDDEN_IDS = ['bamboo-scroll', 'colorblock-cyan-magenta', 'ink-pine-mist-photo'] as const;
+const HIDDEN_IDS = [
+  'bamboo-scroll', 'colorblock-cyan-magenta', 'ink-pine-mist-photo',
+  'parchment-scroll', 'japanese-magazine', 'cyberpunk',
+  'mountain-mist-photo', 'ocean-dawn-photo', 'city-night-photo',
+] as const;
 
-test('gallery excludes three weak presets without deleting their definitions', () => {
+test('gallery excludes retired presets without deleting their definitions', () => {
   const ids = editorTemplates.map(({ id }) => id);
   assert.equal(new Set(ids).size, ids.length, 'gallery IDs must remain unique');
   assert.equal(editorTemplates.length, ALL_EDITOR_TEMPLATES.length - HIDDEN_IDS.length);
@@ -21,9 +25,9 @@ test('gallery excludes three weak presets without deleting their definitions', (
       assert.ok(resolveTemplateForLanguage(id, language), id + ' fails to restore in ' + language);
     }
   }
-  assert.ok(ids.includes('parchment-scroll'));
+  assert.ok(ids.includes('illuminated-manuscript'));
   assert.ok(ids.includes('modern-minimal'));
-  assert.ok(ids.includes('mountain-mist-photo'));
+  assert.ok(ids.includes('lone-fisherman'));
 });
 
 test('photo readability repair is retained while ink-pine stays out of the gallery', () => {

@@ -112,6 +112,7 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getTok
       if (imageRequestIdRef.current === requestId) {
         updateBackgroundImage(nextUrl);
         setBackgroundImageSource(origin);
+        setBackgroundPosition('center');
 
         if (nextUrl !== sourceUrl) {
           revokeObjectUrl(sourceUrl);

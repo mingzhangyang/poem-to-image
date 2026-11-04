@@ -1,7 +1,9 @@
 import { DEFAULT_STAMP_FONT } from '../fontOptions';
 import type { EditorTemplateDefinition } from '../types';
+import { illustratedTemplates } from './illustrated';
 
 export const ALL_EDITOR_TEMPLATES: EditorTemplateDefinition[] = [
+  ...illustratedTemplates,
   {
     id: 'parchment-scroll',
     nameKey: 'templateParchmentScroll',

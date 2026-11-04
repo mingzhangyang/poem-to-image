@@ -1,7 +1,31 @@
 import type { EditorTemplateId, PoemLayerStyle } from '../types';
 import type { Language } from '../translations';
 
+const illustratedPoemStyles: Partial<Record<Language, Partial<PoemLayerStyle>>> = {
+  'zh-CN': { titleScale: 1.12, titleBodyGap: 32, bodyLineHeight: 1.95, bodyLetterSpacing: 7, authorScale: 0.84 },
+  'zh-TW': { titleScale: 1.12, titleBodyGap: 32, bodyLineHeight: 1.95, bodyLetterSpacing: 7, authorScale: 0.84 },
+  ja: { titleScale: 1.1, titleBodyGap: 30, bodyLineHeight: 1.9, bodyLetterSpacing: 6, authorScale: 0.84 },
+  ko: { titleScale: 1.1, titleLetterSpacing: 0, bodyLineHeight: 1.8, bodyLetterSpacing: 0, authorLetterSpacing: 0, sourceLetterSpacing: 0, authorScale: 0.84 },
+  en: { titleScale: 1.1, titleLetterSpacing: 0, bodyLineHeight: 1.8, bodyLetterSpacing: 0, authorLetterSpacing: 0, sourceLetterSpacing: 0, authorScale: 0.84 },
+  es: { titleScale: 1.1, titleLetterSpacing: 0, bodyLineHeight: 1.8, bodyLetterSpacing: 0, authorLetterSpacing: 0, sourceLetterSpacing: 0, authorScale: 0.84 },
+  fr: { titleScale: 1.1, titleLetterSpacing: 0, bodyLineHeight: 1.8, bodyLetterSpacing: 0, authorLetterSpacing: 0, sourceLetterSpacing: 0, authorScale: 0.84 },
+  de: { titleScale: 1.1, titleLetterSpacing: 0, bodyLineHeight: 1.8, bodyLetterSpacing: 0, authorLetterSpacing: 0, sourceLetterSpacing: 0, authorScale: 0.84 },
+};
+
 export const templatePoemStyleOverrides: Partial<Record<EditorTemplateId, Partial<Record<Language, Partial<PoemLayerStyle>>>>> = {
+  'song-floral': illustratedPoemStyles,
+  'blue-green-landscape': illustratedPoemStyles,
+  'art-nouveau': illustratedPoemStyles,
+  'midnight-star-chart': illustratedPoemStyles,
+  'botanical-specimen': illustratedPoemStyles,
+  'indigo-washi': illustratedPoemStyles,
+  'lone-fisherman': illustratedPoemStyles,
+  'milky-way': illustratedPoemStyles,
+  'tower-reaching-stars': illustratedPoemStyles,
+  'chrysanthemum-south-mountain': illustratedPoemStyles,
+  'great-river-east': illustratedPoemStyles,
+  'willow-breeze': illustratedPoemStyles,
+  'western-pass': illustratedPoemStyles,
   'ink-wash': {
     'zh-CN': {
       titleScale: 1.35,

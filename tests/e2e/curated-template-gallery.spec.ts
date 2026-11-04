@@ -13,7 +13,7 @@ test.beforeEach(async ({ page }) => {
 test('featured template gallery shows sample poetry and excludes legacy entries', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   // The editor defaults to Playfair Display: only opening the expanded gallery
-  // should request Cormorant Garamond used by the parchment sample.
+  // should request Cormorant Garamond used by the illustrated samples.
   const sampleFontStylesheet = page.locator('link[data-editor-font="Cormorant Garamond"]');
   await expect(sampleFontStylesheet).toHaveCount(0);
   if ((page.viewportSize()?.width ?? 0) < 1024) {
@@ -28,9 +28,11 @@ test('featured template gallery shows sample poetry and excludes legacy entries'
   await expect(library.getByRole('button', { name: /Bamboo Scroll/ })).toHaveCount(0);
   await expect(library.getByRole('button', { name: /Cyan Magenta Blocks/ })).toHaveCount(0);
   await expect(library.getByRole('button', { name: /Ink Pine Mist/ })).toHaveCount(0);
-  const parchment = library.getByRole('button', { name: /Parchment Scroll/ });
-  await expect(parchment).toBeVisible();
-  const sample = parchment.getByTestId('template-preview-sample');
+  await expect(library.getByRole('button', { name: /Parchment Scroll/ })).toHaveCount(0);
+  await expect(library.getByRole('button', { name: /Mountain Mist Photo/ })).toHaveCount(0);
+  const song = library.getByRole('button', { name: /Song Floral/ });
+  await expect(song).toBeVisible();
+  const sample = song.getByTestId('template-preview-sample');
   await expect(sample).toBeVisible();
   await expect(sample).toContainText('Soft light');
 });

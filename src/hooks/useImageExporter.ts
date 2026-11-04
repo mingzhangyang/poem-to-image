@@ -22,6 +22,7 @@ interface UseImageExporterBackgroundOptions {
   gradientDirection: string;
   backgroundImage: string | null;
   backgroundSize: 'cover' | 'contain' | 'stretch';
+  backgroundPosition?: string;
   bgBrightness: number;
   bgBlur: number;
 }

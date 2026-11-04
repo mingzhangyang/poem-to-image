@@ -12,16 +12,23 @@ export { ALL_EDITOR_TEMPLATES } from './definitions';
 // Gallery entries only. Legacy templates remain in ALL_EDITOR_TEMPLATES so
 // drafts and saved active-template markers can still be restored.
 const CURATED_EDITOR_TEMPLATE_IDS: EditorTemplateId[] = [
+  'song-floral',
+  'blue-green-landscape',
+  'art-nouveau',
+  'midnight-star-chart',
+  'botanical-specimen',
+  'indigo-washi',
+  'lone-fisherman',
+  'milky-way',
+  'tower-reaching-stars',
+  'chrysanthemum-south-mountain',
+  'great-river-east',
+  'willow-breeze',
+  'western-pass',
   'graceful-whitespace',
-  'parchment-scroll',
   'wax-sealed-letter',
   'illuminated-manuscript',
   'modern-minimal',
-  'japanese-magazine',
-  'cyberpunk',
-  'mountain-mist-photo',
-  'ocean-dawn-photo',
-  'city-night-photo',
 ];
 
 export const editorTemplates: EditorTemplateDefinition[] = CURATED_EDITOR_TEMPLATE_IDS
