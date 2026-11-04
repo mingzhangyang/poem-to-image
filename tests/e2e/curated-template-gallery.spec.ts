@@ -12,6 +12,10 @@ test.beforeEach(async ({ page }) => {
 
 test('featured template gallery shows sample poetry and excludes legacy entries', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
+  // The editor defaults to Playfair Display: only opening the expanded gallery
+  // should request Cormorant Garamond used by the parchment sample.
+  const sampleFontStylesheet = page.locator('link[data-editor-font="Cormorant Garamond"]');
+  await expect(sampleFontStylesheet).toHaveCount(0);
   if ((page.viewportSize()?.width ?? 0) < 1024) {
     await page.getByRole('button', { name: 'Templates', exact: true }).click();
   } else {
@@ -19,6 +23,7 @@ test('featured template gallery shows sample poetry and excludes legacy entries'
   }
   await page.getByRole('button', { name: /^More \(/ }).click();
   const library = page.getByRole('dialog', { name: 'Built-in Templates' });
+  await expect(sampleFontStylesheet).toHaveCount(1);
   await expect(library).toBeVisible();
   await expect(library.getByRole('button', { name: /Bamboo Scroll/ })).toHaveCount(0);
   await expect(library.getByRole('button', { name: /Cyan Magenta Blocks/ })).toHaveCount(0);

@@ -1,7 +1,8 @@
-import type { CSSProperties } from 'react';
+import { useEffect, type CSSProperties } from 'react';
 import type { Language } from '../translations';
 import type { EditorTemplateDefinition } from '../types';
 import { getTemplatePreviewStyle } from '../templates/preview-style';
+import { ensureFontLoaded } from '../fontLoader';
 
 interface TemplatePreviewProps {
   template: Pick<EditorTemplateDefinition, 'background' | 'previewImage' | 'typography' | 'decorations'>;
@@ -39,6 +40,12 @@ export function TemplatePreview({
   language = 'en',
   showPoemSample = false,
 }: TemplatePreviewProps) {
+  // Compact thumbnails stay image-only; the expanded library requests each
+  // sample's actual font on mount and whenever a locale changes its font.
+  useEffect(() => {
+    if (showPoemSample) ensureFontLoaded(template.typography.fontFamily);
+  }, [showPoemSample, template.typography.fontFamily]);
+
   const previewImage = template.previewImage;
   const objectFit = template.background.backgroundSize === 'stretch'
     ? 'fill'
