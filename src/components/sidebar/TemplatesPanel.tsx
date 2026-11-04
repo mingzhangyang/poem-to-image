@@ -40,6 +40,7 @@ interface BuiltInTemplateCardProps {
 
 function BuiltInTemplateCard({ t, language, template, isActive, onApply, variant = 'compact' }: BuiltInTemplateCardProps) {
   const previewTemplate = resolveTemplateForLanguage(template.id, language) ?? template;
+  const reserveArtworkArea = variant === 'library' && template.id === 'graceful-whitespace';
   if (variant === 'library') {
     return (
       <button
@@ -47,16 +48,23 @@ function BuiltInTemplateCard({ t, language, template, isActive, onApply, variant
         key={template.id}
         onClick={() => onApply(template.id)}
         aria-pressed={isActive}
-        className={`group relative h-[300px] w-[240px] overflow-hidden rounded-2xl border text-left transition-all ${
+        className={`group relative h-[300px] w-[240px] overflow-hidden rounded-2xl border text-left transition-all ${reserveArtworkArea ? 'flex flex-col bg-[#fdfbf7]' : ''} ${
           isActive
             ? 'border-(--app-accent-300) shadow-[0_16px_36px_var(--app-accent-shadow)]'
             : 'border-[rgba(34,48,52,0.08)] hover:border-(--app-accent-200)'
         }`}
       >
-        <TemplatePreview template={previewTemplate} language={language} showPoemSample className="absolute inset-0" />
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(9,14,23,0.04)_0%,rgba(9,14,23,0.2)_100%)]" />
+        {/* The Graceful Whitespace signature/seal belongs to the artwork, never
+            beneath the caption. Flex layout reserves the actual remaining
+            height above the variable-height translated description. */}
+        <div
+          data-testid={reserveArtworkArea ? 'graceful-gallery-artwork' : undefined}
+          className={reserveArtworkArea ? 'relative min-h-0 flex-1 overflow-hidden' : 'absolute inset-0'}
+        >
+          <TemplatePreview template={previewTemplate} language={language} showPoemSample className="absolute inset-0" />
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(9,14,23,0.04)_0%,rgba(9,14,23,0.2)_100%)]" />
 
-        <div className="absolute left-3 top-3 flex flex-wrap items-center gap-1.5">
+          <div className="absolute left-3 top-3 flex flex-wrap items-center gap-1.5">
           <span className="rounded-full border border-[rgba(255,255,255,0.35)] bg-[rgba(255,255,255,0.88)] px-2 py-0.5 text-xs font-semibold text-(--app-accent-700)">
             {t(template.seriesKey)}
           </span>
@@ -65,13 +73,24 @@ function BuiltInTemplateCard({ t, language, template, isActive, onApply, variant
               {t('templateImageBadge')}
             </span>
           ) : null}
+          </div>
         </div>
 
-        <div className="absolute inset-x-3 bottom-3 rounded-xl border border-[rgba(34,48,52,0.08)] bg-[rgba(255,253,249,0.92)] px-3 py-2.5 shadow-[0_10px_24px_rgba(26,44,46,0.1)]">
+        <div
+          data-testid={reserveArtworkArea ? 'graceful-gallery-caption' : undefined}
+          className={`rounded-xl border border-[rgba(34,48,52,0.08)] bg-[rgba(255,253,249,0.92)] px-3 py-2.5 shadow-[0_10px_24px_rgba(26,44,46,0.1)] ${
+            reserveArtworkArea
+              ? 'relative z-10 mx-3 mb-3 shrink-0'
+              : 'absolute inset-x-3 bottom-3'
+          }`}
+        >
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <div className="text-sm font-semibold text-(--app-ink)">{t(template.nameKey)}</div>
-              <p className="mt-0.5 text-xs leading-5 text-(--app-accent-600)">
+              <p
+                className={`mt-0.5 text-xs leading-5 text-(--app-accent-600) ${reserveArtworkArea ? 'line-clamp-2' : ''}`}
+                title={reserveArtworkArea ? t(template.descriptionKey) : undefined}
+              >
                 {t(template.descriptionKey)}
               </p>
             </div>

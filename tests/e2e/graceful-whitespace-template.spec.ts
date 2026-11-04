@@ -17,6 +17,29 @@ async function openTemplates(page: Page) {
   await page.getByRole('button', { name: mobile ? 'Templates' : /^Templates/ }).click();
 }
 
+/** Assert card's seal/signature is entirely inside the reserved artwork, not under caption. */
+async function expectPreviewDecorationAboveCaption(card: ReturnType<Page['getByRole']>, decoration: string) {
+  const art = card.getByTestId('graceful-gallery-artwork');
+  const caption = card.getByTestId('graceful-gallery-caption');
+  const signOff = card.getByTestId(decoration);
+  await expect(art).toBeVisible();
+  await expect(caption).toBeVisible();
+  await expect(signOff).toBeVisible();
+  const [artRect, captionRect, decorationRect] = await Promise.all([
+    art.boundingBox(),
+    caption.boundingBox(),
+    signOff.boundingBox(),
+  ]);
+  expect(artRect).not.toBeNull();
+  expect(captionRect).not.toBeNull();
+  expect(decorationRect).not.toBeNull();
+  if (!artRect || !captionRect || !decorationRect) return;
+  expect(artRect.height).toBeGreaterThan(100);
+  expect(artRect.y + artRect.height).toBeLessThanOrEqual(captionRect.y + 1);
+  expect(decorationRect.y).toBeGreaterThanOrEqual(artRect.y - 1);
+  expect(decorationRect.y + decorationRect.height).toBeLessThanOrEqual(captionRect.y + 1);
+}
+
 async function applyGracefulWhitespace(page: Page) {
   await openTemplates(page);
   await page.getByRole('button', { name: /^More \(/ }).click();
@@ -28,6 +51,7 @@ async function applyGracefulWhitespace(page: Page) {
   await expect(card.locator('img')).toHaveCount(0);
   await expect(card.getByTestId('template-preview-sample')).toBeVisible();
   await expect(card.getByTestId('template-preview-signature')).toContainText('the poet');
+  await expectPreviewDecorationAboveCaption(card, 'template-preview-signature');
   await card.click();
   await expect(library).toBeHidden();
 }
@@ -115,6 +139,7 @@ test('Chinese variant previews exactly one poem and keeps its seal, without Lati
   await expect(card.locator('img')).toHaveCount(0);
   await expect(card.getByTestId('template-preview-sample')).toBeVisible();
   await expect(card.getByTestId('template-preview-stamp')).toBeVisible();
+  await expectPreviewDecorationAboveCaption(card, 'template-preview-stamp');
   await expect(card.getByTestId('template-preview-signature')).toHaveCount(0);
 
   await card.click();
