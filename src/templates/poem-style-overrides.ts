@@ -25,6 +25,10 @@ export const templatePoemStyleOverrides: Partial<Record<EditorTemplateId, Partia
   'chrysanthemum-south-mountain': illustratedPoemStyles,
   'great-river-east': illustratedPoemStyles,
   'willow-breeze': illustratedPoemStyles,
+  'grassland-breeze': illustratedPoemStyles,
+  'pine-snow': illustratedPoemStyles,
+  'sunset-afterglow': illustratedPoemStyles,
+  'moonlit-landscape': illustratedPoemStyles,
   'western-pass': illustratedPoemStyles,
   'ink-wash': {
     'zh-CN': {

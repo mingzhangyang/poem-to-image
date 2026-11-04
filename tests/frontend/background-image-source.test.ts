@@ -4,6 +4,7 @@ import { inferBackgroundImageSource } from '../../src/backgroundImageSource';
 
 test('legacy built-in template image is not classified as an upload', () => {
   assert.equal(inferBackgroundImageSource('/template-backgrounds/parchment-scroll-generated.png'), 'template');
+  assert.equal(inferBackgroundImageSource('/template-backgrounds/parchment-scroll-generated.webp'), 'template');
 });
 
 test('legacy uploaded image and missing image have truthful sources', () => {

@@ -128,6 +128,10 @@ const TEMPLATE_FONTS: Record<EditorTemplateId, Record<Language, string>> = {
   'chrysanthemum-south-mountain': ILLUSTRATED_SERIF_FONTS,
   'great-river-east': ILLUSTRATED_SERIF_FONTS,
   'willow-breeze': ILLUSTRATED_SERIF_FONTS,
+  'grassland-breeze': ILLUSTRATED_SERIF_FONTS,
+  'pine-snow': ILLUSTRATED_SERIF_FONTS,
+  'sunset-afterglow': ILLUSTRATED_SERIF_FONTS,
+  'moonlit-landscape': ILLUSTRATED_SERIF_FONTS,
   'western-pass': ILLUSTRATED_SERIF_FONTS,
   'ink-wash': {
     en: '"Cormorant Garamond", serif',

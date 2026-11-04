@@ -5,7 +5,7 @@ import test from 'node:test';
 import { editorTemplates, resolveTemplateForLanguage } from '../../src/templates';
 import { LANGUAGES } from '../../src/translations';
 
-const ids = ['song-floral', 'blue-green-landscape', 'art-nouveau', 'midnight-star-chart', 'botanical-specimen', 'indigo-washi', 'lone-fisherman', 'milky-way', 'tower-reaching-stars', 'chrysanthemum-south-mountain', 'great-river-east', 'willow-breeze', 'western-pass'] as const;
+const ids = ['song-floral', 'blue-green-landscape', 'art-nouveau', 'midnight-star-chart', 'botanical-specimen', 'indigo-washi', 'lone-fisherman', 'milky-way', 'tower-reaching-stars', 'chrysanthemum-south-mountain', 'great-river-east', 'willow-breeze', 'grassland-breeze', 'pine-snow', 'sunset-afterglow', 'moonlit-landscape', 'western-pass'] as const;
 
 test('illustrated templates load local artwork with appropriate editable layouts in every language', async () => {
   for (const id of ids) {
@@ -26,5 +26,22 @@ test('illustrated templates load local artwork with appropriate editable layouts
       assert.ok(asset && asset.startsWith('/template-'));
       assert.ok((await stat(path.join(process.cwd(), 'public', asset.slice(1)))).size > 0, asset);
     }
+  }
+});
+
+test('grassland keeps its horizon anchored and is listed with poetic landscapes', () => {
+  const grassland = resolveTemplateForLanguage('grassland-breeze', 'zh-CN');
+  assert.ok(grassland);
+  assert.equal(grassland.seriesKey, 'templateSeriesPoeticScenes');
+  assert.equal(grassland.background.backgroundPosition, 'center bottom');
+  assert.equal(grassland.background.backgroundImage, '/template-backgrounds/grassland-breeze.webp');
+});
+
+test('snow, sunset, and moon keep their focal details when cropped', () => {
+  for (const [id, position] of [['pine-snow', 'center top'], ['sunset-afterglow', 'center bottom'], ['moonlit-landscape', 'center top']] as const) {
+    const template = resolveTemplateForLanguage(id, 'zh-CN');
+    assert.ok(template);
+    assert.equal(template.seriesKey, 'templateSeriesPoeticScenes');
+    assert.equal(template.background.backgroundPosition, position);
   }
 });

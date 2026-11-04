@@ -26,6 +26,10 @@ export const templateTypographyOverrides: Partial<Record<EditorTemplateId, Parti
   'chrysanthemum-south-mountain': illustratedTypography,
   'great-river-east': illustratedTypography,
   'willow-breeze': illustratedTypography,
+  'grassland-breeze': illustratedTypography,
+  'pine-snow': illustratedTypography,
+  'sunset-afterglow': illustratedTypography,
+  'moonlit-landscape': illustratedTypography,
   'western-pass': illustratedTypography,
   'ink-wash': {
     'zh-CN': {

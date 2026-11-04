@@ -5,7 +5,7 @@ const names = [
   'Song Floral', 'Blue-Green Mountains', 'Art Nouveau Irises', 'Midnight Star Chart',
   'Botanical Specimen', 'Indigo Washi', 'Lone Fisherman', 'Milky Way',
   'Tower Among the Stars', 'Chrysanthemums and Mountains', 'The Great River',
-  'Willow Breeze', 'Beyond the Western Pass',
+  'Willow Breeze', 'Grassland Breeze', 'Pine in Snow', 'Sunset Afterglow', 'Moonlit Mountains', 'Beyond the Western Pass',
 ];
 
 async function openLibrary(page: Page) {
@@ -42,16 +42,16 @@ test('the gallery shows every new artwork without covering it with its caption',
   }
 });
 
-test('a bottom-anchored artwork survives reload and exports as a PNG', async ({ page }) => {
+test('the grassland background survives reload and exports as a PNG', async ({ page }) => {
   test.setTimeout(60_000);
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   const library = await openLibrary(page);
-  await library.getByRole('button', { name: /Lone Fisherman/ }).click();
+  await library.getByRole('button', { name: /Grassland Breeze/ }).click();
   await expect(library).toBeHidden();
   await expect.poll(() => page.evaluate(() => {
     const draft = JSON.parse(localStorage.getItem('inkpoem.editor-state.v1') || 'null');
     return [draft?.background?.backgroundImage, draft?.background?.backgroundPosition];
-  })).toEqual(['/template-backgrounds/lone-fisherman.webp', 'center bottom']);
+  })).toEqual(['/template-backgrounds/grassland-breeze.webp', 'center bottom']);
   await page.reload({ waitUntil: 'domcontentloaded' });
   const layer = page.locator('[data-export-layer="background"]').first();
   await expect(layer).toHaveCSS('background-position', '50% 100%');
