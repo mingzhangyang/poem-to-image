@@ -9,6 +9,8 @@ const ko: TranslationMessages = {
     templateApplied: "적용됨",
     templateInkWash: "고풍 수묵",
     templateInkWashDesc: "한지 느낌 배경, 세로쓰기, 낙관 같은 테두리로 고전 시 분위기를 만듭니다.",
+    templateGracefulWhitespace: "여백의 서정",
+    templateGracefulWhitespaceDesc: "은은한 아이보리 종이와 넉넉한 여백, 작은 붉은 인장으로 시의 운치를 살립니다.",
     templateModernMinimal: "모던 미니멀",
     templateModernMinimalDesc: "절제된 여백과 깔끔한 정렬로 현대적인 포스터 톤을 만듭니다.",
     templateCyberpunk: "사이버펑크",

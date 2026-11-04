@@ -12,6 +12,7 @@ export { ALL_EDITOR_TEMPLATES } from './definitions';
 // Gallery entries only. Legacy templates remain in ALL_EDITOR_TEMPLATES so
 // drafts and saved active-template markers can still be restored.
 const CURATED_EDITOR_TEMPLATE_IDS: EditorTemplateId[] = [
+  'graceful-whitespace',
   'parchment-scroll',
   'wax-sealed-letter',
   'illuminated-manuscript',
@@ -49,6 +50,11 @@ export function resolveTemplateForLanguage(templateId: EditorTemplateId, languag
       ...typographyOverride,
       fontFamily: getTemplateFontForLanguage(templateId, language),
     },
+    // The SVG preview includes a Chinese vertical poem and red seal; Latin
+    // variants need the live paper/text/signature preview instead.
+    previewImage: templateId === 'graceful-whitespace' && ['en', 'es', 'fr', 'de'].includes(language)
+      ? undefined
+      : template.previewImage,
     decorations: {
       ...template.decorations,
       ...decorationsOverride,

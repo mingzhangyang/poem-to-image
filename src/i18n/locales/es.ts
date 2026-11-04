@@ -9,6 +9,8 @@ const es: TranslationMessages = {
     templateApplied: "Aplicada",
     templateInkWash: "Tinta Clásica",
     templateInkWashDesc: "Tonos de papel de arroz, composición vertical y un marco tipo sello para la poesía clásica.",
+    templateGracefulWhitespace: "Espacio delicado",
+    templateGracefulWhitespaceDesc: "Papel marfil, amplios espacios en blanco y un sello rojo discreto para versos íntimos.",
     templateModernMinimal: "Minimal Moderno",
     templateModernMinimalDesc: "Espaciado limpio y colores sobrios para un póster contemporáneo.",
     templateCyberpunk: "Cyberpunk",

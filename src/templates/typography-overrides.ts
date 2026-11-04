@@ -76,6 +76,32 @@ export const templateTypographyOverrides: Partial<Record<EditorTemplateId, Parti
       textAlign: 'center',
     },
   },
+  'graceful-whitespace': {
+    // Chinese and Japanese poetry retain the airy, right-weighted vertical layout.
+    'zh-TW': { fontSize: 33, letterSpacing: 6 },
+    ja: { fontSize: 33, letterSpacing: 6, padding: 116 },
+    // Alphabetic writing and Korean use balanced horizontal composition instead.
+    ko: {
+      writingMode: 'horizontal-tb', fontSize: 31, padding: 128,
+      lineHeight: 1.82, letterSpacing: 0,
+    },
+    en: {
+      writingMode: 'horizontal-tb', fontSize: 33, padding: 128,
+      lineHeight: 1.82, letterSpacing: 0,
+    },
+    es: {
+      writingMode: 'horizontal-tb', fontSize: 32, padding: 128,
+      lineHeight: 1.84, letterSpacing: 0,
+    },
+    fr: {
+      writingMode: 'horizontal-tb', fontSize: 32, padding: 128,
+      lineHeight: 1.84, letterSpacing: 0,
+    },
+    de: {
+      writingMode: 'horizontal-tb', fontSize: 32, padding: 128,
+      lineHeight: 1.84, letterSpacing: 0,
+    },
+  },
   'parchment-scroll': {
     'zh-CN': {
       writingMode: 'vertical-rl',

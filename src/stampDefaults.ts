@@ -1,4 +1,5 @@
 import type { Language } from './translations';
+import { isCjkLanguage } from './fontOptions';
 
 const DEFAULT_STAMP_TEXTS: Record<Language, string> = {
   en: 'Mark',
@@ -13,4 +14,8 @@ const DEFAULT_STAMP_TEXTS: Record<Language, string> = {
 
 export function getDefaultStampTextForLanguage(language: Language) {
   return DEFAULT_STAMP_TEXTS[language];
+}
+/** Seals are intentionally reserved for CJK scripts; Latin layouts use signatures. */
+export function isStampSupportedForEditor(language: Language): boolean {
+  return isCjkLanguage(language);
 }

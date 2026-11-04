@@ -55,6 +55,31 @@ export const templatePoemStyleOverrides: Partial<Record<EditorTemplateId, Partia
       sourcePlacement: 'after-body',
     },
   },
+  'graceful-whitespace': {
+    'zh-CN': {
+      titleScale: 1.12, titleBodyGap: 34, titleOpacity: 0.94,
+      bodyLineHeight: 2.02, bodyLetterSpacing: 7,
+      authorScale: 0.82, authorOpacity: 0.84, authorBodyGap: 20,
+      sourceScale: 0.72, sourceOpacity: 0.72, sourceGap: 15,
+    },
+    'zh-TW': {
+      titleScale: 1.12, titleBodyGap: 34, titleOpacity: 0.94,
+      bodyLineHeight: 2.02, bodyLetterSpacing: 7,
+      authorScale: 0.82, authorOpacity: 0.84, authorBodyGap: 20,
+      sourceScale: 0.72, sourceOpacity: 0.72, sourceGap: 15,
+    },
+    ja: {
+      titleScale: 1.1, titleBodyGap: 32, titleOpacity: 0.94,
+      bodyLineHeight: 1.98, bodyLetterSpacing: 6,
+      authorScale: 0.82, authorOpacity: 0.84, authorBodyGap: 18,
+      sourceScale: 0.72, sourceOpacity: 0.72, sourceGap: 14,
+    },
+    en: { bodyLineHeight: 1.82, bodyLetterSpacing: 0, titleScale: 1.14, titleBodyGap: 32, authorScale: 0.84, sourceScale: 0.75 },
+    es: { bodyLineHeight: 1.84, bodyLetterSpacing: 0, titleScale: 1.12, titleBodyGap: 30, authorScale: 0.84, sourceScale: 0.75 },
+    fr: { bodyLineHeight: 1.84, bodyLetterSpacing: 0, titleScale: 1.12, titleBodyGap: 30, authorScale: 0.84, sourceScale: 0.75 },
+    de: { bodyLineHeight: 1.84, bodyLetterSpacing: 0, titleScale: 1.12, titleBodyGap: 30, authorScale: 0.84, sourceScale: 0.75 },
+    ko: { bodyLineHeight: 1.82, bodyLetterSpacing: 0, titleScale: 1.12, titleBodyGap: 30, authorScale: 0.84, sourceScale: 0.75 },
+  },
   'modern-minimal': {},
   cyberpunk: {},
   'japanese-magazine': {

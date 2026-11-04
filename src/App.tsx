@@ -22,7 +22,7 @@ import { useEditorHistory } from './hooks/useEditorHistory';
 import { useEditorPersistence, loadPersistedState } from './hooks/useEditorPersistence';
 import { DEFAULT_POEMS } from './defaultPoems';
 import { editorTemplates } from './templates';
-import { isCjkLanguage } from './fontOptions';
+import { isStampSupportedForEditor } from './stampDefaults';
 import { ensureFontLoaded } from './fontLoader';
 import { usePageMetadata } from './hooks/usePageMetadata';
 import { useStructuralMemo } from './hooks/useStructuralMemo';
@@ -201,7 +201,9 @@ export default function App() {
       customTemplates,
     });
 
-  const stampSupported = isCjkLanguage(language);
+  // Keep the seal opt-in with the actual artwork, including custom templates.
+  // This shared capability gates preview, export, controls and font preload.
+  const stampSupported = isStampSupportedForEditor(language);
 
   // Load Google Fonts on demand: the currently selected poem font, and the stamp
   // font when a stamp is shown. Other families are never fetched.

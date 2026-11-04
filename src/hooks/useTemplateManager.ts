@@ -10,6 +10,7 @@ import type {
   LogoConfig,
   PoemLayerStyle,
   StampConfig,
+  SignatureConfig,
   TemplateBackgroundConfig,
   TemplateDecorationsConfig,
   TemplateTypographyConfig,
@@ -57,6 +58,7 @@ interface DecorationsState {
   borderColor: string;
   borderWidth: number;
   showStamp: boolean;
+  signatures: SignatureConfig[];
   poemPosition: { positionX: number; positionY: number };
   stamp: StampConfig;
   customTexts: CustomText[];
@@ -139,7 +141,15 @@ function matchesDecorations(
     decorations.stamp.size === d.stamp.size &&
     decorations.stamp.rotation === d.stamp.rotation &&
     decorations.stamp.opacity === d.stamp.opacity &&
-    decorations.customTexts.length === d.customTexts.length
+    decorations.customTexts.length === d.customTexts.length &&
+    // Preserve any user-edited signature during a language switch instead of
+    // silently replacing it with the template's localized placeholder.
+    decorations.signatures.length === (d.signatures?.length ?? 0) &&
+    decorations.signatures.every((sig, index) => {
+      const expected = d.signatures?.[index];
+      return expected !== undefined &&
+        (Object.keys(expected) as Array<keyof SignatureConfig>).every((key) => sig[key] === expected[key]);
+    })
   );
 }
 
@@ -269,6 +279,9 @@ export function useTemplateManager({
         stamp: decorations.stamp,
         poemPosition: decorations.poemPosition,
         customTexts: decorations.customTexts,
+        // Keep handwritten signatures with the saved template, just as drafts
+        // and exports already retain them.
+        signatures: decorations.signatures,
         logos: [],
       };
       void customTemplates.saveCustomTemplate(name, bgConfig, typConfig, decConfig, poemStyle);

@@ -1,8 +1,29 @@
-import type { EditorTemplateId, StampConfig, TemplateDecorationsConfig } from '../types';
+import type { EditorTemplateId, SignatureConfig, StampConfig, TemplateDecorationsConfig } from '../types';
 import type { Language } from '../translations';
 
 // Override type allows partial StampConfig since overrides are merged onto the base template's full stamp
 export type DecorationsOverride = Omit<Partial<TemplateDecorationsConfig>, 'stamp'> & { stamp?: Partial<StampConfig> };
+
+
+// A restrained, editable handwritten sign-off for Latin-script poetry.
+// Reuses the same signature drawing/export path as the editor's Add Signature.
+function gracefulLatinSignature(text: string): SignatureConfig {
+  return {
+    id: 'graceful-handwritten-signature',
+    text,
+    font: 'Mr Dafoe',
+    color: '#566b60',
+    fontSize: 42,
+    slant: -6,
+    thickness: 0,
+    flourish: 'swoosh',
+    positionX: 72,
+    positionY: 79,
+    opacity: 0.76,
+    rotation: -5,
+    zIndex: 0,
+  };
+}
 
 export const templateDecorationsOverrides: Partial<Record<EditorTemplateId, Partial<Record<Language, DecorationsOverride>>>> = {
   'ink-wash': {
@@ -89,6 +110,16 @@ export const templateDecorationsOverrides: Partial<Record<EditorTemplateId, Part
     es: { stamp: { text: 'Sello' } },
     fr: { stamp: { text: 'Sceau' } },
     de: { stamp: { text: 'Siegel' } },
+  },
+  'graceful-whitespace': {
+    en: { poemPosition: { positionX: 50, positionY: 46 }, showStamp: false, signatures: [gracefulLatinSignature('the poet')] },
+    'zh-CN': { stamp: { text: '清韵' } },
+    'zh-TW': { stamp: { text: '清韻' } },
+    ja: { stamp: { text: '詩' } },
+    ko: { poemPosition: { positionX: 50, positionY: 46 }, stamp: { text: '시', positionX: 80, positionY: 79 } },
+    es: { poemPosition: { positionX: 50, positionY: 46 }, showStamp: false, signatures: [gracefulLatinSignature('el poeta')] },
+    fr: { poemPosition: { positionX: 50, positionY: 46 }, showStamp: false, signatures: [gracefulLatinSignature('le poète')] },
+    de: { poemPosition: { positionX: 50, positionY: 46 }, showStamp: false, signatures: [gracefulLatinSignature('der Dichter')] },
   },
   'parchment-scroll': {
     en: { stamp: { text: 'Seal' } },

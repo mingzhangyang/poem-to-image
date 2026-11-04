@@ -9,6 +9,8 @@ const fr: TranslationMessages = {
     templateApplied: "Appliqué",
     templateInkWash: "Encre Classique",
     templateInkWashDesc: "Tons papier, composition verticale et bordure façon sceau pour les poèmes classiques.",
+    templateGracefulWhitespace: "Épure poétique",
+    templateGracefulWhitespaceDesc: "Papier ivoire, espaces généreux et petit sceau vermillon pour des vers tout en douceur.",
     templateModernMinimal: "Minimal Moderne",
     templateModernMinimalDesc: "Espaces maîtrisés et palette sobre pour une affiche contemporaine.",
     templateCyberpunk: "Cyberpunk",

@@ -9,6 +9,8 @@ const zhTW: TranslationMessages = {
     templateApplied: "已套用",
     templateInkWash: "古風水墨",
     templateInkWashDesc: "宣紙色底、豎排留白與印章感邊框，適合古詩詞氣質。",
+    templateGracefulWhitespace: "婉約留白",
+    templateGracefulWhitespaceDesc: "淡象牙素箋、大面積留白與輕朱小印，適合婉約詞與含蓄詩句。",
     templateModernMinimal: "現代極簡",
     templateModernMinimalDesc: "留白克制、配色乾淨、排版俐落，適合現代詩和短句海報。",
     templateCyberpunk: "賽博朋克",

@@ -17,6 +17,8 @@ const en = {
     templateApplied: "Applied",
     templateInkWash: "Ink Wash",
     templateInkWashDesc: "Rice-paper tones, vertical composition, and a seal-like border for classical poetry.",
+    templateGracefulWhitespace: "Graceful Whitespace",
+    templateGracefulWhitespaceDesc: "Airy ivory paper, quiet typography and a small vermilion seal for delicate lyrical verse.",
     templateModernMinimal: "Modern Minimal",
     templateModernMinimalDesc: "Clean spacing, restrained colors, and editorial alignment for a contemporary poster.",
     templateCyberpunk: "Cyberpunk",

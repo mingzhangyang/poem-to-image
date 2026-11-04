@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { editorTemplates } from '../../src/templates';
+import { ALL_EDITOR_TEMPLATES } from '../../src/templates';
 
 test('photo presets all have existing brightness adjustment and enabled text shadows', () => {
-  const photos = editorTemplates.filter((template) => template.seriesKey === 'templateSeriesPhoto');
+  const photos = ALL_EDITOR_TEMPLATES.filter((template) => template.seriesKey === 'templateSeriesPhoto');
   assert.deepEqual(photos.map((template) => template.id), [
     'mountain-mist-photo', 'ocean-dawn-photo', 'city-night-photo', 'ink-pine-mist-photo',
   ]);
