@@ -26,7 +26,7 @@ test('swatches have stable identifiers, readable names and valid unique colors',
   assert.equal(new Set(swatches.map((x) => x.hex)).size, swatches.length);
   for (const swatch of swatches) {
     assert.match(swatch.hex, HEX);
-    assert.ok(swatch.labelEn && swatch.labelZh);
+    assert.ok(swatch.labelEn && swatch.labelZh && swatch.labelZhTW);
     assert.ok(contrast('#1e293b', swatch.hex) >= 4.5, swatch.id);
   }
 });
@@ -39,7 +39,7 @@ test('gradient presets use supported directions, light endpoints and distinct na
     assert.match(preset.to, HEX);
     assert.notEqual(preset.from, preset.to);
     assert.ok(DIRECTIONS.has(preset.direction));
-    assert.ok(preset.labelEn && preset.labelZh);
+    assert.ok(preset.labelEn && preset.labelZh && preset.labelZhTW);
     assert.ok(contrast('#1e293b', preset.from) >= 4.5, preset.id);
     assert.ok(contrast('#1e293b', preset.to) >= 4.5, preset.id);
   }
