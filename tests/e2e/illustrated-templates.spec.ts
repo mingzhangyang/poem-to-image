@@ -55,7 +55,8 @@ test('a bottom-anchored artwork survives reload and exports as a PNG', async ({ 
   await page.reload({ waitUntil: 'domcontentloaded' });
   const layer = page.locator('[data-export-layer="background"]').first();
   await expect(layer).toHaveCSS('background-position', '50% 100%');
-  await page.getByRole('button', { name: 'Export Image' }).click();
+  const mobile = (page.viewportSize()?.width ?? 0) < 1024;
+  await page.getByRole('button', { name: mobile ? 'Export' : 'Export Image', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Export Image' });
   const download = page.waitForEvent('download', { timeout: 30_000 });
   await dialog.getByRole('button', { name: 'Copy image' }).click();

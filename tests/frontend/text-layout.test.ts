@@ -87,6 +87,14 @@ test('horizontal: very long words still wrap without losing characters', () => {
   assert.deepEqual(horizontalItems(layout.items).map((item) => item.text), ['a', 'beaut', 'ifull', 'y', 'long', 'word']);
 });
 
+test('horizontal: wrapping keeps leading indentation without creating a blank line', () => {
+  const layout = createTextLayout(
+    { text: '  abcde', writingMode: 'horizontal-tb', fontSize: 20, lineHeight: 1.5, letterSpacing: 0, wrapWidth: 50 },
+    fakeMeasurer(10),
+  );
+  assert.deepEqual(horizontalItems(layout.items).map((item) => item.text), ['  abc', 'de']);
+});
+
 test('horizontal: columns distribute lines and offset x by column width + gap', () => {
   const layout = createTextLayout(
     { text: 'a\nb\nc\nd', writingMode: 'horizontal-tb', fontSize: 20, lineHeight: 1.5, letterSpacing: 0, columns: 2, columnGap: 5 },

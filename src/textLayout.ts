@@ -265,7 +265,7 @@ function wrapHorizontalParagraph(measurer: TextLayoutMeasurer, paragraph: string
         index += 1;
       } else {
         const breakAt = Math.max(currentLine.lastIndexOf(' '), currentLine.lastIndexOf('\t'));
-        if (breakAt > 0) {
+        if (breakAt > 0 && currentLine.slice(0, breakAt).trim()) {
           wrappedLines.push(currentLine.slice(0, breakAt).trimEnd());
           currentLine = currentLine.slice(breakAt + 1).trimStart();
           currentWidth = currentLine ? measureTextWidth(measurer, currentLine, letterSpacing) : 0;
