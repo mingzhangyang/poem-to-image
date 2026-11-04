@@ -8,6 +8,9 @@ const names = [
   'Willow Breeze', 'Grassland Breeze', 'Pine in Snow', 'Sunset Afterglow', 'Moonlit Mountains',
   'Golden Daffodils', 'The Forking Path', 'Dover Beach', 'Tudor Rose Manuscript',
   'A Feather of Hope', 'The Tyger at Night', 'Beyond the Western Pass',
+  'Gothic Rose Window', 'Greek Columns and Laurel', 'The Old Library',
+  'Olive Branches', 'Lavender Sprigs', 'Ivy Vines', 'Oak Leaves and Acorns',
+  'Scottish Moor', 'Coastal Lighthouse', 'Fields of Provence', 'New England Autumn',
 ];
 
 async function openLibrary(page: Page) {
@@ -30,7 +33,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('the gallery shows every new artwork without covering it with its caption', async ({ page }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(90_000);
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   const library = await openLibrary(page);
   for (const name of names) {
@@ -80,4 +83,21 @@ test('the dark English poetry background keeps its light horizontal text on relo
   })).toEqual(['/template-backgrounds/midnight-tyger.webp', '#f8ead1', 'horizontal-tb']);
   await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(page.locator('[data-export-layer="background"]').first()).toHaveCSS('background-position', '50% 100%');
+});
+
+test('the Gothic window artwork loads and remains anchored after reload', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  const library = await openLibrary(page);
+  const card = library.getByRole('button', { name: /Gothic Rose Window/ });
+  await card.scrollIntoViewIfNeeded();
+  const image = card.locator('img');
+  await expect.poll(() => image.evaluate((element: HTMLImageElement) => element.complete && element.naturalWidth > 0)).toBe(true);
+  await card.click();
+  await expect(library).toBeHidden();
+  await expect.poll(() => page.evaluate(() => {
+    const draft = JSON.parse(localStorage.getItem('inkpoem.editor-state.v1') || 'null');
+    return [draft?.background?.backgroundImage, draft?.background?.backgroundPosition];
+  })).toEqual(['/template-backgrounds/gothic-rose-window.webp', 'center top']);
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await expect(page.locator('[data-export-layer="background"]').first()).toHaveCSS('background-position', '50% 0%');
 });

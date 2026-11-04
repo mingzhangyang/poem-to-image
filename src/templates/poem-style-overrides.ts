@@ -35,6 +35,17 @@ export const templatePoemStyleOverrides: Partial<Record<EditorTemplateId, Partia
   'tudor-rose': illustratedPoemStyles,
   'feathered-hope': illustratedPoemStyles,
   'midnight-tyger': illustratedPoemStyles,
+  'gothic-rose-window': illustratedPoemStyles,
+  'greek-laurel': illustratedPoemStyles,
+  'old-library': illustratedPoemStyles,
+  'olive-branch': illustratedPoemStyles,
+  'lavender-sprigs': illustratedPoemStyles,
+  'ivy-vines': illustratedPoemStyles,
+  'oak-leaves': illustratedPoemStyles,
+  'scottish-moor': illustratedPoemStyles,
+  'coastal-lighthouse': illustratedPoemStyles,
+  'provence-fields': illustratedPoemStyles,
+  'new-england-autumn': illustratedPoemStyles,
   'western-pass': illustratedPoemStyles,
   'ink-wash': {
     'zh-CN': {

@@ -36,6 +36,17 @@ export const templateTypographyOverrides: Partial<Record<EditorTemplateId, Parti
   'tudor-rose': illustratedTypography,
   'feathered-hope': illustratedTypography,
   'midnight-tyger': illustratedTypography,
+  'gothic-rose-window': illustratedTypography,
+  'greek-laurel': illustratedTypography,
+  'old-library': illustratedTypography,
+  'olive-branch': illustratedTypography,
+  'lavender-sprigs': illustratedTypography,
+  'ivy-vines': illustratedTypography,
+  'oak-leaves': illustratedTypography,
+  'scottish-moor': illustratedTypography,
+  'coastal-lighthouse': illustratedTypography,
+  'provence-fields': illustratedTypography,
+  'new-england-autumn': illustratedTypography,
   'western-pass': illustratedTypography,
   'ink-wash': {
     'zh-CN': {

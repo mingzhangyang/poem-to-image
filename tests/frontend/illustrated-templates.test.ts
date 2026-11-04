@@ -5,7 +5,7 @@ import test from 'node:test';
 import { editorTemplates, resolveTemplateForLanguage } from '../../src/templates';
 import { LANGUAGES } from '../../src/translations';
 
-const ids = ['song-floral', 'blue-green-landscape', 'art-nouveau', 'midnight-star-chart', 'botanical-specimen', 'indigo-washi', 'lone-fisherman', 'milky-way', 'tower-reaching-stars', 'chrysanthemum-south-mountain', 'great-river-east', 'willow-breeze', 'grassland-breeze', 'pine-snow', 'sunset-afterglow', 'moonlit-landscape', 'daffodil-lake', 'autumn-forked-path', 'dover-beach', 'tudor-rose', 'feathered-hope', 'midnight-tyger', 'western-pass'] as const;
+const ids = ['song-floral', 'blue-green-landscape', 'art-nouveau', 'midnight-star-chart', 'botanical-specimen', 'indigo-washi', 'lone-fisherman', 'milky-way', 'tower-reaching-stars', 'chrysanthemum-south-mountain', 'great-river-east', 'willow-breeze', 'grassland-breeze', 'pine-snow', 'sunset-afterglow', 'moonlit-landscape', 'daffodil-lake', 'autumn-forked-path', 'dover-beach', 'tudor-rose', 'feathered-hope', 'midnight-tyger', 'gothic-rose-window', 'greek-laurel', 'old-library', 'olive-branch', 'lavender-sprigs', 'ivy-vines', 'oak-leaves', 'scottish-moor', 'coastal-lighthouse', 'provence-fields', 'new-england-autumn', 'western-pass'] as const;
 
 test('illustrated templates load local artwork with appropriate editable layouts in every language', async () => {
   for (const id of ids) {
@@ -58,4 +58,23 @@ test('English poetry backgrounds form a collection with readable editable typogr
   assert.ok(tyger);
   assert.equal(tyger.typography.textColor, '#f8ead1');
   assert.equal(tyger.background.backgroundPosition, 'center bottom');
+});
+
+test('new Western artwork appears in the architecture, botanical, and landscape collections', () => {
+  const groups = {
+    templateSeriesArchitecture: ['gothic-rose-window', 'greek-laurel', 'old-library'],
+    templateSeriesBotanical: ['olive-branch', 'lavender-sprigs', 'ivy-vines', 'oak-leaves'],
+    templateSeriesWesternLandscapes: ['scottish-moor', 'coastal-lighthouse', 'provence-fields', 'new-england-autumn'],
+  } as const;
+  for (const [seriesKey, ids] of Object.entries(groups)) {
+    for (const id of ids) {
+      const template = editorTemplates.find((item) => item.id === id);
+      assert.ok(template, id);
+      assert.equal(template.seriesKey, seriesKey);
+    }
+  }
+  const window = resolveTemplateForLanguage('gothic-rose-window', 'en');
+  assert.ok(window);
+  assert.equal(window.background.backgroundPosition, 'center top');
+  assert.equal(window.decorations.poemPosition.positionY, 64);
 });

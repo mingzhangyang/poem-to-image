@@ -13,7 +13,7 @@ const limits = {
   initialJavaScriptGzip: 210 * 1024,
   initialCssGzip: 20 * 1024,
   previewFile: 100 * 1024,
-  previewTotal: 600 * 1024,
+  previewTotal: 800 * 1024,
 };
 
 function invariant(condition, message) {

@@ -71,4 +71,15 @@ Original artwork was generated using the built-in image generation tool for InkP
 | `tudor-rose.webp` | Tudor roses and antique gold vines frame a quiet vellum page. |
 | `feathered-hope.webp` | A songbird, feather and fine botanical details on ivory cotton paper. |
 | `midnight-tyger.webp` | A gold engraved tiger and branches surround a quiet midnight-blue center. |
+| `gothic-rose-window.webp` | A jewel-toned stained-glass rose window and Gothic tracery around luminous vellum. |
+| `greek-laurel.webp` | Ionic columns and laurel framing a quiet Mediterranean shore. |
+| `old-library.webp` | Antique books, carved oak shelves and a warm parchment writing area. |
+| `olive-branch.webp` | Delicate olive leaves and fruit on warm ivory paper. |
+| `lavender-sprigs.webp` | Pressed lavender sprigs arranged along the edge of ivory paper. |
+| `ivy-vines.webp` | Fine engraved ivy vines on a pale parchment page. |
+| `oak-leaves.webp` | Golden oak leaves and acorns in a naturalist engraving. |
+| `scottish-moor.webp` | Heather, mist and rolling Scottish Highland hills. |
+| `coastal-lighthouse.webp` | A white lighthouse above a calm Atlantic shoreline. |
+| `provence-fields.webp` | Lavender fields and sunlit golden hills in Provence. |
+| `new-england-autumn.webp` | Autumn maples, a still lake and a small covered bridge. |
 | `western-pass.webp` | An ancient frontier gate and departing traveler on a hazy western desert road. |
