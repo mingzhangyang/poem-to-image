@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ChevronDown, ChevronRight, Loader2, LogIn, Palette, Sparkles, Upload } from 'lucide-react';
 import type { Language, TranslationKey } from '../../translations';
 import { PAPER_STYLES, paperPreviewStyle } from '../../paperStyles';
+import { GRADIENT_PRESETS, SOLID_COLOR_PRESET_GROUPS } from '../../backgroundPresets';
 import { CREDIT_COST } from '../../types';
 import type { AiProvider, BackgroundType, BackgroundSectionProps, ExpandedSections, TranslateFn } from '../../types';
 import { ControlSection } from '../ControlSection';
@@ -140,21 +141,90 @@ export function BackgroundPanel({ t, language, expanded, onToggle, background, b
           </div>
         ) : null}
 
+
         {background.backgroundType === 'solid' ? (
-          <div className="flex items-center gap-3">
-            <input
-              type="color"
-              aria-label={t('bgSolid')}
-              value={background.backgroundColor}
-              onChange={(event) => background.onBackgroundColorChange(event.target.value)}
-              className="w-10 h-10 rounded cursor-pointer border-0 p-0"
-            />
-            <span className="text-sm text-(--app-accent-700) uppercase font-mono">{background.backgroundColor}</span>
+          <div className="space-y-3">
+            {SOLID_COLOR_PRESET_GROUPS.map((group) => (
+              <div key={group.id} className="space-y-2">
+                <p className="text-xs font-semibold text-(--app-accent-600)">{t(group.labelKey)}</p>
+                <div className="grid grid-cols-4 gap-2" role="group" aria-label={t(group.labelKey)}>
+                  {group.colors.map((swatch) => {
+                    const name = language.startsWith('zh') ? swatch.labelZh : swatch.labelEn;
+                    const isSelected = background.backgroundColor.toLowerCase() === swatch.hex.toLowerCase();
+                    return (
+                      <button
+                        key={swatch.id}
+                        type="button"
+                        onClick={() => background.onBackgroundColorChange(swatch.hex)}
+                        aria-label={`${name} (${swatch.hex})`}
+                        aria-pressed={isSelected}
+                        title={`${name} · ${swatch.hex}`}
+                        className={`min-w-0 rounded-xl border p-1.5 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--app-accent-500) ${
+                          isSelected
+                            ? 'border-(--app-accent-500) bg-(--app-accent-50) ring-2 ring-(--app-accent-200)'
+                            : 'border-[rgba(34,48,52,0.12)] hover:border-(--app-accent-400)'
+                        }`}
+                      >
+                        <span aria-hidden="true" className="mx-auto block h-9 w-9 rounded-full border border-black/10" style={{ backgroundColor: swatch.hex }} />
+                        <span className="mt-1 block truncate text-center text-[10px] leading-4 text-(--app-accent-700)">{name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+            <div className="flex items-center gap-3">
+              <input
+                type="color"
+                aria-label={t('bgSolid')}
+                value={background.backgroundColor}
+                onChange={(event) => background.onBackgroundColorChange(event.target.value)}
+                className="w-10 h-10 rounded cursor-pointer border-0 p-0"
+              />
+              <span className="text-sm text-(--app-accent-700) uppercase font-mono">{background.backgroundColor}</span>
+            </div>
           </div>
         ) : null}
 
         {background.backgroundType === 'gradient' ? (
           <div className="space-y-3">
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-(--app-accent-600)">{t('bgGradientPresets')}</p>
+              <div className="grid grid-cols-2 gap-2" role="group" aria-label={t('bgGradientPresets')}>
+                {GRADIENT_PRESETS.map((preset) => {
+                  const name = language.startsWith('zh') ? preset.labelZh : preset.labelEn;
+                  const isSelected = background.gradientColor1.toLowerCase() === preset.from.toLowerCase()
+                    && background.gradientColor2.toLowerCase() === preset.to.toLowerCase()
+                    && background.gradientDirection === preset.direction;
+                  return (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() => {
+                        background.onGradientColor1Change(preset.from);
+                        background.onGradientColor2Change(preset.to);
+                        background.onGradientDirectionChange(preset.direction);
+                      }}
+                      aria-label={name}
+                      aria-pressed={isSelected}
+                      title={name}
+                      className={`min-w-0 rounded-xl border p-1.5 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--app-accent-500) ${
+                        isSelected
+                          ? 'border-(--app-accent-500) bg-(--app-accent-50) ring-2 ring-(--app-accent-200)'
+                          : 'border-[rgba(34,48,52,0.12)] hover:border-(--app-accent-400)'
+                      }`}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className="block h-10 w-full rounded-lg border border-black/5"
+                        style={{ backgroundImage: `linear-gradient(${preset.direction}, ${preset.from}, ${preset.to})` }}
+                      />
+                      <span className="mt-1 block truncate text-center text-[11px] leading-4 text-(--app-accent-700)">{name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
             <div className="flex items-center gap-3">
               <input
                 type="color"
