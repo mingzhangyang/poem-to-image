@@ -3,6 +3,7 @@ import type { Language } from '../translations';
 import type { EditorTemplateDefinition } from '../types';
 import { getTemplatePreviewStyle } from '../templates/preview-style';
 import { ensureFontLoaded } from '../fontLoader';
+import { ensureSignatureFontsLoaded } from '../signatureRendering';
 
 interface TemplatePreviewProps {
   template: Pick<EditorTemplateDefinition, 'background' | 'previewImage' | 'typography' | 'decorations'>;
@@ -45,6 +46,11 @@ export function TemplatePreview({
   useEffect(() => {
     if (showPoemSample) ensureFontLoaded(template.typography.fontFamily);
   }, [showPoemSample, template.typography.fontFamily]);
+  const previewSignatures = showPoemSample ? (template.decorations.signatures ?? []) : [];
+  const hasSignatures = previewSignatures.length > 0;
+  useEffect(() => {
+    if (showPoemSample && hasSignatures) void ensureSignatureFontsLoaded();
+  }, [showPoemSample, hasSignatures]);
 
   const previewImage = template.previewImage;
   const objectFit = template.background.backgroundSize === 'stretch'
@@ -93,6 +99,25 @@ export function TemplatePreview({
           {PREVIEW_VERSES[language]}
         </div>
       ) : null}
+      {previewSignatures.map((sig) => (
+        <span
+          key={sig.id}
+          data-testid="template-preview-signature"
+          aria-hidden="true"
+          className="pointer-events-none absolute whitespace-nowrap"
+          style={{
+            left: `${sig.positionX}%`,
+            top: `${sig.positionY}%`,
+            transform: `translate(-50%, -50%) rotate(${sig.rotation}deg)`,
+            fontFamily: `"${sig.font}", cursive`,
+            fontSize: `${Math.max(12, sig.fontSize * 0.44)}px`,
+            color: sig.color,
+            opacity: sig.opacity,
+          }}
+        >
+          {sig.text}
+        </span>
+      ))}
     </div>
   );
 }

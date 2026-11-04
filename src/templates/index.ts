@@ -50,6 +50,11 @@ export function resolveTemplateForLanguage(templateId: EditorTemplateId, languag
       ...typographyOverride,
       fontFamily: getTemplateFontForLanguage(templateId, language),
     },
+    // The SVG preview includes a Chinese vertical poem and red seal; Latin
+    // variants need the live paper/text/signature preview instead.
+    previewImage: templateId === 'graceful-whitespace' && ['en', 'es', 'fr', 'de'].includes(language)
+      ? undefined
+      : template.previewImage,
     decorations: {
       ...template.decorations,
       ...decorationsOverride,

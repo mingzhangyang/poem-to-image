@@ -203,7 +203,7 @@ export default function App() {
 
   // Keep the seal opt-in with the actual artwork, including custom templates.
   // This shared capability gates preview, export, controls and font preload.
-  const stampSupported = isStampSupportedForEditor(language, decorations.stamp);
+  const stampSupported = isStampSupportedForEditor(language);
 
   // Load Google Fonts on demand: the currently selected poem font, and the stamp
   // font when a stamp is shown. Other families are never fetched.

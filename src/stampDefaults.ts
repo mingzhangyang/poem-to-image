@@ -1,5 +1,4 @@
 import type { Language } from './translations';
-import type { StampConfig } from './types';
 import { isCjkLanguage } from './fontOptions';
 
 const DEFAULT_STAMP_TEXTS: Record<Language, string> = {
@@ -16,14 +15,7 @@ const DEFAULT_STAMP_TEXTS: Record<Language, string> = {
 export function getDefaultStampTextForLanguage(language: Language) {
   return DEFAULT_STAMP_TEXTS[language];
 }
-/**
- * CJK seals are always supported. Other languages require an explicit opt-in
- * stored on the stamp itself, rather than an ephemeral built-in template ID:
- * custom-template saves, drafts and undo/redo already retain StampConfig.
- */
-export function isStampSupportedForEditor(
-  language: Language,
-  stamp: Pick<StampConfig, 'allowNonCjk'>,
-): boolean {
-  return isCjkLanguage(language) || stamp.allowNonCjk === true;
+/** Seals are intentionally reserved for CJK scripts; Latin layouts use signatures. */
+export function isStampSupportedForEditor(language: Language): boolean {
+  return isCjkLanguage(language);
 }

@@ -6,6 +6,7 @@ import { getTemplateFontForLanguage } from '../../src/fontOptions';
 import { paperPreviewStyle } from '../../src/paperStyles';
 import { LANGUAGES } from '../../src/translations';
 import { isStampSupportedForEditor } from '../../src/stampDefaults';
+import { SIGNATURE_FONTS } from '../../src/signatureRendering';
 import { ALL_EDITOR_TEMPLATES, editorTemplates, getTemplateDefinition, resolveTemplateForLanguage } from '../../src/templates';
 import { getTemplatePreviewStyle } from '../../src/templates/preview-style';
 
@@ -40,7 +41,7 @@ test('language-specific layout stays vertical for Chinese/Japanese and horizonta
     assert.ok(resolved.typography.fontFamily.trim(), language);
     assert.equal(resolved.background.backgroundType, 'paper', language);
     assert.equal(resolved.decorations.showBorder, false, language);
-    assert.equal(resolved.decorations.showStamp, true, language);
+    assert.equal(resolved.decorations.showStamp, !['en', 'es', 'fr', 'de'].includes(language), language);
     assert.ok(resolved.decorations.stamp.size <= 60, language);
     assert.ok(resolved.poemStyle.titleScale > 1, language);
     const vertical = ['zh-CN', 'zh-TW', 'ja'].includes(language);
@@ -49,7 +50,6 @@ test('language-specific layout stays vertical for Chinese/Japanese and horizonta
   }
   assert.equal(resolveTemplateForLanguage(ID, 'zh-TW')?.decorations.stamp.text, '清韻');
   assert.equal(resolveTemplateForLanguage(ID, 'zh-CN')?.decorations.stamp.text, '清韵');
-  assert.equal(resolveTemplateForLanguage(ID, 'en')?.decorations.stamp.text, 'Poem');
 });
 
 test('gallery preview is a tiny local vector with no remote resources or scripts', async () => {
@@ -65,26 +65,41 @@ test('gallery preview is a tiny local vector with no remote resources or scripts
   assert.doesNotMatch(svg, /<script|<image|<foreignObject|(?:xlink:)?href=/i);
 });
 
-test('localized seals are persisted with artwork, not a built-in template ID', () => {
-  for (const language of LANGUAGES) {
+test('Latin-script variants use a delicate editable cursive signature, never a seal', () => {
+  const localizedText = {
+    en: 'the poet',
+    es: 'el poeta',
+    fr: 'le poète',
+    de: 'der Dichter',
+  } as const;
+  for (const language of Object.keys(localizedText) as Array<keyof typeof localizedText>) {
     const template = resolveTemplateForLanguage(ID, language);
     assert.ok(template, language);
-    assert.equal(template.decorations.stamp.allowNonCjk, true, language);
-    assert.equal(isStampSupportedForEditor(language, template.decorations.stamp), true, language);
-
-    // This is the same JSON round trip used by drafts and custom templates.
-    const savedDecorations = JSON.parse(JSON.stringify(template.decorations)) as typeof template.decorations;
-    assert.equal(isStampSupportedForEditor(language, savedDecorations.stamp), true, language);
-  }
-
-  for (const language of ['en', 'es', 'fr', 'de'] as const) {
-    const other = resolveTemplateForLanguage('modern-minimal', language);
-    assert.ok(other);
-    assert.equal(isStampSupportedForEditor(language, other.decorations.stamp), false, language);
-    assert.equal(isStampSupportedForEditor(language, {}), false, language);
+    assert.equal(isStampSupportedForEditor(language), false);
+    assert.equal(template.decorations.showStamp, false, language);
+    assert.equal(template.decorations.signatures?.length, 1, language);
+    const signature = template.decorations.signatures?.[0];
+    assert.ok(signature);
+    assert.equal(signature.text, localizedText[language]);
+    assert.equal(signature.flourish, 'swoosh');
+    assert.ok(signature.opacity < 1);
+    assert.ok(SIGNATURE_FONTS.some((font) => font.value === signature.font));
+    // Latin preview must not show the fixed Chinese SVG seal.
+    assert.equal(template.previewImage, undefined, language);
+    const saved = JSON.parse(JSON.stringify(template.decorations)) as typeof template.decorations;
+    assert.deepEqual(saved.signatures, template.decorations.signatures, language);
   }
 });
 
+test('CJK variants retain their localized seal without a Latin signature', () => {
+  for (const language of ['zh-CN', 'zh-TW', 'ja', 'ko'] as const) {
+    const template = resolveTemplateForLanguage(ID, language);
+    assert.ok(template);
+    assert.equal(isStampSupportedForEditor(language), true);
+    assert.equal(template.decorations.showStamp, true, language);
+    assert.equal(template.decorations.signatures?.length ?? 0, 0, language);
+  }
+});
 test('horizontal-language body spacing matches typography to prevent wrap differences', () => {
   for (const language of ['en', 'es', 'fr', 'de', 'ko'] as const) {
     const template = resolveTemplateForLanguage(ID, language);
