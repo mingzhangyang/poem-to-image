@@ -24,6 +24,18 @@ test('graceful whitespace is selectable, uses ivory paper, and survives reload',
   await card.click();
   await expect(library).toBeHidden();
 
+  // Check actual canvas rendering rather than only the saved showStamp flag.
+  const seal = page.getByLabel('Stamp element');
+  await expect(seal).toBeVisible();
+  const sealCanvas = seal.locator('canvas');
+  await expect.poll(async () => sealCanvas.evaluate((element) => {
+    if (!(element instanceof HTMLCanvasElement)) return false;
+    const ctx = element.getContext('2d');
+    if (!ctx) return false;
+    const pixels = ctx.getImageData(0, 0, element.width, element.height).data;
+    return pixels.some((channel, index) => index % 4 === 3 && channel > 0);
+  })).toBe(true);
+
   await expect.poll(() => page.evaluate(() => {
     const state = JSON.parse(localStorage.getItem('inkpoem.editor-state.v1') || 'null');
     return [

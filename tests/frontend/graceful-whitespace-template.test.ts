@@ -5,6 +5,7 @@ import test from 'node:test';
 import { getTemplateFontForLanguage } from '../../src/fontOptions';
 import { paperPreviewStyle } from '../../src/paperStyles';
 import { LANGUAGES } from '../../src/translations';
+import { isStampSupportedForEditor } from '../../src/stampDefaults';
 import { ALL_EDITOR_TEMPLATES, editorTemplates, getTemplateDefinition, resolveTemplateForLanguage } from '../../src/templates';
 import { getTemplatePreviewStyle } from '../../src/templates/preview-style';
 
@@ -62,4 +63,23 @@ test('gallery preview is a tiny local vector with no remote resources or scripts
   assert.match(svg, /^<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg"/);
   assert.match(svg, /<\/svg>\s*$/);
   assert.doesNotMatch(svg, /<script|<image|<foreignObject|(?:xlink:)?href=/i);
+});
+
+test('localized Graceful Whitespace seals are available in every supported language without changing others', () => {
+  for (const language of LANGUAGES) {
+    assert.equal(isStampSupportedForEditor(language, ID), true, language);
+  }
+  for (const language of ['en', 'es', 'fr', 'de'] as const) {
+    assert.equal(isStampSupportedForEditor(language, 'modern-minimal'), false, language);
+    assert.equal(isStampSupportedForEditor(language, null), false, language);
+  }
+});
+
+test('horizontal-language body spacing matches typography to prevent wrap differences', () => {
+  for (const language of ['en', 'es', 'fr', 'de', 'ko'] as const) {
+    const template = resolveTemplateForLanguage(ID, language);
+    assert.ok(template);
+    assert.equal(template.poemStyle.bodyLineHeight, template.typography.lineHeight, language);
+    assert.equal(template.poemStyle.bodyLetterSpacing, template.typography.letterSpacing, language);
+  }
 });
