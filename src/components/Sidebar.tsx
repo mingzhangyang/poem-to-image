@@ -115,6 +115,7 @@ export function Sidebar({
       <div>
         <TemplatesPanel
           t={t}
+          language={language}
           expanded={expandedSections.templates}
           onToggle={() => onToggleSection('templates')}
           templates={templates}
@@ -182,6 +183,7 @@ export function Sidebar({
           />
           <TemplatesPanel
             t={t}
+            language={language}
             expanded={expandedSections.templates}
             onToggle={() => onToggleSection('templates')}
             templates={templates}
