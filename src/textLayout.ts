@@ -239,6 +239,10 @@ function getRotatedRunDrawOffset(measurer: TextLayoutMeasurer, text: string, let
   };
 }
 
+function isBreakableWhitespace(character: string | undefined) {
+  return character !== undefined && /\s/u.test(character) && !/[\u00a0\u2007\u202f]/u.test(character);
+}
+
 function wrapHorizontalParagraph(measurer: TextLayoutMeasurer, paragraph: string, maxWidth: number, letterSpacing: number) {
   if (!paragraph) {
     return [''];
@@ -248,23 +252,49 @@ function wrapHorizontalParagraph(measurer: TextLayoutMeasurer, paragraph: string
   let currentLine = '';
   let currentWidth = 0;
 
-  const characters = Array.from(paragraph);
+  let characters = Array.from(paragraph);
+  const indentLength = characters.findIndex((character) => !/\s/u.test(character));
+  if (indentLength > 0) {
+    // Clamp indentation only when it would leave no room for the first glyph.
+    // A soft wrap must not turn an overlong indent into a blank line.
+    const firstGlyphWidth = measurer.measureText(characters[indentLength]).width;
+    let indentWidth = 0;
+    let retainedIndent = 0;
+    for (let offset = 0; offset < indentLength; offset += 1) {
+      const width = measurer.measureText(characters[offset]).width;
+      const nextIndentWidth = retainedIndent ? indentWidth + letterSpacing + width : width;
+      if (nextIndentWidth > maxWidth || nextIndentWidth + letterSpacing + firstGlyphWidth > maxWidth) break;
+      indentWidth = nextIndentWidth;
+      retainedIndent += 1;
+    }
+    if (retainedIndent < indentLength) {
+      characters = [...characters.slice(0, retainedIndent), ...characters.slice(indentLength)];
+    }
+  }
   let index = 0;
+  let softWrapped = false;
   while (index < characters.length) {
     const character = characters[index];
+    if (softWrapped && !currentLine && /\s/u.test(character)) {
+      index += 1;
+      continue;
+    }
     const characterWidth = measurer.measureText(character).width;
     const nextWidth = currentLine ? currentWidth + letterSpacing + characterWidth : characterWidth;
 
     if (currentLine && nextWidth > maxWidth) {
+      softWrapped = true;
       // Prefer a word boundary, while retaining character-level fallback for
       // long words and scripts which do not put spaces between words.
-      if (character === ' ' || character === '\t') {
-        wrappedLines.push(currentLine.trimEnd());
+      if (isBreakableWhitespace(character)) {
+        if (currentLine.trim()) wrappedLines.push(currentLine.trimEnd());
         currentLine = '';
         currentWidth = 0;
         index += 1;
+        while (isBreakableWhitespace(characters[index])) index += 1;
       } else {
-        const breakAt = Math.max(currentLine.lastIndexOf(' '), currentLine.lastIndexOf('\t'));
+        let breakAt = currentLine.length - 1;
+        while (breakAt >= 0 && !isBreakableWhitespace(currentLine[breakAt])) breakAt -= 1;
         if (breakAt > 0 && currentLine.slice(0, breakAt).trim()) {
           wrappedLines.push(currentLine.slice(0, breakAt).trimEnd());
           currentLine = currentLine.slice(breakAt + 1).trimStart();

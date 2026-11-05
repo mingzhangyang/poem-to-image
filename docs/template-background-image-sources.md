@@ -82,4 +82,17 @@ Original artwork was generated using the built-in image generation tool for InkP
 | `coastal-lighthouse.webp` | A white lighthouse above a calm Atlantic shoreline. |
 | `provence-fields.webp` | Lavender fields and sunlit golden hills in Provence. |
 | `new-england-autumn.webp` | Autumn maples, a still lake and a small covered bridge. |
+| `cross-at-dawn.webp` | A small cross on a quiet hillside under warm sunrise light. |
+| `good-shepherd.webp` | A distant shepherd and sheep beside still water in a green meadow. |
+| `dove-and-olive.webp` | A white dove carrying an olive branch over light handmade paper. |
+| `bethlehem-star.webp` | A gold star and a distant manger under a quiet dark-blue sky. |
+| `vine-and-branches.webp` | Grapevines and restrained gold illumination on warm vellum. |
+| `resurrection-morning.webp` | An open garden tomb in the gentle light of dawn. |
+| `auspicious-clouds.webp` | Chinese ruyi cloud motifs in jade, blue and fine gold along the edges of warm xuan paper. |
+| `pastoral-homestead.webp` | A quiet Chinese village and fields under distant misty mountains. |
+| `peach-blossom.webp` | Delicate pink peach blossoms at the margins of warm xuan paper. |
+| `plum-blossom.webp` | A graceful plum branch painted in ink and restrained red. |
+| `orchid-grace.webp` | Fine orchid leaves and pale flowers on quiet xuan paper. |
+| `bamboo-brush.webp` | Slender bamboo stems and leaves painted in ink. |
+| `chrysanthemum-brush.webp` | Golden chrysanthemums in a traditional botanical composition. |
 | `western-pass.webp` | An ancient frontier gate and departing traveler on a hazy western desert road. |

@@ -95,6 +95,40 @@ test('horizontal: wrapping keeps leading indentation without creating a blank li
   assert.deepEqual(horizontalItems(layout.items).map((item) => item.text), ['  abc', 'de']);
 });
 
+test('horizontal: overlong indentation leaves space for the first glyph', () => {
+  const base = { writingMode: 'horizontal-tb' as const, fontSize: 20, lineHeight: 1.5, letterSpacing: 0, wrapWidth: 50 };
+  const texts = (text: string) => horizontalItems(createTextLayout({ ...base, text }, fakeMeasurer(10)).items).map((item) => item.text);
+
+  assert.deepEqual(texts('      abcde'), ['    a', 'bcde']);
+  assert.deepEqual(texts('\t\t\t\t\t\tabcde'), ['\t\t\t\ta', 'bcde']);
+  assert.deepEqual(texts('　　　abcde'), ['　　　ab', 'cde']);
+  assert.deepEqual(horizontalItems(createTextLayout({ ...base, text: '    x', wrapWidth: 10 }, fakeMeasurer(10)).items).map((item) => item.text), ['x']);
+  assert.deepEqual(horizontalItems(createTextLayout({ ...base, text: '      abc', letterSpacing: 5 }, fakeMeasurer(10)).items).map((item) => item.text), ['  a', 'bc']);
+});
+
+test('horizontal: long whitespace at a soft wrap does not produce an empty line', () => {
+  const layout = createTextLayout(
+    { text: 'abcde      xyz', writingMode: 'horizontal-tb', fontSize: 20, lineHeight: 1.5, letterSpacing: 0, wrapWidth: 50 },
+    fakeMeasurer(10),
+  );
+  assert.deepEqual(horizontalItems(layout.items).map((item) => item.text), ['abcde', 'xyz']);
+  const fullWidth = createTextLayout(
+    { text: 'abcd　　　xyz', writingMode: 'horizontal-tb', fontSize: 20, lineHeight: 1.5, letterSpacing: 0, wrapWidth: 50 },
+    fakeMeasurer(10),
+  );
+  assert.deepEqual(horizontalItems(fullWidth.items).map((item) => item.text), ['abcd', 'xyz']);
+  const nonBreaking = createTextLayout(
+    { text: 'a\u00a0\u00a0b', writingMode: 'horizontal-tb', fontSize: 20, lineHeight: 1.5, letterSpacing: 0, wrapWidth: 10 },
+    fakeMeasurer(10),
+  );
+  assert.deepEqual(horizontalItems(nonBreaking.items).map((item) => item.text), ['a', 'b']);
+  const nonBreakingWord = createTextLayout(
+    { text: 'one aa\u00a0bb', writingMode: 'horizontal-tb', fontSize: 20, lineHeight: 1.5, letterSpacing: 0, wrapWidth: 50 },
+    fakeMeasurer(10),
+  );
+  assert.deepEqual(horizontalItems(nonBreakingWord.items).map((item) => item.text), ['one', 'aa\u00a0bb']);
+});
+
 test('horizontal: columns distribute lines and offset x by column width + gap', () => {
   const layout = createTextLayout(
     { text: 'a\nb\nc\nd', writingMode: 'horizontal-tb', fontSize: 20, lineHeight: 1.5, letterSpacing: 0, columns: 2, columnGap: 5 },

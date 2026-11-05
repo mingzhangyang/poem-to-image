@@ -11,6 +11,10 @@ const names = [
   'Gothic Rose Window', 'Greek Columns and Laurel', 'The Old Library',
   'Olive Branches', 'Lavender Sprigs', 'Ivy Vines', 'Oak Leaves and Acorns',
   'Scottish Moor', 'Coastal Lighthouse', 'Fields of Provence', 'New England Autumn',
+  'Cross at Dawn', 'The Good Shepherd', 'Dove and Olive Branch', 'Star of Bethlehem',
+  'The Vine and Branches', 'Resurrection Morning',
+  'Auspicious Clouds',
+  'Pastoral Homestead', 'Peach Blossoms', 'Plum in Winter', 'Orchid in Ink', 'Bamboo in Ink', 'Chrysanthemum Study',
 ];
 
 async function openLibrary(page: Page) {
@@ -33,7 +37,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('the gallery shows every new artwork without covering it with its caption', async ({ page }) => {
-  test.setTimeout(90_000);
+  test.setTimeout(120_000);
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   const library = await openLibrary(page);
   for (const name of names) {
@@ -100,4 +104,21 @@ test('the Gothic window artwork loads and remains anchored after reload', async 
   })).toEqual(['/template-backgrounds/gothic-rose-window.webp', 'center top']);
   await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(page.locator('[data-export-layer="background"]').first()).toHaveCSS('background-position', '50% 0%');
+});
+
+test('the Bethlehem artwork applies light text and survives a reload', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  const library = await openLibrary(page);
+  const card = library.getByRole('button', { name: /Star of Bethlehem/ });
+  await card.scrollIntoViewIfNeeded();
+  const image = card.locator('img');
+  await expect.poll(() => image.evaluate((element: HTMLImageElement) => element.complete && element.naturalWidth > 0)).toBe(true);
+  await card.click();
+  await expect(library).toBeHidden();
+  await expect.poll(() => page.evaluate(() => {
+    const draft = JSON.parse(localStorage.getItem('inkpoem.editor-state.v1') || 'null');
+    return [draft?.background?.backgroundImage, draft?.typography?.textColor, draft?.typography?.writingMode];
+  })).toEqual(['/template-backgrounds/bethlehem-star.webp', '#f7ebd0', 'horizontal-tb']);
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await expect(page.locator('[data-export-layer="background"]').first()).toHaveCSS('background-position', '50% 50%');
 });
