@@ -29,6 +29,7 @@ interface HistoryBackgroundSource {
   backgroundImage: string | null;
   backgroundImageSource: BackgroundImageSource;
   backgroundSize?: 'cover' | 'contain' | 'stretch';
+  backgroundPosition?: string;
   bgBrightness: number;
   bgBlur: number;
   applyBackgroundTemplate: (t: TemplateBackgroundConfig) => void;
@@ -147,6 +148,7 @@ export function useEditorHistory({
         backgroundImage: background.backgroundImage,
         backgroundImageSource: background.backgroundImageSource,
         backgroundSize: background.backgroundSize,
+        backgroundPosition: background.backgroundPosition,
         bgBrightness: background.bgBrightness,
         bgBlur: background.bgBlur,
       },

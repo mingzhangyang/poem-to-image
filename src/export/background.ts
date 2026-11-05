@@ -137,13 +137,21 @@ export async function drawBackground(ctx: CanvasRenderingContext2D, scene: Canva
     }
   }
 
+  // Match the preview's keyword positions, including artwork anchored at the
+  // top or bottom. Older drafts without a position remain centered.
+  const position = (background.backgroundPosition ?? 'center').toLowerCase().split(/\s+/);
+  const xFactor = position.includes('left') ? 0 : position.includes('right') ? 1 : 0.5;
+  const yFactor = position.includes('top') ? 0 : position.includes('bottom') ? 1 : 0.5;
+  let drawX = (canvasWidth - drawWidth) * xFactor;
+  let drawY = (canvasHeight - drawHeight) * yFactor;
   if (background.bgBlur > 0) {
+    // The preview scales the entire positioned layer about its center when it
+    // blurs, not just the image about its chosen top/bottom anchor.
+    drawX = drawX * 1.1 - canvasWidth * 0.05;
+    drawY = drawY * 1.1 - canvasHeight * 0.05;
     drawWidth *= 1.1;
     drawHeight *= 1.1;
   }
-
-  const drawX = (canvasWidth - drawWidth) / 2;
-  const drawY = (canvasHeight - drawHeight) / 2;
 
   ctx.save();
   ctx.filter = `brightness(${background.bgBrightness}%) blur(${background.bgBlur}px)`;

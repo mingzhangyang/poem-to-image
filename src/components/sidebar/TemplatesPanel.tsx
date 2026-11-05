@@ -40,7 +40,7 @@ interface BuiltInTemplateCardProps {
 
 function BuiltInTemplateCard({ t, language, template, isActive, onApply, variant = 'compact' }: BuiltInTemplateCardProps) {
   const previewTemplate = resolveTemplateForLanguage(template.id, language) ?? template;
-  const reserveArtworkArea = variant === 'library' && template.id === 'graceful-whitespace';
+  const reserveArtworkArea = variant === 'library';
   if (variant === 'library') {
     return (
       <button
@@ -48,17 +48,15 @@ function BuiltInTemplateCard({ t, language, template, isActive, onApply, variant
         key={template.id}
         onClick={() => onApply(template.id)}
         aria-pressed={isActive}
-        className={`group relative h-[300px] w-[240px] overflow-hidden rounded-2xl border text-left transition-all ${reserveArtworkArea ? 'flex flex-col bg-[#fdfbf7]' : ''} ${
+        className={`group relative h-[420px] w-[240px] overflow-hidden rounded-2xl border text-left transition-all ${reserveArtworkArea ? 'flex flex-col bg-[#fdfbf7]' : ''} ${
           isActive
             ? 'border-(--app-accent-300) shadow-[0_16px_36px_var(--app-accent-shadow)]'
             : 'border-[rgba(34,48,52,0.08)] hover:border-(--app-accent-200)'
         }`}
       >
-        {/* The Graceful Whitespace signature/seal belongs to the artwork, never
-            beneath the caption. Flex layout reserves the actual remaining
-            height above the variable-height translated description. */}
+        {/* Keep the artwork and sample above the translated caption. */}
         <div
-          data-testid={reserveArtworkArea ? 'graceful-gallery-artwork' : undefined}
+          data-testid={template.id === 'graceful-whitespace' ? 'graceful-gallery-artwork' : 'template-gallery-artwork'}
           className={reserveArtworkArea ? 'relative min-h-0 flex-1 overflow-hidden' : 'absolute inset-0'}
         >
           <TemplatePreview template={previewTemplate} language={language} showPoemSample className="absolute inset-0" />
@@ -77,7 +75,7 @@ function BuiltInTemplateCard({ t, language, template, isActive, onApply, variant
         </div>
 
         <div
-          data-testid={reserveArtworkArea ? 'graceful-gallery-caption' : undefined}
+          data-testid={template.id === 'graceful-whitespace' ? 'graceful-gallery-caption' : 'template-gallery-caption'}
           className={`rounded-xl border border-[rgba(34,48,52,0.08)] bg-[rgba(255,253,249,0.92)] px-3 py-2.5 shadow-[0_10px_24px_rgba(26,44,46,0.1)] ${
             reserveArtworkArea
               ? 'relative z-10 mx-3 mb-3 shrink-0'

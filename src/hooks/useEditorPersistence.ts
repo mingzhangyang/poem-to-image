@@ -66,7 +66,7 @@ interface UseEditorPersistenceParams {
     | 'backgroundSize'
     | 'bgBrightness'
     | 'bgBlur'
-  >;
+  > & { backgroundPosition?: string };
   typography: TemplateTypographyConfig;
   decorations: TemplateDecorationsConfig;
 }
@@ -109,6 +109,7 @@ export function useEditorPersistence({
           backgroundImage: background.backgroundImage ?? null,
           backgroundImageSource: background.backgroundImageSource,
           backgroundSize: background.backgroundSize,
+          backgroundPosition: background.backgroundPosition,
           bgBrightness: background.bgBrightness,
           bgBlur: background.bgBlur,
         },

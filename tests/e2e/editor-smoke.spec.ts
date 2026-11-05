@@ -68,12 +68,12 @@ test('uses thumbnails until an image template is applied', async ({ page }) => {
   expect(originalRequests).toEqual([]);
 
   const fullBackgroundRequest = page.waitForRequest((request) =>
-    new URL(request.url()).pathname === '/template-backgrounds/parchment-scroll-generated.png',
+    new URL(request.url()).pathname === '/template-backgrounds/song-floral.webp',
   );
-  await library.getByRole('button', { name: /Parchment Scroll/ }).click();
+  await library.getByRole('button', { name: /Song Floral/ }).click();
   await fullBackgroundRequest;
 
-  expect(originalRequests).toEqual(['/template-backgrounds/parchment-scroll-generated.png']);
+  expect(originalRequests).toEqual(['/template-backgrounds/song-floral.webp']);
 });
 
 test('keeps drawer controls and a readable canvas at the tablet breakpoint', async ({ page }) => {
@@ -315,7 +315,7 @@ test('preserves a customized template font and solid background after reload', a
   await page.getByRole('button', { name: /^Templates/ }).click();
   await page.getByRole('button', { name: /^More \(/ }).click();
   const library = page.getByRole('dialog', { name: 'Built-in Templates' });
-  await library.getByRole('button', { name: /Parchment Scroll/ }).click();
+  await library.getByRole('button', { name: /Song Floral/ }).click();
 
   const backgroundSection = page.getByRole('button', { name: /^Background/ });
   await expect(backgroundSection).toContainText('Templates');
