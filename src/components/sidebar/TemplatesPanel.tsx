@@ -1,4 +1,4 @@
-import { BookmarkPlus, Expand, Pencil, Sparkles, Trash2, X } from 'lucide-react';
+import { BookmarkPlus, Expand, Pencil, Search, Sparkles, Trash2, X } from 'lucide-react';
 import { useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
@@ -8,16 +8,12 @@ import { useDialogA11y } from '../../hooks/useDialogA11y';
 import { getTemplatePreviewStyle } from '../../templates/preview-style';
 import { TemplatePreview } from '../TemplatePreview';
 import { getTemplateDefinition, resolveTemplateForLanguage } from '../../templates';
-import type { Language } from '../../translations';
+import { groupGalleryTemplates, matchesGallerySearch } from '../../templates/gallery';
+import type { Language, TranslationKey } from '../../translations';
 
 const BUILT_IN_PREVIEW_LIMIT = 2;
 
 type BuiltInTemplate = TemplateSectionProps['templates'][number];
-
-interface TemplateGroup {
-  seriesKey: BuiltInTemplate['seriesKey'];
-  items: BuiltInTemplate[];
-}
 
 interface TemplatesPanelProps {
   t: TranslateFn;
@@ -38,9 +34,21 @@ interface BuiltInTemplateCardProps {
   variant?: 'compact' | 'library';
 }
 
+function GalleryFilterChip({ label, count, selected, onClick }: { label: string; count: number; selected: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      onClick={onClick}
+      className={`inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3 text-sm font-medium transition-colors ${selected ? 'border-(--app-accent-700) bg-(--app-accent-700) text-white' : 'border-[rgba(34,48,52,0.12)] bg-white text-(--app-accent-700) hover:bg-(--app-accent-50)'}`}
+    >
+      {label} <span className="text-xs opacity-75">{count}</span>
+    </button>
+  );
+}
+
 function BuiltInTemplateCard({ t, language, template, isActive, onApply, variant = 'compact' }: BuiltInTemplateCardProps) {
   const previewTemplate = resolveTemplateForLanguage(template.id, language) ?? template;
-  const reserveArtworkArea = variant === 'library';
   if (variant === 'library') {
     return (
       <button
@@ -48,7 +56,7 @@ function BuiltInTemplateCard({ t, language, template, isActive, onApply, variant
         key={template.id}
         onClick={() => onApply(template.id)}
         aria-pressed={isActive}
-        className={`group relative h-[420px] w-[240px] overflow-hidden rounded-2xl border text-left transition-all ${reserveArtworkArea ? 'flex flex-col bg-[#fdfbf7]' : ''} ${
+        className={`group relative flex h-[380px] w-full flex-col overflow-hidden rounded-2xl border bg-[#fdfbf7] text-left transition-all sm:h-[420px] ${
           isActive
             ? 'border-(--app-accent-300) shadow-[0_16px_36px_var(--app-accent-shadow)]'
             : 'border-[rgba(34,48,52,0.08)] hover:border-(--app-accent-200)'
@@ -57,49 +65,31 @@ function BuiltInTemplateCard({ t, language, template, isActive, onApply, variant
         {/* Keep the artwork and sample above the translated caption. */}
         <div
           data-testid={template.id === 'graceful-whitespace' ? 'graceful-gallery-artwork' : 'template-gallery-artwork'}
-          className={reserveArtworkArea ? 'relative min-h-0 flex-1 overflow-hidden' : 'absolute inset-0'}
+          className="relative min-h-0 flex-1 overflow-hidden"
         >
           <TemplatePreview template={previewTemplate} language={language} showPoemSample className="absolute inset-0" />
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(9,14,23,0.04)_0%,rgba(9,14,23,0.2)_100%)]" />
 
-          <div className="absolute left-3 top-3 flex flex-wrap items-center gap-1.5">
-          <span className="rounded-full border border-[rgba(255,255,255,0.35)] bg-[rgba(255,255,255,0.88)] px-2 py-0.5 text-xs font-semibold text-(--app-accent-700)">
+          <span className="absolute left-2 top-2 max-w-[calc(100%-1rem)] truncate rounded-full border border-[rgba(255,255,255,0.35)] bg-[rgba(255,255,255,0.9)] px-2 py-1 text-[10px] font-semibold text-(--app-accent-700) sm:left-3 sm:top-3 sm:text-xs" title={t(template.seriesKey)}>
             {t(template.seriesKey)}
           </span>
-          {template.usesBackgroundImage ? (
-            <span className="rounded-full border border-[rgba(37,99,235,0.22)] bg-[rgba(219,234,254,0.9)] px-2 py-0.5 text-xs font-semibold text-[#1d4ed8]">
-              {t('templateImageBadge')}
-            </span>
-          ) : null}
-          </div>
         </div>
 
         <div
           data-testid={template.id === 'graceful-whitespace' ? 'graceful-gallery-caption' : 'template-gallery-caption'}
-          className={`rounded-xl border border-[rgba(34,48,52,0.08)] bg-[rgba(255,253,249,0.92)] px-3 py-2.5 shadow-[0_10px_24px_rgba(26,44,46,0.1)] ${
-            reserveArtworkArea
-              ? 'relative z-10 mx-3 mb-3 shrink-0'
-              : 'absolute inset-x-3 bottom-3'
-          }`}
+          className="relative z-10 mx-2 mb-2 min-h-[104px] shrink-0 rounded-xl border border-[rgba(34,48,52,0.08)] bg-[rgba(255,253,249,0.92)] px-2.5 py-2.5 shadow-[0_10px_24px_rgba(26,44,46,0.1)] sm:mx-3 sm:mb-3 sm:px-3"
         >
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <div className="text-sm font-semibold text-(--app-ink)">{t(template.nameKey)}</div>
-              <p
-                className={`mt-0.5 text-xs leading-5 text-(--app-accent-600) ${reserveArtworkArea ? 'line-clamp-2' : ''}`}
-                title={reserveArtworkArea ? t(template.descriptionKey) : undefined}
-              >
-                {t(template.descriptionKey)}
-              </p>
-            </div>
-            <span
-              className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${
-                isActive ? 'bg-(--app-accent-700) text-white' : 'bg-(--app-accent-50) text-(--app-accent-700)'
-              }`}
-            >
-              {isActive ? t('templateApplied') : t('applyTemplate')}
-            </span>
+          <div className="flex items-start justify-between gap-2">
+            <div className="line-clamp-2 min-w-0 break-words text-sm font-semibold leading-5 text-(--app-ink)" title={t(template.nameKey)}>{t(template.nameKey)}</div>
+            {isActive && (
+              <span className="shrink-0 rounded-full bg-(--app-accent-700) px-2 py-1 text-[10px] font-semibold text-white">
+                {t('templateApplied')}
+              </span>
+            )}
           </div>
+          <p className="mt-0.5 line-clamp-2 text-xs leading-5 text-(--app-accent-600)" title={t(template.descriptionKey)}>
+            {t(template.descriptionKey)}
+          </p>
         </div>
       </button>
     );
@@ -154,7 +144,10 @@ export function TemplatesPanel({ t, language, expanded, onToggle, templates, cur
   const [renameValue, setRenameValue] = useState('');
   const renameInputRef = useRef<HTMLInputElement>(null);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+  const [libraryCategory, setLibraryCategory] = useState<TranslationKey | 'all' | 'custom'>('all');
+  const [librarySearch, setLibrarySearch] = useState('');
   const libraryDialogRef = useRef<HTMLDivElement>(null);
+  const libraryResultsRef = useRef<HTMLDivElement>(null);
 
   const activeBuiltIn = templates.templates.find((template) => template.id === templates.activeTemplateId);
   // A previously selected template may no longer be in the featured gallery.
@@ -166,19 +159,27 @@ export function TemplatesPanel({ t, language, expanded, onToggle, templates, cur
   const activeSavedTemplate = activeBuiltIn ?? activeLegacyTemplate;
   const activeName = activeCustom?.name ?? (activeSavedTemplate ? t(activeSavedTemplate.nameKey) : null);
 
-  const groupedTemplates = useMemo<TemplateGroup[]>(() => {
-    return templates.templates.reduce<TemplateGroup[]>((groups, template) => {
-      const existing = groups.find((group) => group.seriesKey === template.seriesKey);
+  const groupedTemplates = useMemo(() => groupGalleryTemplates(templates.templates), [templates.templates]);
+  const matchingGroups = groupedTemplates.map((group) => ({
+    ...group,
+    items: group.items.filter((template) => matchesGallerySearch(librarySearch, [
+      t(template.nameKey), t(template.descriptionKey), t(template.seriesKey), t(group.key),
+    ])),
+  }));
+  const matchingCustomTemplates = templates.customTemplates.filter((template) =>
+    matchesGallerySearch(librarySearch, [template.name, t('myTemplates')]),
+  );
+  const visibleGroups = matchingGroups.filter((group) =>
+    group.items.length > 0 && (libraryCategory === 'all' || libraryCategory === group.key),
+  );
+  const visibleCustomTemplates = libraryCategory === 'all' || libraryCategory === 'custom' ? matchingCustomTemplates : [];
+  const totalMatching = matchingGroups.reduce((total, group) => total + group.items.length, matchingCustomTemplates.length);
+  const visibleCount = visibleGroups.reduce((total, group) => total + group.items.length, visibleCustomTemplates.length);
 
-      if (existing) {
-        existing.items.push(template);
-        return groups;
-      }
-
-      groups.push({ seriesKey: template.seriesKey, items: [template] });
-      return groups;
-    }, []);
-  }, [templates.templates]);
+  const selectLibraryCategory = (category: TranslationKey | 'all' | 'custom') => {
+    setLibraryCategory(category);
+    if (libraryResultsRef.current) libraryResultsRef.current.scrollTop = 0;
+  };
 
   const previewBuiltIns = useMemo(() => {
     const current = activeBuiltIn ?? activeLegacyTemplate;
@@ -393,7 +394,11 @@ export function TemplatesPanel({ t, language, expanded, onToggle, templates, cur
               <span className="text-xs font-semibold text-(--app-accent-500) uppercase tracking-wide">{t('builtInTemplates')}</span>
               <button
                 type="button"
-                onClick={() => setIsLibraryOpen(true)}
+                onClick={() => {
+                  setLibraryCategory('all');
+                  setLibrarySearch('');
+                  setIsLibraryOpen(true);
+                }}
                 className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-(--app-accent-600) px-3 py-1 text-xs font-semibold text-white shadow-sm transition-all hover:bg-(--app-accent-700) hover:shadow-md active:scale-95"
               >
                 <Expand className="h-3.5 w-3.5" />
@@ -442,46 +447,86 @@ export function TemplatesPanel({ t, language, expanded, onToggle, templates, cur
               aria-describedby="template-library-description"
               tabIndex={-1}
             >
-              <div className="flex items-start justify-between gap-4 border-b border-[rgba(34,48,52,0.06)] px-5 py-5 sm:px-7 lg:px-10">
+              <div className="flex items-start justify-between gap-4 px-5 pb-2 pt-[max(1rem,env(safe-area-inset-top))] sm:px-7 lg:px-10 lg:pb-5">
                 <div className="min-w-0">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-(--app-accent-500)">
+                  <div className="hidden text-[11px] font-semibold uppercase tracking-[0.24em] text-(--app-accent-500) lg:block">
                     {t('templates')}
                   </div>
-                  <h2 id="template-library-title" className="mt-2 text-2xl font-semibold text-(--app-ink)">{t('builtInTemplates')}</h2>
-                  <p id="template-library-description" className="mt-2 max-w-2xl text-sm leading-6 text-(--app-accent-500)">{t('templatesHint')}</p>
+                  <h2 id="template-library-title" className="text-xl font-semibold text-(--app-ink) lg:mt-2 lg:text-2xl">{t('builtInTemplates')}</h2>
+                  <p id="template-library-description" className="mt-1 max-w-2xl text-xs leading-5 text-(--app-accent-500) lg:mt-2 lg:text-sm">{t('templateLibraryHint')}</p>
                 </div>
 
                 <button
                   type="button"
                   onClick={() => setIsLibraryOpen(false)}
-                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[rgba(34,48,52,0.08)] bg-white/80 text-(--app-accent-700) transition-colors hover:bg-(--app-accent-50)"
+                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[rgba(34,48,52,0.08)] bg-white/80 text-(--app-accent-700) transition-colors hover:bg-(--app-accent-50)"
                   aria-label={t('closeControls')}
                 >
                   <X className="h-4 w-4" />
                 </button>
               </div>
 
-              <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-7 lg:px-10">
+              <div className="space-y-2 border-b border-[rgba(34,48,52,0.08)] px-5 pb-3 sm:space-y-3 sm:px-7 lg:px-10">
+                <div className="relative max-w-lg">
+                  <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-(--app-accent-500)" />
+                  <input
+                    type="search"
+                    aria-label={t('templateSearch')}
+                    placeholder={t('templateSearch')}
+                    value={librarySearch}
+                    onChange={(event) => {
+                      setLibrarySearch(event.target.value);
+                      if (libraryResultsRef.current) libraryResultsRef.current.scrollTop = 0;
+                    }}
+                    className="app-input min-h-11 w-full rounded-xl text-sm"
+                    style={{ paddingLeft: '2.5rem' }}
+                  />
+                </div>
+                <div className="relative">
+                  <div role="group" aria-label={t('templateFilterCategories')} className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 pr-7 lg:flex-wrap lg:overflow-visible lg:pr-1">
+                    <GalleryFilterChip label={t('templateFilterAll')} count={totalMatching} selected={libraryCategory === 'all'} onClick={() => selectLibraryCategory('all')} />
+                    {templates.customTemplates.length > 0 && (
+                      <GalleryFilterChip label={t('myTemplates')} count={matchingCustomTemplates.length} selected={libraryCategory === 'custom'} onClick={() => selectLibraryCategory('custom')} />
+                    )}
+                    {matchingGroups.map((group) => (
+                      <GalleryFilterChip
+                        key={group.key}
+                        label={t(group.key)}
+                        count={group.items.length}
+                        selected={libraryCategory === group.key}
+                        onClick={() => selectLibraryCategory(group.key)}
+                      />
+                    ))}
+                  </div>
+                  <div aria-hidden="true" className="pointer-events-none absolute right-0 top-0 h-11 w-6 bg-gradient-to-l from-[#fffdf9] to-transparent lg:hidden" />
+                </div>
+              </div>
+
+              <div ref={libraryResultsRef} className="min-h-0 flex-1 overflow-y-auto px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 sm:px-7 sm:pt-5 lg:px-10">
+                <p role="status" aria-live="polite" className="mb-4 text-xs text-(--app-accent-500)">{t('templateResults')}: {visibleCount}</p>
+                {visibleCount === 0 && <p className="rounded-2xl border border-[rgba(34,48,52,0.08)] bg-white/70 px-4 py-8 text-sm text-(--app-accent-600)">{t('templateNoResults')}</p>}
                 <div className="space-y-6">
-                  {templates.customTemplates.length > 0 && (
+                  {visibleCustomTemplates.length > 0 && (
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="text-[11px] font-semibold text-(--app-accent-500) uppercase tracking-wide">{t('myTemplates')}</span>
-                        <span className="text-[10px] text-[rgba(34,48,52,0.4)]">{templates.customTemplates.length}</span>
+                        <span className="text-[10px] text-[rgba(34,48,52,0.4)]">{visibleCustomTemplates.length}</span>
                       </div>
-                      <div className="flex flex-wrap gap-3">
-                        {templates.customTemplates.map((template) => {
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(210px,1fr))]">
+                        {visibleCustomTemplates.map((template) => {
                           const isActive = templates.activeCustomTemplateId === template.id;
                           const previewStyle = getTemplatePreviewStyle(template);
 
                           return (
                             <button
                               key={template.id}
+                              type="button"
+                              aria-pressed={isActive}
                               onClick={() => {
                                 templates.onApplyCustomTemplate(template.id);
                                 setIsLibraryOpen(false);
                               }}
-                              className={`group relative h-[300px] w-[240px] overflow-hidden rounded-2xl border text-left transition-all ${
+                              className={`group relative h-[300px] w-full overflow-hidden rounded-2xl border text-left transition-all ${
                                 isActive
                                   ? 'border-(--app-accent-300) shadow-[0_16px_36px_var(--app-accent-shadow)]'
                                   : 'border-[rgba(34,48,52,0.08)] hover:border-(--app-accent-200)'
@@ -490,9 +535,9 @@ export function TemplatesPanel({ t, language, expanded, onToggle, templates, cur
                               <div className="absolute inset-0" style={previewStyle} />
                               <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(9,14,23,0.04)_0%,rgba(9,14,23,0.2)_100%)]" />
                               <div className="absolute inset-x-3 bottom-3 rounded-xl border border-[rgba(34,48,52,0.08)] bg-[rgba(255,253,249,0.92)] px-3 py-2.5 shadow-[0_10px_24px_rgba(26,44,46,0.1)]">
-                                <div className="flex items-start justify-between gap-3">
+                                <div className="flex flex-col items-start gap-1 sm:flex-row sm:justify-between sm:gap-3">
                                   <div className="min-w-0">
-                                    <div className="text-sm font-semibold text-(--app-ink) truncate">{template.name}</div>
+                                    <div className="truncate text-sm font-semibold text-(--app-ink)" title={template.name}>{template.name}</div>
                                     <p className="mt-0.5 text-[11px] leading-4 text-(--app-accent-500)">{t('myTemplates')}</p>
                                   </div>
                                   <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold ${
@@ -508,13 +553,13 @@ export function TemplatesPanel({ t, language, expanded, onToggle, templates, cur
                       </div>
                     </div>
                   )}
-                  {groupedTemplates.map((group) => (
-                    <div key={group.seriesKey} className="space-y-3">
+                  {visibleGroups.map((group) => (
+                    <div key={group.key} className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-semibold text-(--app-accent-500) uppercase tracking-wide">{t(group.seriesKey)}</span>
+                        <h3 className="text-xs font-semibold text-(--app-accent-600) uppercase tracking-wide">{t(group.key)}</h3>
                         <span className="text-[10px] text-[rgba(34,48,52,0.4)]">{group.items.length}</span>
                       </div>
-                      <div className="flex flex-wrap gap-3">
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(210px,1fr))]">
                         {group.items.map((template) => (
                           <BuiltInTemplateCard
                             language={language}

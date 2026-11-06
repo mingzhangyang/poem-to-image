@@ -116,6 +116,9 @@ const ILLUSTRATED_SERIF_FONTS: Record<Language, string> = {
 };
 
 const TEMPLATE_FONTS: Record<EditorTemplateId, Record<Language, string>> = {
+  'bluebird-manuscript': ILLUSTRATED_SERIF_FONTS,
+  'blue-meadow-manuscript': ILLUSTRATED_SERIF_FONTS,
+  'blue-butterfly-manuscript': ILLUSTRATED_SERIF_FONTS,
   'song-floral': ILLUSTRATED_SERIF_FONTS,
   'blue-green-landscape': ILLUSTRATED_SERIF_FONTS,
   'art-nouveau': ILLUSTRATED_SERIF_FONTS,

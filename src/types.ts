@@ -29,6 +29,9 @@ export type StampStyle = 'square' | 'round' | 'brush';
 export type SignatureFlourish = 'none' | 'swoosh' | 'double' | 'loop' | 'strike' | 'wave' | 'underline';
 export type EditorTemplateId =
   | 'ink-wash'
+  | 'bluebird-manuscript'
+  | 'blue-meadow-manuscript'
+  | 'blue-butterfly-manuscript'
   | 'song-floral'
   | 'blue-green-landscape'
   | 'art-nouveau'

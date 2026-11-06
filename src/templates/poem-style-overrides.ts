@@ -13,6 +13,9 @@ const illustratedPoemStyles: Partial<Record<Language, Partial<PoemLayerStyle>>> 
 };
 
 export const templatePoemStyleOverrides: Partial<Record<EditorTemplateId, Partial<Record<Language, Partial<PoemLayerStyle>>>>> = {
+  'bluebird-manuscript': illustratedPoemStyles,
+  'blue-meadow-manuscript': illustratedPoemStyles,
+  'blue-butterfly-manuscript': illustratedPoemStyles,
   'song-floral': illustratedPoemStyles,
   'blue-green-landscape': illustratedPoemStyles,
   'art-nouveau': illustratedPoemStyles,

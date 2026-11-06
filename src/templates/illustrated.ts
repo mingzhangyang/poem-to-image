@@ -7,12 +7,13 @@ type IllustratedOptions = Pick<EditorTemplateDefinition, 'id' | 'nameKey' | 'des
   inkColor: string;
   poemY?: number;
   backgroundPosition?: string;
+  backgroundSize?: EditorTemplateDefinition['background']['backgroundSize'];
   scene?: boolean;
 };
 
 // These templates share editable typography; the artwork itself contains no text.
 function illustrated(options: IllustratedOptions): EditorTemplateDefinition {
-  const { id, nameKey, descriptionKey, previewImage, accentFrom, accentTo, seriesKey, paperColor, inkColor, poemY = 50, backgroundPosition = 'center', scene = false } = options;
+  const { id, nameKey, descriptionKey, previewImage, accentFrom, accentTo, seriesKey, paperColor, inkColor, poemY = 50, backgroundPosition = 'center', backgroundSize = 'cover', scene = false } = options;
   return {
     id, nameKey, descriptionKey, previewImage, accentFrom, accentTo,
     seriesKey: seriesKey ?? (scene ? 'templateSeriesPoeticScenes' : 'templateSeriesIllustrated'),
@@ -21,7 +22,7 @@ function illustrated(options: IllustratedOptions): EditorTemplateDefinition {
       backgroundType: 'image', backgroundColor: paperColor,
       gradientColor1: paperColor, gradientColor2: paperColor, gradientDirection: 'to bottom',
       backgroundImage: `/template-backgrounds/${id}.webp`, backgroundImageSource: 'template',
-      backgroundSize: 'cover', backgroundPosition, bgBrightness: 100, bgBlur: 0,
+      backgroundSize, backgroundPosition, bgBrightness: 100, bgBlur: 0,
     },
     typography: {
       fontFamily: '"Cormorant Garamond", serif', fontSize: 34, textColor: inkColor,
@@ -43,6 +44,12 @@ function illustrated(options: IllustratedOptions): EditorTemplateDefinition {
 }
 
 export const illustratedTemplates: EditorTemplateDefinition[] = [
+  illustrated({ id: 'bluebird-manuscript', nameKey: 'templateBluebirdManuscript', descriptionKey: 'templateBluebirdManuscriptDesc',
+    previewImage: '/template-previews/bluebird-manuscript.b8197110.webp', seriesKey: 'templateSeriesBlueManuscripts', accentFrom: '#e8eff8', accentTo: '#28529a', paperColor: '#fbfaf6', inkColor: '#162d4c', backgroundSize: 'stretch' }),
+  illustrated({ id: 'blue-meadow-manuscript', nameKey: 'templateBlueMeadowManuscript', descriptionKey: 'templateBlueMeadowManuscriptDesc',
+    previewImage: '/template-previews/blue-meadow-manuscript.4371c560.webp', seriesKey: 'templateSeriesBlueManuscripts', accentFrom: '#e8eff8', accentTo: '#28529a', paperColor: '#fbfaf6', inkColor: '#162d4c', backgroundSize: 'stretch' }),
+  illustrated({ id: 'blue-butterfly-manuscript', nameKey: 'templateBlueButterflyManuscript', descriptionKey: 'templateBlueButterflyManuscriptDesc',
+    previewImage: '/template-previews/blue-butterfly-manuscript.579e8670.webp', seriesKey: 'templateSeriesBlueManuscripts', accentFrom: '#e8eff8', accentTo: '#28529a', paperColor: '#fbfaf6', inkColor: '#162d4c', backgroundSize: 'stretch' }),
   illustrated({ id: 'song-floral', nameKey: 'templateSongFloral', descriptionKey: 'templateSongFloralDesc',
     previewImage: '/template-previews/song-floral.887beb39.webp', accentFrom: '#d5b6a7', accentTo: '#687c67', paperColor: '#f7ecda', inkColor: '#34463a' }),
   illustrated({ id: 'blue-green-landscape', nameKey: 'templateBlueGreenLandscape', descriptionKey: 'templateBlueGreenLandscapeDesc',
