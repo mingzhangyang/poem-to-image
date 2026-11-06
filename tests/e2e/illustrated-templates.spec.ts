@@ -19,7 +19,7 @@ const names = [
 
 async function openLibrary(page: Page) {
   const mobile = (page.viewportSize()?.width ?? 0) < 1024;
-  const button = page.getByRole('button', { name: mobile ? 'Templates' : /^Templates/ });
+  const button = page.getByRole('button', { name: mobile ? 'Templates' : /^Templates/, exact: mobile });
   if (await button.getAttribute('aria-expanded') !== 'true') await button.click();
   await page.getByRole('button', { name: /^More \(/ }).click();
   return page.getByRole('dialog', { name: 'Built-in Templates' });

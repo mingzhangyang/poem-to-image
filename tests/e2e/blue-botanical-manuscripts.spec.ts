@@ -9,7 +9,7 @@ const designs = [
 
 async function openLibrary(page: Page) {
   const mobile = (page.viewportSize()?.width ?? 0) < 1024;
-  const button = page.getByRole('button', { name: mobile ? 'Templates' : /^Templates/ });
+  const button = page.getByRole('button', { name: mobile ? 'Templates' : /^Templates/, exact: mobile });
   if (await button.getAttribute('aria-expanded') !== 'true') await button.click();
   await page.getByRole('button', { name: /^More \(/ }).click();
   return page.getByRole('dialog', { name: 'Built-in Templates' });
@@ -54,7 +54,14 @@ test('a blue manuscript exports as a PNG', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   const library = await openLibrary(page);
   await library.getByRole('button', { name: /Bluebird Manuscript/ }).click();
+  await expect(library).toBeHidden();
   const mobile = (page.viewportSize()?.width ?? 0) < 1024;
+  if (mobile) {
+    const drawer = page.getByRole('dialog', { name: 'Templates', exact: true });
+    await expect(drawer).toBeVisible();
+    await drawer.getByRole('button', { name: 'Close controls', exact: true }).click();
+    await expect(drawer).toBeHidden();
+  }
   await page.getByRole('button', { name: mobile ? 'Export' : 'Export Image', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Export Image' });
   const download = page.waitForEvent('download', { timeout: 30_000 });

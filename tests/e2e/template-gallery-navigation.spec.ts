@@ -7,7 +7,7 @@ const categoryCounts = new Map(groupGalleryTemplates(editorTemplates).map((group
 
 async function openLibrary(page: Page) {
   const mobile = (page.viewportSize()?.width ?? 0) < 1024;
-  const panel = page.getByRole('button', { name: mobile ? 'Templates' : /^Templates/ });
+  const panel = page.getByRole('button', { name: mobile ? 'Templates' : /^Templates/, exact: mobile });
   if (await panel.getAttribute('aria-expanded') !== 'true') await panel.click();
   await page.getByRole('button', { name: /^More \(/ }).click();
   return page.getByRole('dialog', { name: 'Built-in Templates' });

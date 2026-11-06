@@ -14,7 +14,7 @@ test.beforeEach(async ({ page }) => {
 
 async function openTemplates(page: Page) {
   const mobile = (page.viewportSize()?.width ?? 0) < 1024;
-  await page.getByRole('button', { name: mobile ? 'Templates' : /^Templates/ }).click();
+  await page.getByRole('button', { name: mobile ? 'Templates' : /^Templates/, exact: mobile }).click();
 }
 
 /** Assert card's seal/signature is entirely inside the reserved artwork, not under caption. */
