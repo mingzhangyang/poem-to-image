@@ -12,6 +12,9 @@ export { ALL_EDITOR_TEMPLATES } from './definitions';
 // Gallery entries only. Legacy templates remain in ALL_EDITOR_TEMPLATES so
 // drafts and saved active-template markers can still be restored.
 const CURATED_EDITOR_TEMPLATE_IDS: EditorTemplateId[] = [
+  'bluebird-manuscript',
+  'blue-meadow-manuscript',
+  'blue-butterfly-manuscript',
   'song-floral',
   'blue-green-landscape',
   'art-nouveau',

@@ -47,6 +47,18 @@ The built-in templates use optimized WebP images. Their original PNG files remai
 
 Original artwork was generated using the built-in image generation tool for InkPoem. Each full-resolution background is an optimized WebP (1024 × 1536); the gallery uses a separate smaller WebP. All artwork was requested with a quiet area for editable text and without embedded writing, seals, signatures, or watermarks.
 
+### Blue botanical manuscripts (2026-11-06)
+
+Three original illustrations were generated with the built-in image generator, using the supplied blue-and-white botanical artwork and illustrated book pages as visual references. Each design has a clear writing area, an optimized 1024 × 1536 WebP background, and a separate smaller WebP gallery preview.
+
+| Background file | Generation brief |
+|---|---|
+| `bluebird-manuscript.webp` | Cobalt songbird on a flowering branch, with botanical ornaments around the page. |
+| `blue-meadow-manuscript.webp` | Blue cornflowers, daisies and meadow grasses frame a quiet page. |
+| `blue-butterfly-manuscript.webp` | Blue butterflies and flowering vines trace the page margins. |
+
+### Other illustrated stationery
+
 | Background file | Generation brief |
 |---|---|
 | `song-floral.webp` | Warm xuan paper, delicate Song-inspired plum blossoms at the corners, pale ink and gold. |
