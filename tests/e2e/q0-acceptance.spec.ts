@@ -190,8 +190,11 @@ test('applied template appearance and poem content survive reload', async ({ pag
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.getByRole('button', { name: /^Templates/ }).click();
+  await page.getByRole('button', { name: /^More \(/ }).click();
+  const library = page.getByRole('dialog', { name: 'Built-in Templates' });
+  await library.getByRole('button', { name: /Song Floral/ }).click();
+  await expect(library).toBeHidden();
   const template = page.locator('button[aria-pressed]').filter({ hasText: 'Song Floral' }).first();
-  await template.click();
   await expect(template).toHaveAttribute('aria-pressed', 'true');
   await expect.poll(() => page.evaluate(() => window.localStorage.getItem('poem-to-image.active-template')))
     .toBe('song-floral');

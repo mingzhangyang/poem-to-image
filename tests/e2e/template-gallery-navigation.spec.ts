@@ -55,9 +55,15 @@ test('categories and search narrow the gallery and selecting a template still ap
 test('template cards use multiple columns at mobile and desktop widths', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   const library = await openLibrary(page);
-  const first = await library.getByRole('button', { name: /Blue-Green Mountains/ }).boundingBox();
-  const second = await library.getByRole('button', { name: /Lone Fisherman/ }).boundingBox();
-  expect(first && second).toBeTruthy();
-  expect(Math.abs(first!.y - second!.y)).toBeLessThan(2);
-  expect(second!.x).toBeGreaterThan(first!.x + first!.width - 2);
+  const first = library.getByRole('button', { name: /Blue-Green Mountains/ });
+  const second = library.getByRole('button', { name: /Lone Fisherman/ });
+  await expect(first).toBeVisible();
+  await expect(second).toBeVisible();
+  // The library animates into place; retry until both cards have settled in a row.
+  await expect.poll(async () => {
+    const [firstBox, secondBox] = await Promise.all([first.boundingBox(), second.boundingBox()]);
+    return !!firstBox && !!secondBox
+      && Math.abs(firstBox.y - secondBox.y) < 2
+      && secondBox.x > firstBox.x + firstBox.width - 2;
+  }).toBe(true);
 });
