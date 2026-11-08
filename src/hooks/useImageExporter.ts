@@ -4,6 +4,7 @@ import { renderCanvasExport } from '../export/renderCanvasExport';
 import type { PaperId } from '../paperStyles';
 import type { BackgroundType } from '../types';
 import { createExportFilename } from '../export/exportFilename';
+import { createImageFile, imageDeliveryFormat, type ImageDeliveryIntent } from '../sharing/imageDelivery';
 import type { BorderStyle, CustomText, ExportFormat, ExportScale, LogoConfig, PoemContentData, PoemLayerStyle, PositionedElement, SignatureConfig, StampConfig, TextAlign, WritingMode } from '../types';
 
 interface BatchExportPreset {
@@ -344,35 +345,14 @@ export function useImageExporter(
     }
   }, [createOutputBlob, isExporting, isSharing, scene.typography.poem.title]);
 
-  const shareImage = useCallback(async () => {
-    if (!canShare || isExporting || isSharing) {
-      return;
-    }
-
-    setIsSharing(true);
-
-    try {
-      const blob = await createOutputBlob();
-
-      if (!blob) {
-        return;
-      }
-
-      const file = new File([blob], getExportFilename(exportFormat, scene.typography.poem.title), { type: getExportMimeType(exportFormat) });
-      await navigator.share({
-        files: [file],
-        title: document.title,
-      });
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') {
-        return;
-      }
-
-      logError('Failed to share image', error);
-    } finally {
-      setIsSharing(false);
-    }
-  }, [canShare, createOutputBlob, exportFormat, isExporting, isSharing, scene.typography.poem.title]);
+  const prepareShareFile = useCallback(async (intent: ImageDeliveryIntent): Promise<File> => {
+    // A separate, explicit tap in ImageShareDialog opens the native share sheet.
+    // Never await Canvas rendering in the same gesture as navigator.share().
+    const format = imageDeliveryFormat(exportFormat, intent);
+    const blob = await createOutputBlob(format);
+    if (!blob) throw new Error('IMAGE_EXPORT_FAILED');
+    return createImageFile(blob, scene.typography.poem.title);
+  }, [createOutputBlob, exportFormat, scene.typography.poem.title]);
 
   const exportBatchImages = useCallback(async (presets: BatchExportPreset[]): Promise<number> => {
     if (isExporting || isSharing || presets.length === 0) {
@@ -412,5 +392,5 @@ export function useImageExporter(
     }
   }, [createOutputBlob, exportFormat, exportScale, isExporting, isSharing, scene.typography.poem.title]);
 
-  return { exportImage, exportBatchImages, shareImage, copyImage, createShareAssets, isExporting, isSharing, canShare };
+  return { exportImage, exportBatchImages, prepareShareFile, copyImage, createShareAssets, isExporting, isSharing, canShare };
 }

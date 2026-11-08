@@ -36,6 +36,7 @@ interface UseEditorViewModelsParams {
   exportScale: SidebarProps['exportScale'];
   onExportScaleChange: SidebarProps['onExportScaleChange'];
   onDownload: () => void;
+  onSaveToPhotos: () => void;
   onShare: () => void;
   onCopy: () => void;
   onPublishLink: () => void;
@@ -99,6 +100,7 @@ export function useEditorViewModels({
   exportScale,
   onExportScaleChange,
   onDownload,
+  onSaveToPhotos,
   onShare,
   onCopy,
   onPublishLink,
@@ -163,6 +165,7 @@ export function useEditorViewModels({
     exportScale,
     onExportScaleChange,
     onDownload,
+    onSaveToPhotos,
     onShare,
     onCopy,
     onPublishLink,
@@ -193,6 +196,7 @@ export function useEditorViewModels({
     exportScale,
     onExportScaleChange,
     onDownload,
+    onSaveToPhotos,
     onShare,
     onCopy,
     onPublishLink,
@@ -209,6 +213,7 @@ export function useEditorViewModels({
     previewRef,
     poemFrameRef,
     poemTextRef,
+    language,
     t,
     poem,
     poemStyle,
@@ -253,6 +258,7 @@ export function useEditorViewModels({
     exportScale,
     onExportScaleChange,
     onDownload,
+    onSaveToPhotos,
     onShare,
     onCopy,
     onPublishLink,
@@ -273,6 +279,7 @@ export function useEditorViewModels({
     previewRef,
     poemFrameRef,
     poemTextRef,
+    language,
     t,
     poem,
     poemStyle,
@@ -317,6 +324,7 @@ export function useEditorViewModels({
     exportScale,
     onExportScaleChange,
     onDownload,
+    onSaveToPhotos,
     onShare,
     onCopy,
     onPublishLink,

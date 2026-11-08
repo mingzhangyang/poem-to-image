@@ -21,6 +21,7 @@ export function CanvasPreview({
   previewRef,
   poemFrameRef,
   poemTextRef,
+  language,
   t,
   poem,
   poemStyle,
@@ -65,6 +66,7 @@ export function CanvasPreview({
   exportScale,
   onExportScaleChange,
   onDownload,
+  onSaveToPhotos,
   onShare,
   onCopy,
   onPublishLink,
@@ -195,9 +197,13 @@ export function CanvasPreview({
     closeExportModal();
   };
 
-  const handleShareFromModal = () => {
-    onShare();
+  const handleSavePhotosFromModal = () => {
     closeExportModal();
+    onSaveToPhotos();
+  };
+  const handleShareFromModal = () => {
+    closeExportModal();
+    onShare();
   };
 
   const handleCopyFromModal = () => {
@@ -423,6 +429,7 @@ export function CanvasPreview({
                 <div className="px-6 py-6">
                   <SidebarFooter
                     t={t}
+                    language={language}
                     canvasWidth={canvasWidth}
                     canvasHeight={canvasHeight}
                     exportFormat={exportFormat}
@@ -430,6 +437,7 @@ export function CanvasPreview({
                     exportScale={exportScale}
                     onExportScaleChange={onExportScaleChange}
                     onDownload={handleSaveFromModal}
+                    onSaveToPhotos={handleSavePhotosFromModal}
                     onShare={handleShareFromModal}
                     onCopy={handleCopyFromModal}
                     onPublishLink={handlePublishFromModal}
@@ -439,7 +447,7 @@ export function CanvasPreview({
                     isExporting={isExporting}
                     isSharing={isSharing}
                     canShare={canShare}
-                    actionMode={canShare ? 'both' : 'save'}
+                    actionMode="both"
                     surface="modal"
                   />
                 </div>

@@ -1,4 +1,7 @@
-import { Copy, Download, Link2, Loader2, Share2 } from 'lucide-react';
+import { Copy, Download, Images, Link2, Loader2, Share2 } from 'lucide-react';
+import { isAppleMobileDevice } from '../../sharing/imageDelivery';
+import { imageDeliveryCopy } from '../../sharing/imageDeliveryCopy';
+import type { Language } from '../../translations';
 import type { ExportFormat, ExportScale, TranslateFn } from '../../types';
 
 const exportFormatLabelKeys = {
@@ -9,6 +12,7 @@ const exportFormatLabelKeys = {
 
 interface SidebarFooterProps {
   t: TranslateFn;
+  language: Language;
   canvasWidth: number;
   canvasHeight: number;
   exportFormat: ExportFormat;
@@ -16,6 +20,7 @@ interface SidebarFooterProps {
   exportScale: ExportScale;
   onExportScaleChange: (value: ExportScale) => void;
   onDownload: () => void;
+  onSaveToPhotos: () => void;
   onShare: () => void;
   onCopy: () => void;
   onPublishLink: () => void;
@@ -53,6 +58,7 @@ function getExportSummaryLabel(t: TranslateFn, canvasWidth: number, canvasHeight
 
 export function SidebarFooter({
   t,
+  language,
   canvasWidth,
   canvasHeight,
   exportFormat,
@@ -60,6 +66,7 @@ export function SidebarFooter({
   exportScale,
   onExportScaleChange,
   onDownload,
+  onSaveToPhotos,
   onShare,
   onCopy,
   onPublishLink,
@@ -75,12 +82,14 @@ export function SidebarFooter({
   surface = 'sidebar',
 }: SidebarFooterProps) {
   const isBusy = isExporting || isSharing;
+  const showPhotosSave = isAppleMobileDevice();
+  const deliveryCopy = imageDeliveryCopy[language];
   const shouldShowSaveAction = actionMode === 'both' || actionMode === 'save';
   const shouldShowShareAction = actionMode === 'both' || actionMode === 'share';
   const containerClassName = surface === 'modal'
     ? 'p-0'
     : 'px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-6 border-t border-[rgba(34,48,52,0.06)] bg-[linear-gradient(180deg,rgba(255,253,249,0.86),rgba(255,250,242,0.96))] md:sticky md:bottom-0';
-  const actionGridClassName = shouldShowSaveAction && shouldShowShareAction ? 'grid grid-cols-2 gap-3' : 'grid grid-cols-1 gap-3';
+  const actionGridClassName = shouldShowSaveAction && shouldShowShareAction && !showPhotosSave ? 'grid grid-cols-2 gap-3' : 'grid grid-cols-1 gap-3';
 
   return (
     <div className={containerClassName}>
@@ -132,8 +141,23 @@ export function SidebarFooter({
 
       {showActionButtons ? (
         <div className="space-y-2">
+          {shouldShowSaveAction && showPhotosSave ? (
+            <div className="space-y-2">
+              <button type="button" onClick={onSaveToPhotos} disabled={isBusy}
+                className="app-button-primary flex min-h-12 w-full items-center justify-center gap-2 rounded-xl px-4 py-3 font-semibold transition-all disabled:opacity-60">
+                <Images className="h-5 w-5" />{deliveryCopy.saveToPhotos}
+              </button>
+              <p className="text-center text-xs leading-5 text-(--app-accent-600)">
+                {deliveryCopy.photosInstruction}
+              </p>
+              <button type="button" onClick={onDownload} disabled={isBusy}
+                className="app-button-secondary flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-4 py-2 font-medium transition-all disabled:opacity-60">
+                <Download className="h-4 w-4" />{deliveryCopy.downloadFile}
+              </button>
+            </div>
+          ) : null}
           <div className={actionGridClassName}>
-          {shouldShowSaveAction ? (
+          {shouldShowSaveAction && !showPhotosSave ? (
             <button
               onClick={onDownload}
               disabled={isBusy}
@@ -156,7 +180,7 @@ export function SidebarFooter({
           {shouldShowShareAction ? (
             <button
               onClick={onShare}
-              disabled={isBusy || !canShare}
+              disabled={isBusy}
               className="app-button-secondary w-full py-3 px-4 disabled:opacity-60 disabled:cursor-not-allowed rounded-xl font-medium transition-all flex items-center justify-center gap-2"
             >
               {isSharing ? (
@@ -194,7 +218,7 @@ export function SidebarFooter({
             {manageSharesLabel}
           </button>
 
-          {!canShare && shouldShowShareAction ? (
+          {!canShare && shouldShowShareAction && !showPhotosSave ? (
             <p className="text-xs leading-5 text-(--app-accent-500)">{t('shareUnavailableHint')}</p>
           ) : null}
         </div>

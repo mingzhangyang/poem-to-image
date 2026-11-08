@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { Check, Copy, Download, ExternalLink, Loader2, Share2, Trash2 } from 'lucide-react';
+import { Check, Copy, Download, ExternalLink, Images, Loader2, Share2, Trash2 } from 'lucide-react';
+import { ImageShareDialog } from '../components/ImageShareDialog';
+import { fetchPublishedImageFile, isAppleMobileDevice } from '../sharing/imageDelivery';
+import { imageDeliveryCopy } from '../sharing/imageDeliveryCopy';
 import { useParams } from 'react-router-dom';
 import { readPreferredLanguage } from '../hooks/useLang';
 import { SHARE_OWNER_KEY_PREFIX, shareCopy } from '../sharing/copy';
@@ -13,12 +16,20 @@ interface PublicArtwork {
 
 export default function ShareViewerPage() {
   const { id = '' } = useParams();
-  const copy = shareCopy[readPreferredLanguage()];
+  const language = readPreferredLanguage();
+  const copy = shareCopy[language];
+  const deliveryCopy = imageDeliveryCopy[language];
+  const showPhotoSave = isAppleMobileDevice();
   const [artwork, setArtwork] = useState<PublicArtwork | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
+  const [photoSaveRequest, setPhotoSaveRequest] = useState<{
+    artworkId: string;
+    imageUrl: string;
+    prepareFile: () => Promise<File>;
+  } | null>(null);
   const [copied, setCopied] = useState(false);
   const [revoking, setRevoking] = useState(false);
   const [error, setError] = useState('');
@@ -66,6 +77,15 @@ export default function ShareViewerPage() {
     if (!artwork) return;
     try { await navigator.clipboard.writeText(artwork.url); setCopied(true); }
     catch { linkRef.current?.focus(); linkRef.current?.select(); }
+  };
+  const openPhotoSave = () => {
+    if (!artwork) return;
+    const imageUrl = artwork.imageUrl;
+    const title = artwork.title;
+    setPhotoSaveRequest({
+      artworkId: artwork.id, imageUrl,
+      prepareFile: () => fetchPublishedImageFile(imageUrl, title),
+    });
   };
   const handleShare = async () => {
     if (!artwork) return;
@@ -124,6 +144,12 @@ export default function ShareViewerPage() {
                 className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium hover:bg-slate-50">
                 <Download size={17} />{copy.download}
               </a>
+              {showPhotoSave ? (
+                <button type="button" onClick={openPhotoSave}
+                  className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-teal-900 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800">
+                  <Images size={17} />{deliveryCopy.saveToPhotos}
+                </button>
+              ) : null}
               <button type="button" onClick={() => void handleShare()}
                 className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-teal-900 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800">
                 <Share2 size={17} />{copy.share}
@@ -166,6 +192,15 @@ export default function ShareViewerPage() {
           </>
         )}
       </main>
+      {artwork && photoSaveRequest?.artworkId === artwork.id ? (
+        <ImageShareDialog
+          language={language}
+          intent="photos"
+          fallbackImageUrl={photoSaveRequest.imageUrl}
+          prepareFile={photoSaveRequest.prepareFile}
+          onClose={() => setPhotoSaveRequest(null)}
+        />
+      ) : null}
     </div>
   );
 }

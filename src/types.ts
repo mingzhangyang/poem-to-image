@@ -452,6 +452,7 @@ export interface SidebarProps {
   exportScale: ExportScale;
   onExportScaleChange: (value: ExportScale) => void;
   onDownload: () => void;
+  onSaveToPhotos: () => void;
   onShare: () => void;
   onCopy: () => void;
   onPublishLink: () => void;
@@ -464,6 +465,7 @@ export interface SidebarProps {
 }
 
 export interface CanvasPreviewProps {
+  language: Language;
   containerRef: RefObject<HTMLDivElement | null>;
   previewRef: RefObject<HTMLDivElement | null>;
   poemFrameRef: RefObject<HTMLDivElement | null>;
@@ -512,6 +514,7 @@ export interface CanvasPreviewProps {
   exportScale: ExportScale;
   onExportScaleChange: (value: ExportScale) => void;
   onDownload: () => void;
+  onSaveToPhotos: () => void;
   onShare: () => void;
   onCopy: () => void;
   onPublishLink: () => void;

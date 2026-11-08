@@ -120,6 +120,10 @@ test('export shows only the native system share action, not six platform shortcu
   const share = dialog.getByRole('button', { name: 'Share Image' });
   await expect(share).toBeEnabled();
   await share.click();
+  const imageDialog = page.getByRole('dialog', { name: 'Share image' });
+  await expect(imageDialog).toBeVisible();
+  // Native share must wait for a fresh tap after all Canvas/font/image work has finished.
+  await imageDialog.getByRole('button', { name: 'Open Share Sheet' }).click({ timeout: 45_000 });
   await expect.poll(() => page.evaluate(() =>
     (window as Window & { __nativeShareFiles?: string[] }).__nativeShareFiles?.length ?? 0,
   ), { timeout: 45_000 }).toBe(1);
@@ -129,7 +133,7 @@ test('export shows only the native system share action, not six platform shortcu
   expect(filename).toMatch(/\.(png|jpg|webp)$/);
 });
 
-test('text-only Web Share API never exposes an unusable native image-share button', async ({ page }) => {
+test('text-only Web Share API opens an image preview fallback instead of a dead share button', async ({ page }) => {
   await page.addInitScript(() => {
     Object.defineProperty(navigator, 'share', {
       configurable: true, value: async () => undefined,
@@ -143,9 +147,101 @@ test('text-only Web Share API never exposes an unusable native image-share butto
   await page.getByRole('button', { name: 'Export Image' }).click();
   const dialog = page.getByRole('dialog', { name: 'Export Image' });
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByRole('button', { name: 'Share Image' })).toHaveCount(0);
-  await expect(dialog.getByRole('button', { name: 'Copy Image' })).toBeVisible();
-  await expect(dialog.getByRole('button', { name: 'Publish shareable link' })).toBeVisible();
+  await dialog.getByRole('button', { name: 'Share Image' }).click();
+  const imageDialog = page.getByRole('dialog', { name: 'Share image' });
+  await expect(imageDialog).toBeVisible();
+  await expect(imageDialog.getByText(/not available in this browser/)).toBeVisible({ timeout: 45_000 });
+  await expect(imageDialog.getByRole('button', { name: 'Open Share Sheet' })).toHaveCount(0);
+  await expect(imageDialog.getByRole('link', { name: 'Download File Instead' })).toBeVisible();
+  await imageDialog.getByRole('button', { name: 'Close' }).click();
+  await expect(page.getByRole('button', { name: 'Export Image' })).toBeVisible();
+  await page.getByRole('button', { name: 'Export Image' }).click();
+  const reopened = page.getByRole('dialog', { name: 'Export Image' });
+  await expect(reopened.getByRole('button', { name: 'Copy Image' })).toBeVisible();
+  await expect(reopened.getByRole('button', { name: 'Publish shareable link' })).toBeVisible();
+});
+
+
+test('iPhone Photos flow waits for a second tap, sharing the rendered full-resolution PNG', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'userAgent', { configurable: true, value: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)' });
+    Object.defineProperty(navigator, 'platform', { configurable: true, value: 'iPhone' });
+    Object.defineProperty(navigator, 'maxTouchPoints', { configurable: true, value: 5 });
+    (window as Window & { __photoShare?: { type: string; name: string; activated: boolean } }).__photoShare = undefined;
+    Object.defineProperty(navigator, 'canShare', {
+      configurable: true, value: ({ files }: ShareData) => !!files?.length && files[0].type === 'image/png',
+    });
+    Object.defineProperty(navigator, 'share', {
+      configurable: true, value: async ({ files }: ShareData) => {
+        const file = files![0];
+        (window as Window & { __photoShare?: { type: string; name: string; activated: boolean } }).__photoShare = {
+          type: file.type, name: file.name,
+          activated: navigator.userActivation?.isActive ?? false,
+        };
+      },
+    });
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: 'Export', exact: true }).click();
+  const exportDrawer = page.getByRole('dialog', { name: 'Export & Share' });
+  await expect(exportDrawer.getByRole('button', { name: 'Save to Photos' })).toBeVisible();
+  await expect(exportDrawer.getByRole('button', { name: 'Download File' })).toBeVisible();
+  await exportDrawer.getByRole('combobox', { name: 'Export Format' }).selectOption('webp');
+  await exportDrawer.getByRole('button', { name: 'Save to Photos' }).click();
+  const photos = page.getByRole('dialog', { name: 'Save to Photos' });
+  await expect(photos).toBeVisible();
+  await expect(photos.getByText(/WebP is converted to PNG/)).toBeVisible({ timeout: 45_000 });
+  await expect.poll(() => page.evaluate(() =>
+    (window as Window & { __photoShare?: unknown }).__photoShare ?? null,
+  )).toBeNull();
+  await photos.getByRole('button', { name: 'Open Share Sheet' }).click({ timeout: 45_000 });
+  const shared = await page.evaluate(() =>
+    (window as Window & { __photoShare?: { type: string; name: string; activated: boolean } }).__photoShare,
+  );
+  expect(shared).toMatchObject({ type: 'image/png', activated: true });
+  expect(shared!.name).toMatch(/\.png$/);
+});
+
+
+test('cancelling the iPhone share sheet does not report that the image was saved', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'userAgent', { configurable: true, value: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)' });
+    Object.defineProperty(navigator, 'canShare', { configurable: true, value: ({ files }: ShareData) => !!files?.length });
+    Object.defineProperty(navigator, 'share', {
+      configurable: true, value: async () => { throw new DOMException('User cancelled', 'AbortError'); },
+    });
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: 'Export', exact: true }).click();
+  await page.getByRole('button', { name: 'Save to Photos' }).click();
+  const photos = page.getByRole('dialog', { name: 'Save to Photos' });
+  await photos.getByRole('button', { name: 'Open Share Sheet' }).click({ timeout: 45_000 });
+  await expect(photos).toBeVisible();
+  await expect(photos.getByRole('button', { name: 'Open Share Sheet' })).toBeEnabled();
+  await expect(photos.getByText(/cannot tell whether you selected Save Image/)).toBeVisible();
+  await expect(photos.getByText(/Could not open the system share sheet/)).toHaveCount(0);
+});
+
+test('iPhone Photos fallback shows the original image without relying on a file share API', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'userAgent', { configurable: true, value: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)' });
+    Object.defineProperty(navigator, 'canShare', { configurable: true, value: undefined });
+    Object.defineProperty(navigator, 'share', { configurable: true, value: undefined });
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: 'Export', exact: true }).click();
+  await page.getByRole('button', { name: 'Save to Photos' }).click();
+  const photos = page.getByRole('dialog', { name: 'Save to Photos' });
+  await expect(photos.getByText(/touch and hold the image/)).toBeVisible({ timeout: 45_000 });
+  await expect(photos.getByRole('img', { name: 'Save to Photos' })).toBeVisible();
+  await expect(photos.getByRole('button', { name: 'Open Share Sheet' })).toHaveCount(0);
+  await expect(photos.getByRole('link', { name: 'Download File Instead' })).toBeVisible();
 });
 
 test('My Shares persists a published link and its removal key after closing and refreshing', async ({ page }) => {
@@ -527,6 +623,53 @@ test('revocation succeeds even if browser policy blocks localStorage access', as
   await page.getByRole('button', { name: 'Remove this share' }).click();
   await expect(page.getByRole('heading', { name: 'Artwork unavailable' })).toBeVisible();
   await expect(page.getByText('Could not remove this share. Try again.')).toHaveCount(0);
+});
+
+
+test('public artwork separates Save to Photos from Share link on iPhone', async ({ page }) => {
+  test.setTimeout(45_000);
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'userAgent', { configurable: true, value: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)' });
+    Object.defineProperty(navigator, 'canShare', { configurable: true, value: ({ files }: ShareData) => !!files?.length });
+    (window as Window & { __publicShare?: ShareData }).__publicShare = undefined;
+    Object.defineProperty(navigator, 'share', {
+      configurable: true, value: async (data: ShareData) => {
+        (window as Window & { __publicShare?: ShareData }).__publicShare = data;
+      },
+    });
+  });
+  await page.route('**/api/shares/' + shareId, async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({ id: shareId, title: 'Photo save test', author: 'Poet',
+        createdAt: '2026-11-08T12:00:00Z', url: root + '/s/' + shareId,
+        imageUrl: '/public-artwork.png', cardUrl: '/public-artwork.png' }),
+    });
+  });
+  await page.route('**/public-artwork.png', async (route) => {
+    await route.fulfill({
+      contentType: 'image/png',
+      body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL9yAAAAABJRU5ErkJggg==', 'base64'),
+    });
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/s/' + shareId, { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: 'Save to Photos' }).click();
+  const photos = page.getByRole('dialog', { name: 'Save to Photos' });
+  await photos.getByRole('button', { name: 'Open Share Sheet' }).click({ timeout: 30_000 });
+  const imageShare = await page.evaluate(() => {
+    const data = (window as Window & { __publicShare?: ShareData }).__publicShare;
+    return { type: data?.files?.[0]?.type, filename: data?.files?.[0]?.name, url: data?.url };
+  });
+  expect(imageShare.type).toBe('image/png');
+  expect(imageShare.filename).toMatch(/\.png$/);
+  expect(imageShare.url).toBeUndefined();
+  await photos.getByRole('button', { name: 'Close' }).click();
+  await page.getByRole('button', { name: 'Share link' }).click();
+  const linkShare = await page.evaluate(() =>
+    (window as Window & { __publicShare?: ShareData }).__publicShare?.url,
+  );
+  expect(linkShare).toBe(root + '/s/' + shareId);
 });
 
 test('public read-only viewer needs no account and creator can revoke from the original browser', async ({ page }) => {

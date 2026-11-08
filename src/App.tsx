@@ -12,6 +12,8 @@ import { useCanvasScale } from './hooks/useCanvasScale';
 import { useDecorationsConfig } from './hooks/useDecorationsConfig';
 import { useEditorViewModels } from './hooks/useEditorViewModels';
 import { useImageExporter } from './hooks/useImageExporter';
+import { ImageShareDialog } from './components/ImageShareDialog';
+import type { ImageDeliveryIntent } from './sharing/imageDelivery';
 import { useTypographyConfig } from './hooks/useTypographyConfig';
 import { useCustomTemplates } from './hooks/useCustomTemplates';
 import { useTemplateManager } from './hooks/useTemplateManager';
@@ -105,6 +107,11 @@ export default function App() {
   const [previewZoom, setPreviewZoom] = useState(1);
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
   const [shareLibraryOpen, setShareLibraryOpen] = useState(false);
+  const [imageDeliveryRequest, setImageDeliveryRequest] = useState<{
+    intent: ImageDeliveryIntent;
+    prepareFile: () => Promise<File>;
+    convertedFromWebp: boolean;
+  } | null>(null);
 
   const handleCloseOnboarding = () => {
     setIsOnboardingOpen(false);
@@ -390,7 +397,7 @@ export default function App() {
 
   const {
     exportImage,
-    shareImage: handleShare,
+    prepareShareFile,
     copyImage,
     createShareAssets,
     isExporting,
@@ -527,6 +534,15 @@ export default function App() {
       return uncertainUnlessPublished('HTTP ' + response.status + ' · INVALID_RESPONSE');
     }
     return await confirmed();
+  };
+
+  const openImageDelivery = (intent: ImageDeliveryIntent) => {
+    if (isExporting || isSharing) return;
+    setImageDeliveryRequest({
+      intent,
+      prepareFile: () => prepareShareFile(intent),
+      convertedFromWebp: intent === 'photos' && exportFormat === 'webp',
+    });
   };
 
   const handleDownload = async () => {
@@ -686,7 +702,8 @@ export default function App() {
     exportScale,
     onExportScaleChange: setExportScale,
     onDownload: handleDownload,
-    onShare: handleShare,
+    onSaveToPhotos: () => openImageDelivery('photos'),
+    onShare: () => openImageDelivery('share'),
     onCopy: handleCopy,
     onPublishLink: () => { setShareLibraryOpen(false); setPublishDialogOpen(true); },
     publishLinkLabel: shareCopy[language].publishLink,
@@ -735,6 +752,16 @@ export default function App() {
       <Sidebar {...sidebarProps} />
 
       <CanvasPreview {...canvasPreviewProps} canUndo={canUndo} canRedo={canRedo} onUndo={handleUndo} onRedo={handleRedo} />
+
+      {imageDeliveryRequest ? (
+        <ImageShareDialog
+          language={language}
+          intent={imageDeliveryRequest.intent}
+          prepareFile={imageDeliveryRequest.prepareFile}
+          convertedFromWebp={imageDeliveryRequest.convertedFromWebp}
+          onClose={() => setImageDeliveryRequest(null)}
+        />
+      ) : null}
 
       <PublishDialog
         language={language}

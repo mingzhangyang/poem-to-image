@@ -44,6 +44,7 @@ export function Sidebar({
   exportScale,
   onExportScaleChange,
   onDownload,
+  onSaveToPhotos,
   onShare,
   onCopy,
   onPublishLink,
@@ -59,6 +60,14 @@ export function Sidebar({
   const isMobileControlsOpen = activeMobilePanel !== null;
   const mobileDialogRef = useRef<HTMLElement>(null);
   const closeMobilePanel = useCallback(() => setActiveMobilePanel(null), []);
+  const handleSavePhotosFromMobile = () => {
+    closeMobilePanel();
+    onSaveToPhotos();
+  };
+  const handleImageShareFromMobile = () => {
+    closeMobilePanel();
+    onShare();
+  };
   const handlePublishFromMobile = () => {
     closeMobilePanel();
     onPublishLink();
@@ -239,6 +248,7 @@ export function Sidebar({
         <div className="app-sidebar-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain">
           <SidebarFooter
             t={t}
+            language={language}
             canvasWidth={canvasWidth}
             canvasHeight={canvasHeight}
             exportFormat={exportFormat}
@@ -246,7 +256,8 @@ export function Sidebar({
             exportScale={exportScale}
             onExportScaleChange={onExportScaleChange}
             onDownload={onDownload}
-            onShare={onShare}
+            onSaveToPhotos={handleSavePhotosFromMobile}
+            onShare={handleImageShareFromMobile}
             onCopy={onCopy}
             onPublishLink={handlePublishFromMobile}
             publishLinkLabel={publishLinkLabel}
@@ -255,7 +266,7 @@ export function Sidebar({
             isExporting={isExporting}
             isSharing={isSharing}
             canShare={canShare}
-            actionMode={canShare ? 'both' : 'save'}
+            actionMode="both"
             title={t(canShare ? 'exportAndShare' : 'exportImage')}
           />
         </div>
