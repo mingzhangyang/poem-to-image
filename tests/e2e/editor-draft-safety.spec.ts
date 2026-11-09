@@ -238,3 +238,61 @@ for (const corruptField of ['stamp', 'logo'] as const) {
     await expect.poll(async () => (await readDraft(page))?.revision).toBe(originalRevision);
   });
 }
+
+test('restored signatures request their font stylesheet and paint a preview without an edit', async ({ page }) => {
+  // Keep this test independent from third-party Google Fonts availability.
+  await page.route('https://fonts.googleapis.com/**', (route) => route.fulfill({
+    status: 200, contentType: 'text/css', body: '',
+  }));
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await expect(page.getByRole('button', { name: 'Open Editor' })).toBeVisible();
+  await page.getByRole('button', { name: 'Open Editor' }).click();
+  await page.getByPlaceholder('Title').fill('Signature font restoration');
+  await page.getByRole('button', { name: 'Done' }).click();
+  await expect.poll(async () => (await readDraft(page))?.scene.poem.title).toBe('Signature font restoration');
+  const revision = (await readDraft(page))!.revision;
+
+  // Seed an otherwise valid saved document with a signature, bypassing the
+  // add-signature action that formerly performed font initialization.
+  await page.evaluate(async () => new Promise<void>((resolve, reject) => {
+    const request = indexedDB.open('inkpoem-editor-drafts', 1);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      const db = request.result;
+      const tx = db.transaction('documents', 'readwrite');
+      const store = tx.objectStore('documents');
+      const read = store.get('current');
+      read.onsuccess = () => {
+        const record = read.result as {
+          scene: { decorations: { signatures: unknown[] } };
+        };
+        record.scene.decorations.signatures = [{
+          id: 'restored-signature', text: 'InkPoem', font: 'Great Vibes',
+          color: '#101010', fontSize: 38, slant: -8, thickness: 0,
+          flourish: 'swoosh', positionX: 50, positionY: 80, opacity: 1,
+          rotation: 0,
+        }];
+        store.put(record, 'current');
+      };
+      tx.oncomplete = () => { db.close(); resolve(); };
+      tx.onerror = () => { db.close(); reject(tx.error); };
+    };
+  }));
+
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  const canvas = page.locator('[aria-label*="signature" i] canvas').first();
+  await expect(canvas).toBeVisible();
+  await expect(page.locator('link[data-signature-fonts="true"]')).toHaveCount(1);
+  await expect.poll(async () => canvas.evaluate((element) => {
+    const surface = element as HTMLCanvasElement;
+    const context = surface.getContext('2d');
+    if (!context) return false;
+    const pixels = context.getImageData(0, 0, surface.width, surface.height).data;
+    for (let index = 3; index < pixels.length; index += 4) {
+      if (pixels[index] > 0) return true;
+    }
+    return false;
+  })).toBe(true);
+  await page.waitForTimeout(1000);
+  expect((await readDraft(page))?.revision).toBe(revision);
+});

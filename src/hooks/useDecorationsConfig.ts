@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { DEFAULT_STAMP_FONT } from '../fontOptions';
 import { getDefaultStampTextForLanguage } from '../stampDefaults';
-import { DEFAULT_SIGNATURE_FONT, ensureSignatureFontsLoaded } from '../signatureRendering';
+import { DEFAULT_SIGNATURE_FONT } from '../signatureRendering';
 import type { Language } from '../translations';
 import type { BorderStyle, CustomText, LogoConfig, PositionedElement, SignatureConfig, StampConfig, TemplateDecorationsConfig, TranslateFn, WritingMode } from '../types';
 
@@ -215,8 +215,6 @@ export function useDecorationsConfig({
   };
 
   const addSignature = () => {
-    void ensureSignatureFontsLoaded();
-
     const nextSignature: SignatureConfig = {
       id: Date.now().toString(),
       text: 'Signature',
@@ -277,9 +275,6 @@ export function useDecorationsConfig({
 
   const applyDecorationsTemplate = (template: TemplateDecorationsConfig) => {
     const normalized = normalizeDecorationLayers(template.customTexts, template.logos || []);
-    if ((template.signatures?.length ?? 0) > 0) {
-      void ensureSignatureFontsLoaded();
-    }
     setShowBorder(template.showBorder);
     setBorderStyle(template.borderStyle);
     setBorderColor(template.borderColor ?? textColor);

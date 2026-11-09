@@ -7,7 +7,7 @@ import type {
   FC,
 } from 'react';
 import { getPreviewDragBounds, getPreviewPositioningRect } from '../../positioningRect';
-import { drawSignatureToCanvas, getSignatureCanvasSize } from '../../signatureRendering';
+import { drawSignatureToCanvas, ensureSignatureFontsLoaded, getSignatureCanvasSize } from '../../signatureRendering';
 import type { SignatureConfig } from '../../types';
 
 interface SignatureOverlayProps {
@@ -55,16 +55,36 @@ export const SignatureOverlay: FC<SignatureOverlayProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    let active = true;
     const dpr = window.devicePixelRatio || 1;
     canvas.width = canvasWidth * dpr;
     canvas.height = canvasHeight * dpr;
     ctx.scale(dpr, dpr);
-    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
-
-    void document.fonts.ready.then(() => {
+    const paint = () => {
       ctx.clearRect(0, 0, canvasWidth, canvasHeight);
       drawSignatureToCanvas(ctx, signature, canvasWidth, canvasHeight);
+    };
+    // Display a provisional frame immediately. Signature fonts are requested
+    // by the actual canvas consumer, not indirectly by a prior editor action:
+    // restored signatures, newly added signatures and undo all share one path.
+    paint();
+
+    void ensureSignatureFontsLoaded().then(async () => {
+      // document.fonts.ready alone does not fetch a stylesheet that was never
+      // installed; request the face used by this particular signature.
+      if ('fonts' in document) {
+        try {
+          await document.fonts.load(`${signature.fontSize}px "${signature.font}"`, signature.text);
+        } catch {
+          // Offline font failure still leaves the provisional fallback visible.
+        }
+      }
+      if (active && canvasRef.current === canvas) paint();
+    }).catch(() => {
+      if (active && canvasRef.current === canvas) paint();
     });
+
+    return () => { active = false; };
   }, [signature, canvasWidth, canvasHeight]);
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {

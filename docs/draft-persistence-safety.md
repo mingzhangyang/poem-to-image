@@ -18,12 +18,14 @@ rendering. Those have separate owners and tests.
   or the save aborts without touching either the document or resources.
 - **Image restoration:** Background and Logo `blob:` or `data:` URLs are
   converted to binary assets before the transaction. On load, the asset
-  references become live object URLs. The editor and undo/redo snapshots own
-  them while needed, and detached saves pin their Blobs until completion.
-  StrictMode replay cannot revoke restored images. Once all owners release a
-  URL, its object URL and cached Blob are evicted; disk assets are pruned only
-  in the same successful transaction as the new scene. Remote template URLs
-  remain unchanged.
+  references become live object URLs. Both new uploads and asynchronously
+  hydrated URLs receive a synchronous staging lease before React commits a
+  scene; the editor/undo history then adopts them. Replaced or cancelled
+  uploads release their unadopted lease. Detached saves pin their own Blobs
+  until completion. StrictMode replay cannot revoke restored images. Once
+  all owners release a URL, its object URL and cached Blob are evicted; disk
+  assets are pruned only in the same successful transaction as the new scene.
+  Remote template URLs remain unchanged.
 - **Legacy compatibility:** The old `inkpoem.editor-state.v1` JSON is read only
   when there is no IndexedDB document. Metadata-only documents still write
   a size-bounded legacy mirror as an optional fallback for older versions.
@@ -100,3 +102,21 @@ Then manually check in desktop Chromium and iPhone Safari:
 
 **No deployed storage migrations:** This is a new browser-side IndexedDB.
 It does not change D1 migrations, R2 buckets, share links, or the Worker.
+
+## Review follow-up: ownership and signature rendering
+
+- The gap between `URL.createObjectURL` and React effect commit is now an
+  explicit **staged** asset state. An unrelated save completing within that
+  gap cannot evict the new upload or restored image. Each staging reference is
+  transferred to editor/history ownership on commit, or discarded if the
+  upload is superseded or the editor is destroyed. Writes hold independent
+  leases until settled.
+- Signature canvas overlays own their font readiness. Each overlay requests
+  the signature stylesheet and exact font face before its final redraw, even
+  when the signature came from persisted state or undo. Async redraw is
+  cancelled when that overlay unmounts. The canvas export path independently
+  prepares signature fonts.
+- Local regression coverage includes a staged-upload-vs-old-save race,
+  abandoned uploads, and rehydration of a saved signature without pressing
+  the Add Signature button. For the latter, browsers without network access
+  may paint fallback glyphs while the font stylesheet is blocked.

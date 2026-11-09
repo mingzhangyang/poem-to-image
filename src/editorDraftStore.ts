@@ -58,6 +58,10 @@ export class DraftConflictError extends Error {
 const liveAssets = new Map<string, Asset>();
 const editorReferences = new Map<string, Set<string>>();
 const saveReferences = new Map<string, number>();
+// Uploads are staged synchronously before React can commit their new URL.
+// The editor's history lease adopts them after commit; until then an unrelated
+// save is never allowed to revoke their URL or discard their Blob.
+const stagedAssets = new Set<string>();
 
 function sceneAssetUrls(scene: EditorDraftState): string[] {
   return [scene.background.backgroundImage, ...scene.decorations.logos.map((logo) => logo.imageUrl)]
@@ -65,7 +69,7 @@ function sceneAssetUrls(scene: EditorDraftState): string[] {
 }
 
 function pruneUnusedAssets(): void {
-  const retained = new Set<string>();
+  const retained = new Set(stagedAssets);
   for (const urls of editorReferences.values()) for (const url of urls) retained.add(url);
   for (const url of saveReferences.keys()) retained.add(url);
   for (const url of liveAssets.keys()) {
@@ -76,7 +80,10 @@ function pruneUnusedAssets(): void {
 }
 
 export function retainEditorDraftAssets(editorId: string, urls: Iterable<string>): void {
-  editorReferences.set(editorId, new Set(urls));
+  const ownedUrls = new Set(urls);
+  // Atomically transfer staging ownership to the committed editor/history.
+  editorReferences.set(editorId, ownedUrls);
+  for (const url of ownedUrls) stagedAssets.delete(url);
   pruneUnusedAssets();
 }
 
@@ -85,9 +92,19 @@ export function releaseEditorDraftAssets(editorId: string): void {
   pruneUnusedAssets();
 }
 
-/** Retain the binary behind a new object URL before its first async save. */
+/** Register ownership *before* scheduling React state updates. */
 export function registerDraftAssetObjectUrl(url: string, blob: Blob): void {
-  if (url.startsWith('blob:')) liveAssets.set(url, { key: crypto.randomUUID(), blob });
+  if (!url.startsWith('blob:')) return;
+  liveAssets.set(url, { key: crypto.randomUUID(), blob });
+  stagedAssets.add(url);
+}
+
+/**
+ * Discard an upload that never became the current editor scene. If the URL
+ * was already adopted by history or pinned by a save, those owners keep it.
+ */
+export function discardDraftAssetRegistration(url: string): void {
+  if (stagedAssets.delete(url)) pruneUnusedAssets();
 }
 
 /** Hold the latest unsaved scene across unmount and any detached save chain. */
@@ -355,6 +372,14 @@ export async function loadEditorDraft(): Promise<LoadedEditorDraft> {
     state: pending ?? legacyDraft(),
     revision: 0, objectUrls: [], recoveredPending: pending !== null,
   };
+  // Metadata-only checkpoint recovery needs no hydrated binary URLs. Creating
+  // them only to discard them leaves an unowned Blob cache behind.
+  if (pending) return {
+    state: pending,
+    revision: record.revision,
+    objectUrls: [],
+    recoveredPending: true,
+  };
 
   const urlById = new Map<string, string>();
   const objectUrls: string[] = [];
@@ -364,6 +389,9 @@ export async function loadEditorDraft(): Promise<LoadedEditorDraft> {
       urlById.set(id, url);
       objectUrls.push(url);
       liveAssets.set(url, { key: id, blob });
+      // Boot loading is asynchronous too; an older editor save can finish
+      // before this newly created URL is adopted by React's editor history.
+      stagedAssets.add(url);
     }
     const hydrateUrl = (url: string | null | undefined): string | null => {
       const id = resourceId(url);
@@ -399,6 +427,7 @@ export async function loadEditorDraft(): Promise<LoadedEditorDraft> {
 export function releaseDraftObjectUrls(urls: string[]): void {
   // Used for cancelled boot loads, before an editor can own these URLs.
   for (const url of urls) {
+    stagedAssets.delete(url);
     URL.revokeObjectURL(url);
     liveAssets.delete(url);
   }

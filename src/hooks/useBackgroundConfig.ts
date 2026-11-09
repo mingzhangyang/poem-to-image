@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, CSSProperties } from 'react';
 import { logError } from '../logger';
-import { registerDraftAssetObjectUrl } from '../editorDraftStore';
+import { discardDraftAssetRegistration, registerDraftAssetObjectUrl } from '../editorDraftStore';
 import type { AiProvider, BackgroundImageSource, BackgroundType, TemplateBackgroundConfig, TranslateFn } from '../types';
 import { inferBackgroundImageSource } from '../backgroundImageSource';
-import { DEFAULT_PAPER_ID, getPaperStyle, paperPreviewStyle, type PaperId } from '../paperStyles';
+import { getPaperStyle, paperPreviewStyle, type PaperId } from '../paperStyles';
 import { useAiBackground } from './useAiBackground';
 
 const MAX_EXPORT_SCALE = 3;
@@ -60,9 +60,33 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getTok
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageRequestIdRef = useRef(0);
-  // Cancel pending image decoding on actual unmount; StrictMode effect replay
-  // happens before a user can initiate an upload.
-  useEffect(() => () => { imageRequestIdRef.current += 1; }, []);
+  const stagedUploadUrlsRef = useRef<Set<string>>(new Set());
+  const mountEpochRef = useRef(0);
+
+  useEffect(() => {
+    const epoch = ++mountEpochRef.current;
+    return () => {
+      // Reject the results of uploads that finish after unmount.
+      imageRequestIdRef.current += 1;
+      // StrictMode replays effects without actually disposing the editor.
+      queueMicrotask(() => {
+        if (mountEpochRef.current !== epoch) return;
+        for (const url of stagedUploadUrlsRef.current) discardDraftAssetRegistration(url);
+        stagedUploadUrlsRef.current.clear();
+      });
+    };
+  }, []);
+
+  useEffect(() => {
+    // An upload may be superseded before React commits its URL (for example,
+    // two rapid image selections). Drop its staging lease after the new scene
+    // commits; any history or in-flight save still owns the old URL.
+    for (const url of stagedUploadUrlsRef.current) {
+      if (url === backgroundImage) continue;
+      discardDraftAssetRegistration(url);
+      stagedUploadUrlsRef.current.delete(url);
+    }
+  }, [backgroundImage]);
 
   const maxImageWidth = Math.min(Math.round(canvasWidth * MAX_EXPORT_SCALE * 1.1), MAX_BACKGROUND_EDGE);
   const maxImageHeight = Math.min(Math.round(canvasHeight * MAX_EXPORT_SCALE * 1.1), MAX_BACKGROUND_EDGE);
@@ -116,6 +140,7 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getTok
 
       if (imageRequestIdRef.current === requestId) {
         registerDraftAssetObjectUrl(nextUrl, nextBlob);
+        stagedUploadUrlsRef.current.add(nextUrl);
         updateBackgroundImage(nextUrl);
         setBackgroundImageSource(origin);
         setBackgroundPosition('center');
