@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, CSSProperties } from 'react';
 import { logError } from '../logger';
+import { registerDraftAssetObjectUrl } from '../editorDraftStore';
 import type { AiProvider, BackgroundImageSource, BackgroundType, TemplateBackgroundConfig, TranslateFn } from '../types';
 import { inferBackgroundImageSource } from '../backgroundImageSource';
 import { DEFAULT_PAPER_ID, getPaperStyle, paperPreviewStyle, type PaperId } from '../paperStyles';
@@ -86,6 +87,7 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getTok
       const shouldTranscode = needsResize || sourceBlob.size > LARGE_BACKGROUND_BLOB_BYTES || typeof source === 'string';
 
       let nextUrl = sourceUrl;
+      let nextBlob: Blob = sourceBlob;
 
       if (shouldTranscode) {
         const canvas = document.createElement('canvas');
@@ -106,10 +108,12 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getTok
 
         if (optimizedBlob) {
           nextUrl = URL.createObjectURL(optimizedBlob);
+          nextBlob = optimizedBlob;
         }
       }
 
       if (imageRequestIdRef.current === requestId) {
+        registerDraftAssetObjectUrl(nextUrl, nextBlob);
         updateBackgroundImage(nextUrl);
         setBackgroundImageSource(origin);
         setBackgroundPosition('center');

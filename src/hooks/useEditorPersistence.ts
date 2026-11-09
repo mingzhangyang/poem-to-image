@@ -1,53 +1,19 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { DraftConflictError, checkpointEditorDraft, saveEditorDraft, type EditorDraftState } from '../editorDraftStore';
 import type {
   BackgroundSectionProps,
   PoemContentData,
   PoemLayerStyle,
-  TemplateBackgroundConfig,
   TemplateDecorationsConfig,
   TemplateTypographyConfig,
 } from '../types';
 
-const STORAGE_KEY = 'inkpoem.editor-state.v1';
 const SAVE_DEBOUNCE_MS = 600;
-const MAX_STORAGE_BYTES = 3_000_000; // 3 MB guard — logos are data URLs and can be large
-
-interface PersistedState {
-  poem: PoemContentData;
-  poemStyle: PoemLayerStyle;
-  canvasWidth: number;
-  canvasHeight: number;
-  presetSize?: string; // older saved drafts did not include a preset identity
-  background: TemplateBackgroundConfig;
-  typography: TemplateTypographyConfig;
-  decorations: TemplateDecorationsConfig;
-}
-
-function stripBlobUrls(state: PersistedState): PersistedState {
-  const backgroundImage =
-    state.background.backgroundImage?.startsWith('blob:') ? null : state.background.backgroundImage;
-
-  const logos = state.decorations.logos.filter((logo) => !logo.imageUrl.startsWith('blob:'));
-
-  return {
-    ...state,
-    background: { ...state.background, backgroundImage, backgroundImageSource: backgroundImage ? state.background.backgroundImageSource : null },
-    decorations: { ...state.decorations, logos },
-  };
-}
-
-export function loadPersistedState(): PersistedState | null {
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw) as PersistedState;
-  } catch {
-    return null;
-  }
-}
 
 interface UseEditorPersistenceParams {
+  /** Reference-stable scene identity; drives draft writes after editor changes. */
   exportScene: unknown;
+  initialRevision: number;
   poem: PoemContentData;
   poemStyle: PoemLayerStyle;
   canvasWidth: number;
@@ -71,87 +37,143 @@ interface UseEditorPersistenceParams {
   decorations: TemplateDecorationsConfig;
 }
 
+type SnapshotSource = Omit<UseEditorPersistenceParams, 'exportScene' | 'initialRevision'>;
+export type DraftSaveError = 'failure' | 'conflict';
+
+function buildDraft(source: SnapshotSource): EditorDraftState {
+  const { poem, poemStyle, canvasWidth, canvasHeight, presetSize, background, typography, decorations } = source;
+  return {
+    poem,
+    poemStyle,
+    canvasWidth,
+    canvasHeight,
+    presetSize,
+    background: {
+      backgroundType: background.backgroundType === 'ai' ? 'image' : background.backgroundType,
+      paperId: background.paperId,
+      backgroundColor: background.backgroundColor,
+      gradientColor1: background.gradientColor1,
+      gradientColor2: background.gradientColor2,
+      gradientDirection: background.gradientDirection,
+      backgroundImage: background.backgroundImage ?? null,
+      backgroundImageSource: background.backgroundImageSource,
+      backgroundSize: background.backgroundSize,
+      backgroundPosition: background.backgroundPosition,
+      bgBrightness: background.bgBrightness,
+      bgBlur: background.bgBlur,
+    },
+    typography,
+    decorations,
+  };
+}
+
+/**
+ * Serializes writes. A delayed earlier save can never overwrite a later edit,
+ * and a second tab cannot silently overwrite a newer persisted revision.
+ * IndexedDB is the source of truth; localStorage is only a legacy fallback.
+ */
 export function useEditorPersistence({
   exportScene,
-  poem,
-  poemStyle,
-  canvasWidth,
-  canvasHeight,
-  presetSize,
-  background,
-  typography,
-  decorations,
+  initialRevision,
+  ...source
 }: UseEditorPersistenceParams) {
-  const snapshotRef = useRef({ poem, poemStyle, canvasWidth, canvasHeight, presetSize, background, typography, decorations });
-  snapshotRef.current = { poem, poemStyle, canvasWidth, canvasHeight, presetSize, background, typography, decorations };
+  const snapshotRef = useRef(source);
+  snapshotRef.current = source;
 
+  const [saveError, setSaveError] = useState<DraftSaveError | null>(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const pendingRevisionRef = useRef(0);
+  const completedRevisionRef = useRef(0);
+  const diskRevisionRef = useRef(initialRevision);
+  const inFlightRef = useRef<Promise<void> | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isFirstRef = useRef(true);
+  const mountedRef = useRef(true);
 
-  const persistSnapshot = useCallback(() => {
-    try {
-      const { poem, poemStyle, canvasWidth, canvasHeight, presetSize, background, typography, decorations } =
-        snapshotRef.current;
+  const persistLatest = useCallback((): Promise<void> => {
+    if (inFlightRef.current) return inFlightRef.current;
 
-      const state: PersistedState = stripBlobUrls({
-        poem,
-        poemStyle,
-        canvasWidth,
-        canvasHeight,
-        presetSize,
-        background: {
-          backgroundType: background.backgroundType === 'ai' ? 'image' : background.backgroundType,
-          paperId: background.paperId,
-          backgroundColor: background.backgroundColor,
-          gradientColor1: background.gradientColor1,
-          gradientColor2: background.gradientColor2,
-          gradientDirection: background.gradientDirection,
-          backgroundImage: background.backgroundImage ?? null,
-          backgroundImageSource: background.backgroundImageSource,
-          backgroundSize: background.backgroundSize,
-          backgroundPosition: background.backgroundPosition,
-          bgBrightness: background.bgBrightness,
-          bgBlur: background.bgBlur,
-        },
-        typography,
-        decorations,
-      });
-
-      const serialized = JSON.stringify(state);
-      if (new TextEncoder().encode(serialized).byteLength <= MAX_STORAGE_BYTES) {
-        window.localStorage.setItem(STORAGE_KEY, serialized);
+    const work = async () => {
+      while (completedRevisionRef.current < pendingRevisionRef.current) {
+        const revision = pendingRevisionRef.current;
+        try {
+          const savedRevision = await saveEditorDraft(buildDraft(snapshotRef.current), diskRevisionRef.current);
+          diskRevisionRef.current = savedRevision;
+          completedRevisionRef.current = revision;
+          if (revision < pendingRevisionRef.current) {
+            checkpointEditorDraft(buildDraft(snapshotRef.current), savedRevision);
+          }
+          if (mountedRef.current) {
+            setSaveError(null);
+            setHasUnsavedChanges(revision < pendingRevisionRef.current);
+          }
+        } catch (error) {
+          if (mountedRef.current) {
+            setSaveError(error instanceof DraftConflictError ? 'conflict' : 'failure');
+            setHasUnsavedChanges(true);
+          }
+          return;
+        }
       }
-    } catch {
-      // Ignore — storage quota exceeded or serialization error
-    }
+    };
+
+    const running = work();
+    inFlightRef.current = running.finally(() => { inFlightRef.current = null; });
+    return inFlightRef.current;
   }, []);
 
   useEffect(() => {
-    const persistBeforeLeaving = () => persistSnapshot();
+    mountedRef.current = true;
+    const persistWhenLeaving = () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      if (completedRevisionRef.current < pendingRevisionRef.current) {
+        checkpointEditorDraft(buildDraft(snapshotRef.current), diskRevisionRef.current);
+      }
+      void persistLatest();
+    };
     const persistWhenHidden = () => {
-      if (document.visibilityState === 'hidden') persistSnapshot();
+      if (document.visibilityState === 'hidden') persistWhenLeaving();
+    };
+    const warnIfUnsaved = (event: BeforeUnloadEvent) => {
+      if (completedRevisionRef.current >= pendingRevisionRef.current) return;
+      event.preventDefault();
+      event.returnValue = '';
     };
 
-    window.addEventListener('pagehide', persistBeforeLeaving);
+    window.addEventListener('pagehide', persistWhenLeaving);
+    window.addEventListener('beforeunload', warnIfUnsaved);
     document.addEventListener('visibilitychange', persistWhenHidden);
-
     return () => {
-      window.removeEventListener('pagehide', persistBeforeLeaving);
+      // React Router can unmount the editor without a pagehide event. Flush
+      // its last revision and retain a synchronous metadata checkpoint.
+      persistWhenLeaving();
+      mountedRef.current = false;
+      window.removeEventListener('pagehide', persistWhenLeaving);
+      window.removeEventListener('beforeunload', warnIfUnsaved);
       document.removeEventListener('visibilitychange', persistWhenHidden);
+      if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [persistSnapshot]);
+  }, [persistLatest]);
 
   useEffect(() => {
     if (isFirstRef.current) {
       isFirstRef.current = false;
       return;
     }
-
+    pendingRevisionRef.current += 1;
+    setHasUnsavedChanges(true);
+    setSaveError((current) => current === 'conflict' ? current : null);
     if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(persistSnapshot, SAVE_DEBOUNCE_MS);
-
+    timerRef.current = setTimeout(() => { void persistLatest(); }, SAVE_DEBOUNCE_MS);
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [exportScene, presetSize, persistSnapshot]);
+  }, [exportScene, presetSize, persistLatest]);
+
+  const retrySave = useCallback(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    void persistLatest();
+  }, [persistLatest]);
+
+  return { saveError, hasUnsavedChanges, retrySave };
 }
