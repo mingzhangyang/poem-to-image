@@ -57,13 +57,37 @@ test('restores uploaded background blobs and logo images without stripping layer
   const background = page.locator('[data-export-layer="background"]').first();
   await expect.poll(async () => (await background.getAttribute('style')) ?? '')
     .toContain('blob:');
+  // A blob: URL in CSS is not enough; StrictMode can revoke it before paint.
+  await expect.poll(() => background.evaluate(async (element) => {
+    const css = getComputedStyle(element).backgroundImage;
+    const url = css.match(/url\(["']?(blob:[^"')]+)["']?\)/)?.[1];
+    if (!url) return false;
+    const image = new Image();
+    image.src = url;
+    try {
+      await image.decode();
+      return image.naturalWidth > 0;
+    } catch {
+      return false;
+    }
+  })).toBe(true);
   const logo = page.getByRole('img', { name: 'Logo' });
   await expect(logo).toHaveAttribute('src', /^blob:/);
+  await expect.poll(() => logo.evaluate(async (element) => {
+    const image = element as HTMLImageElement;
+    try {
+      await image.decode();
+      return image.naturalWidth > 0;
+    } catch {
+      return false;
+    }
+  })).toBe(true);
   await expect.poll(async () => (await readDraft(page))?.scene.decorations.logos.length).toBe(1);
 });
 
 test('failed IndexedDB reads show recovery controls instead of overwriting stored work', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await expect(page.getByRole('button', { name: 'Open Editor' })).toBeVisible();
   await page.evaluate(async () => new Promise<void>((resolve, reject) => {
     const open = indexedDB.open('inkpoem-editor-drafts', 1);
     open.onerror = () => reject(open.error);
@@ -112,6 +136,7 @@ test('a stale tab cannot overwrite the more recently saved editor revision', asy
 
 test('a save failure remains visible and can be retried without dropping edits', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await expect(page.getByRole('button', { name: 'Open Editor' })).toBeVisible();
   await page.evaluate(() => {
     Object.defineProperty(indexedDB, 'open', {
       configurable: true, value: () => { throw new Error('Storage blocked'); },
@@ -122,22 +147,94 @@ test('a save failure remains visible and can be retried without dropping edits',
   await page.getByRole('button', { name: 'Done' }).click();
 
   await expect(page.getByRole('alert')).toContainText('latest changes have not been saved');
+  await page.getByRole('button', { name: 'Open Editor' }).click();
+  await page.getByPlaceholder('Title').fill('Latest edit while storage is blocked');
+  await page.getByRole('button', { name: 'Done' }).click();
+  await expect(page.getByRole('alert')).toContainText('latest changes have not been saved');
   await page.evaluate(() => { Reflect.deleteProperty(indexedDB, 'open'); });
   await page.getByRole('button', { name: 'Retry saving' }).click();
-  await expect.poll(async () => (await readDraft(page))?.scene.poem.title).toBe('Saved after retry');
+  await expect.poll(async () => (await readDraft(page))?.scene.poem.title).toBe('Latest edit while storage is blocked');
   await expect(page.getByRole('alert')).toHaveCount(0);
 });
 
-test('a metadata checkpoint recovers an edit made immediately before navigation', async ({ page }) => {
+test('a metadata checkpoint recovers an edit even when the pagehide save is blocked', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.getByRole('button', { name: 'Open Editor' }).click();
-  await page.getByPlaceholder('Title').fill('Immediate navigation');
+  await page.getByPlaceholder('Title').fill('Committed baseline');
   await page.getByRole('button', { name: 'Done' }).click();
-  // The synchronous pagehide checkpoint is valid even before 600ms debounce.
+  await expect.poll(async () => (await readDraft(page))?.scene.poem.title).toBe('Committed baseline');
+  const baselineRevision = (await readDraft(page))!.revision;
+
+  await page.evaluate(() => {
+    Object.defineProperty(indexedDB, 'open', {
+      configurable: true, value: () => { throw new Error('Writes blocked until reload'); },
+    });
+  });
+  await page.getByRole('button', { name: 'Open Editor' }).click();
+  await page.getByPlaceholder('Title').fill('Recovered from checkpoint');
+  await page.getByRole('button', { name: 'Done' }).click();
   await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pagehide')));
-  await expect.poll(async () => page.evaluate(() => localStorage.getItem('inkpoem.editor-pending.v2')))
-    .not.toBeNull();
+  await expect.poll(() => page.evaluate(() => {
+    const raw = localStorage.getItem('inkpoem.editor-pending.v2');
+    if (!raw) return null;
+    const checkpoint = JSON.parse(raw) as { baseRevision: number; scene: { poem: { title: string } } };
+    return { baseRevision: checkpoint.baseRevision, title: checkpoint.scene.poem.title };
+  })).toEqual({ baseRevision: baselineRevision, title: 'Recovered from checkpoint' });
+
   page.on('dialog', (dialog) => { void dialog.accept(); });
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await expect(page.getByLabel('Body').getByText('Immediate navigation')).toBeVisible();
+  await expect(page.getByLabel('Body').getByText('Recovered from checkpoint')).toBeVisible();
 });
+
+test('opening an unchanged persisted scene in another tab never advances its revision', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: 'Open Editor' }).click();
+  await page.getByPlaceholder('Title').fill('Existing draft must remain unchanged');
+  await page.getByRole('button', { name: 'Done' }).click();
+  await expect.poll(async () => (await readDraft(page))?.scene.poem.title).toBe('Existing draft must remain unchanged');
+  const revision = (await readDraft(page))!.revision;
+
+  const secondTab = await page.context().newPage();
+  await secondTab.goto('/', { waitUntil: 'domcontentloaded' });
+  await expect(secondTab.getByRole('button', { name: 'Open Editor' })).toBeVisible();
+  await secondTab.waitForTimeout(1500);
+  expect((await readDraft(page))?.revision).toBe(revision);
+  await secondTab.close();
+});
+
+for (const corruptField of ['stamp', 'logo'] as const) {
+  test(`invalid nested ${corruptField} blocks draft hydration safely`, async ({ page }) => {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.getByRole('button', { name: 'Open Editor' }).click();
+    await page.getByPlaceholder('Title').fill('Preserve existing draft');
+    await page.getByRole('button', { name: 'Done' }).click();
+    await expect.poll(async () => (await readDraft(page))?.scene.poem.title).toBe('Preserve existing draft');
+    const originalRevision = (await readDraft(page))!.revision;
+
+    await page.evaluate(async (field) => new Promise<void>((resolve, reject) => {
+      const open = indexedDB.open('inkpoem-editor-drafts', 1);
+      open.onerror = () => reject(open.error);
+      open.onsuccess = () => {
+        const db = open.result;
+        const tx = db.transaction('documents', 'readwrite');
+        const store = tx.objectStore('documents');
+        const request = store.get('current');
+        request.onsuccess = () => {
+          const record = request.result as {
+            scene: { decorations: { stamp?: unknown; logos: unknown[] } };
+          };
+          if (field === 'stamp') delete record.scene.decorations.stamp;
+          else record.scene.decorations.logos.push({ imageUrl: 'missing required logo fields' });
+          store.put(record, 'current');
+        };
+        tx.oncomplete = () => { db.close(); resolve(); };
+        tx.onerror = () => { db.close(); reject(tx.error); };
+      };
+    }), corruptField);
+
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await expect(page.getByRole('alert')).toContainText('could not be opened safely');
+    await expect(page.getByRole('button', { name: 'Retry loading' })).toBeVisible();
+    await expect.poll(async () => (await readDraft(page))?.revision).toBe(originalRevision);
+  });
+}

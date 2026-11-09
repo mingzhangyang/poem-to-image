@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { DraftConflictError, checkpointEditorDraft, saveEditorDraft, type EditorDraftState } from '../editorDraftStore';
+import { DraftConflictError, checkpointEditorDraft, pinDraftAssetSnapshot, saveEditorDraft, type EditorDraftState } from '../editorDraftStore';
 import type {
   BackgroundSectionProps,
   PoemContentData,
@@ -14,6 +14,7 @@ interface UseEditorPersistenceParams {
   /** Reference-stable scene identity; drives draft writes after editor changes. */
   exportScene: unknown;
   initialRevision: number;
+  promoteInitial: boolean;
   poem: PoemContentData;
   poemStyle: PoemLayerStyle;
   canvasWidth: number;
@@ -37,7 +38,7 @@ interface UseEditorPersistenceParams {
   decorations: TemplateDecorationsConfig;
 }
 
-type SnapshotSource = Omit<UseEditorPersistenceParams, 'exportScene' | 'initialRevision'>;
+type SnapshotSource = Omit<UseEditorPersistenceParams, 'exportScene' | 'initialRevision' | 'promoteInitial'>;
 export type DraftSaveError = 'failure' | 'conflict';
 
 function buildDraft(source: SnapshotSource): EditorDraftState {
@@ -75,6 +76,7 @@ function buildDraft(source: SnapshotSource): EditorDraftState {
 export function useEditorPersistence({
   exportScene,
   initialRevision,
+  promoteInitial,
   ...source
 }: UseEditorPersistenceParams) {
   const snapshotRef = useRef(source);
@@ -87,7 +89,9 @@ export function useEditorPersistence({
   const diskRevisionRef = useRef(initialRevision);
   const inFlightRef = useRef<Promise<void> | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isFirstRef = useRef(true);
+  const lastObservedRef = useRef({ exportScene, presetSize: source.presetSize });
+  const needsPromotionRef = useRef(promoteInitial);
+  const lifecycleEpochRef = useRef(0);
   const mountedRef = useRef(true);
 
   const persistLatest = useCallback((): Promise<void> => {
@@ -123,13 +127,17 @@ export function useEditorPersistence({
   }, []);
 
   useEffect(() => {
+    const epoch = ++lifecycleEpochRef.current;
     mountedRef.current = true;
     const persistWhenLeaving = () => {
       if (timerRef.current) clearTimeout(timerRef.current);
-      if (completedRevisionRef.current < pendingRevisionRef.current) {
-        checkpointEditorDraft(buildDraft(snapshotRef.current), diskRevisionRef.current);
-      }
-      void persistLatest();
+      if (completedRevisionRef.current >= pendingRevisionRef.current) return;
+      const current = buildDraft(snapshotRef.current);
+      checkpointEditorDraft(current, diskRevisionRef.current);
+      // A previous write may be in flight, holding older binary resources.
+      // Pin the latest dirty scene until the entire serialized chain settles.
+      const unpin = pinDraftAssetSnapshot(current);
+      void persistLatest().finally(unpin);
     };
     const persistWhenHidden = () => {
       if (document.visibilityState === 'hidden') persistWhenLeaving();
@@ -144,31 +152,36 @@ export function useEditorPersistence({
     window.addEventListener('beforeunload', warnIfUnsaved);
     document.addEventListener('visibilitychange', persistWhenHidden);
     return () => {
-      // React Router can unmount the editor without a pagehide event. Flush
-      // its last revision and retain a synchronous metadata checkpoint.
-      persistWhenLeaving();
-      mountedRef.current = false;
       window.removeEventListener('pagehide', persistWhenLeaving);
       window.removeEventListener('beforeunload', warnIfUnsaved);
       document.removeEventListener('visibilitychange', persistWhenHidden);
-      if (timerRef.current) clearTimeout(timerRef.current);
+      // React 19 StrictMode replays setup/cleanup without unmounting the editor.
+      // Defer flushing until we know this really was its last lifetime.
+      queueMicrotask(() => {
+        if (lifecycleEpochRef.current !== epoch) return;
+        persistWhenLeaving();
+        mountedRef.current = false;
+        if (timerRef.current) clearTimeout(timerRef.current);
+      });
     };
   }, [persistLatest]);
 
   useEffect(() => {
-    if (isFirstRef.current) {
-      isFirstRef.current = false;
-      return;
-    }
+    const last = lastObservedRef.current;
+    const changed = last.exportScene !== exportScene || last.presetSize !== source.presetSize;
+    // StrictMode replay and a hydrated non-default scene are not user edits.
+    // A legacy or emergency checkpoint is explicitly promoted to IndexedDB.
+    if (!changed && !needsPromotionRef.current) return;
+    lastObservedRef.current = { exportScene, presetSize: source.presetSize };
+    needsPromotionRef.current = false;
     pendingRevisionRef.current += 1;
     setHasUnsavedChanges(true);
-    setSaveError((current) => current === 'conflict' ? current : null);
+    // A previous failure remains visible until an actual successful commit.
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => { void persistLatest(); }, SAVE_DEBOUNCE_MS);
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [exportScene, presetSize, persistLatest]);
+    // Debounce is managed by the effect body and true-unmount cleanup, not
+    // per-effect cleanup (which StrictMode runs immediately during replay).
+  }, [exportScene, source.presetSize, persistLatest]);
 
   const retrySave = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);

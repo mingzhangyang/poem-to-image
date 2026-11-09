@@ -18,9 +18,12 @@ rendering. Those have separate owners and tests.
   or the save aborts without touching either the document or resources.
 - **Image restoration:** Background and Logo `blob:` or `data:` URLs are
   converted to binary assets before the transaction. On load, the asset
-  references become live object URLs; these are released on unmount. Remote
-  template URLs remain unchanged. Removed assets are pruned only in the same
-  successful transaction as the new scene.
+  references become live object URLs. The editor and undo/redo snapshots own
+  them while needed, and detached saves pin their Blobs until completion.
+  StrictMode replay cannot revoke restored images. Once all owners release a
+  URL, its object URL and cached Blob are evicted; disk assets are pruned only
+  in the same successful transaction as the new scene. Remote template URLs
+  remain unchanged.
 - **Legacy compatibility:** The old `inkpoem.editor-state.v1` JSON is read only
   when there is no IndexedDB document. Metadata-only documents still write
   a size-bounded legacy mirror as an optional fallback for older versions.
@@ -29,14 +32,17 @@ rendering. Those have separate owners and tests.
 - **Short navigation window:** `inkpoem.editor-pending.v2` stores a synchronous
   metadata-only checkpoint tagged with its base revision when leaving during
   the 600 ms debounce. On load it is applied only if that base still matches
-  the committed revision, then promoted on the next auto-save. Blob-backed
+  the committed revision, then promoted once as a deliberate recovery save.
+  A read-only reload of an existing draft never increases its revision. Blob-backed
   edits cannot be checkpointed synchronously; the unsaved-changes leave-page
   warning protects that window instead.
 - **Recovery:** IndexedDB unavailable, malformed documents, or missing binary
   assets **block editor initialization** and offer Retry. They never cause
   an empty editor to auto-save over unread drafts. Once mounted, failed writes
-  display a persistent retry action; competing tab revisions display a
-  non-overwriting conflict warning.
+  display a persistent retry action (further edits do not dismiss it);
+  competing tab revisions display a non-overwriting conflict warning.
+  Corrupt nested typography, decorations, stamp, logo, and signature data
+  is rejected before rendering; supported legacy optional fields are kept.
 
 ## Limits and known constraints
 
@@ -80,10 +86,17 @@ Then manually check in desktop Chromium and iPhone Safari:
    document gets written.
 5. Block writes after editing. Confirm Retry is visible, then restore access
    and retry; the saved image and poem should remain current.
-6. Open two tabs on an existing document. Write in the first, then edit the
-   stale second tab. Confirm conflict is displayed and the first save is intact.
+6. Open a second tab with an unchanged persisted scene: its revision must not
+   increase. Then write in the first and edit a stale tab. Confirm conflict is
+   displayed and the first save is intact.
 7. Test restoration of a legacy draft containing a template background, plus
-   a corrupt stored record and a missing asset; never overwrite either.
+   malformed nested stamp/logo data, a corrupt stored record, and a missing
+   asset; never overwrite these on read failure.
+8. For restored uploaded background and logo assets, confirm actual image
+   decoding succeeds, not just that CSS/img attributes contain a blob URL.
+9. Change an artwork, block IndexedDB writes, and trigger pagehide. Check the
+   emergency metadata checkpoint restores the edit against the previously
+   committed revision; an asynchronous pagehide write must not mask failure.
 
 **No deployed storage migrations:** This is a new browser-side IndexedDB.
 It does not change D1 migrations, R2 buckets, share links, or the Worker.

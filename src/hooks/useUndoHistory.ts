@@ -53,5 +53,7 @@ export function useUndoHistory<T>(maxHistory = DEFAULT_MAX_HISTORY) {
     return historyRef.current[indexRef.current];
   }, []);
 
-  return { push, undo, redo, canUndo, canRedo };
+  const getSnapshots = useCallback((): readonly T[] => historyRef.current, []);
+
+  return { push, undo, redo, canUndo, canRedo, getSnapshots };
 }

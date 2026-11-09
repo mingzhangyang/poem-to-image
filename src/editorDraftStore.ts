@@ -53,28 +53,140 @@ export class DraftConflictError extends Error {
   }
 }
 
-// Generated object URLs are process-local; keep their asset IDs for subsequent
-// saves without re-encoding or duplicating the already stored image.
+// A URL remains usable while the active editor/undo history or an in-flight
+// write owns it. Never revoke it merely because React replays an effect.
 const liveAssets = new Map<string, Asset>();
+const editorReferences = new Map<string, Set<string>>();
+const saveReferences = new Map<string, number>();
 
-/** Retain the binary behind a new object URL even if navigation revokes it. */
+function sceneAssetUrls(scene: EditorDraftState): string[] {
+  return [scene.background.backgroundImage, ...scene.decorations.logos.map((logo) => logo.imageUrl)]
+    .filter((url): url is string => typeof url === 'string' && (url.startsWith('blob:') || url.startsWith('data:')));
+}
+
+function pruneUnusedAssets(): void {
+  const retained = new Set<string>();
+  for (const urls of editorReferences.values()) for (const url of urls) retained.add(url);
+  for (const url of saveReferences.keys()) retained.add(url);
+  for (const url of liveAssets.keys()) {
+    if (retained.has(url)) continue;
+    if (url.startsWith('blob:')) URL.revokeObjectURL(url);
+    liveAssets.delete(url);
+  }
+}
+
+export function retainEditorDraftAssets(editorId: string, urls: Iterable<string>): void {
+  editorReferences.set(editorId, new Set(urls));
+  pruneUnusedAssets();
+}
+
+export function releaseEditorDraftAssets(editorId: string): void {
+  editorReferences.delete(editorId);
+  pruneUnusedAssets();
+}
+
+/** Retain the binary behind a new object URL before its first async save. */
 export function registerDraftAssetObjectUrl(url: string, blob: Blob): void {
   if (url.startsWith('blob:')) liveAssets.set(url, { key: crypto.randomUUID(), blob });
 }
 
+/** Hold the latest unsaved scene across unmount and any detached save chain. */
+export function pinDraftAssetSnapshot(scene: EditorDraftState): () => void {
+  return pinSaveAssets(scene);
+}
+
+function pinSaveAssets(scene: EditorDraftState): () => void {
+  const urls = sceneAssetUrls(scene);
+  for (const url of urls) saveReferences.set(url, (saveReferences.get(url) ?? 0) + 1);
+  return () => {
+    for (const url of urls) {
+      const remaining = (saveReferences.get(url) ?? 1) - 1;
+      if (remaining > 0) saveReferences.set(url, remaining);
+      else saveReferences.delete(url);
+    }
+    pruneUnusedAssets();
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function hasFields(
+  value: unknown,
+  strings: readonly string[] = [],
+  numbers: readonly string[] = [],
+  booleans: readonly string[] = [],
+): value is Record<string, unknown> {
+  if (!isRecord(value)) return false;
+  return strings.every((key) => typeof value[key] === 'string')
+    && numbers.every((key) => {
+      const entry = value[key];
+      return typeof entry === 'number' && Number.isFinite(entry);
+    })
+    && booleans.every((key) => typeof value[key] === 'boolean');
+}
+
+function optionalField(value: Record<string, unknown>, key: string, type: 'string' | 'number'): boolean {
+  const entry = value[key];
+  return entry === undefined || (type === 'string' ? typeof entry === 'string'
+    : typeof entry === 'number' && Number.isFinite(entry));
+}
+
 function isDraftState(value: unknown): value is EditorDraftState {
-  if (!value || typeof value !== 'object') return false;
-  const draft = value as Partial<EditorDraftState>;
-  return !!draft.poem && typeof draft.poem.title === 'string'
-    && typeof draft.poem.author === 'string' && typeof draft.poem.body === 'string'
-    && !!draft.poemStyle && typeof draft.poemStyle === 'object'
-    && typeof draft.canvasWidth === 'number' && Number.isFinite(draft.canvasWidth)
-    && typeof draft.canvasHeight === 'number' && Number.isFinite(draft.canvasHeight)
-    && !!draft.background && typeof draft.background === 'object'
-    && !!draft.typography && typeof draft.typography === 'object'
-    && !!draft.decorations && Array.isArray(draft.decorations.logos)
-    && Array.isArray(draft.decorations.customTexts)
-    && (draft.decorations.signatures === undefined || Array.isArray(draft.decorations.signatures));
+  if (!isRecord(value)) return false;
+  const { poem, poemStyle, background, typography, decorations } = value;
+  if (!hasFields(poem, ['title', 'author', 'body', 'sourceNote'])) return false;
+  if (!hasFields(poemStyle,
+    ['titleAlign', 'titlePlacement', 'bodyAlign', 'authorAlign', 'authorPlacement', 'sourceAlign', 'sourcePlacement'],
+    ['titleScale', 'titleOpacity', 'titleLineHeight', 'titleLetterSpacing', 'titleBodyGap',
+      'bodyLineHeight', 'bodyLetterSpacing', 'authorScale', 'authorOpacity', 'authorLineHeight',
+      'authorLetterSpacing', 'authorBodyGap', 'sourceScale', 'sourceOpacity', 'sourceLineHeight',
+      'sourceLetterSpacing', 'sourceGap'])) return false;
+  if (!hasFields(value, [], ['canvasWidth', 'canvasHeight'])
+    || !optionalField(value, 'presetSize', 'string')) return false;
+  if (!hasFields(background,
+    ['backgroundType', 'backgroundColor', 'gradientColor1', 'gradientColor2', 'gradientDirection'],
+    ['bgBrightness', 'bgBlur'])
+    || !optionalField(background, 'paperId', 'string')
+    || !optionalField(background, 'backgroundPosition', 'string')
+    || !optionalField(background, 'backgroundSize', 'string')
+    || (background.backgroundImage !== undefined && background.backgroundImage !== null
+      && typeof background.backgroundImage !== 'string')
+    || (background.backgroundImageSource !== undefined && background.backgroundImageSource !== null
+      && typeof background.backgroundImageSource !== 'string')) return false;
+  if (!hasFields(typography,
+    ['fontFamily', 'textColor', 'textAlign', 'writingMode', 'textShadowColor'],
+    ['fontSize', 'padding', 'lineHeight', 'letterSpacing', 'columns', 'columnGap',
+      'textShadowBlur', 'textShadowOffsetY', 'textShadowOffsetX'],
+    ['textShadowEnabled'])) return false;
+  if (!hasFields(decorations, ['borderStyle'], [], ['showBorder', 'showStamp'])
+    || !optionalField(decorations, 'borderColor', 'string')
+    || !optionalField(decorations, 'borderWidth', 'number')
+    || !hasFields(decorations.stamp, ['text', 'style', 'fontFamily'],
+      ['positionX', 'positionY', 'size', 'rotation', 'opacity'])
+    || !hasFields(decorations.poemPosition, [], ['positionX', 'positionY'])
+    || !Array.isArray(decorations.customTexts)
+    || !Array.isArray(decorations.logos)
+    || (decorations.signatures !== undefined && !Array.isArray(decorations.signatures))) return false;
+  const stamp = decorations.stamp;
+  const position = decorations.poemPosition;
+  if (!optionalField(stamp, 'colorScheme', 'string')
+    || !optionalField(stamp, 'inkColor', 'string')
+    || !optionalField(stamp, 'weathering', 'number')
+    || !optionalField(position, 'exportLeft', 'number')
+    || !optionalField(position, 'exportTop', 'number')
+    || !optionalField(position, 'boxWidth', 'number')) return false;
+  if (!decorations.customTexts.every((item: unknown) => hasFields(item, ['id', 'text', 'color', 'writingMode'],
+    ['fontSize', 'rotation', 'positionX', 'positionY'])
+    && ['zIndex', 'exportLeft', 'exportTop', 'boxWidth'].every((key) => optionalField(item, key, 'number')))) return false;
+  if (!decorations.logos.every((item: unknown) => hasFields(item, ['id', 'imageUrl'],
+    ['positionX', 'positionY', 'size', 'rotation', 'opacity'])
+    && ['zIndex', 'exportLeft', 'exportTop'].every((key) => optionalField(item, key, 'number')))) return false;
+  return (decorations.signatures ?? []).every((item: unknown) => hasFields(item,
+    ['id', 'text', 'font', 'color', 'flourish'],
+    ['fontSize', 'slant', 'thickness', 'positionX', 'positionY', 'opacity', 'rotation'])
+    && optionalField(item, 'zIndex', 'number'));
 }
 
 function isStoredDraft(value: unknown): value is StoredDraft {
@@ -285,10 +397,10 @@ export async function loadEditorDraft(): Promise<LoadedEditorDraft> {
 }
 
 export function releaseDraftObjectUrls(urls: string[]): void {
+  // Used for cancelled boot loads, before an editor can own these URLs.
   for (const url of urls) {
-    // A detached editor may still have a background save in flight. Keep the
-    // binary cached for that save; the page lifetime bounds this cache.
     URL.revokeObjectURL(url);
+    liveAssets.delete(url);
   }
 }
 
@@ -345,6 +457,10 @@ function mirrorLegacyWithoutAssets(scene: EditorDraftState): void {
 
 /** Atomic document + asset replacement, with an optimistic tab-safe revision. */
 export async function saveEditorDraft(scene: EditorDraftState, expectedRevision: number): Promise<number> {
+  // Acquire binary ownership synchronously, before the first await. Unmounts
+  // may release their history while this detached transaction is in progress.
+  const unpin = pinSaveAssets(scene);
+  try {
   const prepared = await prepareStoredScene(scene);
   const db = await openDatabase();
   const nextRevision = expectedRevision + 1;
@@ -382,4 +498,7 @@ export async function saveEditorDraft(scene: EditorDraftState, expectedRevision:
   });
   mirrorLegacyWithoutAssets(scene);
   return nextRevision;
+  } finally {
+    unpin();
+  }
 }

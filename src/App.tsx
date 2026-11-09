@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useRef, useState, type ChangeEvent } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { useAppAuth } from './context/auth';
 import { useToast } from './components/ToastProvider';
 import { getPlainPoemText, isSamePoemContent } from './poemContent';
@@ -55,9 +55,10 @@ function normalizeCanvasSize(value: number | undefined, fallback: number) {
 interface EditorAppProps {
   initialState: EditorDraftState | null;
   initialRevision: number;
+  promoteInitial: boolean;
 }
 
-function EditorApp({ initialState, initialRevision }: EditorAppProps) {
+function EditorApp({ initialState, initialRevision, promoteInitial }: EditorAppProps) {
   const { showToast } = useToast();
   const { getToken, isSignedIn } = useAppAuth();
 
@@ -184,8 +185,9 @@ function EditorApp({ initialState, initialRevision }: EditorAppProps) {
     t,
     getToken,
     onBalanceChange: billing.refetchBalance,
+    initialDraft: initialState?.background,
   });
-  const typography = useTypographyConfig(language);
+  const typography = useTypographyConfig(language, initialState?.typography);
   const decorations = useDecorationsConfig({
     language,
     t,
@@ -193,6 +195,7 @@ function EditorApp({ initialState, initialRevision }: EditorAppProps) {
     textColor: typography.textColor,
     writingMode: typography.writingMode,
     onCustomTextAdded: () => setExpandedSections((prev) => ({ ...prev, decorations: true })),
+    initialDraft: initialState?.decorations,
   });
   const customTemplates = useCustomTemplates({ isSignedIn, getToken });
 
@@ -225,21 +228,8 @@ function EditorApp({ initialState, initialRevision }: EditorAppProps) {
     }
   }, [decorations.showStamp, stampSupported, decorations.stamp.fontFamily]);
 
-  // Restore persisted background/typography/decorations once after hooks initialize.
-  // Refs ensure we always call the latest version of each apply function.
-  const applyBgRef = useRef(background.applyBackgroundTemplate);
-  applyBgRef.current = background.applyBackgroundTemplate;
-  const applyTypoRef = useRef(typography.applyTypographyTemplate);
-  applyTypoRef.current = typography.applyTypographyTemplate;
-  const applyDecoRef = useRef(decorations.applyDecorationsTemplate);
-  applyDecoRef.current = decorations.applyDecorationsTemplate;
-
-  useLayoutEffect(() => {
-    if (!initialState) return;
-    applyBgRef.current(initialState.background);
-    applyTypoRef.current(initialState.typography);
-    applyDecoRef.current(initialState.decorations);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // Hooks initialize directly from the loaded draft. No restore effects run
+  // after the first render, so StrictMode cannot create phantom edits.
 
   // Rebuilt every render from its source fields and stabilized by deep equality.
   // No dependency array to keep in sync, so a new field can't silently go stale.
@@ -313,6 +303,7 @@ function EditorApp({ initialState, initialRevision }: EditorAppProps) {
   const { saveError, retrySave } = useEditorPersistence({
     exportScene,
     initialRevision,
+    promoteInitial,
     poem,
     poemStyle,
     canvasWidth,
@@ -796,10 +787,6 @@ export default function App() {
     return () => { cancelled = true; };
   }, [loadAttempt]);
 
-  useEffect(() => () => {
-    if (loaded) releaseDraftObjectUrls(loaded.objectUrls);
-  }, [loaded]);
-
   // The normal editor uses the user's selected language. During an IndexedDB
   // failure it is not mounted; use the browser's language for a recovery notice.
   const bootLanguage = typeof navigator !== 'undefined' && navigator.language.startsWith('zh') ? 'zh-CN' : 'en';
@@ -821,5 +808,6 @@ export default function App() {
   if (!loaded) {
     return <main role="status" className="flex min-h-dvh items-center justify-center p-6">{messages.loading}</main>;
   }
-  return <EditorApp initialState={loaded.state} initialRevision={loaded.revision} />;
+  return <EditorApp initialState={loaded.state} initialRevision={loaded.revision}
+    promoteInitial={loaded.state !== null && (loaded.revision === 0 || loaded.recoveredPending)} />;
 }
