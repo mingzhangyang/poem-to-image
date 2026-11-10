@@ -253,6 +253,11 @@ export interface TemplateSectionProps {
   activeTemplateId: EditorTemplateId | null;
   onApplyTemplate: (id: EditorTemplateId) => void;
   customTemplates: UserCustomTemplate[];
+  customTemplateSyncError: 'load' | 'mutation' | 'storage' | null;
+  customTemplatesSyncing: boolean;
+  onRetryCustomTemplateSync: () => void;
+  hasLegacyCustomTemplates: boolean;
+  onImportLegacyCustomTemplates: () => void;
   activeCustomTemplateId: string | null;
   onApplyCustomTemplate: (id: string) => void;
   onSaveCustomTemplate: (name: string) => void;

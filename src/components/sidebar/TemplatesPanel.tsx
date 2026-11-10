@@ -10,6 +10,7 @@ import { TemplatePreview } from '../TemplatePreview';
 import { getTemplateDefinition, resolveTemplateForLanguage } from '../../templates';
 import { groupGalleryTemplates, matchesGallerySearch } from '../../templates/gallery';
 import type { Language, TranslationKey } from '../../translations';
+import { getTemplateSyncMessages } from '../../templateSyncMessages';
 
 const BUILT_IN_PREVIEW_LIMIT = 2;
 
@@ -194,6 +195,7 @@ export function TemplatesPanel({ t, language, expanded, onToggle, templates, cur
   }, [activeBuiltIn, activeLegacyTemplate, templates.templates]);
 
   const isImageOrAiBg = currentBackgroundType === 'image' || currentBackgroundType === 'ai';
+  const syncMessages = getTemplateSyncMessages(language);
 
   const handleSave = () => {
     const name = templateName.trim();
@@ -296,6 +298,36 @@ export function TemplatesPanel({ t, language, expanded, onToggle, templates, cur
                 </div>
               </div>
             )}
+
+            {templates.customTemplateSyncError ? (
+              <div role="alert" className="mb-3 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-950">
+                <p>{templates.customTemplateSyncError === 'load'
+                  ? syncMessages.loadFailed
+                  : templates.customTemplateSyncError === 'mutation'
+                    ? syncMessages.mutationFailed : syncMessages.cacheFailed}</p>
+                <button
+                  type="button"
+                  onClick={templates.onRetryCustomTemplateSync}
+                  className="mt-2 min-h-9 rounded-lg border border-amber-500 px-3 font-semibold"
+                >
+                  {syncMessages.retry}
+                </button>
+              </div>
+            ) : templates.customTemplatesSyncing ? (
+              <p role="status" className="mb-3 text-xs text-(--app-accent-600)">{syncMessages.syncing}</p>
+            ) : null}
+            {templates.hasLegacyCustomTemplates ? (
+              <div className="mb-3 rounded-xl border border-(--app-accent-200) bg-(--app-accent-50) p-3 text-xs text-(--app-accent-800)">
+                <p>{syncMessages.legacyWarning}</p>
+                <button
+                  type="button"
+                  onClick={templates.onImportLegacyCustomTemplates}
+                  className="mt-2 min-h-10 rounded-lg border border-(--app-accent-400) px-3 font-semibold"
+                >
+                  {syncMessages.importLegacy}
+                </button>
+              </div>
+            ) : null}
 
             {templates.customTemplates.length === 0 ? (
               <p className="text-xs text-[rgba(34,48,52,0.4)] py-2">{t('noCustomTemplates')}</p>

@@ -60,7 +60,7 @@ interface EditorAppProps {
 
 function EditorApp({ initialState, initialRevision, promoteInitial }: EditorAppProps) {
   const { showToast } = useToast();
-  const { getToken, isSignedIn } = useAppAuth();
+  const { getToken, isLoaded, isSignedIn, userId } = useAppAuth();
 
   const { language, initialLanguageRef, t, changeLanguage } = useAppLanguage();
 
@@ -184,6 +184,7 @@ function EditorApp({ initialState, initialRevision, promoteInitial }: EditorAppP
     canvasHeight,
     t,
     getToken,
+    accountId: isSignedIn ? userId : null,
     onBalanceChange: billing.refetchBalance,
     initialDraft: initialState?.background,
   });
@@ -197,7 +198,7 @@ function EditorApp({ initialState, initialRevision, promoteInitial }: EditorAppP
     onCustomTextAdded: () => setExpandedSections((prev) => ({ ...prev, decorations: true })),
     initialDraft: initialState?.decorations,
   });
-  const customTemplates = useCustomTemplates({ isSignedIn, getToken });
+  const customTemplates = useCustomTemplates({ isLoaded, isSignedIn, userId, getToken });
 
   const { activeTemplateId, handleApplyTemplate, handleApplyCustomTemplate, handleSaveCustomTemplate } =
     useTemplateManager({
@@ -567,6 +568,11 @@ function EditorApp({ initialState, initialRevision, promoteInitial }: EditorAppP
       activeTemplateId,
       onApplyTemplate: handleApplyTemplate,
       customTemplates: customTemplates.customTemplates,
+      customTemplateSyncError: customTemplates.syncError,
+      customTemplatesSyncing: customTemplates.isSyncing,
+      onRetryCustomTemplateSync: customTemplates.retryTemplateSync,
+      hasLegacyCustomTemplates: customTemplates.hasLegacyCache,
+      onImportLegacyCustomTemplates: customTemplates.importLegacyTemplates,
       activeCustomTemplateId: customTemplates.activeCustomTemplateId,
       onApplyCustomTemplate: handleApplyCustomTemplate,
       onSaveCustomTemplate: handleSaveCustomTemplate,
