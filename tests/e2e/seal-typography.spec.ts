@@ -55,6 +55,7 @@ test('traditional seals use different ink-mass rules and render deterministicall
 
 test('presets update selected seal modes and preserve text/position through undo, redo and reload', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name === 'chromium-mobile', 'Desktop control flow; Canvas test also runs on mobile');
+  await page.clock.install();
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.getByRole('button', { name: /^装饰与元素/ }).click();
   await page.getByRole('checkbox', { name: '显示印章' }).check();
@@ -62,6 +63,9 @@ test('presets update selected seal modes and preserve text/position through undo
   await input.fill('山水天地');
   const mode = page.getByRole('combobox', { name: '印章模式' });
   await expect(mode).toHaveValue('modern');
+  // Commit the prepared stamp as a distinct history entry before applying
+  // the preset; otherwise Undo may coalesce it with the setup edits (800ms).
+  await page.clock.runFor(850);
 
   await page.getByRole('button', { name: '传统朱文姓名印' }).click();
   await expect(mode).toHaveValue('zhuwen');
@@ -87,3 +91,31 @@ test('presets update selected seal modes and preserve text/position through undo
   await expect(page.getByRole('combobox', { name: '印章模式' })).toHaveValue('zhuwen');
   await expect(page.getByRole('textbox', { name: '印章文字' })).toHaveValue('山水天地');
 });
+
+for (const edit of ['mode', 'font'] as const) {
+  test(`built-in template keeps user-edited seal ${edit} across a language switch`, async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'chromium-mobile', 'Desktop settings flow');
+    // Restore an actual built-in template: its localized decorations must not
+    // replace an explicitly customized seal when the interface language changes.
+    await page.addInitScript(() => {
+      localStorage.setItem('poem-to-image.active-template', 'graceful-whitespace');
+    });
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.getByRole('button', { name: /^装饰与元素/ }).click();
+    await expect(page.getByRole('checkbox', { name: '显示印章' })).toBeChecked();
+    const mode = page.getByRole('combobox', { name: '印章模式' });
+    const font = page.getByRole('combobox', { name: '印章字体' });
+    if (edit === 'mode') {
+      await mode.selectOption('baiwen');
+    } else {
+      await font.selectOption('"InkPoem Xiaozhuan", "Noto Serif SC", serif');
+    }
+    const expectedMode = await mode.inputValue();
+    const expectedFont = await font.inputValue();
+    await page.getByRole('button', { name: '设置' }).click();
+    await page.getByRole('button', { name: 'English', exact: true }).click();
+    await page.getByRole('button', { name: 'Settings' }).click();
+    await expect(page.getByRole('combobox', { name: 'Seal mode' })).toHaveValue(expectedMode);
+    await expect(page.getByRole('combobox', { name: 'Stamp Font' })).toHaveValue(expectedFont);
+  });
+}

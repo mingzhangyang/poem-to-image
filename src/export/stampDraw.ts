@@ -151,9 +151,18 @@ function drawTraditionalStampBody(ctx: CanvasRenderingContext2D, stamp: StampCon
   }
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
+  // Match the round clipping path's inset; reserve a little extra breathing
+  // room so measured corner strokes do not graze the circular border.
+  const roundClipRadius = stamp.style === 'round'
+    ? Math.max(0, stamp.size / 2 - layout.borderWidth * 0.75 - stamp.size * 0.015)
+    : null;
   for (const slot of layout.slots) {
     ctx.font = 'normal ' + slot.fontSize + 'px ' + stamp.fontFamily;
-    const fit = fitTraditionalStampGlyph(slot, ctx.measureText(slot.character));
+    const fit = fitTraditionalStampGlyph(
+      slot,
+      ctx.measureText(slot.character),
+      roundClipRadius === null ? undefined : { x: slot.x, y: slot.y, radius: roundClipRadius },
+    );
     ctx.save();
     ctx.translate(slot.x, slot.y);
     ctx.scale(fit.scale, fit.scale);

@@ -104,6 +104,36 @@ test('optical glyph fit preserves aspect ratio and corrects asymmetric bearings'
   assert.ok(correction.scale * 50 <= 50 * .88);
 });
 
+test('four square-bounded glyphs fit the actual circular seal clip at all sizes', () => {
+  for (const size of [0.5, 1, 2, 10, 100, 300]) {
+    const layout = getTraditionalStampLayout({ text: '山水天地', size });
+    const clipRadius = size / 2 - layout.borderWidth * 0.75;
+    const safeRadius = clipRadius - size * 0.015;
+    for (const slot of layout.slots) {
+      const bounds = {
+        actualBoundingBoxLeft: slot.fontSize / 2,
+        actualBoundingBoxRight: slot.fontSize / 2,
+        actualBoundingBoxAscent: slot.fontSize / 2,
+        actualBoundingBoxDescent: slot.fontSize / 2,
+      };
+      const fit = fitTraditionalStampGlyph(slot, bounds, {
+        x: slot.x, y: slot.y, radius: safeRadius,
+      });
+      const measuredSide = Math.max(1, slot.fontSize);
+      const farthestCorner = Math.hypot(
+        Math.abs(slot.x) + measuredSide * fit.scale / 2,
+        Math.abs(slot.y) + measuredSide * fit.scale / 2,
+      );
+      assert.ok(fit.scale > 0, `round seal ${size}px must still render ink`);
+      assert.ok(farthestCorner <= safeRadius + 1e-9,
+        `round seal ${size}px: ink corner ${farthestCorner} exceeds radius ${safeRadius}`);
+      // Fitting the same square glyph into a square seal must remain unchanged.
+      const squareFit = fitTraditionalStampGlyph(slot, bounds);
+      assert.ok(fit.scale <= squareFit.scale);
+    }
+  }
+});
+
 test('explicit modes control shadow ink mass independently of old colorScheme field', () => {
   const red = getStampShadow({ ...legacy, mode: 'zhuwen', colorScheme: 'filled' });
   const white = getStampShadow({ ...legacy, mode: 'baiwen', colorScheme: 'outline' });

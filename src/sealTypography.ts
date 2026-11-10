@@ -105,10 +105,14 @@ export interface GlyphBounds {
   actualBoundingBoxDescent: number;
 }
 
-/** Optical center and uniform fit, never anisotropic glyph distortion. */
+/** Optical center and uniform fit, never anisotropic glyph distortion.
+ * Round seals also fit the *measured ink bounds*, not just rectangular cells,
+ * inside the same inset circle used to clip the Canvas impression.
+ */
 export function fitTraditionalStampGlyph(
   slot: Pick<TraditionalStampSlot, 'width' | 'height'>,
   bounds: GlyphBounds,
+  roundClip?: { x: number; y: number; radius: number },
 ) {
   const left = Number.isFinite(bounds.actualBoundingBoxLeft) ? bounds.actualBoundingBoxLeft : 0;
   const right = Number.isFinite(bounds.actualBoundingBoxRight) ? bounds.actualBoundingBoxRight : 0;
@@ -116,8 +120,29 @@ export function fitTraditionalStampGlyph(
   const descent = Number.isFinite(bounds.actualBoundingBoxDescent) ? bounds.actualBoundingBoxDescent : 0;
   const glyphWidth = Math.max(1, left + right);
   const glyphHeight = Math.max(1, ascent + descent);
+  let scale = Math.min(1, slot.width * 0.88 / glyphWidth, slot.height * 0.88 / glyphHeight);
+  if (roundClip) {
+    // After optical centering, the farthest ink corner is
+    // (|x| + halfGlyphWidth * scale, |y| + halfGlyphHeight * scale).
+    // Solve its circle inequality instead of clipping the outer strokes.
+    const x = Math.abs(roundClip.x);
+    const y = Math.abs(roundClip.y);
+    const radius = Math.max(0, roundClip.radius);
+    const remainingRadiusSquared = radius * radius - x * x - y * y;
+    if (remainingRadiusSquared <= 0) {
+      scale = 0;
+    } else {
+      const halfWidth = glyphWidth / 2;
+      const halfHeight = glyphHeight / 2;
+      const a = halfWidth * halfWidth + halfHeight * halfHeight;
+      const b = 2 * (x * halfWidth + y * halfHeight);
+      const circleScale = 2 * remainingRadiusSquared
+        / (b + Math.sqrt(b * b + 4 * a * remainingRadiusSquared));
+      scale = Math.min(scale, circleScale);
+    }
+  }
   return {
-    scale: Math.min(1, slot.width * 0.88 / glyphWidth, slot.height * 0.88 / glyphHeight),
+    scale,
     offsetX: (left - right) / 2,
     offsetY: (ascent - descent) / 2,
   };

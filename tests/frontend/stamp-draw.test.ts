@@ -2,11 +2,13 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { drawStamp, drawStampImpression } from '../../src/export/stampDraw';
 import { STAMP_SHADOW_PADDING, getStampRasterMetrics, getStampTransform } from '../../src/stampRendering';
+import { getTraditionalStampLayout } from '../../src/sealTypography';
 import type { StampConfig } from '../../src/types';
 
 interface RecordOp { method: string; args: unknown[] }
 
 class RecordingContext {
+  constructor(private readonly squareGlyphBounds = false) {}
   readonly ops: RecordOp[] = [];
   font = '';
   fillStyle = '';
@@ -45,6 +47,15 @@ class RecordingContext {
   lineTo(x: number, y: number) { this.add('lineTo', x, y); }
   measureText(text: string) {
     const size = Number(/([\d.]+)px/.exec(this.font)?.[1] ?? 10);
+    if (this.squareGlyphBounds) {
+      return {
+        width: size,
+        actualBoundingBoxLeft: size / 2,
+        actualBoundingBoxRight: size / 2,
+        actualBoundingBoxAscent: size / 2,
+        actualBoundingBoxDescent: size / 2,
+      };
+    }
     return {
       width: size * 0.8 * Array.from(text).length,
       actualBoundingBoxLeft: size * 0.1,
@@ -72,14 +83,14 @@ const stamp: StampConfig = {
   fontFamily: 'serif',
 };
 
-function withCanvas(run: (created: FakeCanvas[]) => void) {
+function withCanvas(run: (created: FakeCanvas[]) => void, squareGlyphBounds = false) {
   const g = globalThis as Record<string, unknown>;
   const previous = g.document;
   const created: FakeCanvas[] = [];
   g.document = {
     createElement: (tag: string) => {
       assert.equal(tag, 'canvas');
-      const canvas: FakeCanvas = { width: 0, height: 0, context: new RecordingContext() };
+      const canvas: FakeCanvas = { width: 0, height: 0, context: new RecordingContext(squareGlyphBounds) };
       created.push(canvas);
       return { get width() { return canvas.width; }, set width(v: number) { canvas.width = v; },
         get height() { return canvas.height; }, set height(v: number) { canvas.height = v; },
@@ -195,6 +206,32 @@ test('traditional Zhu Wen draws red characters and outline, but no legacy grid',
     assert.equal(ops.filter((op) => op.method === 'lineTo').length, 0);
     assert.equal(ops.filter((op) => op.method === 'scale').length, 5);
   });
+});
+
+test('round Zhu/Bai Wen four-character seals keep square-bounded ink inside the clip', () => {
+  for (const mode of ['zhuwen', 'baiwen'] as const) {
+    withCanvas((created) => {
+      const roundStamp = { ...stamp, mode, style: 'round' as const,
+        text: '山水天地', size: 100, weathering: 0 };
+      drawStampImpression(new RecordingContext() as unknown as CanvasRenderingContext2D, roundStamp);
+      const operations = created[0].context.ops;
+      const roundPaths = operations.filter((op) => op.method === 'arc');
+      assert.equal(roundPaths.length, 2, 'the second arc is the glyph clipping circle');
+      const clipRadius = Number(roundPaths[1].args[2]);
+      const glyphScales = operations.filter((op) => op.method === 'scale').slice(1);
+      assert.equal(glyphScales.length, 4);
+      const layout = getTraditionalStampLayout(roundStamp);
+      layout.slots.forEach((slot, index) => {
+        const scale = Number(glyphScales[index].args[0]);
+        const farthestInkCorner = Math.hypot(
+          Math.abs(slot.x) + slot.fontSize * scale / 2,
+          Math.abs(slot.y) + slot.fontSize * scale / 2,
+        );
+        assert.ok(farthestInkCorner < clipRadius,
+          `${mode} ink corner ${farthestInkCorner} must fit inside circle ${clipRadius}`);
+      });
+    }, true);
+  }
 });
 
 test('traditional Bai Wen carves glyphs from a filled face even with legacy outline setting', () => {
