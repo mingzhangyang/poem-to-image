@@ -76,10 +76,19 @@ test('normalized edge samples stay on the intended style-aware perimeter', () =>
       if (style === 'round') {
         assert.ok(Math.abs(Math.hypot(x - 0.5, y - 0.5) - 0.49) < 1e-9);
       } else {
+        const radius = style === 'brush' ? 0.20 : 0.12;
+        const innerRadius = radius - 0.01;
+        const cx = Math.max(radius, Math.min(1 - radius, x));
+        const cy = Math.max(radius, Math.min(1 - radius, y));
+        const cornerDistance = Math.hypot(x - cx, y - cy);
+        // Straight edges or actual quarter-circle arcs, never the
+        // sharp bounding-box corners that contain no ink.
         assert.ok(
           Math.abs(x - 0.01) < 1e-9 || Math.abs(x - 0.99) < 1e-9
-          || Math.abs(y - 0.01) < 1e-9 || Math.abs(y - 0.99) < 1e-9,
+          || Math.abs(y - 0.01) < 1e-9 || Math.abs(y - 0.99) < 1e-9
+          || Math.abs(cornerDistance - innerRadius) < 1e-9,
         );
+        assert.ok(!(x < 0.04 && y < 0.04), 'no empty top-left corner');
       }
     }
   }
