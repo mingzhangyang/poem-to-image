@@ -165,13 +165,32 @@ export function getNaturalSealEdgePoint(style: StampStyle, perimeter: number, de
     const radius = 0.5 - inset;
     return [0.5 + Math.cos(angle) * radius, 0.5 + Math.sin(angle) * radius];
   }
-  const offset = position * 4;
-  const section = Math.floor(offset);
-  const t = offset - section;
-  switch (section) {
-    case 0: return [t, inset];
-    case 1: return [1 - inset, t];
-    case 2: return [1 - t, 1 - inset];
-    default: return [inset, 1 - t];
+  // Follow the rounded contour instead of the sharp bounding box. Keep
+  // the point inside the deposited ink by insetting the contour first.
+  const radius = style === 'brush' ? 0.20 : 0.12;
+  const r = Math.max(0, radius - inset);
+  const left = inset;
+  const right = 1 - inset;
+  const top = inset;
+  const bottom = 1 - inset;
+  const straight = Math.max(0, right - left - 2 * r);
+  const arc = Math.PI * r / 2;
+  const length = 4 * (straight + arc);
+  let distance = position * length;
+  // Clockwise from the top edge, with circular quarter-arcs at corners.
+  const segments: Array<{ length: number; point: (t: number) => SealPoint }> = [
+    { length: straight, point: (t) => [left + r + t, top] },
+    { length: arc, point: (t) => [right - r + r * Math.sin(t / r), top + r - r * Math.cos(t / r)] },
+    { length: straight, point: (t) => [right, top + r + t] },
+    { length: arc, point: (t) => [right - r + r * Math.cos(t / r), bottom - r + r * Math.sin(t / r)] },
+    { length: straight, point: (t) => [right - r - t, bottom] },
+    { length: arc, point: (t) => [left + r - r * Math.sin(t / r), bottom - r + r * Math.cos(t / r)] },
+    { length: straight, point: (t) => [left, bottom - r - t] },
+    { length: arc, point: (t) => [left + r - r * Math.cos(t / r), top + r - r * Math.sin(t / r)] },
+  ];
+  for (const segment of segments) {
+    if (distance <= segment.length) return segment.point(distance);
+    distance -= segment.length;
   }
+  return [left + r, top];
 }
