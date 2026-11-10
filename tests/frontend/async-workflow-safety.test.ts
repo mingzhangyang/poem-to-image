@@ -75,26 +75,25 @@ test('a confirmed save adds to the library without overriding a newer built-in s
   let releaseSave!: () => void;
   const serverResponse = new Promise<void>((resolve) => { releaseSave = resolve; });
   const library: string[] = [];
-  let activeBuiltIn: string | null = null;
-  let activeCustom: string | null = null;
+  const selection = { builtIn: null as string | null, custom: null as string | null };
   const save = (async () => {
     await serverResponse;
     library.push('saved snapshot');
     // Mirrors the two separate async post-save commits: custom library
     // activation and clearing the built-in selection in the manager.
-    if (shouldActivate()) activeCustom = 'saved snapshot';
-    if (shouldActivate()) activeBuiltIn = null;
+    if (shouldActivate()) selection.custom = 'saved snapshot';
+    if (shouldActivate()) selection.builtIn = null;
   })();
 
   gate.invalidate(); // User applies another template while POST is pending.
-  activeBuiltIn = 'modern-minimal';
-  activeCustom = null;
+  selection.builtIn = 'modern-minimal';
+  selection.custom = null;
   releaseSave();
   await save;
 
   assert.deepEqual(library, ['saved snapshot'], 'the confirmed save is not discarded');
-  assert.equal(activeBuiltIn, 'modern-minimal', 'newer built-in remains selected');
-  assert.equal(activeCustom, null, 'older cloud response cannot mark itself active');
+  assert.equal(selection.builtIn, 'modern-minimal', 'newer built-in remains selected');
+  assert.equal(selection.custom, null, 'older cloud response cannot mark itself active');
 });
 
 test('the latest confirmed template save can become active when selection is unchanged', async () => {
