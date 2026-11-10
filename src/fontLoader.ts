@@ -1,3 +1,7 @@
+import {
+  SEAL_FONT_FAMILY, SEAL_FONT_URL, SMALL_SEAL_FONT_FAMILY, SMALL_SEAL_FONT_URL,
+} from './sealTypography';
+
 // On-demand font loader for the editor. Chinese handwriting fonts are bundled
 // locally via @fontsource / LXGW and requested only when selected. Other font
 // families retain their Google Fonts fallback. We wait for selected glyphs at
@@ -46,6 +50,19 @@ const LOCAL_FONT_LOADERS: Record<string, () => Promise<unknown>> = {
 
 const pendingStylesheets = new Map<string, Promise<void>>();
 
+/** A version-pinned OFL webfont, never downloaded for legacy seals or unrelated poems. */
+async function loadSealScriptFont(family: string, url: string): Promise<void> {
+  if (typeof FontFace === 'undefined' || typeof document.fonts?.add !== 'function') {
+    throw new Error('This browser does not support loading the seal-script font');
+  }
+  const font = new FontFace(family, 'url("' + url + '")', {
+    style: 'normal', weight: '400', display: 'swap',
+  });
+  await font.load();
+  document.fonts.add(font);
+}
+
+
 // '"Noto Serif SC", serif' -> 'Noto Serif SC'
 function familyNameFromValue(fontValue: string): string {
   const first = fontValue.split(',')[0]?.trim() ?? '';
@@ -57,6 +74,16 @@ function loadFontStylesheet(fontValue: string | undefined | null): Promise<void>
   const family = familyNameFromValue(fontValue);
   const existing = pendingStylesheets.get(family);
   if (existing) return existing;
+
+  if (family === SEAL_FONT_FAMILY || family === SMALL_SEAL_FONT_FAMILY) {
+    const promise = loadSealScriptFont(
+      family,
+      family === SEAL_FONT_FAMILY ? SEAL_FONT_URL : SMALL_SEAL_FONT_URL,
+    );
+    pendingStylesheets.set(family, promise);
+    void promise.catch(() => pendingStylesheets.delete(family));
+    return promise;
+  }
 
   const local = LOCAL_FONT_LOADERS[family];
   if (local) {

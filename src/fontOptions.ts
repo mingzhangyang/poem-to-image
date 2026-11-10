@@ -1,5 +1,6 @@
 import type { Language } from './translations';
 import type { EditorTemplateId } from './types';
+import { SEAL_FONT_STACK, SMALL_SEAL_FONT_STACK } from './sealTypography';
 
 export interface FontOption {
   value: string;
@@ -315,6 +316,8 @@ export interface StampFontOption {
 }
 
 export const STAMP_FONT_OPTIONS: StampFontOption[] = [
+  { value: SEAL_FONT_STACK, label: '敬峰中山王篆 · 战国篆书（有限字库）', cjkOnly: true },
+  { value: SMALL_SEAL_FONT_STACK, label: '霞鹜篆书 · 小篆（试验字库，缺字较多）', cjkOnly: true },
   { value: '"Ma Shan Zheng", cursive', label: 'Ma Shan Zheng (楷书)', cjkOnly: true },
   { value: '"ZCOOL XiaoWei", serif', label: 'ZCOOL XiaoWei (魏碑)', cjkOnly: true },
   { value: '"Zhi Mang Xing", cursive', label: 'Zhi Mang Xing (行书)', cjkOnly: true },

@@ -43,6 +43,16 @@ class RecordingContext {
   stroke() { this.add('stroke'); }
   moveTo(x: number, y: number) { this.add('moveTo', x, y); }
   lineTo(x: number, y: number) { this.add('lineTo', x, y); }
+  measureText(text: string) {
+    const size = Number(/([\d.]+)px/.exec(this.font)?.[1] ?? 10);
+    return {
+      width: size * 0.8 * Array.from(text).length,
+      actualBoundingBoxLeft: size * 0.1,
+      actualBoundingBoxRight: size * 0.7,
+      actualBoundingBoxAscent: size * 0.72,
+      actualBoundingBoxDescent: size * 0.12,
+    };
+  }
   fillText(value: string, x: number, y: number) { this.add('fillText', value, x, y); }
   drawImage(image: unknown, ...values: number[]) { this.add('drawImage', image, ...values); }
 }
@@ -169,4 +179,48 @@ test('preview DPR uses the same logical seal body but reserves room for shadow',
     assert.equal(created[1].width, 516);
     assert.equal(created[0].context.ops.filter((op) => op.method === 'fillText').length, 2);
   });
+});
+
+
+test('traditional Zhu Wen draws red characters and outline, but no legacy grid', () => {
+  withCanvas((created) => {
+    drawStampImpression(new RecordingContext() as unknown as CanvasRenderingContext2D, {
+      ...stamp, mode: 'zhuwen', text: '山水天地', colorScheme: 'filled',
+      weathering: 0,
+    });
+    const ops = created[0].context.ops;
+    assert.equal(ops.filter((op) => op.method === 'fillText').length, 4);
+    assert.ok(ops.some((op) => op.method === 'stroke'));
+    assert.equal(ops.some((op) => op.method === 'composite' && op.args[0] === 'destination-out'), false);
+    assert.equal(ops.filter((op) => op.method === 'lineTo').length, 0);
+    assert.equal(ops.filter((op) => op.method === 'scale').length, 5);
+  });
+});
+
+test('traditional Bai Wen carves glyphs from a filled face even with legacy outline setting', () => {
+  for (const style of ['square', 'round', 'brush'] as const) {
+    withCanvas((created) => {
+      drawStampImpression(new RecordingContext() as unknown as CanvasRenderingContext2D, {
+        ...stamp, mode: 'baiwen', style, text: '山水', colorScheme: 'outline', weathering: 0,
+      }, { pixelScale: 3 });
+      const ink = created[0].context;
+      assert.ok(ink.ops.some((op) => op.method === 'fill'));
+      assert.equal(ink.ops.filter((op) => op.method === 'fillText').length, 2);
+      assert.ok(ink.ops.some((op) => op.method === 'composite' && op.args[0] === 'destination-out'));
+      assert.equal(ink.ops.filter((op) => op.method === 'lineTo').length, 0);
+      assert.equal(created[1].context.shadowColor, '#c8282938');
+    });
+  }
+});
+
+test('explicit modern mode preserves the exact legacy ink command trace', () => {
+  const traces: RecordOp[][] = [];
+  for (const mode of [undefined, 'modern'] as const) {
+    withCanvas((created) => {
+      drawStampImpression(new RecordingContext() as unknown as CanvasRenderingContext2D,
+        { ...stamp, mode, weathering: 8, colorScheme: 'outline' });
+      traces.push(created[0].context.ops);
+    });
+  }
+  assert.deepEqual(traces[0], traces[1]);
 });
