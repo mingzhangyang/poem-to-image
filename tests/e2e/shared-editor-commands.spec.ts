@@ -37,9 +37,9 @@ test('reverted border edits do not create duplicate history or suppress the next
   await expect(undo).toBeDisabled();
 
   await page.clock.pauseAt(Date.now() + 5_000);
-  await border.check();
+  await border.evaluate((element) => (element as HTMLInputElement).click());
   await expect(border).toBeChecked();
-  await border.uncheck();
+  await border.evaluate((element) => (element as HTMLInputElement).click());
   await expect(border).not.toBeChecked();
   await expect(undo).toBeDisabled();
   await expect(redo).toBeDisabled();
@@ -49,14 +49,27 @@ test('reverted border edits do not create duplicate history or suppress the next
   await expect(undo).toBeDisabled();
 
   // A genuine edit must remain undoable, and branching must invalidate Redo.
-  await border.check();
+  await border.evaluate((element) => (element as HTMLInputElement).click());
   await expect(undo).toBeEnabled();
-  await undo.click();
+  await undo.evaluate((element) => (element as HTMLButtonElement).click());
   await expect(border).not.toBeChecked();
   await expect(redo).toBeEnabled();
-  await border.check();
+
+  // A temporary divergence that returns to the active history snapshot must
+  // preserve the redo branch; only a committed new edit should invalidate it.
+  await border.evaluate((element) => (element as HTMLInputElement).click());
   await expect(redo).toBeDisabled();
-  await undo.click();
+  await border.evaluate((element) => (element as HTMLInputElement).click());
+  await expect(redo).toBeEnabled();
+  await redo.evaluate((element) => (element as HTMLButtonElement).click());
+  await expect(border).toBeChecked();
+  await undo.evaluate((element) => (element as HTMLButtonElement).click());
+  await expect(border).not.toBeChecked();
+
+  // A new branch must hide the now-obsolete redo and remain undoable.
+  await border.evaluate((element) => (element as HTMLInputElement).click());
+  await expect(redo).toBeDisabled();
+  await undo.evaluate((element) => (element as HTMLButtonElement).click());
   await expect(border).not.toBeChecked();
   await page.clock.resume();
 });
@@ -68,8 +81,9 @@ test('a multi-layer template command undoes and redoes before the history deboun
   await page.getByRole('button', { name: /^More \(/ }).click();
   const library = page.getByRole('dialog', { name: 'Built-in Templates' });
   // Freeze the 800ms debounce; polling cannot mask missing immediate-Undo support.
+  // Native DOM click avoids Playwright actionability's animation-frame wait while paused.
   await page.clock.pauseAt(Date.now() + 5_000);
-  await library.getByRole('button', { name: /Song Floral/ }).click();
+  await library.getByRole('button', { name: /Song Floral/ }).evaluate((element) => (element as HTMLButtonElement).click());
   const summary = page.getByRole('button', { name: /^Background/ });
   await expect(summary).toContainText('Templates');
 
@@ -77,12 +91,12 @@ test('a multi-layer template command undoes and redoes before the history deboun
   // would normally enable the button. One action restores all template fields.
   const undo = page.getByRole('button', { name: 'Undo' });
   await expect(undo).toBeEnabled();
-  await undo.click();
+  await undo.evaluate((element) => (element as HTMLButtonElement).click());
   await expect(summary).toContainText('Solid');
 
   const redo = page.getByRole('button', { name: 'Redo' });
   await expect(redo).toBeEnabled();
-  await redo.click();
+  await redo.evaluate((element) => (element as HTMLButtonElement).click());
   await expect(summary).toContainText('Templates');
   await page.clock.resume();
   await expect.poll(() => page.evaluate(() => {
@@ -106,10 +120,10 @@ test('rapid undo of a preset restores its identity and dimensions in saved docum
   await selector.selectOption(nextPreset);
   await expect(selector).toHaveValue(nextPreset);
   await expect(page.getByRole('button', { name: 'Undo' })).toBeEnabled();
-  await page.getByRole('button', { name: 'Undo' }).click();
+  await page.getByRole('button', { name: 'Undo' }).evaluate((element) => (element as HTMLButtonElement).click());
   await expect(selector).toHaveValue(originalPreset);
 
-  await page.getByRole('button', { name: 'Redo' }).click();
+  await page.getByRole('button', { name: 'Redo' }).evaluate((element) => (element as HTMLButtonElement).click());
   await expect(selector).toHaveValue(nextPreset);
   await page.clock.resume();
   await expect.poll(() => page.evaluate(() => {
