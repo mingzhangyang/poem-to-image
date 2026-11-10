@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import { DEFAULT_POEM_STYLE, isSamePoemLayerStyle } from '../poemStyle';
 import { createAsyncIntentGate } from '../asyncIntentGate';
+import { createReusableTemplateParts, type EditorDocument } from '../editorDocument';
+import type { EditorTemplateParts, EditorTemplateSections } from '../editorCommands';
 import { resolveTemplateForLanguage } from '../templates';
 import type { Language } from '../translations';
 import type {
@@ -22,18 +24,6 @@ import type {
 
 const ACTIVE_TEMPLATE_STORAGE_KEY = 'poem-to-image.active-template';
 
-interface BackgroundState {
-  backgroundType: string;
-  paperId: TemplateBackgroundConfig['paperId'];
-  backgroundColor: string;
-  gradientColor1: string;
-  gradientColor2: string;
-  gradientDirection: string;
-  bgBrightness: number;
-  bgBlur: number;
-  applyBackgroundTemplate: (bg: TemplateBackgroundConfig) => void;
-}
-
 interface TypographyState {
   fontFamily: string;
   fontSize: number;
@@ -50,7 +40,6 @@ interface TypographyState {
   textShadowBlur: number;
   textShadowOffsetY: number;
   textShadowOffsetX: number;
-  applyTypographyTemplate: (typ: TemplateTypographyConfig) => void;
 }
 
 interface DecorationsState {
@@ -64,7 +53,6 @@ interface DecorationsState {
   stamp: StampConfig;
   customTexts: CustomText[];
   logos: LogoConfig[];
-  applyDecorationsTemplate: (dec: TemplateDecorationsConfig) => void;
 }
 
 interface CustomTemplatesState {
@@ -85,11 +73,11 @@ interface CustomTemplatesState {
 interface UseTemplateManagerParams {
   language: Language;
   hasPersistedEditorState: boolean;
-  background: BackgroundState;
   typography: TypographyState;
   decorations: DecorationsState;
   poemStyle: PoemLayerStyle;
-  setPoemStyle: (ps: PoemLayerStyle) => void;
+  editorDocument: EditorDocument;
+  applyEditorTemplate: (template: EditorTemplateParts, sections?: EditorTemplateSections) => void;
   setExpandedSections: Dispatch<SetStateAction<ExpandedSections>>;
   customTemplates: CustomTemplatesState;
 }
@@ -169,11 +157,11 @@ function matchesPoemStyle(
 export function useTemplateManager({
   language,
   hasPersistedEditorState,
-  background,
   typography,
   decorations,
   poemStyle,
-  setPoemStyle,
+  editorDocument,
+  applyEditorTemplate,
   setExpandedSections,
   customTemplates,
 }: UseTemplateManagerParams) {
@@ -190,10 +178,12 @@ export function useTemplateManager({
       const template = resolveTemplateForLanguage(templateId, language);
       if (!template) return false;
 
-      background.applyBackgroundTemplate(template.background);
-      typography.applyTypographyTemplate(template.typography);
-      decorations.applyDecorationsTemplate(template.decorations);
-      setPoemStyle(template.poemStyle ?? { ...DEFAULT_POEM_STYLE });
+      applyEditorTemplate({
+        background: template.background,
+        typography: template.typography,
+        decorations: template.decorations,
+        poemStyle: template.poemStyle ?? { ...DEFAULT_POEM_STYLE },
+      });
       setActiveTemplateId(templateId);
 
       if (options?.expandSections ?? true) {
@@ -208,8 +198,7 @@ export function useTemplateManager({
 
       return true;
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [language],
+    [language, applyEditorTemplate, setExpandedSections],
   );
 
   // ── Public handlers ───────────────────────────────────────────────────────
@@ -228,10 +217,12 @@ export function useTemplateManager({
       const template = customTemplates.customTemplates.find((t) => t.id === id);
       if (!template) return;
       selectionIntentRef.current.invalidate();
-      background.applyBackgroundTemplate(template.background);
-      typography.applyTypographyTemplate(template.typography);
-      decorations.applyDecorationsTemplate(template.decorations);
-      setPoemStyle(template.poemStyle);
+      applyEditorTemplate({
+        background: template.background,
+        typography: template.typography,
+        decorations: template.decorations,
+        poemStyle: template.poemStyle,
+      });
       customTemplates.applyCustomTemplate(id);
       setActiveTemplateId(null);
       setExpandedSections((prev) => ({
@@ -242,7 +233,7 @@ export function useTemplateManager({
         decorations: true,
       }));
     },
-    [background, typography, decorations, setPoemStyle, customTemplates, setExpandedSections],
+    [applyEditorTemplate, customTemplates, setExpandedSections],
   );
 
   const handleSaveCustomTemplate = useCallback(
@@ -252,51 +243,8 @@ export function useTemplateManager({
       if (!customTemplates.canSaveCustomTemplate) return false;
       const saveEpoch = selectionIntentRef.current.begin();
       const shouldActivate = () => selectionIntentRef.current.isCurrent(saveEpoch);
-      const bgConfig: TemplateBackgroundConfig = {
-        backgroundType:
-          background.backgroundType === 'image' || background.backgroundType === 'ai'
-            ? 'solid'
-            : (background.backgroundType as TemplateBackgroundConfig['backgroundType']),
-        paperId: background.paperId,
-        backgroundColor: background.backgroundColor,
-        gradientColor1: background.gradientColor1,
-        gradientColor2: background.gradientColor2,
-        gradientDirection: background.gradientDirection,
-        backgroundImage: null,
-        bgBrightness: background.bgBrightness,
-        bgBlur: background.bgBlur,
-      };
-      const typConfig: TemplateTypographyConfig = {
-        fontFamily: typography.fontFamily,
-        fontSize: typography.fontSize,
-        textColor: typography.textColor,
-        textAlign: typography.textAlign,
-        writingMode: typography.writingMode,
-        padding: typography.padding,
-        lineHeight: typography.lineHeight,
-        letterSpacing: typography.letterSpacing,
-        columns: typography.columns,
-        columnGap: typography.columnGap,
-        textShadowEnabled: typography.textShadowEnabled,
-        textShadowColor: typography.textShadowColor,
-        textShadowBlur: typography.textShadowBlur,
-        textShadowOffsetY: typography.textShadowOffsetY,
-        textShadowOffsetX: typography.textShadowOffsetX,
-      };
-      const decConfig: TemplateDecorationsConfig = {
-        showBorder: decorations.showBorder,
-        borderStyle: decorations.borderStyle,
-        borderColor: decorations.borderColor,
-        borderWidth: decorations.borderWidth,
-        showStamp: decorations.showStamp,
-        stamp: decorations.stamp,
-        poemPosition: decorations.poemPosition,
-        customTexts: decorations.customTexts,
-        // Keep handwritten signatures with the saved template, just as drafts
-        // and exports already retain them.
-        signatures: decorations.signatures,
-        logos: [],
-      };
+      const { background: bgConfig, typography: typConfig, decorations: decConfig, poemStyle } =
+        createReusableTemplateParts(editorDocument);
       const created = await customTemplates.saveCustomTemplate(
         name, bgConfig, typConfig, decConfig, poemStyle, shouldActivate,
       );
@@ -305,7 +253,7 @@ export function useTemplateManager({
       if (shouldActivate()) setActiveTemplateId(null);
       return true;
     },
-    [background, typography, decorations, poemStyle, customTemplates],
+    [editorDocument, customTemplates],
   );
 
   // ── Restore active template from localStorage on mount ────────────────────
@@ -325,10 +273,12 @@ export function useTemplateManager({
     // A saved editor draft takes precedence over the template selection marker.
     // Applying the template again on mount would erase custom fonts/backgrounds.
     if (!hasPersistedEditorState) {
-      background.applyBackgroundTemplate(template.background);
-      typography.applyTypographyTemplate(template.typography);
-      decorations.applyDecorationsTemplate(template.decorations);
-      setPoemStyle(template.poemStyle ?? { ...DEFAULT_POEM_STYLE });
+      applyEditorTemplate({
+        background: template.background,
+        typography: template.typography,
+        decorations: template.decorations,
+        poemStyle: template.poemStyle ?? { ...DEFAULT_POEM_STYLE },
+      });
     }
     setActiveTemplateId(storedTemplateId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -366,9 +316,17 @@ export function useTemplateManager({
     if (shouldSyncTypography || shouldSyncDecorations || shouldSyncPoemStyle) {
       const resolved = resolveTemplateForLanguage(activeTemplateId, language);
       if (resolved) {
-        if (shouldSyncTypography) typography.applyTypographyTemplate(resolved.typography);
-        if (shouldSyncDecorations) decorations.applyDecorationsTemplate(resolved.decorations);
-        if (shouldSyncPoemStyle) setPoemStyle(resolved.poemStyle ?? { ...DEFAULT_POEM_STYLE });
+        applyEditorTemplate({
+          background: resolved.background,
+          typography: resolved.typography,
+          decorations: resolved.decorations,
+          poemStyle: resolved.poemStyle ?? { ...DEFAULT_POEM_STYLE },
+        }, {
+          background: false,
+          typography: shouldSyncTypography,
+          decorations: shouldSyncDecorations,
+          poemStyle: shouldSyncPoemStyle,
+        });
       }
     }
 

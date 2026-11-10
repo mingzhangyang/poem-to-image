@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 
-function isDeepEqual(a: unknown, b: unknown): boolean {
+/** Shared structural equality for memoized editor scenes and undo history. */
+export function isDeepEqual(a: unknown, b: unknown): boolean {
   if (Object.is(a, b)) return true;
   if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) {
     return false;
