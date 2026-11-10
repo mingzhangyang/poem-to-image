@@ -4,6 +4,7 @@ import {
   getStampRasterMetrics,
   getStampShadow,
   getStampTransform,
+  STAMP_SHADOW_PADDING,
   getStampCanvasRadii,
   getStampCharacters,
   getStampTextFontSize,
@@ -184,16 +185,37 @@ export function drawStampImpression(
 ) {
   if (!Number.isFinite(stamp.size) || stamp.size <= 0) return;
   const half = stamp.size / 2;
-  const { pixels, scale } = getStampRasterMetrics(stamp.size, options.pixelScale ?? 1);
-  const offCanvas = document.createElement('canvas');
-  offCanvas.width = pixels;
-  offCanvas.height = pixels;
-  const offCtx = offCanvas.getContext('2d');
-  if (!offCtx) return;
+  const paddedSide = stamp.size + STAMP_SHADOW_PADDING * 2;
+  const { pixels, scale } = getStampRasterMetrics(paddedSide, options.pixelScale ?? 1);
+  const { pixels: inkPixels, scale: inkScale } = getStampRasterMetrics(stamp.size, scale);
 
-  offCtx.scale(scale, scale);
-  offCtx.translate(half, half);
-  drawStampBody(offCtx, stamp);
+  // The ink must be isolated because both white-character carving and
+  // weathering use destination-out. A second bounded bitmap receives the
+  // shadow before compositing: it can then rotate as part of the impression.
+  const inkCanvas = document.createElement('canvas');
+  inkCanvas.width = inkPixels;
+  inkCanvas.height = inkPixels;
+  const inkCtx = inkCanvas.getContext('2d');
+  if (!inkCtx) return;
+  inkCtx.scale(inkScale, inkScale);
+  inkCtx.translate(half, half);
+  drawStampBody(inkCtx, stamp);
+
+  const impression = document.createElement('canvas');
+  impression.width = pixels;
+  impression.height = pixels;
+  const impressionCtx = impression.getContext('2d');
+  if (!impressionCtx) return;
+
+  const shadow = getStampShadow(stamp);
+  // Canvas shadowBlur and shadowOffset are expressed in backing pixels and
+  // do NOT inherit the drawing transform's scale. Match the bitmap DPR here.
+  impressionCtx.shadowColor = shadow.color;
+  impressionCtx.shadowBlur = shadow.blur * scale;
+  impressionCtx.shadowOffsetX = shadow.offsetX * scale;
+  impressionCtx.shadowOffsetY = shadow.offsetY * scale;
+  impressionCtx.scale(scale, scale);
+  impressionCtx.drawImage(inkCanvas, STAMP_SHADOW_PADDING, STAMP_SHADOW_PADDING, stamp.size, stamp.size);
 
   ctx.save();
   if (options.applyTransform !== false) {
@@ -203,15 +225,10 @@ export function drawStampImpression(
   if (options.applyOpacity !== false) {
     ctx.globalAlpha *= stamp.opacity;
   }
-  const shadow = getStampShadow(stamp);
-  ctx.shadowColor = shadow.color;
-  ctx.shadowBlur = shadow.blur;
-  ctx.shadowOffsetX = shadow.offsetX;
-  ctx.shadowOffsetY = shadow.offsetY;
 
-  // Explicit destination dimensions retain the logical size even when the
-  // source bitmap is generated at higher DPR or at its safety cap.
-  ctx.drawImage(offCanvas, -half, -half, stamp.size, stamp.size);
+  // A shadow baked in local coordinates rotates together with the seal in
+  // both the CSS-transformed preview and the transformed Canvas export.
+  ctx.drawImage(impression, -half - STAMP_SHADOW_PADDING, -half - STAMP_SHADOW_PADDING, paddedSide, paddedSide);
   ctx.restore();
 }
 

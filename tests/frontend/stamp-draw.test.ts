@@ -81,15 +81,18 @@ test('draws 1x, 2x and 3x seal bitmaps without changing dimensions on the destin
     withCanvas((created) => {
       const ctx = new RecordingContext();
       drawStampImpression(ctx as unknown as CanvasRenderingContext2D, stamp, { pixelScale: ratio });
-      assert.equal(created.length, 1);
+      assert.equal(created.length, 2);
       assert.equal(created[0].width, stamp.size * ratio);
       assert.equal(created[0].height, stamp.size * ratio);
       assert.deepEqual(created[0].context.ops.find((op) => op.method === 'scale')?.args, [ratio, ratio]);
+      assert.equal(created[1].width, (stamp.size + STAMP_SHADOW_PADDING * 2) * ratio);
+      assert.equal(created[1].context.shadowBlur, 12 * ratio);
+      assert.equal(created[1].context.shadowOffsetY, 5 * ratio);
       const image = ctx.ops.find((op) => op.method === 'drawImage');
-      assert.deepEqual(image?.args.slice(1), [-50, -50, 100, 100]);
+      assert.deepEqual(image?.args.slice(1), [-86, -86, 172, 172]);
       assert.deepEqual(ctx.ops.find((op) => op.method === 'transform')?.args.slice(0, 4), Object.values(getStampTransform(stamp)));
       assert.equal(ctx.globalAlpha, 0.7);
-      assert.equal(ctx.shadowBlur, 12);
+      assert.equal(ctx.shadowBlur, 0);
     });
   }
 });
@@ -129,6 +132,7 @@ test('export uses the same impression with correct scene position, alpha and tra
       { x: 20, y: 40, width: 400, height: 200 });
     assert.deepEqual(ctx.ops.find((op) => op.method === 'translate')?.args, [120, 190]);
     assert.equal(created[0].width, 300);
+    assert.equal(created[1].width, 516);
     assert.equal(ctx.globalAlpha, stamp.opacity);
     assert.ok(ctx.ops.some((op) => op.method === 'transform'));
   });
@@ -143,6 +147,7 @@ test('preview DPR uses the same logical seal body but reserves room for shadow',
       pixelScale: metric.scale, applyTransform: false, applyOpacity: false,
     });
     assert.equal(created[0].width, 300);
+    assert.equal(created[1].width, 516);
     assert.equal(created[0].context.ops.filter((op) => op.method === 'fillText').length, 2);
   });
 });
