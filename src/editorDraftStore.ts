@@ -254,6 +254,9 @@ function isDraftState(value: unknown): value is EditorDraftState {
   if (!optionalField(stamp, 'colorScheme', 'string')
     || !optionalField(stamp, 'inkColor', 'string')
     || !optionalField(stamp, 'weathering', 'number')
+    || (stamp.textureStyle !== undefined && stamp.textureStyle !== 'classic' && stamp.textureStyle !== 'natural')
+    || (stamp.textureSeed !== undefined && (typeof stamp.textureSeed !== 'number'
+      || !Number.isInteger(stamp.textureSeed) || stamp.textureSeed < 0 || stamp.textureSeed > 0xffffffff))
     || !optionalField(position, 'exportLeft', 'number')
     || !optionalField(position, 'exportTop', 'number')
     || !optionalField(position, 'boxWidth', 'number')) return false;
