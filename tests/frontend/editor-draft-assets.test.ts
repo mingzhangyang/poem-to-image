@@ -6,6 +6,7 @@ import {
   noteNavigationDraftSaved,
   pinDraftAssetSnapshot,
   retainDraftForNavigation,
+  loadEditorDraft,
   registerDraftAssetObjectUrl,
   releaseEditorDraftAssets,
   retainEditorDraftAssets,
@@ -105,10 +106,16 @@ test('an abandoned staged upload releases its cached Blob and URL', () => {
   }
 });
 
-test('SPA route detachment keeps an unsaved image until the returning editor adopts it', () => {
+test('SPA route detachment recovers via loadEditorDraft before transferring asset ownership', async () => {
   const originalRevoke = URL.revokeObjectURL;
+  const priorIndexedDB = Object.getOwnPropertyDescriptor(globalThis, 'indexedDB');
   const revoked: string[] = [];
   URL.revokeObjectURL = (url) => { revoked.push(url); };
+  // Simulate the same storage outage that caused the detached save to fail.
+  Object.defineProperty(globalThis, 'indexedDB', {
+    configurable: true,
+    value: { open: () => { throw new Error('IndexedDB still unavailable'); } },
+  });
   const url = `blob:https://inkpoem.test/${crypto.randomUUID()}`;
   let ticket: number | null = null;
   try {
@@ -117,6 +124,15 @@ test('SPA route detachment keeps an unsaved image until the returning editor ado
     ticket = retainDraftForNavigation(sceneWith(url), 4);
     releaseEditorDraftAssets('leaving-editor');
     assert.deepEqual(revoked, [], 'failed detached write may not evict the in-memory scene');
+
+    // This real loader marks the retained scene as offered for adoption.
+    // It must work without opening IndexedDB and must preserve its revision.
+    const recovered = await loadEditorDraft();
+    assert.equal(recovered.revision, 4);
+    assert.equal(recovered.recoveredPending, true);
+    assert.deepEqual(recovered.objectUrls, []);
+    assert.equal(recovered.state?.background.backgroundImage, url);
+    assert.deepEqual(revoked, [], 'the loader keeps the binary alive until the editor takes it');
 
     retainEditorDraftAssets('returning-editor', [url]);
     assert.deepEqual(revoked, [], 'new editor assumes ownership before recovery lease goes away');
@@ -127,6 +143,8 @@ test('SPA route detachment keeps an unsaved image until the returning editor ado
     releaseEditorDraftAssets('leaving-editor');
     releaseEditorDraftAssets('returning-editor');
     URL.revokeObjectURL = originalRevoke;
+    if (priorIndexedDB) Object.defineProperty(globalThis, 'indexedDB', priorIndexedDB);
+    else Reflect.deleteProperty(globalThis, 'indexedDB');
   }
 });
 

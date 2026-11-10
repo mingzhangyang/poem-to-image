@@ -337,8 +337,8 @@ test('dirty artwork survives a failed detached save during same-tab navigation',
   await expect(page.getByRole('heading', { name: 'InkPoem' })).toBeVisible();
   await page.waitForTimeout(750); // Let the detached save fail while away.
 
-  await page.evaluate(() => { Reflect.deleteProperty(indexedDB, 'open'); });
-  await expect.poll(async () => (await readDraft(page))?.revision).toBe(baselineRevision);
+  // The editor must hydrate from the retained scene while IndexedDB is STILL
+  // unavailable; otherwise recovery depends on the very storage that failed.
   await page.locator('a[href="/"]').first().click();
   await expect(page.getByRole('button', { name: 'Open Editor' })).toBeVisible();
   await expect(page.getByLabel('Body').getByText('Not yet on disk')).toBeVisible();
@@ -352,6 +352,11 @@ test('dirty artwork survives a failed detached save during same-tab navigation',
     img.src = src;
     try { await img.decode(); return img.naturalWidth > 0; } catch { return false; }
   })).toBe(true);
+  await expect(page.getByRole('alert')).toContainText('latest changes have not been saved');
+
+  await page.evaluate(() => { Reflect.deleteProperty(indexedDB, 'open'); });
+  await expect.poll(async () => (await readDraft(page))?.revision).toBe(baselineRevision);
+  await page.getByRole('button', { name: 'Retry saving' }).click();
   await expect.poll(async () => (await readDraft(page))?.scene.poem.title).toBe('Not yet on disk');
   await expect.poll(async () => (await readDraft(page))?.scene.background.backgroundImage)
     .toMatch(/^draft-asset:.+/);

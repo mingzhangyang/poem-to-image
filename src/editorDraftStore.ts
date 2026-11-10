@@ -434,9 +434,12 @@ export async function loadEditorDraft(): Promise<LoadedEditorDraft> {
   // Failure retains the in-memory scene; success reloads its committed revision.
   const detached = detachedNavigationDraft;
   if (detached?.flush) await detached.flush.catch(() => undefined);
-  const { record, blobs } = await readStoredDraft();
   const retained = detachedNavigationDraft;
   if (retained) {
+    // A detached write may have failed because IndexedDB is unavailable.
+    // Recover the in-memory scene BEFORE trying to read the same broken store.
+    // Its saved base revision still enforces optimistic conflict detection
+    // once writes become available again.
     retained.offeredForAdoption = true;
     return {
       state: retained.scene,
@@ -445,6 +448,7 @@ export async function loadEditorDraft(): Promise<LoadedEditorDraft> {
       recoveredPending: true,
     };
   }
+  const { record, blobs } = await readStoredDraft();
   const pending = pendingEmergencyDraft(record?.revision ?? 0);
   if (!record) return {
     state: pending ?? legacyDraft(),

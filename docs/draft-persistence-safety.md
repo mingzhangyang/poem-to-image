@@ -42,9 +42,12 @@ rendering. Those have separate owners and tests.
   trigger `beforeunload`. The latest unsaved scene and its binary leases are
   therefore retained outside React while the detached write settles. A
   successful save releases the handoff; a failed save keeps it in memory until
-  the next editor mounts, adopts the URLs, and retries. Intermediate saves
-  update the expected disk revision without clearing later dirty changes.
-  This handoff does not survive process termination or a hard reload.
+  the next editor mounts, adopts the URLs, and retries. The loader first awaits
+  any detached write, then checks for the retained scene **before opening
+  IndexedDB again**: returning to the editor must work even while storage
+  remains unavailable. Intermediate saves update the expected disk revision
+  without clearing later dirty changes. The handoff does not survive process
+  termination or a hard reload.
 - **Recovery:** IndexedDB unavailable, malformed documents, or missing binary
   assets **block editor initialization** and offer Retry. They never cause
   an empty editor to auto-save over unread drafts. Once mounted, failed writes
