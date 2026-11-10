@@ -19,6 +19,8 @@ import { usePoemAutofill } from './hooks/usePoemAutofill';
 import { useAppLanguage } from './hooks/useAppLanguage';
 import { useBillingState } from './hooks/useBillingState';
 import { useEditorHistory } from './hooks/useEditorHistory';
+import { useEditorCommands } from './hooks/useEditorCommands';
+import { createEditorDocument, createEditorExportScene } from './editorDocument';
 import { useEditorPersistence } from './hooks/useEditorPersistence';
 import { loadEditorDraft, releaseDraftObjectUrls, type EditorDraftState, type LoadedEditorDraft } from './editorDraftStore';
 import { getDraftSafetyMessages } from './editorDraftMessages';
@@ -147,24 +149,6 @@ function EditorApp({ initialState, initialRevision, promoteInitial }: EditorAppP
     [changeLanguage],
   );
 
-  const handlePresetChange = (val: string) => {
-    setPresetSize(val);
-    if (val !== 'custom') {
-      const preset = getCanvasSizePresetById(val);
-      if (preset) {
-        setCanvasWidthState(normalizeCanvasSize(preset.width, 1080));
-        setCanvasHeightState(normalizeCanvasSize(preset.height, 1350));
-        return;
-      }
-      // Backward compatibility for legacy ratio-based preset ids like "1080x1350".
-      const [w, h] = val.split('x').map(Number);
-      if (Number.isFinite(w) && Number.isFinite(h)) {
-        setCanvasWidthState(normalizeCanvasSize(w, 1080));
-        setCanvasHeightState(normalizeCanvasSize(h, 1350));
-      }
-    }
-  };
-
   const toggleSection = (section: keyof ExpandedSections) => {
     setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
   };
@@ -198,17 +182,40 @@ function EditorApp({ initialState, initialRevision, promoteInitial }: EditorAppP
     onCustomTextAdded: () => setExpandedSections((prev) => ({ ...prev, decorations: true })),
     initialDraft: initialState?.decorations,
   });
+  // Commands are the only multi-field edit boundary; one canonical snapshot
+  // then feeds history, persistence, reusable templates and export.
+  const editorCommands = useEditorCommands({
+    setPoem,
+    setPoemStyle,
+    setCanvasWidth,
+    setCanvasHeight,
+    setPresetSize,
+    applyBackground: background.applyBackgroundTemplate,
+    applyTypography: typography.applyTypographyTemplate,
+    applyDecorations: decorations.applyDecorationsTemplate,
+  });
+  const editorDocument = useStructuralMemo(createEditorDocument({
+    poem,
+    poemStyle,
+    canvasWidth,
+    canvasHeight,
+    presetSize,
+    background,
+    typography,
+    decorations,
+  }));
+
   const customTemplates = useCustomTemplates({ isLoaded, isSignedIn, userId, getToken });
 
   const { activeTemplateId, handleApplyTemplate, handleApplyCustomTemplate, handleSaveCustomTemplate } =
     useTemplateManager({
       language,
       hasPersistedEditorState: initialState !== null,
-      background,
       typography,
       decorations,
       poemStyle,
-      setPoemStyle,
+      editorDocument,
+      applyEditorTemplate: editorCommands.applyTemplate,
       setExpandedSections,
       customTemplates,
     });
@@ -232,114 +239,22 @@ function EditorApp({ initialState, initialRevision, promoteInitial }: EditorAppP
   // Hooks initialize directly from the loaded draft. No restore effects run
   // after the first render, so StrictMode cannot create phantom edits.
 
-  // Rebuilt every render from its source fields and stabilized by deep equality.
-  // No dependency array to keep in sync, so a new field can't silently go stale.
-  const exportScene = useStructuralMemo({
-    canvasWidth,
-    canvasHeight,
-    background: {
-      backgroundType: background.backgroundType,
-      paperId: background.paperId,
-      backgroundColor: background.backgroundColor,
-      gradientColor1: background.gradientColor1,
-      gradientColor2: background.gradientColor2,
-      gradientDirection: background.gradientDirection,
-      backgroundImage: background.backgroundImage,
-      backgroundImageSource: background.backgroundImageSource,
-      backgroundSize: background.backgroundSize,
-      backgroundPosition: background.backgroundPosition,
-      bgBrightness: background.bgBrightness,
-      bgBlur: background.bgBlur,
-    },
-    typography: {
-      poem,
-      poemStyle,
-      fontFamily: typography.fontFamily,
-      fontSize: typography.fontSize,
-      textColor: typography.textColor,
-      textAlign: typography.textAlign,
-      writingMode: typography.writingMode,
-      padding: typography.padding,
-      lineHeight: typography.lineHeight,
-      letterSpacing: typography.letterSpacing,
-      columns: typography.columns,
-      columnGap: typography.columnGap,
-      textShadowEnabled: typography.textShadowEnabled,
-      textShadowColor: typography.textShadowColor,
-      textShadowBlur: typography.textShadowBlur,
-      textShadowOffsetY: typography.textShadowOffsetY,
-      textShadowOffsetX: typography.textShadowOffsetX,
-      poemPosition: decorations.poemPosition,
-    },
-    decorations: {
-      showBorder: decorations.showBorder,
-      borderStyle: decorations.borderStyle,
-      borderColor: decorations.borderColor,
-      borderWidth: decorations.borderWidth,
-      showStamp: decorations.showStamp && stampSupported,
-      stamp: decorations.stamp,
-      customTexts: decorations.customTexts,
-      logos: decorations.logos,
-      signatures: decorations.signatures,
-    },
-  });
+  // Export is a view of the very same document used by draft and history.
+  // Stamp capability and transient 'ai' mode are presentation-only policies.
+  const exportScene = useStructuralMemo(createEditorExportScene(editorDocument, {
+    backgroundType: background.backgroundType,
+    stampSupported,
+  }));
 
   const { canUndo, canRedo, handleUndo, handleRedo } = useEditorHistory({
-    exportScene,
-    poem,
-    poemStyle,
-    canvasWidth,
-    canvasHeight,
-    presetSize,
-    background,
-    typography,
-    decorations,
-    setPoem,
-    setPoemStyle,
-    setCanvasWidth,
-    setCanvasHeight,
-    setPresetSize,
+    document: editorDocument,
+    restoreDocument: editorCommands.restoreDocument,
   });
 
   const { saveError, retrySave } = useEditorPersistence({
-    exportScene,
+    document: editorDocument,
     initialRevision,
     promoteInitial,
-    poem,
-    poemStyle,
-    canvasWidth,
-    canvasHeight,
-    presetSize,
-    background,
-    typography: {
-      fontFamily: typography.fontFamily,
-      fontSize: typography.fontSize,
-      textColor: typography.textColor,
-      textAlign: typography.textAlign,
-      writingMode: typography.writingMode,
-      padding: typography.padding,
-      lineHeight: typography.lineHeight,
-      letterSpacing: typography.letterSpacing,
-      columns: typography.columns,
-      columnGap: typography.columnGap,
-      textShadowEnabled: typography.textShadowEnabled,
-      textShadowColor: typography.textShadowColor,
-      textShadowBlur: typography.textShadowBlur,
-      textShadowOffsetY: typography.textShadowOffsetY,
-      textShadowOffsetX: typography.textShadowOffsetX,
-    },
-    decorations: {
-      showBorder: decorations.showBorder,
-      borderStyle: decorations.borderStyle,
-      borderColor: decorations.borderColor,
-      borderWidth: decorations.borderWidth,
-      showStamp: decorations.showStamp,
-      stamp: decorations.stamp,
-      poemPosition: decorations.poemPosition,
-      customTexts: decorations.customTexts,
-      logos: decorations.logos,
-      signatures: decorations.signatures,
-    },
   });
 
   const onInteractionStart = useCallback(() => {
@@ -586,7 +501,7 @@ function EditorApp({ initialState, initialRevision, promoteInitial }: EditorAppP
       presetSize,
       canvasWidth,
       canvasHeight,
-      onPresetChange: handlePresetChange,
+      onPresetChange: editorCommands.selectCanvasPreset,
       onCanvasWidthChange: setCanvasWidth,
       onCanvasHeightChange: setCanvasHeight,
     },
