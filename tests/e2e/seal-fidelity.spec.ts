@@ -17,7 +17,18 @@ test('seal rasterization remains deterministic across pixel ratios and shape mod
     const path = '/src/export/stampDraw.ts';
     const { drawStampImpression } = await import(/* @vite-ignore */ path);
     const hashes: string[] = [];
-    let transparentCarvedPixels = 0;
+    const removalChecks: Array<{ style: string; scale: number; carving: number; weathering: number }> = [];
+    const countRemovedInk = (control: Uint8ClampedArray, altered: Uint8ClampedArray) => {
+      let removed = 0;
+      for (let alphaIndex = 3; alphaIndex < control.length; alphaIndex += 4) {
+        // A solid 80%-opaque ink body is around alpha 204. Exclude transparent
+        // margins and the faint shadow: neither proves that ink was carved away.
+        if (control[alphaIndex] >= 160 && altered[alphaIndex] < control[alphaIndex] - 24) {
+          removed++;
+        }
+      }
+      return removed;
+    };
     for (const style of ['square', 'round', 'brush'] as const) {
       for (const colorScheme of ['outline', 'filled'] as const) {
         for (const scale of [1, 2, 3]) {
@@ -26,35 +37,47 @@ test('seal rasterization remains deterministic across pixel ratios and shape mod
             fontFamily: 'serif', weathering: 24, rotation: 17,
             opacity: 0.8, positionX: 50, positionY: 50,
           };
-          const render = () => {
+          const render = (candidate = stamp) => {
             const canvas = document.createElement('canvas');
             canvas.width = canvas.height = 180 * scale;
             const ctx = canvas.getContext('2d')!;
             ctx.scale(scale, scale);
             ctx.translate(90, 90);
-            drawStampImpression(ctx, stamp, { pixelScale: scale });
+            drawStampImpression(ctx, candidate, { pixelScale: scale });
             return ctx.getImageData(0, 0, canvas.width, canvas.height).data;
           };
           const first = render();
           const second = render();
           if (first.some((value, index) => value !== second[index])) {
-            return { deterministic: false, hashes, transparentCarvedPixels };
+            return { deterministic: false, hashes, removalChecks };
           }
-          // Sample the central quadrant so a misplaced/cropped canvas cannot pass.
           const nonTransparent = first.filter((_value, index) => index % 4 === 3 && first[index] > 0).length;
           hashes.push(style + '-' + colorScheme + '-' + scale + ':' + nonTransparent);
           if (colorScheme === 'filled') {
-            transparentCarvedPixels += first.filter((_value, index) => index % 4 === 3 && first[index] === 0).length;
+            // A space has no visible glyph; with weathering disabled this is an
+            // otherwise identical, solid-ink control rendered by production code.
+            const uncarved = render({ ...stamp, text: ' ', weathering: 0 });
+            const carved = render({ ...stamp, weathering: 0 });
+            removalChecks.push({
+              style,
+              scale,
+              carving: countRemovedInk(uncarved, carved),
+              weathering: countRemovedInk(carved, first),
+            });
           }
         }
       }
     }
-    return { deterministic: true, hashes, transparentCarvedPixels };
+    return { deterministic: true, hashes, removalChecks };
   });
   expect(result.deterministic).toBe(true);
   expect(result.hashes).toHaveLength(18);
   expect(result.hashes.every((entry) => Number(entry.split(':')[1]) > 0)).toBe(true);
-  expect(result.transparentCarvedPixels).toBeGreaterThan(0);
+  expect(result.removalChecks).toHaveLength(9);
+  for (const { style, scale, carving, weathering } of result.removalChecks) {
+    expect(carving, `${style} ${scale}×: glyphs must erase actual interior ink`).toBeGreaterThan(10);
+    expect(weathering, `${style} ${scale}×: weathering must erase additional interior ink`).toBeGreaterThan(10);
+  }
 });
 
 test('Unicode stamp input survives editing and draft restore', async ({ page }, testInfo) => {
