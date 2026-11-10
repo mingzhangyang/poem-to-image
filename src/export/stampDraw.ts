@@ -8,6 +8,7 @@ import {
   getStampTextPlacements,
   STAMP_INK_COLOR,
 } from '../stampRendering';
+import { positionToCanvasPoint } from '../positioningRect';
 import type { StampConfig } from '../types';
 import type { CanvasExportScene } from './renderCanvasExport';
 
@@ -158,8 +159,7 @@ export function drawStampBody(ctx: CanvasRenderingContext2D, stamp: StampConfig)
 
 export function drawStamp(ctx: CanvasRenderingContext2D, scene: CanvasExportScene, frameRect: Rect) {
   const { stamp } = scene.decorations;
-  const centerX = frameRect.x + (frameRect.width * stamp.positionX) / 100;
-  const centerY = frameRect.y + (frameRect.height * stamp.positionY) / 100;
+  const { x: centerX, y: centerY } = positionToCanvasPoint(frameRect, stamp);
   const { skewXDeg, skewYDeg } = getBrushStampSkew();
   const brushSkewX = Math.tan((skewXDeg * Math.PI) / 180);
   const brushSkewY = Math.tan((skewYDeg * Math.PI) / 180);

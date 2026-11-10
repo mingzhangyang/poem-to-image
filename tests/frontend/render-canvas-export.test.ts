@@ -452,3 +452,33 @@ test('blur scales the positioned image layer around the canvas center', async ()
   assert.ok(Math.abs(x + 40) < 0.001 && Math.abs(y + 250) < 0.001);
   assert.ok(Math.abs(width - 880) < 0.001 && Math.abs(height - 880) < 0.001);
 });
+
+test('Canvas export places text and image overlays at the shared inset-border centers', async () => {
+  const base = makeScene();
+  await renderCanvasExport(makeScene({
+    typography: { ...base.typography, poem: { title: '', author: '', body: '', sourceNote: '' } },
+    decorations: {
+      ...base.decorations,
+      showBorder: true,
+      borderStyle: 'solid',
+      borderWidth: 8,
+      customTexts: [{
+        id: 'label', text: 'CENTER', fontSize: 18, color: '#000',
+        writingMode: 'horizontal-tb', rotation: 0,
+        positionX: 25, positionY: 75, zIndex: 0,
+      }],
+      logos: [{
+        id: 'logo', imageUrl: 'data:image/png;base64,YQ==',
+        positionX: 75, positionY: 25,
+        size: 50, rotation: 0, opacity: 1, zIndex: 1,
+      }],
+    },
+  }));
+  const translations = mainTrace().filter((op) => op.op === 'translate');
+  // Canvas 600x800, padding 40, inset solid border 8:
+  // positioning rect x=48, y=48, width=504, height=704.
+  assert.ok(translations.some((op) => op.args[0] === 174 && op.args[1] === 576),
+    'custom text center must use the shared positioning rectangle');
+  assert.ok(translations.some((op) => op.args[0] === 426 && op.args[1] === 224),
+    'logo center must use the same positioned rectangle');
+});

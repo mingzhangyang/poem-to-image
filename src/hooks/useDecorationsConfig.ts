@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { DEFAULT_STAMP_FONT } from '../fontOptions';
 import { getDefaultStampTextForLanguage } from '../stampDefaults';
 import { DEFAULT_SIGNATURE_FONT } from '../signatureRendering';
+import { mergePositionUpdate } from '../positioningRect';
 import type { Language } from '../translations';
 import type { BorderStyle, CustomText, LogoConfig, PositionedElement, SignatureConfig, StampConfig, TemplateDecorationsConfig, TranslateFn, WritingMode } from '../types';
 
@@ -262,7 +263,7 @@ export function useDecorationsConfig({
   };
 
   const updatePoemPosition = (updates: Partial<PositionedElement>) => {
-    setPoemPosition((prev) => ({ ...prev, ...updates }));
+    setPoemPosition((prev) => mergePositionUpdate(prev, updates));
   };
 
   const resetStampPosition = () => {
