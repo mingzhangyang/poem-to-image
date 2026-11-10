@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   LEGACY_TEMPLATE_KEY,
   canImportLegacyGuestTemplates,
+  isWritableTemplateScope,
   hasLegacyTemplateCache,
   importLegacyGuestTemplates,
   parseCloudTemplateList,
@@ -252,4 +253,13 @@ test('guest legacy import waits for durable cache after a failed local edit', ()
   assert.deepEqual(merged.map((template) => template.id), ['unsaved', 'legacy']);
   assert.deepEqual(readTemplateCache('guest', local).map((template) => template.id), ['unsaved', 'legacy']);
   assert.ok(local.getItem(LEGACY_TEMPLATE_KEY), 'legacy backup is preserved');
+});
+
+test('template saves are disabled until the current auth scope has hydrated', () => {
+  assert.equal(isWritableTemplateScope(null, null, false), false, 'auth not loaded');
+  assert.equal(isWritableTemplateScope('account:a', null, false), false, 'identity not hydrated');
+  assert.equal(isWritableTemplateScope('account:a', 'account:b', false), false, 'old account view');
+  assert.equal(isWritableTemplateScope('guest', 'guest', true), false, 'corrupt guest cache');
+  assert.equal(isWritableTemplateScope('guest', 'guest', false), true, 'ready guest library');
+  assert.equal(isWritableTemplateScope('account:a', 'account:a', true), true, 'cloud writes can proceed despite corrupt local warm cache');
 });

@@ -139,6 +139,8 @@ function BuiltInTemplateCard({ t, language, template, isActive, onApply, variant
 
 export function TemplatesPanel({ t, language, expanded, onToggle, templates, currentBackgroundType }: TemplatesPanelProps) {
   const [isSaving, setIsSaving] = useState(false);
+  const [isSubmittingSave, setIsSubmittingSave] = useState(false);
+  const saveInFlightRef = useRef(false);
   const [templateName, setTemplateName] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -196,17 +198,38 @@ export function TemplatesPanel({ t, language, expanded, onToggle, templates, cur
 
   const isImageOrAiBg = currentBackgroundType === 'image' || currentBackgroundType === 'ai';
   const syncMessages = getTemplateSyncMessages(language);
+  const reconciliationMessage = {
+    idle: null,
+    pending: syncMessages.reconcilePending,
+    checking: syncMessages.reconcileChecking,
+    refreshed: syncMessages.reconcileRefreshed,
+    failed: syncMessages.reconcileFailed,
+  }[templates.templateReconciliationStatus];
 
-  const handleSave = () => {
-    const name = templateName.trim();
-    templates.onSaveCustomTemplate(name);
-    setTemplateName('');
-    setIsSaving(false);
+  const handleSave = async () => {
+    if (saveInFlightRef.current || !templates.canSaveCustomTemplate) return;
+    saveInFlightRef.current = true;
+    setIsSubmittingSave(true);
+    try {
+      const saved = await templates.onSaveCustomTemplate(templateName.trim());
+      // Keep the typed name and open form if authentication changed, or the
+      // server did not confirm the write. A retry can be deliberate and safe.
+      if (saved) {
+        setTemplateName('');
+        setIsSaving(false);
+      }
+    } finally {
+      saveInFlightRef.current = false;
+      setIsSubmittingSave(false);
+    }
   };
 
   const handleKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Enter') handleSave();
-    if (event.key === 'Escape') {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      void handleSave();
+    }
+    if (event.key === 'Escape' && !isSubmittingSave) {
       setIsSaving(false);
       setTemplateName('');
     }
@@ -276,12 +299,15 @@ export function TemplatesPanel({ t, language, expanded, onToggle, templates, cur
                     value={templateName}
                     onChange={(event) => setTemplateName(event.target.value)}
                     onKeyDown={handleKeyDown}
+                    disabled={isSubmittingSave}
                     placeholder={t('templateNamePlaceholder')}
                     className="app-input flex-1 text-sm"
                   />
                   <button
-                    onClick={handleSave}
-                    className="app-button-primary rounded-lg px-3 py-1.5 text-xs font-semibold"
+                    type="button"
+                    onClick={() => { void handleSave(); }}
+                    disabled={!templates.canSaveCustomTemplate || isSubmittingSave}
+                    className="app-button-primary rounded-lg px-3 py-1.5 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {t('saveTemplate')}
                   </button>
@@ -290,12 +316,16 @@ export function TemplatesPanel({ t, language, expanded, onToggle, templates, cur
                       setIsSaving(false);
                       setTemplateName('');
                     }}
+                    disabled={isSubmittingSave}
                     className="p-1.5 text-[rgba(34,48,52,0.4)] hover:text-(--app-accent-700) rounded-lg hover:bg-(--app-accent-50)"
                     aria-label={t('closeControls')}
                   >
                     <X className="w-4 h-4" />
                   </button>
                 </div>
+                {!templates.canSaveCustomTemplate ? (
+                  <p role="status" className="text-xs text-amber-700">{syncMessages.saveUnavailable}</p>
+                ) : null}
               </div>
             )}
 
@@ -313,8 +343,17 @@ export function TemplatesPanel({ t, language, expanded, onToggle, templates, cur
                   {syncMessages.retry}
                 </button>
               </div>
-            ) : templates.customTemplatesSyncing ? (
+            ) : null}
+            {templates.customTemplatesSyncing && templates.templateReconciliationStatus !== 'checking' ? (
               <p role="status" className="mb-3 text-xs text-(--app-accent-600)">{syncMessages.syncing}</p>
+            ) : null}
+            {reconciliationMessage ? (
+              <p
+                role={templates.templateReconciliationStatus === 'failed' ? 'alert' : 'status'}
+                className="mb-3 text-xs text-(--app-accent-700)"
+              >
+                {reconciliationMessage}
+              </p>
             ) : null}
             {templates.hasLegacyCustomTemplates ? (
               <div className="mb-3 rounded-xl border border-(--app-accent-200) bg-(--app-accent-50) p-3 text-xs text-(--app-accent-800)">
@@ -345,6 +384,7 @@ export function TemplatesPanel({ t, language, expanded, onToggle, templates, cur
                   return (
                     <div
                       key={template.id}
+                      data-testid="custom-template-card"
                       className={`rounded-xl border p-3 transition-all ${
                         isActive
                           ? 'border-(--app-accent-300) bg-(--app-accent-50) shadow-[0_10px_24px_var(--app-accent-shadow)]'

@@ -68,6 +68,7 @@ interface DecorationsState {
 
 interface CustomTemplatesState {
   customTemplates: UserCustomTemplate[];
+  canSaveCustomTemplate: boolean;
   saveCustomTemplate: (
     name: string,
     background: TemplateBackgroundConfig,
@@ -238,7 +239,10 @@ export function useTemplateManager({
   );
 
   const handleSaveCustomTemplate = useCallback(
-    (name: string) => {
+    async (name: string): Promise<boolean> => {
+      // The identity may be unresolved while Clerk loads or changes account.
+      // Do not treat a silent null result as a completed user save.
+      if (!customTemplates.canSaveCustomTemplate) return false;
       const bgConfig: TemplateBackgroundConfig = {
         backgroundType:
           background.backgroundType === 'image' || background.backgroundType === 'ai'
@@ -284,8 +288,10 @@ export function useTemplateManager({
         signatures: decorations.signatures,
         logos: [],
       };
-      void customTemplates.saveCustomTemplate(name, bgConfig, typConfig, decConfig, poemStyle);
+      const created = await customTemplates.saveCustomTemplate(name, bgConfig, typConfig, decConfig, poemStyle);
+      if (!created) return false;
       setActiveTemplateId(null);
+      return true;
     },
     [background, typography, decorations, poemStyle, customTemplates],
   );

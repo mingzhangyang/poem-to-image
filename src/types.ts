@@ -248,6 +248,8 @@ export interface UserCustomTemplate {
   poemStyle: PoemLayerStyle;
 }
 
+export type TemplateReconciliationStatus = 'idle' | 'pending' | 'checking' | 'refreshed' | 'failed';
+
 export interface TemplateSectionProps {
   templates: EditorTemplateDefinition[];
   activeTemplateId: EditorTemplateId | null;
@@ -255,13 +257,15 @@ export interface TemplateSectionProps {
   customTemplates: UserCustomTemplate[];
   customTemplateSyncError: 'load' | 'mutation' | 'storage' | null;
   customTemplatesSyncing: boolean;
+  templateReconciliationStatus: TemplateReconciliationStatus;
+  canSaveCustomTemplate: boolean;
   onRetryCustomTemplateSync: () => void;
   hasLegacyCustomTemplates: boolean;
   canImportLegacyCustomTemplates: boolean;
   onImportLegacyCustomTemplates: () => void;
   activeCustomTemplateId: string | null;
   onApplyCustomTemplate: (id: string) => void;
-  onSaveCustomTemplate: (name: string) => void;
+  onSaveCustomTemplate: (name: string) => Promise<boolean>;
   onDeleteCustomTemplate: (id: string) => Promise<void>;
   onRenameCustomTemplate: (id: string, name: string) => Promise<void>;
 }

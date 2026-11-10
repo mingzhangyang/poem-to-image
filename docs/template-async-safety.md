@@ -16,9 +16,12 @@ anonymous templates and cloud snapshots from whichever account last logged in.
   scopes are `guest` or `account:<Clerk userId>`. Neither the new guest
   view nor another account automatically reads a previous account's cache.
 - When Clerk has not loaded, or a signed-in user identity is not ready,
-  template lists remain hidden. The API must obtain a nonempty token
-  **and** confirm that the initiating scope still owns the request before
-  dispatching the network call or processing a response.
+  template lists remain hidden and **Save** is disabled. The typed name stays
+  in the form until identity becomes ready. Confirmed saves close the form;
+  failed or superseded saves retain the name rather than silently discarding
+  the user's intent. The API must obtain a nonempty token **and** confirm
+  that the initiating scope still owns the request before dispatching or
+  processing a response.
 - The **unscoped legacy key is preserved** as a backup and never silently
   attributed to a user. In guest mode a visible, explicit import option
   allows recovery after reviewing the ownership warning. Do not automatically
@@ -44,7 +47,9 @@ anonymous templates and cloud snapshots from whichever account last logged in.
   Localized failure warnings explicitly explain that the server may already
   have saved the change. Users should **retry synchronization and inspect
   the refreshed list before repeating a create**, avoiding duplicate POSTs.
-  No duplicate POST retry is automatic.
+  No duplicate POST retry is automatic. The UI distinguishes reconciliation
+  queued, in progress, refreshed, or failed even while the uncertain mutation
+  warning remains visible; a failed GET never looks like confirmed recovery.
 - LocalStorage quota and corruption are reported. Corrupt guest cache
   content is not replaced without user recovery; failed writes still leave
   the in-memory list visible. A failed guest write marks the view as
@@ -99,6 +104,9 @@ Manual acceptance checklist:
    No instant render or late response may show another account's templates.
 3. Simulate 401, 503, and malformed 200 for GET; existing cached templates
    must remain visible. A valid 200 with an empty list is genuinely empty.
+   After a lost POST response, verify both the mutation warning and the GET
+   reconciliation progress appear. A successful GET reports the list was
+   refreshed; a failed GET explicitly says cached data may be outdated.
 4. Delay a cloud GET, then create/rename/delete. Confirm the old GET never
    overwrites the mutation. After the write, a fresh GET reconciles the list.
 5. Delay the POST response and log out or switch accounts. Its result cannot
@@ -111,10 +119,16 @@ Manual acceptance checklist:
    preserve the in-memory edits.
    For uncertain cloud POST responses, verify warning copy recommends
    synchronization and inspection before repeating a save.
-7. Start AI generation, then change built-in template, upload image, or
+7. Hold Clerk auth loading, then open Save as Template and type a name.
+   Save must be disabled until the matching scope has hydrated. If the scope
+   changes during an in-flight save, keep the form name instead of closing.
+   The browser test for guest cache quota recovery must target the saved
+   template **card**, since the active template name also appears in the
+   sidebar summary.
+8. Start AI generation, then change built-in template, upload image, or
    select Solid/Paper before the response. The old completion must not
    change the current background, even if transcoding finishes later.
-8. Confirm a successful, still-current AI generation applies its background,
+9. Confirm a successful, still-current AI generation applies its background,
    and existing source attribution/export continue to work.
 
 **Validation status when drafted:** remote repository metadata and file

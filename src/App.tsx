@@ -570,6 +570,8 @@ function EditorApp({ initialState, initialRevision, promoteInitial }: EditorAppP
       customTemplates: customTemplates.customTemplates,
       customTemplateSyncError: customTemplates.syncError,
       customTemplatesSyncing: customTemplates.isSyncing,
+      templateReconciliationStatus: customTemplates.reconciliationStatus,
+      canSaveCustomTemplate: customTemplates.canSaveCustomTemplate,
       onRetryCustomTemplateSync: customTemplates.retryTemplateSync,
       hasLegacyCustomTemplates: customTemplates.hasLegacyCache,
       canImportLegacyCustomTemplates: customTemplates.canImportLegacyCustomTemplates,

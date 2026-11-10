@@ -117,7 +117,7 @@ test('guest import protects an unsaved template after localStorage quota failure
   await page.getByPlaceholder('Template name...').fill('Unsaved Guest Template');
   await page.getByRole('button', { name: 'Save', exact: true }).click();
 
-  await expect(page.getByText('Unsaved Guest Template', { exact: true })).toBeVisible();
+  await expect(page.getByTestId('custom-template-card').getByText('Unsaved Guest Template', { exact: true })).toBeVisible();
   await expect(page.getByText('Legacy Guest Template', { exact: true })).toHaveCount(0);
   const importButton = page.getByRole('button', { name: /Review and import older templates into guest library/ });
   await expect(importButton).toBeDisabled();
@@ -131,7 +131,7 @@ test('guest import protects an unsaved template after localStorage quota failure
   await expect(importButton).toBeEnabled();
   await importButton.click();
   await expect(page.getByText('Legacy Guest Template', { exact: true })).toBeVisible();
-  await expect(page.getByText('Unsaved Guest Template', { exact: true })).toBeVisible();
+  await expect(page.getByTestId('custom-template-card').getByText('Unsaved Guest Template', { exact: true })).toBeVisible();
 
   const saved = await page.evaluate(() => JSON.parse(
     localStorage.getItem('poem-to-image.custom-templates.v2.guest') || '[]',

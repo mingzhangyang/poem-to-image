@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { normalizeUserCustomTemplate } from '../poemStyle';
 import { createAsyncIntentGate } from '../asyncIntentGate';
+import { templateReadReconciliationStatus } from '../templateReadReconciliation';
 import {
   createTemplateScopeLifetime,
   enqueueTemplateMutation,
@@ -11,6 +12,7 @@ import { getPaperStyle } from '../paperStyles';
 import {
   canImportLegacyGuestTemplates,
   hasLegacyTemplateCache,
+  isWritableTemplateScope,
   importLegacyGuestTemplates,
   readTemplateCache,
   resolveTemplateScope,
@@ -29,6 +31,7 @@ import type {
   TemplateBackgroundConfig,
   TemplateTypographyConfig,
   TemplateDecorationsConfig,
+  TemplateReconciliationStatus,
 } from '../types';
 
 type TemplateSyncError = 'load' | 'mutation' | 'storage' | null;
@@ -39,6 +42,7 @@ interface ScopeView {
   activeId: string | null;
   syncError: TemplateSyncError;
   isSyncing: boolean;
+  reconciliationStatus: TemplateReconciliationStatus;
   cacheCorrupt: boolean;
   // True if the newest guest edits exist only in memory after a failed write.
   guestCacheDirty: boolean;
@@ -48,7 +52,7 @@ interface ScopeView {
 function readScope(scope: TemplateScope | null): ScopeView {
   const empty: ScopeView = {
     scope, templates: [], activeId: null, syncError: null,
-    isSyncing: false, cacheCorrupt: false, guestCacheDirty: false, hasLegacyCache: false,
+    isSyncing: false, reconciliationStatus: 'idle', cacheCorrupt: false, guestCacheDirty: false, hasLegacyCache: false,
   };
   if (!scope) return empty;
   try {
@@ -172,18 +176,23 @@ export function useCustomTemplates({ isLoaded, isSignedIn, userId, getToken }: U
     const current = () => isLifetimeCurrent(lifetime) && !controller.signal.aborted
       && lifetime.pendingMutations === 0 && readGateRef.current.isCurrent(readEpoch);
 
-    update(scope, (old) => ({ ...old, isSyncing: true }));
+    update(scope, (old) => ({
+      ...old, isSyncing: true,
+      reconciliationStatus: templateReadReconciliationStatus(old.syncError === 'mutation', 'checking'),
+    }));
     const owner: TemplateRequestOwner = { getToken: () => tokenRef.current(), signal: controller.signal, isCurrent: current };
     void fetchCloudTemplates(owner).then((templates) => {
       if (!current()) return;
       update(scope, (old) => ({
         ...old, templates, isSyncing: false, syncError: old.syncError === 'mutation' ? 'mutation' : null, cacheCorrupt: false,
+        reconciliationStatus: templateReadReconciliationStatus(old.syncError === 'mutation', 'refreshed'),
         activeId: old.activeId && templates.some((template) => template.id === old.activeId) ? old.activeId : null,
       }), true);
     }).catch(() => {
       if (!current()) return;
       update(scope, (old) => ({
         ...old, isSyncing: false, syncError: old.syncError === 'mutation' ? 'mutation' : old.cacheCorrupt ? 'storage' : 'load',
+        reconciliationStatus: templateReadReconciliationStatus(old.syncError === 'mutation', 'failed'),
       }));
     }).finally(() => { pendingRequestsRef.current.delete(controller); });
 
@@ -196,7 +205,9 @@ export function useCustomTemplates({ isLoaded, isSignedIn, userId, getToken }: U
   const startMutation = useCallback((ownerScope: TemplateScope) => {
     // A queued write invalidates all older GETs immediately.
     readGateRef.current.invalidate();
-    update(ownerScope, (old) => ({ ...old, isSyncing: false }));
+    update(ownerScope, (old) => ({ ...old, isSyncing: false,
+      reconciliationStatus: old.syncError === 'mutation' ? 'pending' : 'idle',
+    }));
   }, [update]);
 
   const ownerFor = useCallback((lifetime: TemplateScopeLifetime): {
@@ -227,7 +238,9 @@ export function useCustomTemplates({ isLoaded, isSignedIn, userId, getToken }: U
   ), [isLifetimeCurrent]);
 
   const setMutationError = useCallback((ownerScope: TemplateScope) => {
-    update(ownerScope, (old) => ({ ...old, isSyncing: false, syncError: 'mutation' }));
+    update(ownerScope, (old) => ownerScope === 'guest'
+      ? { ...old, isSyncing: false, syncError: 'storage', reconciliationStatus: 'idle' }
+      : { ...old, isSyncing: false, syncError: 'mutation', reconciliationStatus: 'pending' });
   }, [update]);
 
   const saveCustomTemplate = useCallback(async (
@@ -239,7 +252,8 @@ export function useCustomTemplates({ isLoaded, isSignedIn, userId, getToken }: U
   ): Promise<UserCustomTemplate | null> => {
     const ownerScope = scopeRef.current;
     const lifetime = scopeLifetimeRef.current;
-    if (!ownerScope || !isLifetimeCurrent(lifetime)) return null;
+    if (!ownerScope || !isLifetimeCurrent(lifetime)
+      || !isWritableTemplateScope(ownerScope, viewRef.current.scope, viewRef.current.cacheCorrupt)) return null;
     const { accentFrom, accentTo } = deriveAccentColors(background);
     const payload = {
       name: name.trim() || 'Custom Template',
@@ -269,6 +283,7 @@ export function useCustomTemplates({ isLoaded, isSignedIn, userId, getToken }: U
           activeId: saved.id,
           syncError: null,
           isSyncing: false,
+          reconciliationStatus: 'idle',
         }), true);
         return saved;
       } catch {
@@ -309,7 +324,7 @@ export function useCustomTemplates({ isLoaded, isSignedIn, userId, getToken }: U
         if (!owner.isCurrent() || !confirmMutation(lifetime)) return;
         update(ownerScope, (old) => ({
           ...old, templates: old.templates.map((item) => item.id === id ? { ...item, name: trimmedName } : item),
-          syncError: null, isSyncing: false,
+          syncError: null, isSyncing: false, reconciliationStatus: 'idle',
         }), true);
       } catch {
         if (owner.isCurrent()) setMutationError(ownerScope);
@@ -341,7 +356,7 @@ export function useCustomTemplates({ isLoaded, isSignedIn, userId, getToken }: U
         update(ownerScope, (old) => ({
           ...old, templates: old.templates.filter((item) => item.id !== id),
           activeId: old.activeId === id ? null : old.activeId,
-          syncError: null, isSyncing: false,
+          syncError: null, isSyncing: false, reconciliationStatus: 'idle',
         }), true);
       } catch {
         if (owner.isCurrent()) setMutationError(ownerScope);
@@ -396,13 +411,17 @@ export function useCustomTemplates({ isLoaded, isSignedIn, userId, getToken }: U
   // transitions or auth-loading, even for one React render.
   const visible = view.scope === scope ? view : {
     ...view, scope, templates: [], activeId: null,
-    isSyncing: true, syncError: null, hasLegacyCache: false,
+    isSyncing: true, syncError: null, reconciliationStatus: 'idle', hasLegacyCache: false,
   };
   return {
     customTemplates: visible.templates,
     activeCustomTemplateId: visible.activeId,
     syncError: visible.syncError,
     isSyncing: visible.isSyncing,
+    reconciliationStatus: visible.reconciliationStatus,
+    // Compute readiness from the actual committed view, not the redacted
+    // placeholder used during identity transitions.
+    canSaveCustomTemplate: isWritableTemplateScope(scope, view.scope, view.cacheCorrupt),
     hasLegacyCache: visible.hasLegacyCache,
     canImportLegacyCustomTemplates: canImportLegacyGuestTemplates(visible),
     isGuest: scope === 'guest',

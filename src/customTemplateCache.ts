@@ -26,6 +26,15 @@ export function templateCacheKey(scope: TemplateScope): string {
   return SCOPED_TEMPLATE_PREFIX + encodeURIComponent(scope);
 }
 
+/** Do not enable saves while authentication is unresolved or scope state is changing. */
+export function isWritableTemplateScope(
+  scope: TemplateScope | null,
+  viewScope: TemplateScope | null,
+  cacheCorrupt: boolean,
+): boolean {
+  return scope !== null && viewScope === scope && !(scope === 'guest' && cacheCorrupt);
+}
+
 // Validate the full template shape before any server snapshot or cache replaces
 // known-good data. A shallow object check is insufficient: applying malformed
 // decorations otherwise crashes while normalizing customTexts/logos.
