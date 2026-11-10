@@ -81,3 +81,30 @@ test('Unicode stamp input survives editing and draft restore', async ({ page }, 
   await page.getByRole('button', { name: /^装饰与元素/ }).click();
   await expect(page.getByRole('textbox', { name: '印章文字' })).toHaveValue('𠮷\u0301印記詩');
 });
+
+
+test('preview zoom updates seal backing pixels without exceeding the cap', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'chromium-mobile', 'Desktop preview zoom control');
+  await page.setViewportSize({ width: 1920, height: 1600 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: /^装饰与元素/ }).click();
+  await page.getByRole('checkbox', { name: '显示印章' }).check();
+
+  const canvas = page.locator('[aria-label="印章元素"] canvas');
+  const slider = page.locator('input[type="range"][min="70"][max="200"]');
+  await expect(canvas).toHaveCount(1);
+  await slider.focus();
+  await slider.press('Home');
+  await expect(slider).toHaveValue('70');
+  const lowPixels = await canvas.evaluate((element) => (element as HTMLCanvasElement).width);
+  await slider.press('End');
+  await expect(slider).toHaveValue('200');
+  await expect.poll(() => canvas.evaluate((element) => (element as HTMLCanvasElement).width))
+    .toBeGreaterThan(lowPixels);
+  const { width, height } = await canvas.evaluate((element) => {
+    const stampCanvas = element as HTMLCanvasElement;
+    return { width: stampCanvas.width, height: stampCanvas.height };
+  });
+  expect(width).toBeLessThanOrEqual(2048);
+  expect(height).toBe(width);
+});

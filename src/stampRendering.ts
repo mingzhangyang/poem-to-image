@@ -45,7 +45,10 @@ export function getStampCharacters(text: string): string[] {
 }
 
 export function getStampBorderWidth(size: number) {
-  return Math.max(3, Math.round(size * 0.058));
+  if (!Number.isFinite(size) || size <= 0) return 0;
+  // Old drafts can contain seals smaller than the usual 3px border.
+  // An inset stroke must not create a negative arc radius.
+  return Math.min(size, Math.max(3, Math.round(size * 0.058)));
 }
 
 export function getStampCssBorderRadius(style: StampStyle, size: number) {
@@ -161,6 +164,14 @@ export function getStampRasterMetrics(logicalSide: number, requestedScale: numbe
     : 1;
   const pixels = Math.max(1, Math.min(MAX_STAMP_RASTER_SIDE, Math.ceil(side * scale)));
   return { pixels, scale: pixels / side };
+}
+
+/** The preview's CSS zoom and device DPR both consume backing pixels. */
+export function getStampPreviewRasterMetrics(stampSize: number, effectiveScale: number, devicePixelRatio: number) {
+  return getStampRasterMetrics(
+    stampSize + STAMP_SHADOW_PADDING * 2,
+    effectiveScale * devicePixelRatio,
+  );
 }
 
 /** One deliberately subtle ink-colored shadow for both preview and exported artwork. */

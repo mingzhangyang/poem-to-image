@@ -33,7 +33,10 @@ class RecordingContext {
   transform(...values: number[]) { this.add('transform', ...values); }
   beginPath() { this.add('beginPath'); }
   closePath() { this.add('closePath'); }
-  arc(...values: number[]) { this.add('arc', ...values); }
+  arc(...values: number[]) {
+    if (values[2] < 0) throw new RangeError('Canvas arc radius must be non-negative');
+    this.add('arc', ...values);
+  }
   roundRect(...values: unknown[]) { this.add('roundRect', ...values); }
   clip() { this.add('clip'); }
   fill() { this.add('fill'); }
@@ -110,6 +113,22 @@ test('outline/filled and square/round/brush share the same paths and carving rul
         assert.equal(ops.some((op) => op.method === 'stroke'), colorScheme === 'outline');
       });
     }
+  }
+});
+
+test('tiny restored round outline stamps never draw negative-radius arcs', () => {
+  for (const size of [0.5, 1, 2, 3]) {
+    withCanvas((created) => {
+      const tiny = { ...stamp, size, style: 'round' as const, colorScheme: 'outline' as const, weathering: 0 };
+      assert.doesNotThrow(() => drawStampImpression(
+        new RecordingContext() as unknown as CanvasRenderingContext2D,
+        tiny, { pixelScale: 2 },
+      ));
+      const arcs = created[0].context.ops.filter((op) => op.method === 'arc');
+      assert.ok(arcs.length >= 1);
+      assert.equal(arcs[0].args[2], 0, 'inset arc radius must not be negative');
+      assert.ok(arcs.every((op) => Number(op.args[2]) >= 0));
+    });
   }
 });
 

@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   createStampWeatheringRand,
+  getStampBorderWidth,
   getStampCharacters,
+  getStampPreviewRasterMetrics,
   getStampRasterMetrics,
   getStampShadow,
   getStampTransform,
@@ -42,6 +44,25 @@ test('backing resolution follows 1x, 2x and 3x while the logical size stays unch
   assert.deepEqual(getStampRasterMetrics(120, 10), { pixels: 360, scale: 3 });
   assert.deepEqual(getStampRasterMetrics(4000, 3), { pixels: 2048, scale: 2048 / 4000 });
   assert.deepEqual(getStampRasterMetrics(0, Number.NaN), { pixels: 1, scale: 1 });
+});
+
+test('preview backing tracks effective scale and DPR while capped on restored large stamps', () => {
+  assert.deepEqual(getStampPreviewRasterMetrics(100, 1, 1), { pixels: 172, scale: 1 });
+  assert.deepEqual(getStampPreviewRasterMetrics(100, 2, 1), { pixels: 344, scale: 2 });
+  assert.deepEqual(getStampPreviewRasterMetrics(100, 1, 2), { pixels: 344, scale: 2 });
+  assert.deepEqual(getStampPreviewRasterMetrics(100, 2, 2), { pixels: 516, scale: 3 });
+  assert.deepEqual(getStampPreviewRasterMetrics(10000, 2, 3), { pixels: 2048, scale: 2048 / 10072 });
+  assert.equal(getStampPreviewRasterMetrics(10000, 1, 1).pixels, 2048);
+});
+
+test('outline borders fit even tiny restored stamps', () => {
+  for (const size of [0.5, 1, 2, 3, 50, 120]) {
+    const borderWidth = getStampBorderWidth(size);
+    assert.ok(borderWidth > 0 && borderWidth <= size);
+    assert.ok(size / 2 - borderWidth / 2 >= 0);
+  }
+  assert.equal(getStampBorderWidth(2), 2);
+  assert.equal(getStampBorderWidth(Number.NaN), 0);
 });
 
 test('brush matrix is a single shared rotate-then-skew transform', () => {

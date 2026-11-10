@@ -51,6 +51,7 @@ interface PoemContentProps {
   borderWidth: number;
   showStamp: boolean;
   stamp: StampConfig;
+  effectiveScale: number;
   customTexts: CustomText[];
   logos: LogoConfig[];
   signatures: SignatureConfig[];
@@ -85,6 +86,7 @@ export function PoemContent({
   borderWidth,
   showStamp,
   stamp,
+  effectiveScale,
   customTexts,
   logos,
   signatures,
@@ -580,6 +582,7 @@ export function PoemContent({
           ariaLabel={t('stampElement')}
           frameRef={poemFrameRef}
           stamp={stamp}
+          effectiveScale={effectiveScale}
           onStampChange={onStampChange}
           onInteractionStart={onInteractionStart}
           onInteractionEnd={onInteractionEnd}
