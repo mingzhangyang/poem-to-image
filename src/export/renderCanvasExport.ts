@@ -1,7 +1,7 @@
 import { createStructuredPoemLayout, getPlainPoemText } from '../poemContent';
 import { ensureFontReady } from '../fontLoader';
 import { getStampCharacters } from '../stampRendering';
-import { getCanvasPositioningRect } from '../positioningRect';
+import { getCanvasPositioningRect, getCanvasTextOrigin, positionToCanvasPoint } from '../positioningRect';
 import { createCanvasTextMeasurer, createTextLayout } from '../textLayout';
 import { drawSignatureToCanvas, ensureSignatureFontsLoaded, getSignatureCanvasSize } from '../signatureRendering';
 import type {
@@ -200,14 +200,8 @@ function drawStructuredPoem(ctx: CanvasRenderingContext2D, scene: CanvasExportSc
           : undefined,
     measurerFactory: (fontFamily, size) => createCanvasTextMeasurer(fontFamily, size, ctx),
   });
-  const startX =
-    typography.poemPosition.exportLeft !== undefined
-      ? frameRect.x + (frameRect.width * typography.poemPosition.exportLeft) / 100
-      : frameRect.x + (frameRect.width * typography.poemPosition.positionX) / 100 - poemLayout.width / 2;
-  const startY =
-    typography.poemPosition.exportTop !== undefined
-      ? frameRect.y + (frameRect.height * typography.poemPosition.exportTop) / 100
-      : frameRect.y + (frameRect.height * typography.poemPosition.positionY) / 100 - poemLayout.height / 2;
+  const { x: startX, y: startY } =
+    getCanvasTextOrigin(frameRect, typography.poemPosition, poemLayout);
 
   ctx.save();
   applyTextShadow(ctx, typography);
@@ -231,8 +225,7 @@ function drawCustomText(
   frameRect: Rect,
 ) {
   const letterSpacing = scene.typography.letterSpacing;
-  const translateX = frameRect.x + (frameRect.width * customText.positionX) / 100;
-  const translateY = frameRect.y + (frameRect.height * customText.positionY) / 100;
+  const { x: translateX, y: translateY } = positionToCanvasPoint(frameRect, customText);
   const layout = createTextLayout(
     {
       text: customText.text || ' ',
@@ -264,8 +257,7 @@ function drawCustomText(
 }
 
 async function drawLogo(ctx: CanvasRenderingContext2D, logo: LogoConfig, frameRect: Rect) {
-  const centerX = frameRect.x + (frameRect.width * logo.positionX) / 100;
-  const centerY = frameRect.y + (frameRect.height * logo.positionY) / 100;
+  const { x: centerX, y: centerY } = positionToCanvasPoint(frameRect, logo);
   const image = await loadImage(logo.imageUrl);
 
   ctx.save();
@@ -278,8 +270,7 @@ async function drawLogo(ctx: CanvasRenderingContext2D, logo: LogoConfig, frameRe
 
 function drawSignatureElement(ctx: CanvasRenderingContext2D, sig: SignatureConfig, frameRect: Rect) {
   const { width: sigWidth, height: sigHeight } = getSignatureCanvasSize(sig.fontSize);
-  const centerX = frameRect.x + (frameRect.width * sig.positionX) / 100;
-  const centerY = frameRect.y + (frameRect.height * sig.positionY) / 100;
+  const { x: centerX, y: centerY } = positionToCanvasPoint(frameRect, sig);
 
   const offCanvas = document.createElement('canvas');
   offCanvas.width = sigWidth;

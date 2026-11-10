@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type {
   FC,
   KeyboardEvent as ReactKeyboardEvent,
@@ -7,7 +7,12 @@ import type {
   RefObject,
 } from 'react';
 import { useElementSize } from '../../hooks/useElementSize';
-import { getPreviewDragBounds, getPreviewPositioningRect, type PreviewPositioningRect } from '../../positioningRect';
+import { useFontLayoutRevision } from '../../hooks/useFontLayoutRevision';
+import {
+  getKeyboardDragBounds, getPreviewDragBounds, getPreviewPositioningRect,
+  isArrowDirection, measurePreviewElement, movePreviewPosition,
+  nudgePreviewPosition, resizePreviewTextBox, resizePreviewTextBoxByKeyboard,
+} from '../../positioningRect';
 import { createCanvasTextMeasurer, createTextLayout } from '../../textLayout';
 import type { CustomText } from '../../types';
 import { TextLayoutBlock } from './TextLayoutBlock';
@@ -26,23 +31,6 @@ interface CustomTextItemsProps {
   onCustomTextChange: (id: string, updates: Partial<CustomText>) => void;
   onInteractionStart: () => void;
   onInteractionEnd: () => void;
-}
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value));
-}
-
-const KEYBOARD_MOVE_STEP = 1;
-const KEYBOARD_MOVE_STEP_FAST = 3;
-const KEYBOARD_RESIZE_STEP = 2;
-
-function measureCustomTextGeometry(frameRect: PreviewPositioningRect, boxRect: DOMRect): Pick<CustomText, 'positionX' | 'positionY' | 'exportLeft' | 'exportTop'> {
-  return {
-    positionX: clamp((((boxRect.left + boxRect.right) / 2 - frameRect.left) / frameRect.width) * 100, 0, 100),
-    positionY: clamp((((boxRect.top + boxRect.bottom) / 2 - frameRect.top) / frameRect.height) * 100, 0, 100),
-    exportLeft: clamp(((boxRect.left - frameRect.left) / frameRect.width) * 100, 0, 100),
-    exportTop: clamp(((boxRect.top - frameRect.top) / frameRect.height) * 100, 0, 100),
-  };
 }
 
 interface DraggableCustomTextItemProps {
@@ -83,7 +71,8 @@ const DraggableCustomTextItem: FC<DraggableCustomTextItemProps> = ({
   const isResizingRef = useRef(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
-  const textLayout = createTextLayout(
+  const fontRevision = useFontLayoutRevision(fontFamily, customText.text);
+  const textLayout = useMemo(() => createTextLayout(
     {
       text: customText.text || ' ',
       writingMode: customText.writingMode,
@@ -98,7 +87,10 @@ const DraggableCustomTextItem: FC<DraggableCustomTextItemProps> = ({
         : undefined,
     },
     createCanvasTextMeasurer(fontFamily, customText.fontSize),
-  );
+  ), [
+    customText.text, customText.writingMode, customText.fontSize,
+    lineHeight, letterSpacing, liveBoxWidth, frameWidth, fontFamily, fontRevision,
+  ]);
 
   useEffect(() => {
     if (!isDraggingRef.current) {
@@ -138,18 +130,10 @@ const DraggableCustomTextItem: FC<DraggableCustomTextItemProps> = ({
         return;
       }
 
-      const nextPosition = {
-        positionX: clamp(
-          startPosition.positionX + ((moveEvent.clientX - startX) / frameRect.width) * 100,
-          bounds.minPositionX,
-          bounds.maxPositionX,
-        ),
-        positionY: clamp(
-          startPosition.positionY + ((moveEvent.clientY - startY) / frameRect.height) * 100,
-          bounds.minPositionY,
-          bounds.maxPositionY,
-        ),
-      };
+      const nextPosition = movePreviewPosition(startPosition, {
+        x: moveEvent.clientX - startX,
+        y: moveEvent.clientY - startY,
+      }, frameRect, bounds);
 
       livePositionRef.current = nextPosition;
       setLivePosition(nextPosition);
@@ -167,7 +151,7 @@ const DraggableCustomTextItem: FC<DraggableCustomTextItemProps> = ({
         customText.id,
         textRect
           ? {
-              ...measureCustomTextGeometry(frameRect, textRect),
+              ...measurePreviewElement(frameRect, textRect),
               boxWidth: liveBoxWidth,
             }
           : livePositionRef.current,
@@ -196,10 +180,7 @@ const DraggableCustomTextItem: FC<DraggableCustomTextItemProps> = ({
     onCustomTextSelect(customText.id);
 
     const startX = event.clientX;
-    const startLeft = boxRect.left - frameRect.left;
-    const startRight = boxRect.right - frameRect.left;
     const pointerId = event.pointerId;
-    const minWidthPx = 60;
     const liveStateRef = {
       current: {
         positionX: livePosition.positionX,
@@ -217,16 +198,8 @@ const DraggableCustomTextItem: FC<DraggableCustomTextItemProps> = ({
         return;
       }
 
-      const delta = moveEvent.clientX - startX;
-      const nextLeft = side === 'left'
-        ? clamp(startLeft + delta, 0, startRight - minWidthPx)
-        : startLeft;
-      const nextRight = side === 'right'
-        ? clamp(startRight + delta, startLeft + minWidthPx, frameRect.width)
-        : startRight;
-      const nextWidthPx = nextRight - nextLeft;
-      const nextBoxWidth = clamp((nextWidthPx / frameRect.width) * 100, 5, 100);
-      const nextPositionX = clamp((((nextLeft + nextRight) / 2) / frameRect.width) * 100, 0, 100);
+      const { positionX: nextPositionX, boxWidth: nextBoxWidth } =
+        resizePreviewTextBox(side, frameRect, boxRect, moveEvent.clientX - startX);
 
       liveStateRef.current = {
         positionX: nextPositionX,
@@ -249,7 +222,7 @@ const DraggableCustomTextItem: FC<DraggableCustomTextItemProps> = ({
         customText.id,
         textRect
           ? {
-              ...measureCustomTextGeometry(frameRect, textRect),
+              ...measurePreviewElement(frameRect, textRect),
               boxWidth: liveStateRef.current.boxWidth,
             }
           : liveStateRef.current,
@@ -281,62 +254,34 @@ const DraggableCustomTextItem: FC<DraggableCustomTextItemProps> = ({
       }
 
       onCustomTextChange(customText.id, {
-        ...measureCustomTextGeometry(positioningRect, textRect),
+        ...measurePreviewElement(positioningRect, textRect),
         boxWidth: undefined,
       });
     });
   };
 
   const handleKeyboardMove = (event: ReactKeyboardEvent<HTMLDivElement>) => {
-    const isArrowKey = event.key === 'ArrowLeft'
-      || event.key === 'ArrowRight'
-      || event.key === 'ArrowUp'
-      || event.key === 'ArrowDown';
-
-    if (!isArrowKey) {
-      return;
-    }
-
+    const key = event.key;
+    if (!isArrowDirection(key)) return;
     event.preventDefault();
     event.stopPropagation();
     onCustomTextSelect(customText.id);
 
-    const step = event.shiftKey ? KEYBOARD_MOVE_STEP_FAST : KEYBOARD_MOVE_STEP;
     const frameRect = frameRef.current ? getPreviewPositioningRect(frameRef.current) : null;
     const boxRect = textBoxRef.current?.getBoundingClientRect();
-    const bounds = frameRect && boxRect
-      ? getPreviewDragBounds(frameRect, boxRect)
-      : {
-          minPositionX: 0,
-          maxPositionX: 100,
-          minPositionY: 0,
-          maxPositionY: 100,
-        };
+    const bounds = getKeyboardDragBounds(frameRect, boxRect);
 
-    if (event.altKey && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
-      const fallbackWidth = frameRect?.width
-        ? clamp((textLayout.width / frameRect.width) * 100, 5, 100)
-        : 100;
-      const currentWidth = liveBoxWidth ?? fallbackWidth;
-      const nextWidth = clamp(
-        currentWidth + (event.key === 'ArrowRight' ? KEYBOARD_RESIZE_STEP : -KEYBOARD_RESIZE_STEP),
-        5,
-        100,
-      );
+    if (event.altKey && (key === 'ArrowLeft' || key === 'ArrowRight')) {
+      const nextWidth = resizePreviewTextBoxByKeyboard(liveBoxWidth, textLayout.width, frameRect?.width, key);
       setLiveBoxWidth(nextWidth);
-      onCustomTextChange(customText.id, { ...livePosition, boxWidth: nextWidth });
+      onCustomTextChange(customText.id, { ...livePosition, boxWidth: nextWidth, exportLeft: undefined, exportTop: undefined });
       return;
     }
 
-    const deltaX = event.key === 'ArrowLeft' ? -step : event.key === 'ArrowRight' ? step : 0;
-    const deltaY = event.key === 'ArrowUp' ? -step : event.key === 'ArrowDown' ? step : 0;
-    const nextPosition = {
-      positionX: clamp(livePosition.positionX + deltaX, bounds.minPositionX, bounds.maxPositionX),
-      positionY: clamp(livePosition.positionY + deltaY, bounds.minPositionY, bounds.maxPositionY),
-    };
+    const nextPosition = nudgePreviewPosition(livePosition, key, event.shiftKey, bounds);
 
     setLivePosition(nextPosition);
-    onCustomTextChange(customText.id, { ...nextPosition, boxWidth: liveBoxWidth });
+    onCustomTextChange(customText.id, { ...nextPosition, boxWidth: liveBoxWidth, exportLeft: undefined, exportTop: undefined });
   };
 
   return (

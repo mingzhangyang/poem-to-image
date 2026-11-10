@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent, RefObject } from 'react';
-import { getPreviewDragBounds, getPreviewPositioningRect } from '../../positioningRect';
+import {
+  getKeyboardDragBounds, getPreviewDragBounds, getPreviewPositioningRect,
+  isArrowDirection, movePreviewPosition, nudgePreviewPosition,
+} from '../../positioningRect';
 import {
   getBrushStampSkew,
   getStampCssBorderRadius,
@@ -16,13 +19,6 @@ interface StampOverlayProps {
   onInteractionStart: () => void;
   onInteractionEnd: () => void;
 }
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value));
-}
-
-const KEYBOARD_MOVE_STEP = 1;
-const KEYBOARD_MOVE_STEP_FAST = 3;
 
 function getFrameStyle(stamp: StampConfig): CSSProperties {
   const { skewXDeg, skewYDeg } = getBrushStampSkew();
@@ -105,18 +101,10 @@ export function StampOverlay({ ariaLabel, frameRef, stamp, onStampChange, onInte
         return;
       }
 
-      const nextPosition = {
-        positionX: clamp(
-          startPosition.positionX + ((moveEvent.clientX - startX) / frameRect.width) * 100,
-          bounds.minPositionX,
-          bounds.maxPositionX,
-        ),
-        positionY: clamp(
-          startPosition.positionY + ((moveEvent.clientY - startY) / frameRect.height) * 100,
-          bounds.minPositionY,
-          bounds.maxPositionY,
-        ),
-      };
+      const nextPosition = movePreviewPosition(startPosition, {
+        x: moveEvent.clientX - startX,
+        y: moveEvent.clientY - startY,
+      }, frameRect, bounds);
 
       livePositionRef.current = nextPosition;
       setLivePosition(nextPosition);
@@ -136,35 +124,15 @@ export function StampOverlay({ ariaLabel, frameRef, stamp, onStampChange, onInte
   };
 
   const handleKeyboardMove = (event: ReactKeyboardEvent<HTMLDivElement>) => {
-    const isArrowKey = event.key === 'ArrowLeft'
-      || event.key === 'ArrowRight'
-      || event.key === 'ArrowUp'
-      || event.key === 'ArrowDown';
-
-    if (!isArrowKey) {
-      return;
-    }
-
+    const key = event.key;
+    if (!isArrowDirection(key)) return;
     event.preventDefault();
     event.stopPropagation();
 
-    const step = event.shiftKey ? KEYBOARD_MOVE_STEP_FAST : KEYBOARD_MOVE_STEP;
     const frameRect = frameRef.current ? getPreviewPositioningRect(frameRef.current) : null;
     const boxRect = stampRef.current?.getBoundingClientRect();
-    const bounds = frameRect && boxRect
-      ? getPreviewDragBounds(frameRect, boxRect)
-      : {
-          minPositionX: 0,
-          maxPositionX: 100,
-          minPositionY: 0,
-          maxPositionY: 100,
-        };
-    const deltaX = event.key === 'ArrowLeft' ? -step : event.key === 'ArrowRight' ? step : 0;
-    const deltaY = event.key === 'ArrowUp' ? -step : event.key === 'ArrowDown' ? step : 0;
-    const nextPosition = {
-      positionX: clamp(livePosition.positionX + deltaX, bounds.minPositionX, bounds.maxPositionX),
-      positionY: clamp(livePosition.positionY + deltaY, bounds.minPositionY, bounds.maxPositionY),
-    };
+    const bounds = getKeyboardDragBounds(frameRect, boxRect);
+    const nextPosition = nudgePreviewPosition(livePosition, key, event.shiftKey, bounds);
 
     setLivePosition(nextPosition);
     onStampChange(nextPosition);
