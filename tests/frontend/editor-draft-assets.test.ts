@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   discardDraftAssetRegistration,
+  discardSavedNavigationDraft,
+  noteNavigationDraftSaved,
   pinDraftAssetSnapshot,
+  retainDraftForNavigation,
   registerDraftAssetObjectUrl,
   releaseEditorDraftAssets,
   retainEditorDraftAssets,
@@ -98,6 +101,54 @@ test('an abandoned staged upload releases its cached Blob and URL', () => {
     discardDraftAssetRegistration(url);
     assert.deepEqual(revoked, [url], 'discard must be idempotent');
   } finally {
+    URL.revokeObjectURL = originalRevoke;
+  }
+});
+
+test('SPA route detachment keeps an unsaved image until the returning editor adopts it', () => {
+  const originalRevoke = URL.revokeObjectURL;
+  const revoked: string[] = [];
+  URL.revokeObjectURL = (url) => { revoked.push(url); };
+  const url = `blob:https://inkpoem.test/${crypto.randomUUID()}`;
+  let ticket: number | null = null;
+  try {
+    registerDraftAssetObjectUrl(url, new Blob(['unsaved after failed write']));
+    retainEditorDraftAssets('leaving-editor', [url]);
+    ticket = retainDraftForNavigation(sceneWith(url), 4);
+    releaseEditorDraftAssets('leaving-editor');
+    assert.deepEqual(revoked, [], 'failed detached write may not evict the in-memory scene');
+
+    retainEditorDraftAssets('returning-editor', [url]);
+    assert.deepEqual(revoked, [], 'new editor assumes ownership before recovery lease goes away');
+    releaseEditorDraftAssets('returning-editor');
+    assert.deepEqual(revoked, [url], 'resource released once no editor, save or recovery owns it');
+  } finally {
+    if (ticket !== null) discardSavedNavigationDraft(ticket);
+    releaseEditorDraftAssets('leaving-editor');
+    releaseEditorDraftAssets('returning-editor');
+    URL.revokeObjectURL = originalRevoke;
+  }
+});
+
+test('a partial detached save must retain dirty images until the final commit', () => {
+  const originalRevoke = URL.revokeObjectURL;
+  const revoked: string[] = [];
+  URL.revokeObjectURL = (url) => { revoked.push(url); };
+  const url = `blob:https://inkpoem.test/${crypto.randomUUID()}`;
+  const ticket = (() => {
+    registerDraftAssetObjectUrl(url, new Blob(['edited while saving']));
+    retainEditorDraftAssets('partial-save-editor', [url]);
+    return retainDraftForNavigation(sceneWith(url), 2);
+  })();
+  try {
+    releaseEditorDraftAssets('partial-save-editor');
+    noteNavigationDraftSaved(ticket, 3, false);
+    assert.deepEqual(revoked, [], 'an intermediate write cannot discard the final dirty scene');
+    noteNavigationDraftSaved(ticket, 4, true);
+    assert.deepEqual(revoked, [url], 'the last confirmed save releases recovery ownership');
+  } finally {
+    discardSavedNavigationDraft(ticket);
+    releaseEditorDraftAssets('partial-save-editor');
     URL.revokeObjectURL = originalRevoke;
   }
 });

@@ -44,10 +44,12 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getTok
   const [gradientColor1, setGradientColor1] = useState(initialDraft?.gradientColor1 ?? '#e0e7ff');
   const [gradientColor2, setGradientColor2] = useState(initialDraft?.gradientColor2 ?? '#ede9fe');
   const [gradientDirection, setGradientDirection] = useState(initialDraft?.gradientDirection ?? 'to bottom right');
-  const [backgroundImage, setBackgroundImage] = useState<string | null>(() =>
-    initialDraft?.backgroundType === 'image' ? (initialDraft.backgroundImage ?? null) : null);
+  // An image remains part of the editable draft when Solid/Paper is selected.
+  // Keep its hydrated URL (and provenance) so undo, switching back to Image,
+  // and asset-lease adoption work even while the image is not displayed.
+  const [backgroundImage, setBackgroundImage] = useState<string | null>(() => initialDraft?.backgroundImage ?? null);
   const [backgroundImageSource, setBackgroundImageSource] = useState<BackgroundImageSource>(() => {
-    const url = initialDraft?.backgroundType === 'image' ? initialDraft.backgroundImage : null;
+    const url = initialDraft?.backgroundImage;
     return url ? (initialDraft?.backgroundImageSource ?? inferBackgroundImageSource(url)) : null;
   });
   const [backgroundSize, setBackgroundSize] = useState<'cover' | 'contain' | 'stretch'>(initialDraft?.backgroundSize ?? 'cover');

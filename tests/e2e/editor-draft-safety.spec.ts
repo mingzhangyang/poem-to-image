@@ -10,7 +10,7 @@ const image = Buffer.from(
 async function readDraft(page: Page) {
   return page.evaluate(async () => new Promise<{
     revision: number;
-    scene: { poem: { title: string }; background: { backgroundImage: string | null }; decorations: { logos: Array<{ imageUrl: string }> } };
+    scene: { poem: { title: string }; background: { backgroundImage: string | null; backgroundType: string }; decorations: { logos: Array<{ imageUrl: string }> } };
   } | null>((resolve, reject) => {
     const open = indexedDB.open('inkpoem-editor-drafts', 1);
     open.onerror = () => reject(open.error);
@@ -296,3 +296,136 @@ test('restored signatures request their font stylesheet and paint a preview with
   await page.waitForTimeout(1000);
   expect((await readDraft(page))?.revision).toBe(revision);
 });
+
+test('dirty artwork survives a failed detached save during same-tab navigation', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await expect(page.getByRole('button', { name: 'Open Editor' })).toBeVisible();
+
+  // Establish a committed baseline, so the failed write must not be mistaken
+  // for an ordinary first-load draft.
+  await page.getByRole('button', { name: 'Open Editor' }).click();
+  await page.getByPlaceholder('Title').fill('Committed before navigation');
+  await page.getByRole('button', { name: 'Done' }).click();
+  await expect.poll(async () => (await readDraft(page))?.scene.poem.title)
+    .toBe('Committed before navigation');
+  const baselineRevision = (await readDraft(page))!.revision;
+
+  await page.evaluate(() => {
+    Object.defineProperty(indexedDB, 'open', {
+      configurable: true, value: () => { throw new Error('Storage unavailable'); },
+    });
+  });
+  await page.getByRole('button', { name: /^Background/ }).click();
+  await page.getByRole('button', { name: 'Image', exact: true }).click();
+  await page.getByLabel('Upload Image').setInputFiles({
+    name: 'unsaved-background.png', mimeType: 'image/png', buffer: image,
+  });
+  await expect.poll(async () => (await page.locator('[data-export-layer="background"]').first().getAttribute('style')) ?? '')
+    .toContain('blob:');
+
+  await page.getByRole('button', { name: 'Open Editor' }).click();
+  await page.getByPlaceholder('Title').fill('Not yet on disk');
+  await page.getByRole('button', { name: 'Done' }).click();
+
+  // Simulate a React Router navigation, NOT a full reload. Router unmounts
+  // the editor without a beforeunload event or a durable binary checkpoint.
+  await page.evaluate(() => {
+    history.pushState({}, '', '/about');
+    window.dispatchEvent(new PopStateEvent('popstate', { state: history.state }));
+  });
+  await expect(page).toHaveURL(/\/about$/);
+  await expect(page.getByRole('heading', { name: 'InkPoem' })).toBeVisible();
+  await page.waitForTimeout(750); // Let the detached save fail while away.
+
+  await page.evaluate(() => { Reflect.deleteProperty(indexedDB, 'open'); });
+  await expect.poll(async () => (await readDraft(page))?.revision).toBe(baselineRevision);
+  await page.locator('a[href="/"]').first().click();
+  await expect(page.getByRole('button', { name: 'Open Editor' })).toBeVisible();
+  await expect(page.getByLabel('Body').getByText('Not yet on disk')).toBeVisible();
+  const restoredBackground = page.locator('[data-export-layer="background"]').first();
+  await expect.poll(async () => (await restoredBackground.getAttribute('style')) ?? '').toContain('blob:');
+  await expect.poll(() => restoredBackground.evaluate(async (element) => {
+    const css = getComputedStyle(element).backgroundImage;
+    const src = css.match(/url\(["']?(blob:[^"')]+)["']?\)/)?.[1];
+    if (!src) return false;
+    const img = new Image();
+    img.src = src;
+    try { await img.decode(); return img.naturalWidth > 0; } catch { return false; }
+  })).toBe(true);
+  await expect.poll(async () => (await readDraft(page))?.scene.poem.title).toBe('Not yet on disk');
+  await expect.poll(async () => (await readDraft(page))?.scene.background.backgroundImage)
+    .toMatch(/^draft-asset:.+/);
+  expect((await readDraft(page))!.revision).toBeGreaterThan(baselineRevision);
+});
+
+test('a hidden uploaded background remains available after reload and changing modes', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: /^Background/ }).click();
+  await page.getByRole('button', { name: 'Image', exact: true }).click();
+  await page.getByLabel('Upload Image').setInputFiles({
+    name: 'hidden-background.png', mimeType: 'image/png', buffer: image,
+  });
+  await expect.poll(async () => (await readDraft(page))?.scene.background.backgroundImage)
+    .toMatch(/^draft-asset:.+/);
+  await page.getByRole('button', { name: 'Solid', exact: true }).click();
+  await expect.poll(async () => (await readDraft(page))?.scene.background.backgroundType).toBe('solid');
+  const id = (await readDraft(page))!.scene.background.backgroundImage;
+  expect(id).toMatch(/^draft-asset:.+/);
+
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await expect(page.getByRole('button', { name: /^Background/ })).toBeVisible();
+  await page.getByRole('button', { name: /^Background/ }).click();
+  await page.getByRole('button', { name: 'Image', exact: true }).click();
+  const background = page.locator('[data-export-layer="background"]').first();
+  await expect.poll(async () => (await background.getAttribute('style')) ?? '').toContain('blob:');
+  await expect.poll(() => background.evaluate(async (element) => {
+    const src = getComputedStyle(element).backgroundImage.match(/url\(["']?(blob:[^"')]+)["']?\)/)?.[1];
+    if (!src) return false;
+    const img = new Image();
+    img.src = src;
+    try { await img.decode(); return img.naturalWidth > 0; } catch { return false; }
+  })).toBe(true);
+});
+
+for (const invalidAssetLocation of ['background', 'logo'] as const) {
+  test(`empty ${invalidAssetLocation} asset IDs block unsafe restoration`, async ({ page }) => {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await expect(page.getByRole('button', { name: 'Open Editor' })).toBeVisible();
+    await page.getByRole('button', { name: 'Open Editor' }).click();
+    await page.getByPlaceholder('Title').fill('Preserve corrupt asset document');
+    await page.getByRole('button', { name: 'Done' }).click();
+    await expect.poll(async () => (await readDraft(page))?.scene.poem.title)
+      .toBe('Preserve corrupt asset document');
+    const revision = (await readDraft(page))!.revision;
+    await page.evaluate(async (location) => new Promise<void>((resolve, reject) => {
+      const request = indexedDB.open('inkpoem-editor-drafts', 1);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const db = request.result;
+        const tx = db.transaction('documents', 'readwrite');
+        const store = tx.objectStore('documents');
+        const read = store.get('current');
+        read.onsuccess = () => {
+          const entry = read.result as {
+            scene: {
+              background: { backgroundImage: string | null };
+              decorations: { logos: unknown[] };
+            };
+          };
+          if (location === 'background') entry.scene.background.backgroundImage = 'draft-asset:';
+          else entry.scene.decorations.logos.push({
+            id: 'broken', imageUrl: 'draft-asset:', positionX: 50, positionY: 50,
+            size: 100, rotation: 0, opacity: 1,
+          });
+          store.put(entry, 'current');
+        };
+        tx.oncomplete = () => { db.close(); resolve(); };
+        tx.onerror = () => { db.close(); reject(tx.error); };
+      };
+    }), invalidAssetLocation);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await expect(page.getByRole('alert')).toContainText('could not be opened safely');
+    await expect(page.getByRole('button', { name: 'Retry loading' })).toBeVisible();
+    await expect.poll(async () => (await readDraft(page))?.revision).toBe(revision);
+  });
+}

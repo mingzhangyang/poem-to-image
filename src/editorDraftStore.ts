@@ -63,6 +63,55 @@ const saveReferences = new Map<string, number>();
 // save is never allowed to revoke their URL or discard their Blob.
 const stagedAssets = new Set<string>();
 
+/**
+ * A same-tab SPA route change does not fire beforeunload. Keep the *entire*
+ * dirty scene and its binary owners across route unmounts until a detached
+ * save succeeds or a new editor has adopted the recovered scene.
+ */
+interface DetachedNavigationDraft {
+  id: number;
+  scene: EditorDraftState;
+  baseRevision: number;
+  release: () => void;
+  flush: Promise<void> | null;
+  offeredForAdoption: boolean;
+}
+let detachedNavigationDraft: DetachedNavigationDraft | null = null;
+let nextDetachedNavigationId = 0;
+
+function forgetDetachedNavigationDraft(id: number): void {
+  if (detachedNavigationDraft?.id !== id) return;
+  const old = detachedNavigationDraft;
+  detachedNavigationDraft = null;
+  old.release();
+}
+
+export function retainDraftForNavigation(scene: EditorDraftState, baseRevision: number): number {
+  // Acquire the new binary lease *before* releasing an older one.
+  const release = pinSaveAssets(scene);
+  const previous = detachedNavigationDraft;
+  const id = ++nextDetachedNavigationId;
+  detachedNavigationDraft = {
+    id, scene, baseRevision, release, flush: null, offeredForAdoption: false,
+  };
+  previous?.release();
+  return id;
+}
+
+export function trackNavigationDraftFlush(id: number, flush: Promise<void>): void {
+  if (detachedNavigationDraft?.id === id) detachedNavigationDraft.flush = flush;
+}
+
+export function noteNavigationDraftSaved(id: number, revision: number, fullySaved: boolean): void {
+  if (detachedNavigationDraft?.id !== id) return;
+  if (fullySaved) forgetDetachedNavigationDraft(id);
+  else detachedNavigationDraft.baseRevision = revision;
+}
+
+export function discardSavedNavigationDraft(id: number): void {
+  forgetDetachedNavigationDraft(id);
+}
+
 function sceneAssetUrls(scene: EditorDraftState): string[] {
   return [scene.background.backgroundImage, ...scene.decorations.logos.map((logo) => logo.imageUrl)]
     .filter((url): url is string => typeof url === 'string' && (url.startsWith('blob:') || url.startsWith('data:')));
@@ -84,6 +133,13 @@ export function retainEditorDraftAssets(editorId: string, urls: Iterable<string>
   // Atomically transfer staging ownership to the committed editor/history.
   editorReferences.set(editorId, ownedUrls);
   for (const url of ownedUrls) stagedAssets.delete(url);
+  // Only the just-mounted editor with *all* the recovered image references may
+  // take over this lease; a previously mounted editor cannot clear it.
+  const detached = detachedNavigationDraft;
+  if (detached?.offeredForAdoption
+    && sceneAssetUrls(detached.scene).every((url) => ownedUrls.has(url))) {
+    forgetDetachedNavigationDraft(detached.id);
+  }
   pruneUnusedAssets();
 }
 
@@ -150,6 +206,12 @@ function optionalField(value: Record<string, unknown>, key: string, type: 'strin
     : typeof entry === 'number' && Number.isFinite(entry));
 }
 
+function hasValidAssetReference(value: unknown): boolean {
+  // draft-asset: with no ID cannot be resolved, so never mount it as an image.
+  return typeof value !== 'string' || !value.startsWith(ASSET_PREFIX)
+    || value.length > ASSET_PREFIX.length;
+}
+
 function isDraftState(value: unknown): value is EditorDraftState {
   if (!isRecord(value)) return false;
   const { poem, poemStyle, background, typography, decorations } = value;
@@ -170,6 +232,7 @@ function isDraftState(value: unknown): value is EditorDraftState {
     || !optionalField(background, 'backgroundSize', 'string')
     || (background.backgroundImage !== undefined && background.backgroundImage !== null
       && typeof background.backgroundImage !== 'string')
+    || !hasValidAssetReference(background.backgroundImage)
     || (background.backgroundImageSource !== undefined && background.backgroundImageSource !== null
       && typeof background.backgroundImageSource !== 'string')) return false;
   if (!hasFields(typography,
@@ -199,6 +262,7 @@ function isDraftState(value: unknown): value is EditorDraftState {
     && ['zIndex', 'exportLeft', 'exportTop', 'boxWidth'].every((key) => optionalField(item, key, 'number')))) return false;
   if (!decorations.logos.every((item: unknown) => hasFields(item, ['id', 'imageUrl'],
     ['positionX', 'positionY', 'size', 'rotation', 'opacity'])
+    && hasValidAssetReference(item.imageUrl)
     && ['zIndex', 'exportLeft', 'exportTop'].every((key) => optionalField(item, key, 'number')))) return false;
   return (decorations.signatures ?? []).every((item: unknown) => hasFields(item,
     ['id', 'text', 'font', 'color', 'flourish'],
@@ -366,7 +430,21 @@ function pendingEmergencyDraft(revision: number): EditorDraftState | null {
 }
 
 export async function loadEditorDraft(): Promise<LoadedEditorDraft> {
+  // Let the previous route's detached write finish before selecting a source.
+  // Failure retains the in-memory scene; success reloads its committed revision.
+  const detached = detachedNavigationDraft;
+  if (detached?.flush) await detached.flush.catch(() => undefined);
   const { record, blobs } = await readStoredDraft();
+  const retained = detachedNavigationDraft;
+  if (retained) {
+    retained.offeredForAdoption = true;
+    return {
+      state: retained.scene,
+      revision: retained.baseRevision,
+      objectUrls: [],
+      recoveredPending: true,
+    };
+  }
   const pending = pendingEmergencyDraft(record?.revision ?? 0);
   if (!record) return {
     state: pending ?? legacyDraft(),

@@ -1,5 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { DraftConflictError, checkpointEditorDraft, pinDraftAssetSnapshot, saveEditorDraft, type EditorDraftState } from '../editorDraftStore';
+import {
+  DraftConflictError,
+  checkpointEditorDraft,
+  discardSavedNavigationDraft,
+  noteNavigationDraftSaved,
+  pinDraftAssetSnapshot,
+  retainDraftForNavigation,
+  saveEditorDraft,
+  trackNavigationDraftFlush,
+  type EditorDraftState,
+} from '../editorDraftStore';
 import type {
   BackgroundSectionProps,
   PoemContentData,
@@ -93,6 +103,7 @@ export function useEditorPersistence({
   const needsPromotionRef = useRef(promoteInitial);
   const lifecycleEpochRef = useRef(0);
   const mountedRef = useRef(true);
+  const detachedTicketRef = useRef<number | null>(null);
 
   const persistLatest = useCallback((): Promise<void> => {
     if (inFlightRef.current) return inFlightRef.current;
@@ -104,6 +115,10 @@ export function useEditorPersistence({
           const savedRevision = await saveEditorDraft(buildDraft(snapshotRef.current), diskRevisionRef.current);
           diskRevisionRef.current = savedRevision;
           completedRevisionRef.current = revision;
+          const ticket = detachedTicketRef.current;
+          if (ticket !== null) {
+            noteNavigationDraftSaved(ticket, savedRevision, revision === pendingRevisionRef.current);
+          }
           if (revision < pendingRevisionRef.current) {
             checkpointEditorDraft(buildDraft(snapshotRef.current), savedRevision);
           }
@@ -129,15 +144,31 @@ export function useEditorPersistence({
   useEffect(() => {
     const epoch = ++lifecycleEpochRef.current;
     mountedRef.current = true;
-    const persistWhenLeaving = () => {
+    const persistWhenLeaving = (inAppNavigation = false) => {
       if (timerRef.current) clearTimeout(timerRef.current);
       if (completedRevisionRef.current >= pendingRevisionRef.current) return;
       const current = buildDraft(snapshotRef.current);
       checkpointEditorDraft(current, diskRevisionRef.current);
-      // A previous write may be in flight, holding older binary resources.
-      // Pin the latest dirty scene until the entire serialized chain settles.
-      const unpin = pinDraftAssetSnapshot(current);
-      void persistLatest().finally(unpin);
+      if (inAppNavigation) {
+        // Unlike pagehide, a router unmount can finish while the tab stays
+        // alive. A failed detached save must NOT discard this unsaved scene.
+        const ticket = retainDraftForNavigation(current, diskRevisionRef.current);
+        detachedTicketRef.current = ticket;
+        const flush = persistLatest();
+        trackNavigationDraftFlush(ticket, flush);
+        void flush.then(() => {
+          if (completedRevisionRef.current >= pendingRevisionRef.current) {
+            discardSavedNavigationDraft(ticket);
+          }
+        }).catch(() => {
+          // Retain the dirty scene and its images for the next editor mount.
+        });
+      } else {
+        // pagehide/visibilitychange may be followed by a real page shutdown.
+        // Pin binaries until this best-effort write has finished.
+        const unpin = pinDraftAssetSnapshot(current);
+        void persistLatest().then(unpin, unpin);
+      }
     };
     const persistWhenHidden = () => {
       if (document.visibilityState === 'hidden') persistWhenLeaving();
@@ -148,19 +179,20 @@ export function useEditorPersistence({
       event.returnValue = '';
     };
 
-    window.addEventListener('pagehide', persistWhenLeaving);
+    const onPageHide = () => persistWhenLeaving();
+    window.addEventListener('pagehide', onPageHide);
     window.addEventListener('beforeunload', warnIfUnsaved);
     document.addEventListener('visibilitychange', persistWhenHidden);
     return () => {
-      window.removeEventListener('pagehide', persistWhenLeaving);
+      window.removeEventListener('pagehide', onPageHide);
       window.removeEventListener('beforeunload', warnIfUnsaved);
       document.removeEventListener('visibilitychange', persistWhenHidden);
       // React 19 StrictMode replays setup/cleanup without unmounting the editor.
       // Defer flushing until we know this really was its last lifetime.
       queueMicrotask(() => {
         if (lifecycleEpochRef.current !== epoch) return;
-        persistWhenLeaving();
         mountedRef.current = false;
+        persistWhenLeaving(true);
         if (timerRef.current) clearTimeout(timerRef.current);
       });
     };

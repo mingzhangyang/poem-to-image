@@ -38,13 +38,21 @@ rendering. Those have separate owners and tests.
   A read-only reload of an existing draft never increases its revision. Blob-backed
   edits cannot be checkpointed synchronously; the unsaved-changes leave-page
   warning protects that window instead.
+- **In-app navigation:** Client-side route changes to About/Privacy do not
+  trigger `beforeunload`. The latest unsaved scene and its binary leases are
+  therefore retained outside React while the detached write settles. A
+  successful save releases the handoff; a failed save keeps it in memory until
+  the next editor mounts, adopts the URLs, and retries. Intermediate saves
+  update the expected disk revision without clearing later dirty changes.
+  This handoff does not survive process termination or a hard reload.
 - **Recovery:** IndexedDB unavailable, malformed documents, or missing binary
   assets **block editor initialization** and offer Retry. They never cause
   an empty editor to auto-save over unread drafts. Once mounted, failed writes
   display a persistent retry action (further edits do not dismiss it);
   competing tab revisions display a non-overwriting conflict warning.
   Corrupt nested typography, decorations, stamp, logo, and signature data
-  is rejected before rendering; supported legacy optional fields are kept.
+  is rejected before rendering; empty `draft-asset:` IDs are also rejected
+  as corruption. Supported legacy optional fields are kept.
 
 ## Limits and known constraints
 
@@ -120,3 +128,17 @@ It does not change D1 migrations, R2 buckets, share links, or the Worker.
   abandoned uploads, and rehydration of a saved signature without pressing
   the Add Signature button. For the latter, browsers without network access
   may paint fallback glyphs while the font stylesheet is blocked.
+
+## SPA navigation / missing-asset follow-up tests
+
+1. Commit a document with an image, block IndexedDB writes, edit the artwork,
+   then navigate to `/about` **without a full reload**. The detached save
+   fails, yet returning to `/` restores the in-memory text and decodable
+   image. Restore IndexedDB and confirm a new revision persists. Closing the
+   tab while binary writes fail is not protected by this in-memory handoff.
+2. Upload a background, select Solid or Paper, save and reload. Switching
+   back to Image must restore the hidden image: keeping the source URL in
+   editor state also lets its asset lease be adopted and eventually released.
+3. Corrupt a saved background or logo URL to exactly `draft-asset:` with no
+   identifier. The editor must refuse to mount and must not write over the
+   invalid record.
