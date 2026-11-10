@@ -16,8 +16,13 @@ import {
   isVectorBorderStyle,
 } from '../../borderUtils';
 import { useElementSize } from '../../hooks/useElementSize';
-import { createStructuredPoemLayout } from '../../poemContent';
-import { getPreviewDragBounds, getPreviewPositioningRect, type PreviewPositioningRect } from '../../positioningRect';
+import { useFontLayoutRevision } from '../../hooks/useFontLayoutRevision';
+import { createStructuredPoemLayout, getPlainPoemText } from '../../poemContent';
+import {
+  getKeyboardDragBounds, getPreviewDragBounds, getPreviewPositioningRect,
+  isArrowDirection, measurePreviewElement, movePreviewPosition,
+  nudgePreviewPosition, resizePreviewTextBox, resizePreviewTextBoxByKeyboard,
+} from '../../positioningRect';
 import type { BorderStyle, CustomText, LogoConfig, PoemContentData, PoemLayerStyle, PositionedElement, SignatureConfig, StampConfig, TranslateFn, WritingMode } from '../../types';
 import { CustomTextItems } from './CustomTextItems';
 import { LogoOverlay } from './LogoOverlay';
@@ -57,23 +62,6 @@ interface PoemContentProps {
   onSignatureChange: (id: string, updates: Partial<SignatureConfig>) => void;
   onInteractionStart: () => void;
   onInteractionEnd: () => void;
-}
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value));
-}
-
-const KEYBOARD_MOVE_STEP = 1;
-const KEYBOARD_MOVE_STEP_FAST = 3;
-const KEYBOARD_RESIZE_STEP = 2;
-
-function measurePositionedElement(frameRect: PreviewPositioningRect, boxRect: DOMRect): PositionedElement {
-  return {
-    positionX: clamp((((boxRect.left + boxRect.right) / 2 - frameRect.left) / frameRect.width) * 100, 0, 100),
-    positionY: clamp((((boxRect.top + boxRect.bottom) / 2 - frameRect.top) / frameRect.height) * 100, 0, 100),
-    exportLeft: clamp(((boxRect.left - frameRect.left) / frameRect.width) * 100, 0, 100),
-    exportTop: clamp(((boxRect.top - frameRect.top) / frameRect.height) * 100, 0, 100),
-  };
 }
 
 export function PoemContent({
@@ -145,6 +133,7 @@ export function PoemContent({
     return undefined;
   }, [writingMode, liveBoxWidth, frameSize.width]);
   const poemPlaceholder = t('poemPlaceholder');
+  const fontRevision = useFontLayoutRevision(fontFamily, getPlainPoemText(poem));
   const poemLayout = useMemo(
     () => createStructuredPoemLayout({
       poem,
@@ -167,6 +156,7 @@ export function PoemContent({
       columnCount,
       columnGap,
       poemWrapWidth,
+      fontRevision,
     ],
   );
 
@@ -229,10 +219,10 @@ export function PoemContent({
       onPoemPositionChange(
         poemRect
           ? {
-              ...measurePositionedElement(frameRect, poemRect),
+              ...measurePreviewElement(frameRect, poemRect),
               boxWidth: liveBoxWidth,
             }
-          : livePositionRef.current,
+          : { ...livePositionRef.current, exportLeft: undefined, exportTop: undefined },
       );
       onInteractionEnd();
       window.removeEventListener('pointermove', handlePointerMove);
@@ -246,18 +236,10 @@ export function PoemContent({
         return;
       }
 
-      const nextPosition = {
-        positionX: clamp(
-          startPosition.positionX + ((moveEvent.clientX - startX) / frameRect.width) * 100,
-          bounds.minPositionX,
-          bounds.maxPositionX,
-        ),
-        positionY: clamp(
-          startPosition.positionY + ((moveEvent.clientY - startY) / frameRect.height) * 100,
-          bounds.minPositionY,
-          bounds.maxPositionY,
-        ),
-      };
+      const nextPosition = movePreviewPosition(startPosition, {
+        x: moveEvent.clientX - startX,
+        y: moveEvent.clientY - startY,
+      }, frameRect, bounds);
 
       livePositionRef.current = nextPosition;
       setLivePosition(nextPosition);
@@ -281,8 +263,6 @@ export function PoemContent({
     setActiveTextSelection({ kind: 'poem' });
 
     const startX = event.clientX;
-    const startLeft = boxRect.left - frameRect.left;
-    const startRight = boxRect.right - frameRect.left;
     const pointerId = event.pointerId;
     isResizingRef.current = true;
     setIsResizing(true);
@@ -295,23 +275,14 @@ export function PoemContent({
         boxWidth: liveBoxWidth,
       },
     };
-    const minWidthPx = 60;
 
     const handlePointerMove = (moveEvent: PointerEvent) => {
       if (moveEvent.pointerId !== pointerId) {
         return;
       }
 
-      const delta = moveEvent.clientX - startX;
-      const nextLeft = side === 'left'
-        ? clamp(startLeft + delta, 0, startRight - minWidthPx)
-        : startLeft;
-      const nextRight = side === 'right'
-        ? clamp(startRight + delta, startLeft + minWidthPx, frameRect.width)
-        : startRight;
-      const nextWidthPx = nextRight - nextLeft;
-      const nextBoxWidth = clamp((nextWidthPx / frameRect.width) * 100, 5, 100);
-      const nextPositionX = clamp((((nextLeft + nextRight) / 2) / frameRect.width) * 100, 0, 100);
+      const { positionX: nextPositionX, boxWidth: nextBoxWidth } =
+        resizePreviewTextBox(side, frameRect, boxRect, moveEvent.clientX - startX);
 
       liveStateRef.current = {
         positionX: nextPositionX,
@@ -333,10 +304,10 @@ export function PoemContent({
       onPoemPositionChange(
         poemRect
           ? {
-              ...measurePositionedElement(frameRect, poemRect),
+              ...measurePreviewElement(frameRect, poemRect),
               boxWidth: liveStateRef.current.boxWidth,
             }
-          : liveStateRef.current,
+          : { ...liveStateRef.current, exportLeft: undefined, exportTop: undefined },
       );
       onInteractionEnd();
       window.removeEventListener('pointermove', handlePointerMove);
@@ -364,62 +335,34 @@ export function PoemContent({
       }
 
       onPoemPositionChange({
-        ...measurePositionedElement(positioningRect, poemRect),
+        ...measurePreviewElement(positioningRect, poemRect),
         boxWidth: undefined,
       });
     });
   };
 
   const handlePoemKeyboardMove = (event: ReactKeyboardEvent<HTMLDivElement>) => {
-    const isArrowKey = event.key === 'ArrowLeft'
-      || event.key === 'ArrowRight'
-      || event.key === 'ArrowUp'
-      || event.key === 'ArrowDown';
-
-    if (!isArrowKey) {
-      return;
-    }
-
+    const key = event.key;
+    if (!isArrowDirection(key)) return;
     event.preventDefault();
     event.stopPropagation();
     setActiveTextSelection({ kind: 'poem' });
 
-    const step = event.shiftKey ? KEYBOARD_MOVE_STEP_FAST : KEYBOARD_MOVE_STEP;
     const frameRect = poemFrameRef.current ? getPreviewPositioningRect(poemFrameRef.current) : null;
     const boxRect = poemBoxRef.current?.getBoundingClientRect();
-    const bounds = frameRect && boxRect
-      ? getPreviewDragBounds(frameRect, boxRect)
-      : {
-          minPositionX: 0,
-          maxPositionX: 100,
-          minPositionY: 0,
-          maxPositionY: 100,
-        };
+    const bounds = getKeyboardDragBounds(frameRect, boxRect);
 
-    if (event.altKey && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
-      const fallbackWidth = frameRect?.width
-        ? clamp((poemLayout.width / frameRect.width) * 100, 5, 100)
-        : 100;
-      const currentWidth = liveBoxWidth ?? fallbackWidth;
-      const nextWidth = clamp(
-        currentWidth + (event.key === 'ArrowRight' ? KEYBOARD_RESIZE_STEP : -KEYBOARD_RESIZE_STEP),
-        5,
-        100,
-      );
+    if (event.altKey && (key === 'ArrowLeft' || key === 'ArrowRight')) {
+      const nextWidth = resizePreviewTextBoxByKeyboard(liveBoxWidth, poemLayout.width, frameRect?.width, key);
       setLiveBoxWidth(nextWidth);
-      onPoemPositionChange({ ...livePosition, boxWidth: nextWidth });
+      onPoemPositionChange({ ...livePosition, boxWidth: nextWidth, exportLeft: undefined, exportTop: undefined });
       return;
     }
 
-    const deltaX = event.key === 'ArrowLeft' ? -step : event.key === 'ArrowRight' ? step : 0;
-    const deltaY = event.key === 'ArrowUp' ? -step : event.key === 'ArrowDown' ? step : 0;
-    const nextPosition = {
-      positionX: clamp(livePosition.positionX + deltaX, bounds.minPositionX, bounds.maxPositionX),
-      positionY: clamp(livePosition.positionY + deltaY, bounds.minPositionY, bounds.maxPositionY),
-    };
+    const nextPosition = nudgePreviewPosition(livePosition, key, event.shiftKey, bounds);
 
     setLivePosition(nextPosition);
-    onPoemPositionChange({ ...nextPosition, boxWidth: liveBoxWidth });
+    onPoemPositionChange({ ...nextPosition, boxWidth: liveBoxWidth, exportLeft: undefined, exportTop: undefined });
   };
 
   return (

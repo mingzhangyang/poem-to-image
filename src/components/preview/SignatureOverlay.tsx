@@ -6,7 +6,10 @@ import type {
   RefObject,
   FC,
 } from 'react';
-import { getPreviewDragBounds, getPreviewPositioningRect } from '../../positioningRect';
+import {
+  getKeyboardDragBounds, getPreviewDragBounds, getPreviewPositioningRect,
+  isArrowDirection, movePreviewPosition, nudgePreviewPosition,
+} from '../../positioningRect';
 import { drawSignatureToCanvas, ensureSignatureFontsLoaded, getSignatureCanvasSize } from '../../signatureRendering';
 import type { SignatureConfig } from '../../types';
 
@@ -18,13 +21,6 @@ interface SignatureOverlayProps {
   onInteractionStart: () => void;
   onInteractionEnd: () => void;
 }
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value));
-}
-
-const KEYBOARD_MOVE_STEP = 1;
-const KEYBOARD_MOVE_STEP_FAST = 3;
 
 export const SignatureOverlay: FC<SignatureOverlayProps> = ({
   ariaLabel,
@@ -102,23 +98,16 @@ export const SignatureOverlay: FC<SignatureOverlayProps> = ({
     const pointerId = event.pointerId;
     const startX = event.clientX;
     const startY = event.clientY;
-    const startPositionX = livePosition.positionX;
-    const startPositionY = livePosition.positionY;
-    const liveRef = { current: { positionX: startPositionX, positionY: startPositionY } };
+    const startPosition = livePosition;
+    const liveRef = { current: startPosition };
 
     const handlePointerMove = (e: PointerEvent) => {
       if (e.pointerId !== pointerId) return;
-      const newPositionX = clamp(
-        startPositionX + ((e.clientX - startX) / frameRect.width) * 100,
-        bounds.minPositionX,
-        bounds.maxPositionX,
-      );
-      const newPositionY = clamp(
-        startPositionY + ((e.clientY - startY) / frameRect.height) * 100,
-        bounds.minPositionY,
-        bounds.maxPositionY,
-      );
-      liveRef.current = { positionX: newPositionX, positionY: newPositionY };
+      const nextPosition = movePreviewPosition(startPosition, {
+        x: e.clientX - startX,
+        y: e.clientY - startY,
+      }, frameRect, bounds);
+      liveRef.current = nextPosition;
       setLivePosition(liveRef.current);
     };
 
@@ -138,35 +127,15 @@ export const SignatureOverlay: FC<SignatureOverlayProps> = ({
   };
 
   const handleKeyboardMove = (event: ReactKeyboardEvent<HTMLDivElement>) => {
-    const isArrowKey = event.key === 'ArrowLeft'
-      || event.key === 'ArrowRight'
-      || event.key === 'ArrowUp'
-      || event.key === 'ArrowDown';
-
-    if (!isArrowKey) {
-      return;
-    }
-
+    const key = event.key;
+    if (!isArrowDirection(key)) return;
     event.preventDefault();
     event.stopPropagation();
 
-    const step = event.shiftKey ? KEYBOARD_MOVE_STEP_FAST : KEYBOARD_MOVE_STEP;
     const frameRect = frameRef.current ? getPreviewPositioningRect(frameRef.current) : null;
     const boxRect = signatureRef.current?.getBoundingClientRect();
-    const bounds = frameRect && boxRect
-      ? getPreviewDragBounds(frameRect, boxRect)
-      : {
-          minPositionX: 0,
-          maxPositionX: 100,
-          minPositionY: 0,
-          maxPositionY: 100,
-        };
-    const deltaX = event.key === 'ArrowLeft' ? -step : event.key === 'ArrowRight' ? step : 0;
-    const deltaY = event.key === 'ArrowUp' ? -step : event.key === 'ArrowDown' ? step : 0;
-    const nextPosition = {
-      positionX: clamp(livePosition.positionX + deltaX, bounds.minPositionX, bounds.maxPositionX),
-      positionY: clamp(livePosition.positionY + deltaY, bounds.minPositionY, bounds.maxPositionY),
-    };
+    const bounds = getKeyboardDragBounds(frameRect, boxRect);
+    const nextPosition = nudgePreviewPosition(livePosition, key, event.shiftKey, bounds);
 
     setLivePosition(nextPosition);
     onSignatureChange(nextPosition);
