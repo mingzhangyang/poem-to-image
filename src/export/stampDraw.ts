@@ -1,7 +1,10 @@
 import {
   createStampWeatheringRand,
-  getBrushStampSkew,
   getStampBorderWidth,
+  getStampRasterMetrics,
+  getStampShadow,
+  getStampTransform,
+  STAMP_SHADOW_PADDING,
   getStampCanvasRadii,
   getStampCharacters,
   getStampTextFontSize,
@@ -69,13 +72,17 @@ function applyStampWeathering(
   ctx.restore();
 }
 
-function drawStampShape(ctx: CanvasRenderingContext2D, stamp: StampConfig) {
-  const half = stamp.size / 2;
+function drawStampShape(ctx: CanvasRenderingContext2D, stamp: StampConfig, inset = 0) {
+  const half = stamp.size / 2 - inset;
   ctx.beginPath();
   if (stamp.style === 'round') {
     ctx.arc(0, 0, half, 0, Math.PI * 2);
   } else {
-    ctx.roundRect(-half, -half, stamp.size, stamp.size, getStampCanvasRadii(stamp.style, stamp.size));
+    const radii = getStampCanvasRadii(stamp.style, stamp.size);
+    const insetRadii = Array.isArray(radii)
+      ? radii.map((radius) => Math.max(0, radius - inset))
+      : Math.max(0, radii - inset);
+    ctx.roundRect(-half, -half, half * 2, half * 2, insetRadii);
   }
   ctx.closePath();
 }
@@ -123,7 +130,7 @@ export function drawStampBody(ctx: CanvasRenderingContext2D, stamp: StampConfig)
     ctx.fill();
   } else {
     ctx.save();
-    drawStampShape(ctx, stamp);
+    drawStampShape(ctx, stamp, borderWidth / 2);
     ctx.lineWidth = borderWidth;
     ctx.strokeStyle = inkColor;
     ctx.stroke();
@@ -157,31 +164,80 @@ export function drawStampBody(ctx: CanvasRenderingContext2D, stamp: StampConfig)
   }
 }
 
-export function drawStamp(ctx: CanvasRenderingContext2D, scene: CanvasExportScene, frameRect: Rect) {
-  const { stamp } = scene.decorations;
-  const { x: centerX, y: centerY } = positionToCanvasPoint(frameRect, stamp);
-  const { skewXDeg, skewYDeg } = getBrushStampSkew();
-  const brushSkewX = Math.tan((skewXDeg * Math.PI) / 180);
-  const brushSkewY = Math.tan((skewYDeg * Math.PI) / 180);
+export interface StampImpressionOptions {
+  /** Target backing pixels per logical pixel (1×, 2×, 3× or preview DPR). */
+  pixelScale?: number;
+  /** CSS applies the same matrix to the draggable live preview frame. */
+  applyTransform?: boolean;
+  /** CSS applies opacity to the draggable live preview frame. */
+  applyOpacity?: boolean;
+}
+
+/**
+ * Paint a complete seal centred on the current origin, including its shadow.
+ * The stamp body is isolated so destination-out carving never erases the poem.
+ * Both the live preview and 1×/2×/3× export use this compositor.
+ */
+export function drawStampImpression(
+  ctx: CanvasRenderingContext2D,
+  stamp: StampConfig,
+  options: StampImpressionOptions = {},
+) {
+  if (!Number.isFinite(stamp.size) || stamp.size <= 0) return;
   const half = stamp.size / 2;
+  const paddedSide = stamp.size + STAMP_SHADOW_PADDING * 2;
+  const { pixels, scale } = getStampRasterMetrics(paddedSide, options.pixelScale ?? 1);
+  const { pixels: inkPixels, scale: inkScale } = getStampRasterMetrics(stamp.size, scale);
 
-  // Render to offscreen canvas so destination-out text carving doesn't bleed through.
-  const offCanvas = document.createElement('canvas');
-  offCanvas.width = stamp.size;
-  offCanvas.height = stamp.size;
-  const offCtx = offCanvas.getContext('2d');
-  if (!offCtx) return;
+  // The ink must be isolated because both white-character carving and
+  // weathering use destination-out. A second bounded bitmap receives the
+  // shadow before compositing: it can then rotate as part of the impression.
+  const inkCanvas = document.createElement('canvas');
+  inkCanvas.width = inkPixels;
+  inkCanvas.height = inkPixels;
+  const inkCtx = inkCanvas.getContext('2d');
+  if (!inkCtx) return;
+  inkCtx.scale(inkScale, inkScale);
+  inkCtx.translate(half, half);
+  drawStampBody(inkCtx, stamp);
 
-  offCtx.translate(half, half);
-  drawStampBody(offCtx, stamp);
+  const impression = document.createElement('canvas');
+  impression.width = pixels;
+  impression.height = pixels;
+  const impressionCtx = impression.getContext('2d');
+  if (!impressionCtx) return;
+
+  const shadow = getStampShadow(stamp);
+  // Canvas shadowBlur and shadowOffset are expressed in backing pixels and
+  // do NOT inherit the drawing transform's scale. Match the bitmap DPR here.
+  impressionCtx.shadowColor = shadow.color;
+  impressionCtx.shadowBlur = shadow.blur * scale;
+  impressionCtx.shadowOffsetX = shadow.offsetX * scale;
+  impressionCtx.shadowOffsetY = shadow.offsetY * scale;
+  impressionCtx.scale(scale, scale);
+  impressionCtx.drawImage(inkCanvas, STAMP_SHADOW_PADDING, STAMP_SHADOW_PADDING, stamp.size, stamp.size);
 
   ctx.save();
-  ctx.translate(centerX, centerY);
-  ctx.rotate((stamp.rotation * Math.PI) / 180);
-  if (stamp.style === 'brush') {
-    ctx.transform(1, brushSkewY, brushSkewX, 1, 0, 0);
+  if (options.applyTransform !== false) {
+    const { a, b, c, d } = getStampTransform(stamp);
+    ctx.transform(a, b, c, d, 0, 0);
   }
-  ctx.globalAlpha = stamp.opacity;
-  ctx.drawImage(offCanvas, -half, -half);
+  if (options.applyOpacity !== false) {
+    ctx.globalAlpha *= stamp.opacity;
+  }
+
+  // A shadow baked in local coordinates rotates together with the seal in
+  // both the CSS-transformed preview and the transformed Canvas export.
+  ctx.drawImage(impression, -half - STAMP_SHADOW_PADDING, -half - STAMP_SHADOW_PADDING, paddedSide, paddedSide);
+  ctx.restore();
+}
+
+export function drawStamp(ctx: CanvasRenderingContext2D, scene: CanvasExportScene, frameRect: Rect) {
+  const { stamp } = scene.decorations;
+  const { x, y } = positionToCanvasPoint(frameRect, stamp);
+
+  ctx.save();
+  ctx.translate(x, y);
+  drawStampImpression(ctx, stamp, { pixelScale: scene.exportScale });
   ctx.restore();
 }

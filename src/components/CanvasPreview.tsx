@@ -526,6 +526,7 @@ export function CanvasPreview({
                   borderWidth={borderWidth}
                   showStamp={showStamp}
                   stamp={stamp}
+                  effectiveScale={effectiveScale}
                   customTexts={customTexts}
                   logos={logos}
                   signatures={signatures}

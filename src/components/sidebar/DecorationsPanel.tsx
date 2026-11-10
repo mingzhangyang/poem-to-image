@@ -1,6 +1,7 @@
 import { Plus, Stamp, Trash2, Upload, Text, TextCursorInput, ChevronUp, ChevronDown, ArrowUpToLine, ArrowDownToLine, PenLine } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { STAMP_FONT_OPTIONS } from '../../fontOptions';
+import { limitStampText } from '../../stampRendering';
 import { SIGNATURE_FONTS } from '../../signatureRendering';
 import type { BorderStyle, DecorationsSectionProps, ExpandedSections, SignatureFlourish, StampStyle, TranslateFn } from '../../types';
 import { ControlSection } from '../ControlSection';
@@ -209,20 +210,21 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                   aria-label={t('stampText')}
                   value={stampInputText}
                   onChange={(event) => {
-                    const newValue = event.target.value;
+                    const newValue = isComposingRef.current
+                      ? event.target.value
+                      : limitStampText(event.target.value);
                     setStampInputText(newValue);
                     if (!isComposingRef.current) {
-                      decorations.onStampChange({ text: newValue.slice(0, 4) });
+                      decorations.onStampChange({ text: newValue });
                     }
                   }}
                   onCompositionStart={() => { isComposingRef.current = true; }}
                   onCompositionEnd={(event) => {
                     isComposingRef.current = false;
-                    const finalValue = (event.target as HTMLInputElement).value.slice(0, 4);
+                    const finalValue = limitStampText((event.target as HTMLInputElement).value);
                     setStampInputText(finalValue);
                     decorations.onStampChange({ text: finalValue });
                   }}
-                  maxLength={4}
                   className="app-input col-span-2 text-sm text-center"
                   placeholder={t('stampText')}
                 />

@@ -314,6 +314,49 @@ test('empty stamp preloads and draws the same fallback glyph', async () => {
   assert.ok(renderedStampGlyphs.includes('印'), 'the stamp actually draws the preloaded glyph');
 });
 
+test('export waits for extended Han seal glyphs before rasterizing any ink', async () => {
+  const base = makeScene();
+  const documentFonts = (globalThis as { document: { fonts: { load: (face: string, text: string) => Promise<unknown[]> } } }).document.fonts;
+  const originalLoad = documentFonts.load;
+  let releaseSealFont: (() => void) | null = null;
+  documentFonts.load = (_face: string, text: string) => {
+    loadedFontTexts.push(text);
+    if (text === '𠮷印') {
+      return new Promise<unknown[]>((resolve) => {
+        releaseSealFont = () => resolve([]);
+      });
+    }
+    return Promise.resolve([]);
+  };
+  try {
+    const exportPromise = renderCanvasExport(makeScene({
+      decorations: {
+        ...base.decorations,
+        showStamp: true,
+        stamp: {
+          text: '𠮷印', style: 'square', colorScheme: 'filled', inkColor: '#c82829',
+          size: 80, positionX: 50, positionY: 50, rotation: 12,
+          opacity: 0.75, fontFamily: 'serif', weathering: 0,
+        },
+      },
+    }));
+    for (let attempt = 0; attempt < 8 && !releaseSealFont; attempt += 1) {
+      await Promise.resolve();
+    }
+    assert.ok(releaseSealFont, 'stamp glyph load must have been requested');
+    assert.equal(createdContexts.length, 1, 'no stamp bitmap can be created while its font is pending');
+    (releaseSealFont as () => void)();
+    await exportPromise;
+    assert.ok(loadedFontTexts.includes('𠮷印'));
+    const glyphs = createdContexts.slice(1).flatMap((context) =>
+      context.trace.filter((op) => op.op === 'fillText').map((op) => op.args[0]),
+    );
+    assert.deepEqual(glyphs, ['𠮷', '印']);
+  } finally {
+    documentFonts.load = originalLoad;
+  }
+});
+
 test('paper texture uses the preview tile and repeats it behind the poem', async () => {
   const { paperTextureUrl } = await import('../../src/paperStyles');
   const base = makeScene();
