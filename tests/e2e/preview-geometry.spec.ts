@@ -20,22 +20,31 @@ interface SavedPoemPosition {
   exportTop?: number;
 }
 
+interface SavedDecorations {
+  poemPosition: SavedPoemPosition;
+  customTexts: Array<{ boxWidth?: number }>;
+}
+
 // IndexedDB is the authoritative Phase 3 document store. The legacy
 // localStorage mirror is best-effort and can lag behind the committed scene.
-async function readSavedPoemPosition(page: Page): Promise<SavedPoemPosition | null> {
-  return page.evaluate(() => new Promise<SavedPoemPosition | null>((resolve, reject) => {
+async function readSavedDecorations(page: Page): Promise<SavedDecorations | null> {
+  return page.evaluate(() => new Promise<SavedDecorations | null>((resolve, reject) => {
     const open = indexedDB.open('inkpoem-editor-drafts', 1);
     open.onerror = () => reject(open.error);
     open.onsuccess = () => {
       const db = open.result;
       const transaction = db.transaction('documents', 'readonly');
       const read = transaction.objectStore('documents').get('current');
-      read.onsuccess = () => resolve(read.result?.scene?.decorations?.poemPosition ?? null);
+      read.onsuccess = () => resolve(read.result?.scene?.decorations ?? null);
       read.onerror = () => reject(read.error);
       transaction.onerror = () => reject(transaction.error);
       transaction.oncomplete = () => db.close();
     };
   }));
+}
+
+async function readSavedPoemPosition(page: Page): Promise<SavedPoemPosition | null> {
+  return (await readSavedDecorations(page))?.poemPosition ?? null;
 }
 
 // A default horizontal poem occupies the full frame and is correctly clamped
@@ -46,6 +55,56 @@ async function narrowPoemBox(page: Page, handle: Locator): Promise<void> {
     await handle.press('Alt+ArrowLeft');
   }
   await expect.poll(async () => (await readSavedPoemPosition(page))?.boxWidth ?? 100).toBeLessThan(80);
+}
+
+for (const zoom of [70, 100, 200] as const) {
+  test(`first Alt+Left width of poem and custom text is correct at ${zoom}% preview zoom`, async ({ page }) => {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    const slider = page.getByRole('slider', { name: 'Preview Zoom' });
+    if (zoom !== 100) {
+      await slider.focus();
+      await slider.press(zoom === 70 ? 'Home' : 'End');
+    }
+    await expect(slider).toHaveValue(String(zoom));
+
+    const poem = page.locator('[aria-label="Body"][tabindex="0"]');
+    await expect(poem).toBeVisible();
+    const poemDimensions = await poem.evaluate((element) => {
+      const box = element.parentElement as HTMLElement;
+      const frame = box.parentElement as HTMLElement;
+      return {
+        box: box.getBoundingClientRect().width,
+        frame: frame.clientWidth * (frame.getBoundingClientRect().width / frame.offsetWidth),
+      };
+    });
+    const expectedPoemWidth = Math.max(5, Math.min(100,
+      Math.max(5, Math.min(100, poemDimensions.box / poemDimensions.frame * 100)) - 2,
+    ));
+    await poem.focus();
+    await poem.press('Alt+ArrowLeft');
+    await expect.poll(async () => (await readSavedPoemPosition(page))?.boxWidth)
+      .toBeCloseTo(expectedPoemWidth, 2);
+
+    await page.getByRole('button', { name: /^Decorations & Elements/ }).click();
+    await page.getByRole('button', { name: 'Add Text Box' }).click();
+    const customText = page.locator('[aria-label="Custom text element"][tabindex="0"]');
+    await expect(customText).toBeVisible();
+    const customDimensions = await customText.evaluate((element) => {
+      const box = element.parentElement as HTMLElement;
+      const frame = box.parentElement as HTMLElement;
+      return {
+        box: box.getBoundingClientRect().width,
+        frame: frame.clientWidth * (frame.getBoundingClientRect().width / frame.offsetWidth),
+      };
+    });
+    const expectedCustomWidth = Math.max(5, Math.min(100,
+      Math.max(5, Math.min(100, customDimensions.box / customDimensions.frame * 100)) - 2,
+    ));
+    await customText.focus();
+    await customText.press('Alt+ArrowLeft');
+    await expect.poll(async () => (await readSavedDecorations(page))?.customTexts[0]?.boxWidth)
+      .toBeCloseTo(expectedCustomWidth, 2);
+  });
 }
 
 test('poem arrow-key positioning is zoom-independent and restores across reload', async ({ page }) => {

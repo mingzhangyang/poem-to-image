@@ -24,6 +24,9 @@ share most underlying geometry and should remain the foundation.
   nudge (1% normal / 3% Shift) and strict edge clamping.
 - Read-back of measured DOM center/top-left after dragging or resizing.
 - Horizontal resize and Alt+arrow width adjustment for poem and custom text.
+  On the first Alt+arrow press with no explicit box width, both the text box
+  and its content frame are measured in the same visual coordinate space;
+  percentage width therefore does not depend on preview zoom.
 - Canvas center pixel translation and top-left origin, including persisted
   `exportLeft`/`exportTop` when the preview measured them.
 
@@ -108,7 +111,9 @@ Manual acceptance (desktop Chrome + iPhone Safari):
 3. Drag the poem, then nudge it via keyboard. Export: the text must appear at
    the new position, not at its earlier `exportLeft` coordinate.
 4. Resize poem and custom-text boxes from either edge and with Alt+arrows.
-   Check that preview bounding boxes and exported wrapping remain equivalent.
+   With an unset width, first press Alt+Left at 70%, 100%, and 200% preview
+   zoom; stored percentages must agree across zoom levels. Check that preview
+   bounding boxes and exported wrapping remain equivalent.
 5. Apply all important writing modes (horizontal, vertical-rl), decorative
    borders, text shadows, signatures, stamps, multi-column poem, and
    multi-line custom text. Compare preview geometry and exported PNG at

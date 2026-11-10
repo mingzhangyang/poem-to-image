@@ -272,7 +272,14 @@ const DraggableCustomTextItem: FC<DraggableCustomTextItemProps> = ({
     const bounds = getKeyboardDragBounds(frameRect, boxRect);
 
     if (event.altKey && (key === 'ArrowLeft' || key === 'ArrowRight')) {
-      const nextWidth = resizePreviewTextBoxByKeyboard(liveBoxWidth, textLayout.width, frameRect?.width, key);
+      // Match the zoomed text box to the zoomed content frame. Do not mix
+      // a logical text-layout width with a visual getBoundingClientRect width.
+      const nextWidth = resizePreviewTextBoxByKeyboard(
+        liveBoxWidth,
+        boxRect && frameRect ? boxRect.width : textLayout.width,
+        boxRect && frameRect ? frameRect.width : frameWidth,
+        key,
+      );
       setLiveBoxWidth(nextWidth);
       onCustomTextChange(customText.id, { ...livePosition, boxWidth: nextWidth });
       return;

@@ -118,6 +118,19 @@ test('poem and custom text resize use identical pointer and keyboard math', () =
   assert.equal(resizePreviewTextBoxByKeyboard(100, 100, 600, 'ArrowRight'), 100);
 });
 
+test('first keyboard resize is independent of preview zoom when boxWidth is unset', () => {
+  for (const zoom of [0.7, 1, 2]) {
+    // Simulate the values returned by getBoundingClientRect at each zoom.
+    const boxWidth = 100 * zoom;
+    const frameWidth = 500 * zoom;
+    assert.equal(resizePreviewTextBoxByKeyboard(undefined, boxWidth, frameWidth, 'ArrowLeft'), 18);
+    assert.equal(resizePreviewTextBoxByKeyboard(undefined, boxWidth, frameWidth, 'ArrowRight'), 22);
+    assert.equal(resizePreviewTextBoxByKeyboard(30, boxWidth, frameWidth, 'ArrowLeft'), 28);
+    // A full-width poem starts at 100%, independently of magnification.
+    assert.equal(resizePreviewTextBoxByKeyboard(undefined, frameWidth, frameWidth, 'ArrowLeft'), 98);
+  }
+});
+
 test('position and width edits invalidate stale measured export anchors', () => {
   const original = {
     positionX: 42, positionY: 66, boxWidth: 40,

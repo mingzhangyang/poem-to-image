@@ -197,14 +197,18 @@ export function resizePreviewTextBox(
   };
 }
 
+/**
+ * Alt+arrow widths remain zoom-independent only when box and frame widths
+ * share the same coordinate space (both visual DOM pixels or both layout px).
+ */
 export function resizePreviewTextBoxByKeyboard(
   boxWidth: number | undefined,
-  layoutWidth: number,
-  frameWidth: number | undefined,
+  measuredBoxWidth: number,
+  measuredFrameWidth: number | undefined,
   key: 'ArrowLeft' | 'ArrowRight',
 ): number {
-  const fallback = frameWidth
-    ? clampPosition((layoutWidth / frameWidth) * 100, 5, 100)
+  const fallback = measuredFrameWidth
+    ? clampPosition((measuredBoxWidth / measuredFrameWidth) * 100, 5, 100)
     : 100;
   const current = boxWidth ?? fallback;
   return clampPosition(current + (key === 'ArrowRight' ? KEYBOARD_RESIZE_STEP : -KEYBOARD_RESIZE_STEP), 5, 100);

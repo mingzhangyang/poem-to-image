@@ -380,7 +380,15 @@ export function PoemContent({
     const bounds = getKeyboardDragBounds(frameRect, boxRect);
 
     if (event.altKey && (key === 'ArrowLeft' || key === 'ArrowRight')) {
-      const nextWidth = resizePreviewTextBoxByKeyboard(liveBoxWidth, poemLayout.width, frameRect?.width, key);
+      // Both measurements must be in the same coordinate system. DOM rects
+      // are already scaled by preview zoom; computed poemLayout.width is not.
+      // If either DOM rect is missing, use unscaled layout dimensions for both.
+      const nextWidth = resizePreviewTextBoxByKeyboard(
+        liveBoxWidth,
+        boxRect && frameRect ? boxRect.width : poemLayout.width,
+        boxRect && frameRect ? frameRect.width : frameSize.width,
+        key,
+      );
       setLiveBoxWidth(nextWidth);
       onPoemPositionChange({ ...livePosition, boxWidth: nextWidth, exportLeft: undefined, exportTop: undefined });
       return;
