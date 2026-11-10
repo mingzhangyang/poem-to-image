@@ -12,6 +12,19 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
+test('editor lifecycle registers visibilitychange on the browser document', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await expect(page.getByRole('button', { name: /^Background/ })).toBeVisible();
+
+  // Regression for a scene snapshot named "document" shadowing the DOM global.
+  // This must not throw during mount or when the visibility event fires.
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+  expect(errors).toEqual([]);
+});
+
 test('a multi-layer template command undoes and redoes before the history debounce', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.getByRole('button', { name: /^Templates/ }).click();

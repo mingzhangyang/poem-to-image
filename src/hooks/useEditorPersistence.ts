@@ -28,12 +28,12 @@ export type DraftSaveError = 'failure' | 'conflict';
  * IndexedDB is the source of truth; localStorage is only a legacy fallback.
  */
 export function useEditorPersistence({
-  document,
+  document: editorDocument,
   initialRevision,
   promoteInitial,
 }: UseEditorPersistenceParams) {
-  const snapshotRef = useRef(document);
-  snapshotRef.current = document;
+  const snapshotRef = useRef(editorDocument);
+  snapshotRef.current = editorDocument;
 
   const [saveError, setSaveError] = useState<DraftSaveError | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -42,7 +42,7 @@ export function useEditorPersistence({
   const diskRevisionRef = useRef(initialRevision);
   const inFlightRef = useRef<Promise<void> | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastObservedRef = useRef(document);
+  const lastObservedRef = useRef(editorDocument);
   const needsPromotionRef = useRef(promoteInitial);
   const lifecycleEpochRef = useRef(0);
   const mountedRef = useRef(true);
@@ -114,7 +114,7 @@ export function useEditorPersistence({
       }
     };
     const persistWhenHidden = () => {
-      if (document.visibilityState === 'hidden') persistWhenLeaving();
+      if (window.document.visibilityState === 'hidden') persistWhenLeaving();
     };
     const warnIfUnsaved = (event: BeforeUnloadEvent) => {
       if (completedRevisionRef.current >= pendingRevisionRef.current) return;
@@ -125,11 +125,11 @@ export function useEditorPersistence({
     const onPageHide = () => persistWhenLeaving();
     window.addEventListener('pagehide', onPageHide);
     window.addEventListener('beforeunload', warnIfUnsaved);
-    document.addEventListener('visibilitychange', persistWhenHidden);
+    window.document.addEventListener('visibilitychange', persistWhenHidden);
     return () => {
       window.removeEventListener('pagehide', onPageHide);
       window.removeEventListener('beforeunload', warnIfUnsaved);
-      document.removeEventListener('visibilitychange', persistWhenHidden);
+      window.document.removeEventListener('visibilitychange', persistWhenHidden);
       // React 19 StrictMode replays setup/cleanup without unmounting the editor.
       // Defer flushing until we know this really was its last lifetime.
       queueMicrotask(() => {
@@ -142,11 +142,11 @@ export function useEditorPersistence({
   }, [persistLatest]);
 
   useEffect(() => {
-    const changed = lastObservedRef.current !== document;
+    const changed = lastObservedRef.current !== editorDocument;
     // StrictMode replay and a hydrated non-default scene are not user edits.
     // A legacy or emergency checkpoint is explicitly promoted to IndexedDB.
     if (!changed && !needsPromotionRef.current) return;
-    lastObservedRef.current = document;
+    lastObservedRef.current = editorDocument;
     needsPromotionRef.current = false;
     pendingRevisionRef.current += 1;
     setHasUnsavedChanges(true);
@@ -155,7 +155,7 @@ export function useEditorPersistence({
     timerRef.current = setTimeout(() => { void persistLatest(); }, SAVE_DEBOUNCE_MS);
     // Debounce is managed by the effect body and true-unmount cleanup, not
     // per-effect cleanup (which StrictMode runs immediately during replay).
-  }, [document, persistLatest]);
+  }, [editorDocument, persistLatest]);
 
   const retrySave = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
