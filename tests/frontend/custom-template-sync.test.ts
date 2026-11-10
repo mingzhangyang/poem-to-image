@@ -18,16 +18,36 @@ import {
   type TemplateRequestOwner,
 } from '../../src/customTemplateApi';
 import type { UserCustomTemplate } from '../../src/types';
+import { DEFAULT_POEM_STYLE } from '../../src/poemStyle';
 
 function fixture(id: string): UserCustomTemplate {
   return {
     id, name: id, createdAt: 123,
     accentFrom: '#ffffff', accentTo: '#ffffff',
-    background: { backgroundType: 'solid' },
-    typography: { fontFamily: 'serif' },
-    decorations: { logos: [], customTexts: [] },
-    poemStyle: { bodyAlign: 'center' },
-  } as unknown as UserCustomTemplate;
+    background: {
+      backgroundType: 'solid', backgroundColor: '#ffffff',
+      gradientColor1: '#ffffff', gradientColor2: '#eeeeee',
+      gradientDirection: 'to bottom', bgBrightness: 100, bgBlur: 0,
+    },
+    typography: {
+      fontFamily: 'serif', fontSize: 32, textColor: '#111111',
+      textAlign: 'center', writingMode: 'horizontal-tb',
+      padding: 32, lineHeight: 1.8, letterSpacing: 0,
+      columns: 1, columnGap: 0, textShadowEnabled: false,
+      textShadowColor: '#000000', textShadowBlur: 0,
+      textShadowOffsetY: 0, textShadowOffsetX: 0,
+    },
+    decorations: {
+      showBorder: false, borderStyle: 'solid', showStamp: false,
+      stamp: {
+        text: 'seal', style: 'square', positionX: 50, positionY: 50,
+        size: 32, rotation: 0, opacity: 1, fontFamily: 'serif',
+      },
+      poemPosition: { positionX: 50, positionY: 50 },
+      logos: [], customTexts: [],
+    },
+    poemStyle: { ...DEFAULT_POEM_STYLE },
+  };
 }
 
 function storage() {
@@ -161,4 +181,47 @@ test('create, rename, and delete use the authenticated scoped API', async () => 
   } finally {
     globalThis.fetch = original;
   }
+});
+
+test('nested template structures are validated before replacing a good cache', async () => {
+  const valid = fixture('valid');
+  const cases: unknown[] = [
+    { ...valid, background: {} },
+    { ...valid, typography: { ...valid.typography, textShadowEnabled: 'false' } },
+    { ...valid, decorations: { ...valid.decorations, customTexts: undefined } },
+    { ...valid, decorations: { ...valid.decorations, logos: {} } },
+    { ...valid, decorations: { ...valid.decorations, customTexts: [{ id: 'broken' }] } },
+    { ...valid, decorations: { ...valid.decorations, logos: [{ id: 'broken' }] } },
+    { ...valid, decorations: { ...valid.decorations, signatures: [null] } },
+    { ...valid, decorations: { ...valid.decorations, stamp: null } },
+    { ...valid, decorations: { ...valid.decorations, poemPosition: {} } },
+    { ...valid, poemStyle: { bodyAlign: [] } },
+    { ...valid, decorations: { ...valid.decorations, borderStyle: 'invalid' } },
+    { ...valid, poemStyle: { sourcePlacement: 'somewhere' } },
+  ];
+  for (const malformed of cases) {
+    assert.throws(() => parseCloudTemplateList({ templates: [malformed] }), /INVALID_TEMPLATE_LIST/);
+  }
+  const local = storage();
+  writeTemplateCache('account:user_a', [valid], local);
+  const original = globalThis.fetch;
+  try {
+    globalThis.fetch = async () => Response.json({ templates: [cases[2]] });
+    await assert.rejects(fetchCloudTemplates(owner()), /INVALID_TEMPLATE_LIST/);
+    assert.deepEqual(readTemplateCache('account:user_a', local), [valid]);
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test('genuinely optional fields in old templates are normalized safely', () => {
+  const valid = fixture('legacy');
+  const legacy = {
+    ...valid, poemStyle: undefined,
+    decorations: { ...valid.decorations, logos: undefined },
+  };
+  const parsed = parseCloudTemplateList({ templates: [legacy] });
+  assert.equal(parsed[0].poemStyle.bodyAlign, 'center');
+  assert.deepEqual(parsed[0].decorations.customTexts, []);
+  assert.deepEqual(parsed[0].decorations.logos, []);
 });

@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { normalizeUserCustomTemplate } from '../poemStyle';
+import { createAsyncIntentGate } from '../asyncIntentGate';
+import {
+  createTemplateScopeLifetime,
+  enqueueTemplateMutation,
+  isCurrentTemplateScopeLifetime,
+  type TemplateScopeLifetime,
+} from '../templateScopeLifetime';
 import { getPaperStyle } from '../paperStyles';
 import {
   hasLegacyTemplateCache,
@@ -80,13 +87,21 @@ export function useCustomTemplates({ isLoaded, isSignedIn, userId, getToken }: U
   const scope = resolveTemplateScope(isLoaded, isSignedIn, userId);
   const scopeRef = useRef(scope);
   scopeRef.current = scope;
+  const scopeLifetimeRef = useRef(createTemplateScopeLifetime(scope));
+  // Invalidate synchronously: an old A task cannot revive after A -> B -> A.
+  if (scopeLifetimeRef.current.scope !== scope) {
+    scopeLifetimeRef.current.active = false;
+    scopeLifetimeRef.current = createTemplateScopeLifetime(scope);
+  }
+  const isLifetimeCurrent = useCallback((owner: TemplateScopeLifetime) =>
+    isCurrentTemplateScopeLifetime(scopeLifetimeRef.current, owner)
+    && scopeRef.current === owner.scope, []);
   const tokenRef = useRef(getToken);
   tokenRef.current = getToken;
   const [view, setView] = useState<ScopeView>(() => readScope(scope));
   const viewRef = useRef(view);
   const [refreshId, setRefreshId] = useState(0);
-  const fetchEpochRef = useRef(0);
-  const mutationEpochRef = useRef(0);
+  const readGateRef = useRef(createAsyncIntentGate());
   const pendingRequestsRef = useRef<Set<AbortController>>(new Set());
   const mutationQueueRef = useRef<Promise<void>>(Promise.resolve());
 
@@ -121,8 +136,11 @@ export function useCustomTemplates({ isLoaded, isSignedIn, userId, getToken }: U
 
   // Clear state before any new identity's cloud request is allowed to resolve.
   useEffect(() => {
-    fetchEpochRef.current += 1;
-    mutationEpochRef.current += 1;
+    // Rotate even on StrictMode effect replay, not just on changed scope.
+    scopeLifetimeRef.current.active = false;
+    const lifetime = createTemplateScopeLifetime(scope);
+    scopeLifetimeRef.current = lifetime;
+    readGateRef.current.invalidate();
     for (const controller of pendingRequestsRef.current) controller.abort();
     pendingRequestsRef.current.clear();
     // Old account mutations must not hold up new account operations.
@@ -131,9 +149,10 @@ export function useCustomTemplates({ isLoaded, isSignedIn, userId, getToken }: U
     viewRef.current = next;
     setView(next);
     return () => {
+      lifetime.active = false;
       for (const controller of pendingRequestsRef.current) controller.abort();
       pendingRequestsRef.current.clear();
-      fetchEpochRef.current += 1;
+      readGateRef.current.invalidate();
     };
   }, [scope]);
 
@@ -141,22 +160,25 @@ export function useCustomTemplates({ isLoaded, isSignedIn, userId, getToken }: U
   // templates; only a well-formed 2xx response can replace them.
   useEffect(() => {
     if (!scope || scope === 'guest') return;
+    const lifetime = scopeLifetimeRef.current;
+    // Writes own reconciliation until the entire queue settles.
+    if (!isLifetimeCurrent(lifetime) || lifetime.pendingMutations > 0) return;
     const controller = new AbortController();
     pendingRequestsRef.current.add(controller);
-    const readEpoch = ++fetchEpochRef.current;
-    const mutationEpoch = mutationEpochRef.current;
-    const current = () => scopeRef.current === scope && !controller.signal.aborted;
+    const readEpoch = readGateRef.current.begin();
+    const current = () => isLifetimeCurrent(lifetime) && !controller.signal.aborted
+      && lifetime.pendingMutations === 0 && readGateRef.current.isCurrent(readEpoch);
 
     update(scope, (old) => ({ ...old, isSyncing: true }));
     const owner: TemplateRequestOwner = { getToken: () => tokenRef.current(), signal: controller.signal, isCurrent: current };
     void fetchCloudTemplates(owner).then((templates) => {
-      if (!current() || readEpoch !== fetchEpochRef.current || mutationEpoch !== mutationEpochRef.current) return;
+      if (!current()) return;
       update(scope, (old) => ({
         ...old, templates, isSyncing: false, syncError: old.syncError === 'mutation' ? 'mutation' : null, cacheCorrupt: false,
         activeId: old.activeId && templates.some((template) => template.id === old.activeId) ? old.activeId : null,
       }), true);
     }).catch(() => {
-      if (!current() || readEpoch !== fetchEpochRef.current || mutationEpoch !== mutationEpochRef.current) return;
+      if (!current()) return;
       update(scope, (old) => ({
         ...old, isSyncing: false, syncError: old.syncError === 'mutation' ? 'mutation' : old.cacheCorrupt ? 'storage' : 'load',
       }));
@@ -166,33 +188,40 @@ export function useCustomTemplates({ isLoaded, isSignedIn, userId, getToken }: U
       controller.abort();
       pendingRequestsRef.current.delete(controller);
     };
-  }, [scope, refreshId, update]);
+  }, [scope, refreshId, update, isLifetimeCurrent]);
 
   const startMutation = useCallback((ownerScope: TemplateScope) => {
-    mutationEpochRef.current += 1;
-    // Discard a GET snapshot that started before the first mutation.
-    fetchEpochRef.current += 1;
+    // A queued write invalidates all older GETs immediately.
+    readGateRef.current.invalidate();
     update(ownerScope, (old) => ({ ...old, isSyncing: false }));
   }, [update]);
 
-  const ownerFor = useCallback((ownerScope: TemplateScope): {
+  const ownerFor = useCallback((lifetime: TemplateScopeLifetime): {
     controller: AbortController;
     owner: TemplateRequestOwner;
   } => {
     const controller = new AbortController();
     pendingRequestsRef.current.add(controller);
-    const isCurrent = () => scopeRef.current === ownerScope && !controller.signal.aborted;
+    const isCurrent = () => isLifetimeCurrent(lifetime) && !controller.signal.aborted;
     return {
       controller,
       owner: { signal: controller.signal, isCurrent, getToken: () => tokenRef.current() },
     };
-  }, []);
+  }, [isLifetimeCurrent]);
 
-  const enqueue = <T,>(operation: () => Promise<T>): Promise<T> => {
-    const task = mutationQueueRef.current.then(operation, operation);
-    mutationQueueRef.current = task.then(() => undefined, () => undefined);
-    return task;
-  };
+  const confirmMutation = useCallback((lifetime: TemplateScopeLifetime) => {
+    if (!isLifetimeCurrent(lifetime)) return false;
+    // Invalidate a GET that may have begun after an earlier queued write.
+    readGateRef.current.invalidate();
+    return true;
+  }, [isLifetimeCurrent]);
+
+  const enqueue = useCallback(<T,>(
+    lifetime: TemplateScopeLifetime, operation: () => Promise<T>, staleResult: T,
+  ): Promise<T> => enqueueTemplateMutation(
+    mutationQueueRef, lifetime, () => isLifetimeCurrent(lifetime),
+    operation, staleResult, () => setRefreshId((current) => current + 1),
+  ), [isLifetimeCurrent]);
 
   const setMutationError = useCallback((ownerScope: TemplateScope) => {
     update(ownerScope, (old) => ({ ...old, isSyncing: false, syncError: 'mutation' }));
@@ -206,7 +235,8 @@ export function useCustomTemplates({ isLoaded, isSignedIn, userId, getToken }: U
     poemStyle: UserCustomTemplate['poemStyle'],
   ): Promise<UserCustomTemplate | null> => {
     const ownerScope = scopeRef.current;
-    if (!ownerScope) return null;
+    const lifetime = scopeLifetimeRef.current;
+    if (!ownerScope || !isLifetimeCurrent(lifetime)) return null;
     const { accentFrom, accentTo } = deriveAccentColors(background);
     const payload = {
       name: name.trim() || 'Custom Template',
@@ -225,12 +255,11 @@ export function useCustomTemplates({ isLoaded, isSignedIn, userId, getToken }: U
       }), true);
       return created;
     }
-    return enqueue(async () => {
-      if (scopeRef.current !== ownerScope) return null;
-      const { owner, controller } = ownerFor(ownerScope);
+    return enqueue(lifetime, async () => {
+      const { owner, controller } = ownerFor(lifetime);
       try {
         const saved = await createCloudTemplate(payload, owner);
-        if (!owner.isCurrent()) return null;
+        if (!owner.isCurrent() || !confirmMutation(lifetime)) return null;
         update(ownerScope, (old) => ({
           ...old,
           templates: [saved, ...old.templates.filter((item) => item.id !== saved.id)],
@@ -244,12 +273,9 @@ export function useCustomTemplates({ isLoaded, isSignedIn, userId, getToken }: U
         return null;
       } finally {
         pendingRequestsRef.current.delete(controller);
-        if (scopeRef.current === ownerScope) {
-          setRefreshId((current) => current + 1);
-        }
       }
-    });
-  }, [ownerFor, setMutationError, startMutation, update]);
+    }, null);
+  }, [confirmMutation, enqueue, isLifetimeCurrent, ownerFor, setMutationError, startMutation, update]);
 
   const applyCustomTemplate = useCallback((id: string) => {
     const ownerScope = scopeRef.current;
@@ -260,8 +286,9 @@ export function useCustomTemplates({ isLoaded, isSignedIn, userId, getToken }: U
 
   const renameCustomTemplate = useCallback(async (id: string, name: string): Promise<void> => {
     const ownerScope = scopeRef.current;
+    const lifetime = scopeLifetimeRef.current;
     const trimmedName = name.trim();
-    if (!ownerScope || !trimmedName) return;
+    if (!ownerScope || !isLifetimeCurrent(lifetime) || !trimmedName) return;
     if (!viewRef.current.templates.some((item) => item.id === id)) return;
     startMutation(ownerScope);
     if (ownerScope === 'guest') {
@@ -272,12 +299,11 @@ export function useCustomTemplates({ isLoaded, isSignedIn, userId, getToken }: U
       }), true);
       return;
     }
-    await enqueue(async () => {
-      if (scopeRef.current !== ownerScope) return;
-      const { owner, controller } = ownerFor(ownerScope);
+    await enqueue(lifetime, async () => {
+      const { owner, controller } = ownerFor(lifetime);
       try {
         await renameCloudTemplate(id, trimmedName, owner);
-        if (!owner.isCurrent()) return;
+        if (!owner.isCurrent() || !confirmMutation(lifetime)) return;
         update(ownerScope, (old) => ({
           ...old, templates: old.templates.map((item) => item.id === id ? { ...item, name: trimmedName } : item),
           syncError: null, isSyncing: false,
@@ -286,16 +312,15 @@ export function useCustomTemplates({ isLoaded, isSignedIn, userId, getToken }: U
         if (owner.isCurrent()) setMutationError(ownerScope);
       } finally {
         pendingRequestsRef.current.delete(controller);
-        if (scopeRef.current === ownerScope) {
-          setRefreshId((current) => current + 1);
-        }
       }
-    });
-  }, [ownerFor, setMutationError, startMutation, update]);
+    }, undefined);
+  }, [confirmMutation, enqueue, isLifetimeCurrent, ownerFor, setMutationError, startMutation, update]);
 
   const deleteCustomTemplate = useCallback(async (id: string): Promise<void> => {
     const ownerScope = scopeRef.current;
-    if (!ownerScope || !viewRef.current.templates.some((item) => item.id === id)) return;
+    const lifetime = scopeLifetimeRef.current;
+    if (!ownerScope || !isLifetimeCurrent(lifetime)
+      || !viewRef.current.templates.some((item) => item.id === id)) return;
     startMutation(ownerScope);
     if (ownerScope === 'guest') {
       if (viewRef.current.cacheCorrupt) { setMutationError(ownerScope); return; }
@@ -305,12 +330,11 @@ export function useCustomTemplates({ isLoaded, isSignedIn, userId, getToken }: U
       }), true);
       return;
     }
-    await enqueue(async () => {
-      if (scopeRef.current !== ownerScope) return;
-      const { owner, controller } = ownerFor(ownerScope);
+    await enqueue(lifetime, async () => {
+      const { owner, controller } = ownerFor(lifetime);
       try {
         await deleteCloudTemplate(id, owner);
-        if (!owner.isCurrent()) return;
+        if (!owner.isCurrent() || !confirmMutation(lifetime)) return;
         update(ownerScope, (old) => ({
           ...old, templates: old.templates.filter((item) => item.id !== id),
           activeId: old.activeId === id ? null : old.activeId,
@@ -320,12 +344,9 @@ export function useCustomTemplates({ isLoaded, isSignedIn, userId, getToken }: U
         if (owner.isCurrent()) setMutationError(ownerScope);
       } finally {
         pendingRequestsRef.current.delete(controller);
-        if (scopeRef.current === ownerScope) {
-          setRefreshId((current) => current + 1);
-        }
       }
-    });
-  }, [ownerFor, setMutationError, startMutation, update]);
+    }, undefined);
+  }, [confirmMutation, enqueue, isLifetimeCurrent, ownerFor, setMutationError, startMutation, update]);
 
   const clearActiveCustomTemplate = useCallback(() => {
     const ownerScope = scopeRef.current;

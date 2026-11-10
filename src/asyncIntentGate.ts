@@ -16,3 +16,16 @@ export function createAsyncIntentGate(): AsyncIntentGate {
     isCurrent: (requestEpoch) => requestEpoch === epoch,
   };
 }
+
+/** Identity of a particular signed-in account lifetime (including guest). */
+export interface AsyncAccountOwner {
+  accountId: string | null;
+}
+
+/** Returning to the same ID after a different account never revives old work. */
+export function nextAsyncAccountOwner(
+  previous: AsyncAccountOwner,
+  accountId: string | null,
+): AsyncAccountOwner {
+  return previous.accountId === accountId ? previous : { accountId };
+}

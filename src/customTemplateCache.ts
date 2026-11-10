@@ -1,4 +1,4 @@
-import { normalizeUserCustomTemplate } from './poemStyle';
+import { DEFAULT_POEM_STYLE, normalizeUserCustomTemplate } from './poemStyle';
 import type { UserCustomTemplate } from './types';
 
 /**
@@ -26,22 +26,160 @@ export function templateCacheKey(scope: TemplateScope): string {
   return SCOPED_TEMPLATE_PREFIX + encodeURIComponent(scope);
 }
 
+// Validate the full template shape before any server snapshot or cache replaces
+// known-good data. A shallow object check is insufficient: applying malformed
+// decorations otherwise crashes while normalizing customTexts/logos.
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function hasStrings(value: Record<string, unknown>, keys: readonly string[]): boolean {
+  return keys.every((key) => typeof value[key] === 'string');
+}
+
+function hasNumbers(value: Record<string, unknown>, keys: readonly string[]): boolean {
+  return keys.every((key) => typeof value[key] === 'number' && Number.isFinite(value[key]));
+}
+
+function hasBooleans(value: Record<string, unknown>, keys: readonly string[]): boolean {
+  return keys.every((key) => typeof value[key] === 'boolean');
+}
+
+function optionalNumber(value: unknown): boolean {
+  return value === undefined || (typeof value === 'number' && Number.isFinite(value));
+}
+
+function optionalString(value: unknown): boolean {
+  return value === undefined || typeof value === 'string';
+}
+
+function isOneOf(value: unknown, options: readonly string[]): boolean {
+  return typeof value === 'string' && options.includes(value);
+}
+
+function isPositioned(value: unknown): boolean {
+  return isRecord(value)
+    && hasNumbers(value, ['positionX', 'positionY'])
+    && optionalNumber(value.exportLeft) && optionalNumber(value.exportTop)
+    && optionalNumber(value.boxWidth);
+}
+
+function isStamp(value: unknown): boolean {
+  return isRecord(value)
+    && hasStrings(value, ['text', 'fontFamily'])
+    && isOneOf(value.style, ['square', 'round', 'brush'])
+    && hasNumbers(value, ['positionX', 'positionY', 'size', 'rotation', 'opacity'])
+    && (value.colorScheme === undefined || isOneOf(value.colorScheme, ['outline', 'filled']))
+    && optionalString(value.inkColor) && optionalNumber(value.weathering);
+}
+
+function isCustomText(value: unknown): boolean {
+  return isRecord(value)
+    && hasStrings(value, ['id', 'text', 'color'])
+    && isOneOf(value.writingMode, ['horizontal-tb', 'vertical-rl'])
+    && hasNumbers(value, ['fontSize', 'rotation', 'positionX', 'positionY'])
+    && optionalNumber(value.zIndex) && optionalNumber(value.exportLeft)
+    && optionalNumber(value.exportTop) && optionalNumber(value.boxWidth);
+}
+
+function isLogo(value: unknown): boolean {
+  return isRecord(value)
+    && hasStrings(value, ['id', 'imageUrl'])
+    && hasNumbers(value, ['positionX', 'positionY', 'size', 'rotation', 'opacity'])
+    && optionalNumber(value.zIndex) && optionalNumber(value.exportLeft)
+    && optionalNumber(value.exportTop);
+}
+
+function isSignature(value: unknown): boolean {
+  return isRecord(value)
+    && hasStrings(value, ['id', 'text', 'font', 'color'])
+    && isOneOf(value.flourish, ['none', 'swoosh', 'double', 'loop', 'strike', 'wave', 'underline'])
+    && hasNumbers(value, ['fontSize', 'slant', 'thickness', 'positionX', 'positionY', 'opacity', 'rotation'])
+    && optionalNumber(value.zIndex);
+}
+
+function isBackground(value: unknown): boolean {
+  return isRecord(value)
+    && isOneOf(value.backgroundType, ['solid', 'paper', 'gradient', 'transparent', 'image'])
+    && hasStrings(value, ['backgroundColor', 'gradientColor1', 'gradientColor2', 'gradientDirection'])
+    && hasNumbers(value, ['bgBrightness', 'bgBlur'])
+    // The optional fields below were introduced after the original template format.
+    && optionalString(value.paperId)
+    && (value.backgroundImage == null || typeof value.backgroundImage === 'string')
+    && (value.backgroundImageSource == null || isOneOf(value.backgroundImageSource, ['template', 'upload', 'ai']))
+    && (value.backgroundSize === undefined || isOneOf(value.backgroundSize, ['cover', 'contain', 'stretch']))
+    && optionalString(value.backgroundPosition);
+}
+
+function isTypography(value: unknown): boolean {
+  return isRecord(value)
+    && hasStrings(value, ['fontFamily', 'textColor', 'textShadowColor'])
+    && isOneOf(value.textAlign, ['left', 'center', 'right'])
+    && isOneOf(value.writingMode, ['horizontal-tb', 'vertical-rl'])
+    && hasBooleans(value, ['textShadowEnabled'])
+    && hasNumbers(value, [
+      'fontSize', 'padding', 'lineHeight', 'letterSpacing', 'columns', 'columnGap',
+      'textShadowBlur', 'textShadowOffsetY', 'textShadowOffsetX',
+    ]);
+}
+
+function isDecorations(value: unknown): boolean {
+  return isRecord(value)
+    && hasBooleans(value, ['showBorder', 'showStamp'])
+    && isOneOf(value.borderStyle, [
+      'solid', 'dashed', 'double', 'shadow', 'gradient', 'broken', 'overflow',
+      'brush', 'ink', 'cloud', 'wave', 'fractal', 'meander', 'leiwen',
+      'ornamental', 'envelope',
+    ])
+    && optionalString(value.borderColor) && optionalNumber(value.borderWidth)
+    && isStamp(value.stamp) && isPositioned(value.poemPosition)
+    && Array.isArray(value.customTexts) && value.customTexts.every(isCustomText)
+    // Historic templates predate logos. Only absence is normalized to [];
+    // a present but malformed collection must always be rejected.
+    && (value.logos === undefined
+      || (Array.isArray(value.logos) && value.logos.every(isLogo)))
+    && (value.signatures === undefined
+      || (Array.isArray(value.signatures) && value.signatures.every(isSignature)));
+}
+
+function isPoemStyle(value: unknown): boolean {
+  if (value == null) return true; // Older templates did not store poemStyle.
+  if (!isRecord(value)) return false;
+  const alignKeys = ['titleAlign', 'bodyAlign', 'authorAlign', 'sourceAlign'];
+  const earlyPlacements = ['before-body', 'after-body'];
+  return Object.entries(DEFAULT_POEM_STYLE).every(([key, fallback]) => {
+    const field = value[key];
+    if (field === undefined) return true;
+    if (alignKeys.includes(key)) return isOneOf(field, ['left', 'center', 'right']);
+    if (key === 'titlePlacement' || key === 'authorPlacement') {
+      return isOneOf(field, earlyPlacements);
+    }
+    if (key === 'sourcePlacement') return isOneOf(field, [...earlyPlacements, 'after-author']);
+    return typeof field === typeof fallback
+      && (typeof field !== 'number' || Number.isFinite(field));
+  });
+}
+
 export function isTemplate(value: unknown): value is UserCustomTemplate {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
-  const item = value as Partial<UserCustomTemplate>;
-  return typeof item.id === 'string' && item.id.length > 0
-    && typeof item.name === 'string'
-    && typeof item.createdAt === 'number' && Number.isFinite(item.createdAt)
-    && !!item.background && typeof item.background === 'object'
-    && !!item.typography && typeof item.typography === 'object'
-    && !!item.decorations && typeof item.decorations === 'object';
+  return isRecord(value)
+    && typeof value.id === 'string' && value.id.length > 0
+    && typeof value.name === 'string'
+    && typeof value.createdAt === 'number' && Number.isFinite(value.createdAt)
+    && hasStrings(value, ['accentFrom', 'accentTo'])
+    && isBackground(value.background)
+    && isTypography(value.typography)
+    && isDecorations(value.decorations)
+    && isPoemStyle(value.poemStyle);
 }
 
 export function parseTemplateList(input: unknown): UserCustomTemplate[] {
   if (!Array.isArray(input) || !input.every(isTemplate)) {
     throw new Error('INVALID_TEMPLATE_LIST');
   }
-  return input.map((template) => normalizeUserCustomTemplate(template));
+  return input.map((template) => normalizeUserCustomTemplate({
+    ...template,
+    decorations: { ...template.decorations, logos: template.decorations.logos ?? [] },
+  }));
 }
 
 export function parseCloudTemplateList(payload: unknown): UserCustomTemplate[] {

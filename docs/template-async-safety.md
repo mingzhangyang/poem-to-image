@@ -27,9 +27,18 @@ anonymous templates and cloud snapshots from whichever account last logged in.
   401/403/429/5xx, network errors, and malformed JSON. Only valid 2xx GETs
   replace a scoped cache. Failures leave the last good list intact and
   surface a warning and safe retry.
-- Mutation calls are ordered per hook. Each mutation invalidates in-flight
-  pre-mutation snapshots. The server confirms create/rename/delete before
-  the local list changes; failures never optimistically delete data.
+- Mutation calls are ordered per hook. Each queued write captures a unique
+  account-lifetime lease (not merely a user ID), and old queued tasks cannot
+  dispatch after unmount or an A → B → A switch.
+- A pending write invalidates older GET snapshots; each confirmed write
+  invalidates reads again. Authoritative reconciliation waits until the entire
+  mutation queue is idle so an intermediate GET cannot overwrite a later write.
+  The server confirms create/rename/delete before local changes; failures
+  never optimistically delete data.
+- Cloud and cached templates validate required nested configuration and
+  decoration collections before being applied; malformed 200 responses keep
+  the last good cache. Historic optional logos, signatures, poemStyle
+  and other explicitly optional fields remain supported.
 - After a mutation completes, an authoritative refetch reconciles cases in
   which the write was accepted by the server but its response was lost.
   A warning remains for uncertain outcomes so the user can inspect the list
@@ -46,8 +55,11 @@ anonymous templates and cloud snapshots from whichever account last logged in.
   generations and pending image conversions.
 - Every potentially late completion rechecks the *same* owner at the
   final image commit, **after** any image fetch/decoding/transcoding.
-  A superseded conversion reports `false`; the old upload/AI task may not
-  set background type or display a stale error.
+  Uploads additionally capture a specific account-lifetime lease and image
+  conversion ID. Switching accounts invalidates that lease even if the user
+  returns to the same account. Post-await type changes and error handling
+  recheck it. A superseded conversion reports `false`; the old upload/AI
+  task may not set background type or display a stale error.
 - Double clicks while one AI request is active are coalesced on the
   client to avoid accidental duplicate billable requests.
 - **Important billing limitation:** changing the background does not cancel

@@ -5,6 +5,7 @@ import { discardDraftAssetRegistration, registerDraftAssetObjectUrl } from '../e
 import type { AiProvider, BackgroundImageSource, BackgroundType, TemplateBackgroundConfig, TranslateFn } from '../types';
 import { inferBackgroundImageSource } from '../backgroundImageSource';
 import { getPaperStyle, paperPreviewStyle, type PaperId } from '../paperStyles';
+import { nextAsyncAccountOwner } from '../asyncIntentGate';
 import { useAiBackground } from './useAiBackground';
 
 const MAX_EXPORT_SCALE = 3;
@@ -63,6 +64,14 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getTok
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageRequestIdRef = useRef(0);
+  const uploadAccountOwnerRef = useRef({ accountId });
+  // A new account is a new lifetime, even when the user later returns to the
+  // same account. Drop older image conversions before they can commit.
+  const nextUploadOwner = nextAsyncAccountOwner(uploadAccountOwnerRef.current, accountId);
+  if (nextUploadOwner !== uploadAccountOwnerRef.current) {
+    uploadAccountOwnerRef.current = nextUploadOwner;
+    imageRequestIdRef.current += 1;
+  }
   const stagedUploadUrlsRef = useRef<Set<string>>(new Set());
   const mountEpochRef = useRef(0);
 
@@ -190,17 +199,21 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getTok
     }
 
     invalidateAiBackground();
-    // applyBackgroundImage allocates the next conversion ID synchronously.
+    // An upload belongs to this specific account lifetime and conversion,
+    // not merely the account ID (which may cycle A -> B -> A).
+    const uploadOwner = uploadAccountOwnerRef.current;
     const uploadRequestId = imageRequestIdRef.current + 1;
+    const isCurrentUpload = () => uploadAccountOwnerRef.current === uploadOwner
+      && imageRequestIdRef.current === uploadRequestId;
     try {
-      const applied = await applyBackgroundImage(file);
-      if (!applied) return;
+      const applied = await applyBackgroundImage(file, 'upload', isCurrentUpload);
+      if (!applied || !isCurrentUpload()) return;
       setBackgroundType('image');
       setBackgroundSize('cover');
       setBackgroundPosition('center');
       setAiError('');
     } catch (error) {
-      if (imageRequestIdRef.current === uploadRequestId) {
+      if (isCurrentUpload()) {
         logError('Failed to process background image', error);
         setAiError(t('errGenFailed'));
       }
