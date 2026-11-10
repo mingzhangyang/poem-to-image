@@ -19,7 +19,7 @@ import { useElementSize } from '../../hooks/useElementSize';
 import { useFontLayoutRevision } from '../../hooks/useFontLayoutRevision';
 import { createStructuredPoemLayout, getPlainPoemText } from '../../poemContent';
 import {
-  getKeyboardDragBounds, getPreviewDragBounds, getPreviewPositioningRect,
+  didFontReadyChangeTextBox, getKeyboardDragBounds, getPreviewDragBounds, getPreviewPositioningRect,
   isArrowDirection, measurePreviewElement, movePreviewPosition,
   nudgePreviewPosition, resizePreviewTextBox, resizePreviewTextBoxByKeyboard,
 } from '../../positioningRect';
@@ -159,6 +159,33 @@ export function PoemContent({
       fontRevision,
     ],
   );
+
+  // A drag records DOM-measured top-left anchors. When the selected font
+  // finishes loading, new glyph metrics can change the text box dimensions,
+  // making those persisted anchors stale even though its center did not move.
+  const previousFontLayoutRef = useRef({
+    revision: fontRevision,
+    width: poemLayout.width,
+    height: poemLayout.height,
+  });
+  useEffect(() => {
+    const previous = previousFontLayoutRef.current;
+    const current = {
+      revision: fontRevision,
+      width: poemLayout.width,
+      height: poemLayout.height,
+    };
+    previousFontLayoutRef.current = current;
+
+    if (
+      didFontReadyChangeTextBox(previous, current)
+      && (poemPosition.exportLeft !== undefined || poemPosition.exportTop !== undefined)
+    ) {
+      // Canvas now derives its origin from the unchanged percentage center
+      // and the newly measured font dimensions instead of fallback metrics.
+      onPoemPositionChange({ exportLeft: undefined, exportTop: undefined });
+    }
+  }, [fontRevision, poemLayout.width, poemLayout.height, poemPosition.exportLeft, poemPosition.exportTop, onPoemPositionChange]);
 
   useEffect(() => {
     if (!isDraggingRef.current) {

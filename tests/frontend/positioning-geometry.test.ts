@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   clampToDragBounds,
+  didFontReadyChangeTextBox,
   getCanvasPositioningRect,
   getCanvasTextOrigin,
   getKeyboardDragBounds,
@@ -132,6 +133,20 @@ test('position and width edits invalidate stale measured export anchors', () => 
     ...original, positionX: 55, exportLeft: 44, exportTop: 33,
   });
   assert.deepEqual(mergePositionUpdate(original, {}), original);
+});
+
+test('font-ready reflow clears measured origins only when text dimensions change', () => {
+  const before = { revision: 0, width: 240, height: 120 };
+  assert.equal(didFontReadyChangeTextBox(before, { revision: 1, width: 240, height: 120 }), false);
+  assert.equal(didFontReadyChangeTextBox(before, { revision: 0, width: 250, height: 120 }), false);
+  assert.equal(didFontReadyChangeTextBox(before, { revision: 1, width: 250, height: 120 }), true);
+  assert.equal(didFontReadyChangeTextBox(before, { revision: 1, width: 240, height: 130 }), true);
+
+  const anchored = { positionX: 44, positionY: 56, exportLeft: 22, exportTop: 18 };
+  assert.deepEqual(
+    mergePositionUpdate(anchored, { exportLeft: undefined, exportTop: undefined }),
+    { ...anchored, exportLeft: undefined, exportTop: undefined },
+  );
 });
 
 test('inset border positioning uses the same content extent for Canvas export', () => {

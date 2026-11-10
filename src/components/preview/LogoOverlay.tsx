@@ -62,7 +62,7 @@ export const LogoOverlay: FC<LogoOverlayProps> = ({ ariaLabel, frameRef, logo, o
         y: moveEvent.clientY - startY,
       }, frameRect, bounds);
 
-      livePositionRef.current = { positionX: newPositionX, positionY: newPositionY };
+      livePositionRef.current = nextPosition;
       setLivePosition(livePositionRef.current);
     };
 

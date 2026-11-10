@@ -41,7 +41,8 @@ the preview moves but Canvas exports the poem at the older location.
 state boundary, retaining newly measured anchors when supplied together
 with a new position. The keyboard handlers also clear their transient copy.
 Existing stored documents are not migrated; their anchors remain respected
-until the next user adjustment.
+until the next user adjustment or a font-ready reflow that changes the poem
+dimensions.
 
 ## Font timing
 
@@ -52,7 +53,10 @@ font metrics, while Canvas export waited for the selected actual glyphs.
 `useFontLayoutRevision` requests the selected font face and actual text glyphs
 using the existing `ensureFontReady` helper. Once loading resolves it bumps a
 local measurement revision so **poem and custom-text layout** is recomputed
-using loaded-font metrics. The stamp canvas repaints after its face and glyphs
+using loaded-font metrics. If font-ready remeasurement changes the poem box
+width or height, measured `exportLeft`/`exportTop` are invalidated so Canvas
+recomputes the top-left from the centered position and fresh dimensions.
+The stamp canvas repaints after its face and glyphs
 are ready. Signature font readiness is already handled by its own loader and
 preview repaint logic; no duplicate loader is added.
 
