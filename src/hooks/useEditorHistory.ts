@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useUndoHistory } from './useUndoHistory';
+import { isDeepEqual } from './useStructuralMemo';
 import { releaseEditorDraftAssets, retainEditorDraftAssets } from '../editorDraftStore';
 import { getEditorDocumentAssetUrls, type EditorDocument } from '../editorDocument';
 
@@ -10,8 +11,15 @@ interface UseEditorHistoryParams {
 }
 
 export function useEditorHistory({ document, restoreDocument }: UseEditorHistoryParams) {
-  const { push: pushSnapshot, undo: undoHistory, redo: redoHistory, canUndo, canRedo, getSnapshots } =
-    useUndoHistory<EditorDocument>();
+  const {
+    push: pushSnapshot,
+    undo: undoHistory,
+    redo: redoHistory,
+    canUndo,
+    canRedo,
+    getSnapshots,
+    getCurrentSnapshot,
+  } = useUndoHistory<EditorDocument>();
   const assetOwnerRef = useRef(crypto.randomUUID());
   const assetLeaseRef = useRef(0);
 
@@ -48,23 +56,30 @@ export function useEditorHistory({ document, restoreDocument }: UseEditorHistory
     retainEditorDraftAssets(assetOwnerRef.current, urls);
   }, [getSnapshots]);
 
-  const flushPending = useCallback(() => {
+  const clearPending = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = null;
-    const pending = pendingRef.current;
-    if (!pending) return;
     pendingRef.current = null;
     setHasPendingEdit(false);
-    pushSnapshot(pending);
+  }, []);
+
+  const flushPending = useCallback(() => {
+    const pending = pendingRef.current;
+    clearPending();
+    if (!pending) return;
+    // A -> B -> A inside the debounce window is not a new history entry.
+    // In particular, don't discard the redo branch for a net-zero edit.
+    if (!isDeepEqual(pending, getCurrentSnapshot())) {
+      pushSnapshot(pending);
+    }
     refreshAssetReferences();
-  }, [pushSnapshot, refreshAssetReferences]);
+  }, [clearPending, getCurrentSnapshot, pushSnapshot, refreshAssetReferences]);
 
   useEffect(() => {
     if (restoringRef.current) {
       restoringRef.current = false;
       observedRef.current = document;
-      pendingRef.current = null;
-      setHasPendingEdit(false);
+      clearPending();
       refreshAssetReferences();
       return;
     }
@@ -76,25 +91,31 @@ export function useEditorHistory({ document, restoreDocument }: UseEditorHistory
     }
     if (observedRef.current === document) return;
     observedRef.current = document;
+    if (isDeepEqual(document, getCurrentSnapshot())) {
+      // Reverted edits should stop being pending immediately, not after 800ms.
+      clearPending();
+      refreshAssetReferences();
+      return;
+    }
     pendingRef.current = document;
     setHasPendingEdit(true);
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(flushPending, 800);
     refreshAssetReferences();
-  }, [document, flushPending, pushSnapshot, refreshAssetReferences]);
+  }, [clearPending, document, flushPending, getCurrentSnapshot, pushSnapshot, refreshAssetReferences]);
 
   useEffect(() => () => {
     if (timerRef.current) clearTimeout(timerRef.current);
   }, []);
 
   const restore = useCallback((snapshot: EditorDocument) => {
+    clearPending();
+    // If nothing changes, the document effect will not run to disarm this ref.
+    // Arming it here would cause the NEXT genuine edit to be ignored.
+    if (isDeepEqual(snapshot, documentRef.current)) return;
     restoringRef.current = true;
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = null;
-    pendingRef.current = null;
-    setHasPendingEdit(false);
     restoreRef.current(snapshot);
-  }, []);
+  }, [clearPending]);
 
   const handleUndo = useCallback(() => {
     // A user may press Undo before the 800ms coalescing timer fires.

@@ -25,11 +25,50 @@ test('editor lifecycle registers visibilitychange on the browser document', asyn
   expect(errors).toEqual([]);
 });
 
+test('reverted border edits do not create duplicate history or suppress the next real edit', async ({ page }) => {
+  await page.clock.install();
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: /^Decorations/ }).click();
+
+  const border = page.getByRole('checkbox', { name: /Border/i });
+  const undo = page.getByRole('button', { name: 'Undo' });
+  const redo = page.getByRole('button', { name: 'Redo' });
+  await expect(border).not.toBeChecked();
+  await expect(undo).toBeDisabled();
+
+  await page.clock.pauseAt(Date.now() + 5_000);
+  await border.check();
+  await expect(border).toBeChecked();
+  await border.uncheck();
+  await expect(border).not.toBeChecked();
+  await expect(undo).toBeDisabled();
+  await expect(redo).toBeDisabled();
+
+  // Even after the original 800ms deadline, A -> B -> A is not a history step.
+  await page.clock.runFor(900);
+  await expect(undo).toBeDisabled();
+
+  // A genuine edit must remain undoable, and branching must invalidate Redo.
+  await border.check();
+  await expect(undo).toBeEnabled();
+  await undo.click();
+  await expect(border).not.toBeChecked();
+  await expect(redo).toBeEnabled();
+  await border.check();
+  await expect(redo).toBeDisabled();
+  await undo.click();
+  await expect(border).not.toBeChecked();
+  await page.clock.resume();
+});
+
 test('a multi-layer template command undoes and redoes before the history debounce', async ({ page }) => {
+  await page.clock.install();
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.getByRole('button', { name: /^Templates/ }).click();
   await page.getByRole('button', { name: /^More \(/ }).click();
   const library = page.getByRole('dialog', { name: 'Built-in Templates' });
+  // Freeze the 800ms debounce; polling cannot mask missing immediate-Undo support.
+  await page.clock.pauseAt(Date.now() + 5_000);
   await library.getByRole('button', { name: /Song Floral/ }).click();
   const summary = page.getByRole('button', { name: /^Background/ });
   await expect(summary).toContainText('Templates');
@@ -45,6 +84,7 @@ test('a multi-layer template command undoes and redoes before the history deboun
   await expect(redo).toBeEnabled();
   await redo.click();
   await expect(summary).toContainText('Templates');
+  await page.clock.resume();
   await expect.poll(() => page.evaluate(() => {
     const raw = localStorage.getItem('inkpoem.editor-state.v1');
     return raw ? JSON.parse(raw).background.backgroundType : null;
@@ -55,12 +95,14 @@ test('a multi-layer template command undoes and redoes before the history deboun
 });
 
 test('rapid undo of a preset restores its identity and dimensions in saved document', async ({ page }) => {
+  await page.clock.install();
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.getByRole('button', { name: /^Canvas Size/ }).click();
   const selector = page.getByRole('combobox', { name: 'Preset Sizes' });
   const originalPreset = await selector.inputValue();
   const nextPreset = originalPreset === 'print-card' ? 'wechat-moments-long' : 'print-card';
 
+  await page.clock.pauseAt(Date.now() + 5_000);
   await selector.selectOption(nextPreset);
   await expect(selector).toHaveValue(nextPreset);
   await expect(page.getByRole('button', { name: 'Undo' })).toBeEnabled();
@@ -69,6 +111,7 @@ test('rapid undo of a preset restores its identity and dimensions in saved docum
 
   await page.getByRole('button', { name: 'Redo' }).click();
   await expect(selector).toHaveValue(nextPreset);
+  await page.clock.resume();
   await expect.poll(() => page.evaluate(() => {
     const raw = localStorage.getItem('inkpoem.editor-state.v1');
     return raw ? JSON.parse(raw).presetSize : null;

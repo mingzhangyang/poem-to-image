@@ -54,6 +54,11 @@ export function useUndoHistory<T>(maxHistory = DEFAULT_MAX_HISTORY) {
   }, []);
 
   const getSnapshots = useCallback((): readonly T[] => historyRef.current, []);
+  // The active cursor can point behind the latest entry after Undo.
+  const getCurrentSnapshot = useCallback(
+    (): T | null => indexRef.current < 0 ? null : (historyRef.current[indexRef.current] ?? null),
+    [],
+  );
 
-  return { push, undo, redo, canUndo, canRedo, getSnapshots };
+  return { push, undo, redo, canUndo, canRedo, getSnapshots, getCurrentSnapshot };
 }
