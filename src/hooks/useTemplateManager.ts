@@ -127,6 +127,13 @@ function matchesDecorations(
     decorations.poemPosition.positionY === d.poemPosition.positionY &&
     decorations.stamp.text === d.stamp.text &&
     decorations.stamp.style === d.stamp.style &&
+    // A user-chosen seal mode, face, ink, weathering or font makes these
+    // decorations custom; switching UI language must not reapply the stamp.
+    decorations.stamp.mode === d.stamp.mode &&
+    decorations.stamp.colorScheme === d.stamp.colorScheme &&
+    decorations.stamp.inkColor === d.stamp.inkColor &&
+    decorations.stamp.weathering === d.stamp.weathering &&
+    decorations.stamp.fontFamily === d.stamp.fontFamily &&
     decorations.stamp.positionX === d.stamp.positionX &&
     decorations.stamp.positionY === d.stamp.positionY &&
     decorations.stamp.size === d.stamp.size &&

@@ -179,7 +179,7 @@ export function getStampShadow(stamp: StampConfig) {
   const inkColor = stamp.inkColor ?? STAMP_INK_COLOR;
   const color = /^#[0-9a-f]{6}$/i.test(inkColor) ? inkColor : STAMP_INK_COLOR;
   return {
-    color: color + (stamp.colorScheme === 'outline' ? '1f' : '38'),
+    color: color + ((stamp.mode === 'zhuwen' || (stamp.mode !== 'baiwen' && stamp.colorScheme === 'outline')) ? '1f' : '38'),
     blur: 12,
     offsetX: 0,
     offsetY: 5,

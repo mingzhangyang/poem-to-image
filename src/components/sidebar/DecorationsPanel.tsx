@@ -2,6 +2,11 @@ import { Plus, Stamp, Trash2, Upload, Text, TextCursorInput, ChevronUp, ChevronD
 import { useEffect, useRef, useState } from 'react';
 import { STAMP_FONT_OPTIONS } from '../../fontOptions';
 import { limitStampText } from '../../stampRendering';
+import { getLXGWUnlistedCharacters } from '../../lxgwSealCoverage';
+import {
+  getStampPresetUpdates, isSealScriptFont, isTraditionalStamp, SEAL_FONT_STACK, SEAL_PRESET_IDS, SMALL_SEAL_FONT_STACK,
+} from '../../sealTypography';
+import type { StampPresetId } from '../../sealTypography';
 import { SIGNATURE_FONTS } from '../../signatureRendering';
 import type { BorderStyle, DecorationsSectionProps, ExpandedSections, SignatureFlourish, StampStyle, TranslateFn } from '../../types';
 import { ControlSection } from '../ControlSection';
@@ -61,6 +66,9 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
       setStampInputText(decorations.stamp.text);
     }
   }, [decorations.stamp.text]);
+
+  const smallSealUnlisted = decorations.stamp.fontFamily === SMALL_SEAL_FONT_STACK
+    ? getLXGWUnlistedCharacters(decorations.stamp.text) : [];
 
   const summaryParts = [
     decorations.showBorder ? t(BORDER_STYLE_LABELS[decorations.borderStyle]) : null,
@@ -195,6 +203,55 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
 
           {decorations.showStamp && decorations.stampSupported ? (
             <div className="rounded-xl bg-white border border-[rgba(34,48,52,0.08)] p-3 space-y-3">
+              <div>
+                <label className="mb-2 block text-xs text-(--app-accent-500)">{t('stampPresets')}</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {SEAL_PRESET_IDS.map((preset) => {
+                    const labels: Record<StampPresetId, 'stampPresetVermilion' | 'stampPresetWhite' | 'stampPresetLiterati' | 'stampPresetModern'> = {
+                      'vermillion-name': 'stampPresetVermilion',
+                      'white-name': 'stampPresetWhite',
+                      'literati': 'stampPresetLiterati',
+                      'modern-calligraphy': 'stampPresetModern',
+                    };
+                    return (
+                      <button
+                        key={preset}
+                        type="button"
+                        className="rounded-lg border border-[rgba(34,48,52,0.12)] bg-[rgba(253,248,242,0.95)] px-2.5 py-2 text-left text-xs font-medium text-(--app-accent-700) transition-colors hover:border-[rgba(154,48,37,0.45)] hover:bg-[rgba(244,230,217,0.5)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgba(154,48,37,0.65)]"
+                        onClick={() => decorations.onStampChange(getStampPresetUpdates(preset))}
+                      >
+                        {t(labels[preset])}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs text-(--app-accent-500)">{t('stampMode')}</label>
+                <select
+                  aria-label={t('stampMode')}
+                  value={decorations.stamp.mode ?? 'modern'}
+                  onChange={(event) => {
+                    const mode = event.target.value as 'zhuwen' | 'baiwen' | 'modern';
+                    decorations.onStampChange({
+                      mode,
+                      ...(mode === 'zhuwen' ? { colorScheme: 'outline' as const } : {}),
+                      ...(mode === 'baiwen' ? { colorScheme: 'filled' as const } : {}),
+                      ...(mode !== 'modern' && !isSealScriptFont(decorations.stamp.fontFamily)
+                        ? { fontFamily: SEAL_FONT_STACK } : {}),
+                      ...(mode === 'modern' && isSealScriptFont(decorations.stamp.fontFamily)
+                        ? { fontFamily: '"Ma Shan Zheng", cursive' } : {}),
+                    });
+                  }}
+                  className="app-select text-sm"
+                >
+                  <option value="modern">{t('stampModeModern')}</option>
+                  <option value="zhuwen">{t('stampColorOutline')}</option>
+                  <option value="baiwen">{t('stampColorFilled')}</option>
+                </select>
+              </div>
+
               <div className="grid grid-cols-[1fr_auto] gap-2 items-center">
                 <label className="text-xs text-(--app-accent-500)">{t('stampText')}</label>
                 <button
@@ -249,8 +306,11 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                 <div className="app-segment flex gap-1 p-1 rounded">
                   <button
                     type="button"
-                    onClick={() => decorations.onStampChange({ colorScheme: 'outline' })}
-                    aria-pressed={(decorations.stamp.colorScheme ?? 'filled') === 'outline'}
+                    onClick={() => decorations.onStampChange({
+                      colorScheme: 'outline',
+                      ...(isTraditionalStamp(decorations.stamp) ? { mode: 'zhuwen' as const } : {}),
+                    })}
+                    aria-pressed={decorations.stamp.mode === 'zhuwen' || (!isTraditionalStamp(decorations.stamp) && (decorations.stamp.colorScheme ?? 'filled') === 'outline')}
                     className={`flex-1 py-1 text-xs rounded transition-colors ${
                       (decorations.stamp.colorScheme ?? 'filled') === 'outline' ? 'app-segment-button-active' : 'text-(--app-accent-500) hover:bg-(--app-accent-50)'
                     }`}
@@ -259,8 +319,11 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                   </button>
                   <button
                     type="button"
-                    onClick={() => decorations.onStampChange({ colorScheme: 'filled' })}
-                    aria-pressed={decorations.stamp.colorScheme === 'filled'}
+                    onClick={() => decorations.onStampChange({
+                      colorScheme: 'filled',
+                      ...(isTraditionalStamp(decorations.stamp) ? { mode: 'baiwen' as const } : {}),
+                    })}
+                    aria-pressed={decorations.stamp.mode === 'baiwen' || (!isTraditionalStamp(decorations.stamp) && decorations.stamp.colorScheme === 'filled')}
                     className={`flex-1 py-1 text-xs rounded transition-colors ${
                       decorations.stamp.colorScheme === 'filled' ? 'app-segment-button-active' : 'text-(--app-accent-500) hover:bg-(--app-accent-50)'
                     }`}
@@ -344,6 +407,14 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                     </option>
                   ))}
                 </select>
+                {isSealScriptFont(decorations.stamp.fontFamily) && (
+                  <p className="mt-1 text-xs text-amber-700" role="note">{t('stampFontCoverageNote')}</p>
+                )}
+                {smallSealUnlisted.length > 0 && (
+                  <p className="mt-1 text-xs text-amber-700" role="note">
+                    {t('stampFontMissingNote')} {smallSealUnlisted.join('、')}
+                  </p>
+                )}
                 {STAMP_FONT_OPTIONS.find((f) => f.value === decorations.stamp.fontFamily)?.cjkOnly &&
                   /[a-zA-Z]/.test(decorations.stamp.text) && (
                   <p className="mt-1 text-xs text-amber-600">{t('stampFontCjkWarning')}</p>

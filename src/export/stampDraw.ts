@@ -12,6 +12,7 @@ import {
   STAMP_INK_COLOR,
 } from '../stampRendering';
 import { positionToCanvasPoint } from '../positioningRect';
+import { fitTraditionalStampGlyph, getTraditionalStampLayout, isTraditionalStamp } from '../sealTypography';
 import type { StampConfig } from '../types';
 import type { CanvasExportScene } from './renderCanvasExport';
 
@@ -117,6 +118,60 @@ function drawStampText(ctx: CanvasRenderingContext2D, stamp: StampConfig) {
   ctx.restore();
 }
 
+/**
+ * Historical seal mode: keep the real ink / carved lettering and generous
+ * margins separate from the former decorative grid. Both destinations share
+ * the same high-DPI body compositor (drawStampImpression).
+ */
+function drawTraditionalStampBody(ctx: CanvasRenderingContext2D, stamp: StampConfig) {
+  const layout = getTraditionalStampLayout(stamp);
+  const inkColor = stamp.inkColor ?? STAMP_INK_COLOR;
+  const isWhiteCharacters = stamp.mode === 'baiwen';
+
+  ctx.save();
+  drawStampShape(ctx, stamp, isWhiteCharacters ? 0 : layout.borderWidth / 2);
+  if (isWhiteCharacters) {
+    ctx.fillStyle = inkColor;
+    ctx.fill();
+  } else {
+    ctx.lineWidth = layout.borderWidth;
+    ctx.strokeStyle = inkColor;
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  ctx.save();
+  drawStampShape(ctx, stamp, layout.borderWidth * 0.75);
+  ctx.clip();
+  if (isWhiteCharacters) {
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.fillStyle = '#000';
+  } else {
+    ctx.fillStyle = inkColor;
+  }
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  // Match the round clipping path's inset; reserve a little extra breathing
+  // room so measured corner strokes do not graze the circular border.
+  const roundClipRadius = stamp.style === 'round'
+    ? Math.max(0, stamp.size / 2 - layout.borderWidth * 0.75 - stamp.size * 0.015)
+    : null;
+  for (const slot of layout.slots) {
+    ctx.font = 'normal ' + slot.fontSize + 'px ' + stamp.fontFamily;
+    const fit = fitTraditionalStampGlyph(
+      slot,
+      ctx.measureText(slot.character),
+      roundClipRadius === null ? undefined : { x: slot.x, y: slot.y, radius: roundClipRadius },
+    );
+    ctx.save();
+    ctx.translate(slot.x, slot.y);
+    ctx.scale(fit.scale, fit.scale);
+    ctx.fillText(slot.character, fit.offsetX, fit.offsetY);
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
 export function drawStampBody(ctx: CanvasRenderingContext2D, stamp: StampConfig) {
   const isFilled = stamp.colorScheme !== 'outline';
   const half = stamp.size / 2;
@@ -124,7 +179,9 @@ export function drawStampBody(ctx: CanvasRenderingContext2D, stamp: StampConfig)
   const chars = getStampCharacters(stamp.text);
   const inkColor = stamp.inkColor ?? STAMP_INK_COLOR;
 
-  if (isFilled) {
+  if (isTraditionalStamp(stamp)) {
+    drawTraditionalStampBody(ctx, stamp);
+  } else if (isFilled) {
     drawStampShape(ctx, stamp);
     ctx.fillStyle = inkColor;
     ctx.fill();
@@ -157,7 +214,7 @@ export function drawStampBody(ctx: CanvasRenderingContext2D, stamp: StampConfig)
     ctx.restore();
   }
 
-  drawStampText(ctx, stamp);
+  if (!isTraditionalStamp(stamp)) drawStampText(ctx, stamp);
   const weatheringLevel = stamp.weathering ?? 50;
   if (weatheringLevel > 0) {
     applyStampWeathering(ctx, stamp.size, createStampWeatheringRand(stamp), weatheringLevel);

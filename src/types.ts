@@ -163,6 +163,8 @@ export interface SignatureConfig {
 export interface StampConfig {
   text: string;
   style: StampStyle;
+  /** Optional: missing means legacy visual rules for all saved artworks/templates. */
+  mode?: 'zhuwen' | 'baiwen' | 'modern';
   colorScheme?: 'outline' | 'filled';
   inkColor?: string;
   weathering?: number;
