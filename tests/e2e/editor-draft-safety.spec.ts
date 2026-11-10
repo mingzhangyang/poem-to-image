@@ -151,8 +151,15 @@ test('a save failure remains visible and can be retried without dropping edits',
   await page.getByPlaceholder('Title').fill('Latest edit while storage is blocked');
   await page.getByRole('button', { name: 'Done' }).click();
   await expect(page.getByRole('alert')).toContainText('latest changes have not been saved');
-  await page.evaluate(() => { Reflect.deleteProperty(indexedDB, 'open'); });
-  await page.getByRole('button', { name: 'Retry saving' }).click();
+  await page.evaluate(() => {
+    Reflect.deleteProperty(indexedDB, 'open');
+    // The debounce may already be retrying when storage is restored, causing
+    // the transient error button to detach mid-Playwright click. Trigger a
+    // still-visible retry synchronously, or let the in-flight save complete.
+    const button = Array.from(document.querySelectorAll('button'))
+      .find((element) => element.textContent?.trim() === 'Retry saving');
+    button?.click();
+  });
   await expect.poll(async () => (await readDraft(page))?.scene.poem.title).toBe('Latest edit while storage is blocked');
   await expect(page.getByRole('alert')).toHaveCount(0);
 });

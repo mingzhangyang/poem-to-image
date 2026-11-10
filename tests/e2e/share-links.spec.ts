@@ -259,9 +259,18 @@ test('a pending publication remains manageable after closing the recovery dialog
 test('never uploads when the browser cannot save its deletion capability', async ({ page }) => {
   test.setTimeout(90_000);
   await page.addInitScript(() => {
-    Object.defineProperty(window, 'indexedDB', {
+    // Block only share-capability storage. The editor draft uses a separate
+    // IndexedDB database and must finish bootstrapping so Export stays usable.
+    const storage = window.indexedDB;
+    const originalOpen = storage.open.bind(storage);
+    Object.defineProperty(storage, 'open', {
       configurable: true,
-      get() { throw new DOMException('Storage denied', 'SecurityError'); },
+      value: (name: string, version?: number) => {
+        if (name === 'inkpoem-share-library') {
+          throw new DOMException('Storage denied', 'SecurityError');
+        }
+        return version === undefined ? originalOpen(name) : originalOpen(name, version);
+      },
     });
   });
   let publishRequests = 0;

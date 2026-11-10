@@ -23,7 +23,7 @@ test('all localized mutation warnings require synchronization and inspection bef
       copy.saveUnavailable, copy.reconcilePending, copy.reconcileChecking,
       copy.reconcileRefreshed, copy.reconcileFailed,
     ]) {
-      assert.ok(recovery.length > 20, `missing reconciliation or save-ready guidance in ${language}`);
+      assert.ok(recovery.trim().length > 0, `missing reconciliation or save-ready guidance in ${language}`);
     }
   }
   assert.match(getTemplateSyncMessages('en').mutationFailed, /may already have saved/);

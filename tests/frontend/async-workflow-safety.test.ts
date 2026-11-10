@@ -66,3 +66,47 @@ test('a deferred upload cannot commit after account A -> B -> A', async () => {
   await upload;
   assert.deepEqual(committed, []);
 });
+
+
+test('a confirmed save adds to the library without overriding a newer built-in selection', async () => {
+  const gate = createAsyncIntentGate();
+  const saveEpoch = gate.begin();
+  const shouldActivate = () => gate.isCurrent(saveEpoch);
+  let releaseSave!: () => void;
+  const serverResponse = new Promise<void>((resolve) => { releaseSave = resolve; });
+  const library: string[] = [];
+  let activeBuiltIn: string | null = null;
+  let activeCustom: string | null = null;
+  const save = (async () => {
+    await serverResponse;
+    library.push('saved snapshot');
+    // Mirrors the two separate async post-save commits: custom library
+    // activation and clearing the built-in selection in the manager.
+    if (shouldActivate()) activeCustom = 'saved snapshot';
+    if (shouldActivate()) activeBuiltIn = null;
+  })();
+
+  gate.invalidate(); // User applies another template while POST is pending.
+  activeBuiltIn = 'modern-minimal';
+  activeCustom = null;
+  releaseSave();
+  await save;
+
+  assert.deepEqual(library, ['saved snapshot'], 'the confirmed save is not discarded');
+  assert.equal(activeBuiltIn, 'modern-minimal', 'newer built-in remains selected');
+  assert.equal(activeCustom, null, 'older cloud response cannot mark itself active');
+});
+
+test('the latest confirmed template save can become active when selection is unchanged', async () => {
+  const gate = createAsyncIntentGate();
+  const olderSave = gate.begin();
+  const latestSave = gate.begin();
+  assert.equal(gate.isCurrent(olderSave), false);
+  assert.equal(gate.isCurrent(latestSave), true);
+  let activeBuiltIn: string | null = 'graceful-whitespace';
+  let activeCustom: string | null = null;
+  if (gate.isCurrent(latestSave)) activeCustom = 'latest saved template';
+  if (gate.isCurrent(latestSave)) activeBuiltIn = null;
+  assert.equal(activeCustom, 'latest saved template');
+  assert.equal(activeBuiltIn, null);
+});

@@ -81,8 +81,9 @@ anonymous templates and cloud snapshots from whichever account last logged in.
 
 ## Local-only verification
 
-Do **not** manually start Actions/CI. All commits use
-`[skip ci]` on one independent PR.
+Keep changes batched on one independent PR. Earlier commits used
+`[skip ci]`; a consolidated corrective commit may trigger a single
+requested CI verification run. No deployment or schema migration is planned.
 
 ```sh
 npm ci
@@ -125,12 +126,18 @@ Manual acceptance checklist:
    The browser test for guest cache quota recovery must target the saved
    template **card**, since the active template name also appears in the
    sidebar summary.
+   While a cloud save is awaiting confirmation, select a different built-in
+   or custom template. The later selection must remain active; the completed
+   save must still appear in the library without reactivating the old snapshot.
 8. Start AI generation, then change built-in template, upload image, or
    select Solid/Paper before the response. The old completion must not
    change the current background, even if transcoding finishes later.
 9. Confirm a successful, still-current AI generation applies its background,
    and existing source attribution/export continue to work.
 
-**Validation status when drafted:** remote repository metadata and file
-changes were inspected. The execution container cannot resolve github.com,
-so typecheck/Playwright/build remain unverified until local execution.
+**Validation:** CI run 42744558468 confirmed a TypeScript union-widening error,
+an E2E retry-button stability race, and an E2E test that blocked the editor's
+own IndexedDB while trying to test share-capability storage failure. This
+batch addresses those root causes and the two outstanding Copilot findings.
+Full verification must be confirmed by the subsequent GitHub Actions run,
+not by reviewing the code or marking conversations resolved.

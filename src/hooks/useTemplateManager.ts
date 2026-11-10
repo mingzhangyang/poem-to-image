@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import { DEFAULT_POEM_STYLE, isSamePoemLayerStyle } from '../poemStyle';
+import { createAsyncIntentGate } from '../asyncIntentGate';
 import { resolveTemplateForLanguage } from '../templates';
 import type { Language } from '../translations';
 import type {
@@ -75,6 +76,7 @@ interface CustomTemplatesState {
     typography: TemplateTypographyConfig,
     decorations: TemplateDecorationsConfig,
     poemStyle: PoemLayerStyle,
+    shouldActivate: () => boolean,
   ) => Promise<UserCustomTemplate | null>;
   applyCustomTemplate: (id: string) => void;
   clearActiveCustomTemplate: () => void;
@@ -177,6 +179,9 @@ export function useTemplateManager({
 }: UseTemplateManagerParams) {
   const [activeTemplateId, setActiveTemplateId] = useState<EditorTemplateId | null>(null);
   const previousLanguageRef = useRef(language);
+  // Selection intent outlives individual cloud writes. Saving data does not
+  // grant a pending request permission to replace a newer user selection.
+  const selectionIntentRef = useRef(createAsyncIntentGate());
 
   // ── Apply built-in template ───────────────────────────────────────────────
 
@@ -211,7 +216,8 @@ export function useTemplateManager({
 
   const handleApplyTemplate = useCallback(
     (templateId: EditorTemplateId) => {
-      applyTemplateById(templateId);
+      if (!applyTemplateById(templateId)) return;
+      selectionIntentRef.current.invalidate();
       customTemplates.clearActiveCustomTemplate();
     },
     [applyTemplateById, customTemplates],
@@ -221,6 +227,7 @@ export function useTemplateManager({
     (id: string) => {
       const template = customTemplates.customTemplates.find((t) => t.id === id);
       if (!template) return;
+      selectionIntentRef.current.invalidate();
       background.applyBackgroundTemplate(template.background);
       typography.applyTypographyTemplate(template.typography);
       decorations.applyDecorationsTemplate(template.decorations);
@@ -243,6 +250,8 @@ export function useTemplateManager({
       // The identity may be unresolved while Clerk loads or changes account.
       // Do not treat a silent null result as a completed user save.
       if (!customTemplates.canSaveCustomTemplate) return false;
+      const saveEpoch = selectionIntentRef.current.begin();
+      const shouldActivate = () => selectionIntentRef.current.isCurrent(saveEpoch);
       const bgConfig: TemplateBackgroundConfig = {
         backgroundType:
           background.backgroundType === 'image' || background.backgroundType === 'ai'
@@ -288,9 +297,12 @@ export function useTemplateManager({
         signatures: decorations.signatures,
         logos: [],
       };
-      const created = await customTemplates.saveCustomTemplate(name, bgConfig, typConfig, decConfig, poemStyle);
+      const created = await customTemplates.saveCustomTemplate(
+        name, bgConfig, typConfig, decConfig, poemStyle, shouldActivate,
+      );
       if (!created) return false;
-      setActiveTemplateId(null);
+      // Never reset a template selected while this save was in flight.
+      if (shouldActivate()) setActiveTemplateId(null);
       return true;
     },
     [background, typography, decorations, poemStyle, customTemplates],

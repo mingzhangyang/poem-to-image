@@ -249,6 +249,9 @@ export function useCustomTemplates({ isLoaded, isSignedIn, userId, getToken }: U
     typography: TemplateTypographyConfig,
     decorations: TemplateDecorationsConfig,
     poemStyle: UserCustomTemplate['poemStyle'],
+    // The manager owns selection intent. Saving must never reactivate a stale
+    // snapshot after the user has selected something else in the meantime.
+    shouldActivate: () => boolean,
   ): Promise<UserCustomTemplate | null> => {
     const ownerScope = scopeRef.current;
     const lifetime = scopeLifetimeRef.current;
@@ -268,7 +271,8 @@ export function useCustomTemplates({ isLoaded, isSignedIn, userId, getToken }: U
         createdAt: Date.now(),
       });
       update(ownerScope, (old) => ({
-        ...old, templates: [created, ...old.templates], activeId: created.id, syncError: null,
+        ...old, templates: [created, ...old.templates],
+        activeId: shouldActivate() ? created.id : old.activeId, syncError: null,
       }), true);
       return created;
     }
@@ -280,7 +284,7 @@ export function useCustomTemplates({ isLoaded, isSignedIn, userId, getToken }: U
         update(ownerScope, (old) => ({
           ...old,
           templates: [saved, ...old.templates.filter((item) => item.id !== saved.id)],
-          activeId: saved.id,
+          activeId: shouldActivate() ? saved.id : old.activeId,
           syncError: null,
           isSyncing: false,
           reconciliationStatus: 'idle',
@@ -409,7 +413,9 @@ export function useCustomTemplates({ isLoaded, isSignedIn, userId, getToken }: U
 
   // Never expose a previous identity's template list during Clerk account
   // transitions or auth-loading, even for one React render.
-  const visible = view.scope === scope ? view : {
+  // Explicit view type avoids string widening of reconciliationStatus when
+  // auth is changing and the redacted view replaces the old account view.
+  const visible: ScopeView = view.scope === scope ? view : {
     ...view, scope, templates: [], activeId: null,
     isSyncing: true, syncError: null, reconciliationStatus: 'idle', hasLegacyCache: false,
   };
