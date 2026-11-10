@@ -25,8 +25,12 @@ Chinese font. The browser only downloads the faces when selected for a stamp.
    - Served file: TTF/LXGWSeal-Regular.ttf (~223 KiB).
    - Genuine Xiaozhuan / small-seal script. The repository README still
      states about 75 entries, but documentation/table.md dated 2026-10-08
-     lists 165 seal-script entries (365 documented seal/modern-codepoint aliases).
+     lists 165 seal-script entries (377 mapped seal/modern-codepoint aliases).
      Both are limited compared with general CJK coverage.
+   - The 377 codepoints were regenerated from the pinned 165-row mapping table:
+     seal characters, base/simplified forms, direct transcriptions and mapped
+     variants are included; struck-out entries and parenthesized references
+     are excluded. For example, 萅 and 秊 are mapped, but 谷 is not.
    - The UI flags characters absent from the documented table. This is
      a best-effort reference, NOT a binary-cmap audit or a guaranteed match.
 

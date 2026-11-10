@@ -113,9 +113,10 @@ for (const edit of ['mode', 'font'] as const) {
     const expectedMode = await mode.inputValue();
     const expectedFont = await font.inputValue();
     await page.getByRole('button', { name: '设置' }).click();
-    await page.getByRole('button', { name: 'English', exact: true }).click();
-    await page.getByRole('button', { name: 'Settings' }).click();
-    await expect(page.getByRole('combobox', { name: 'Seal mode' })).toHaveValue(expectedMode);
-    await expect(page.getByRole('combobox', { name: 'Stamp Font' })).toHaveValue(expectedFont);
+    // English deliberately hides seals; switch to a supported CJK language.
+    await page.getByRole('button', { name: '繁體中文', exact: true }).click();
+    await page.getByRole('button', { name: '設定' }).click();
+    await expect(page.getByRole('combobox', { name: '印章模式' })).toHaveValue(expectedMode);
+    await expect(page.getByRole('combobox', { name: '印章字體' })).toHaveValue(expectedFont);
   });
 }

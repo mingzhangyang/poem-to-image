@@ -158,8 +158,15 @@ test('tiny restored traditional seals keep safe inset borders', () => {
 });
 
 test('published LXGW seal coverage helps flag unlisted characters without blocking drafts', () => {
-  assert.ok(LXGW_DOCUMENTED_CODEPOINTS.size >= 300);
+  // Deterministically regenerated from the 165-row pinned upstream table.
+  assert.equal(LXGW_DOCUMENTED_CODEPOINTS.size, 377);
   assert.deepEqual(getLXGWUnlistedCharacters('春水'), []);
+  // Each alias is checked separately: the stamp model displays at most 4 glyphs.
+  for (const character of Array.from('萅秊咊䢉夓㞢䔢花秌淸䨮㢴戼')) {
+    assert.deepEqual(getLXGWUnlistedCharacters(character), [], character);
+  }
+  // 谷 is explicitly struck out, and 王 is parenthesized as a reference.
+  assert.deepEqual(getLXGWUnlistedCharacters('谷王'), ['谷', '王']);
   assert.deepEqual(getLXGWUnlistedCharacters('𠮷春'), ['𠮷']);
   assert.deepEqual(getLXGWUnlistedCharacters(''), []);
 });
