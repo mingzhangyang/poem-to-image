@@ -41,6 +41,7 @@ export function StampOverlay({ ariaLabel, frameRef, stamp, effectiveScale, onSta
   const stampRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fontRevision = useFontLayoutRevision(stamp.fontFamily, getStampCharacters(stamp.text).join(''));
+  const lastPaintKeyRef = useRef<string | null>(null);
   const [devicePixelRatio, setDevicePixelRatio] = useState(() =>
     typeof window === 'undefined' ? 1 : (window.devicePixelRatio || 1),
   );
@@ -74,6 +75,16 @@ export function StampOverlay({ ariaLabel, frameRef, stamp, effectiveScale, onSta
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    // Position, rotation and opacity are applied to the outer CSS element;
+    // they must not regenerate the ink bitmap on pointer moves or keyboard
+    // nudges. A stable key also avoids any plan recomputation during unrelated
+    // React updates. Font readiness and backing resolution DO repaint.
+    const paintKey = JSON.stringify([
+      stamp.text, stamp.style, stamp.size, stamp.fontFamily, stamp.mode,
+      stamp.colorScheme, stamp.inkColor, stamp.weathering,
+      stamp.textureStyle, stamp.textureSeed, pixels, rasterScale, fontRevision,
+    ]);
+    if (lastPaintKeyRef.current === paintKey) return;
     canvas.width = pixels;
     canvas.height = pixels;
     const ctx = canvas.getContext('2d');
@@ -85,6 +96,7 @@ export function StampOverlay({ ariaLabel, frameRef, stamp, effectiveScale, onSta
       applyTransform: false,
       applyOpacity: false,
     });
+    lastPaintKeyRef.current = paintKey;
   }, [stamp, fontRevision, effectiveScale, devicePixelRatio, pixels, rasterScale]);
 
   useEffect(() => {

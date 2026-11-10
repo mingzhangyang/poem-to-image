@@ -12,6 +12,7 @@ import {
   STAMP_INK_COLOR,
 } from '../stampRendering';
 import { positionToCanvasPoint } from '../positioningRect';
+import { drawNaturalSealImpression } from '../naturalSealDraw';
 import { fitTraditionalStampGlyph, getTraditionalStampLayout, isTraditionalStamp } from '../sealTypography';
 import type { StampConfig } from '../types';
 import type { CanvasExportScene } from './renderCanvasExport';
@@ -217,7 +218,12 @@ export function drawStampBody(ctx: CanvasRenderingContext2D, stamp: StampConfig)
   if (!isTraditionalStamp(stamp)) drawStampText(ctx, stamp);
   const weatheringLevel = stamp.weathering ?? 50;
   if (weatheringLevel > 0) {
-    applyStampWeathering(ctx, stamp.size, createStampWeatheringRand(stamp), weatheringLevel);
+    if (stamp.textureStyle === 'natural') {
+      drawNaturalSealImpression(ctx, stamp);
+    } else {
+      // Unset/classic preserves the previous image bit-for-bit for old works.
+      applyStampWeathering(ctx, stamp.size, createStampWeatheringRand(stamp), weatheringLevel);
+    }
   }
 }
 

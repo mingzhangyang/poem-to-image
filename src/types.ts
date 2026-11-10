@@ -168,6 +168,10 @@ export interface StampConfig {
   colorScheme?: 'outline' | 'filled';
   inkColor?: string;
   weathering?: number;
+  /** Optional; missing is the original dotted texture used by saved drafts. */
+  textureStyle?: 'classic' | 'natural';
+  /** Stable identity of the normalized natural impression, independent of ink color/size. */
+  textureSeed?: number;
   positionX: number;
   positionY: number;
   size: number;

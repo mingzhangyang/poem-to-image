@@ -33,6 +33,7 @@ class RecordingContext {
   closePath() { this.record('closePath'); }
   moveTo(x: number, y: number) { this.record('moveTo', x, y); }
   lineTo(x: number, y: number) { this.record('lineTo', x, y); }
+  quadraticCurveTo(...a: number[]) { this.record('quadraticCurveTo', ...a); }
   arc(...a: number[]) { this.record('arc', ...a); }
   roundRect(...a: unknown[]) { this.record('roundRect', ...a); }
   rect(...a: number[]) { this.record('rect', ...a); }
@@ -355,6 +356,34 @@ test('export waits for extended Han seal glyphs before rasterizing any ink', asy
   } finally {
     documentFonts.load = originalLoad;
   }
+});
+
+
+test('full 3x Canvas export uses natural Bai Wen ink carving with bounded organic texture', async () => {
+  const base = makeScene();
+  await renderCanvasExport({
+    ...base,
+    exportScale: 3,
+    decorations: {
+      ...base.decorations,
+      showStamp: true,
+      stamp: {
+        text: '山水', mode: 'baiwen', style: 'square', colorScheme: 'filled',
+        inkColor: '#c82829', weathering: 65, textureStyle: 'natural',
+        textureSeed: 901, size: 120, rotation: -5, opacity: 0.8,
+        positionX: 80, positionY: 80, fontFamily: 'serif',
+      },
+    },
+  });
+  assert.ok(loadedFontTexts.includes('山水'), 'export waits for the actual Chinese seal glyphs');
+  assert.ok(createdContexts.length >= 3, 'export must isolate ink and shadow');
+  const ink = createdContexts[1].trace;
+  assert.ok(ink.some((op) => op.op === 'quadraticCurveTo'), 'organic features are actually drawn');
+  assert.ok(ink.some((op) => op.op === 'fillText' && op.args[0] === '山'), 'letters were carved');
+  assert.ok(ink.some((op) => op.op === 'fillText' && op.args[0] === '水'));
+  assert.ok(ink.some((op) => op.op === 'scale' && op.args[0] === 3), 'ink backing matches 3x');
+  assert.ok(ink.length < 2000, 'ink complexity must stay bounded at export scale');
+  assertBalancedSaveRestore(ink);
 });
 
 test('paper texture uses the preview tile and repeats it behind the poem', async () => {

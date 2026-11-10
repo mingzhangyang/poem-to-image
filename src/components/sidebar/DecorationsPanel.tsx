@@ -2,6 +2,7 @@ import { Plus, Stamp, Trash2, Upload, Text, TextCursorInput, ChevronUp, ChevronD
 import { useEffect, useRef, useState } from 'react';
 import { STAMP_FONT_OPTIONS } from '../../fontOptions';
 import { limitStampText } from '../../stampRendering';
+import { getNaturalSealSeed, nextNaturalSealSeed } from '../../naturalSealTexture';
 import { getLXGWUnlistedCharacters } from '../../lxgwSealCoverage';
 import {
   getStampPresetUpdates, isSealScriptFont, isTraditionalStamp, SEAL_FONT_STACK, SEAL_PRESET_IDS, SMALL_SEAL_FONT_STACK,
@@ -218,7 +219,10 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                         key={preset}
                         type="button"
                         className="rounded-lg border border-[rgba(34,48,52,0.12)] bg-[rgba(253,248,242,0.95)] px-2.5 py-2 text-left text-xs font-medium text-(--app-accent-700) transition-colors hover:border-[rgba(154,48,37,0.45)] hover:bg-[rgba(244,230,217,0.5)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgba(154,48,37,0.65)]"
-                        onClick={() => decorations.onStampChange(getStampPresetUpdates(preset))}
+                        onClick={() => decorations.onStampChange({
+                          ...getStampPresetUpdates(preset),
+                          textureSeed: getNaturalSealSeed(decorations.stamp),
+                        })}
                       >
                         {t(labels[preset])}
                       </button>
@@ -373,6 +377,39 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                     );
                   })}
                 </div>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs text-(--app-accent-500)">{t('stampImpressionStyle')}</label>
+                <select
+                  aria-label={t('stampImpressionStyle')}
+                  value={decorations.stamp.textureStyle ?? 'classic'}
+                  onChange={(event) => {
+                    if (event.target.value === 'natural') {
+                      decorations.onStampChange({
+                        textureStyle: 'natural',
+                        textureSeed: getNaturalSealSeed(decorations.stamp),
+                      });
+                    } else {
+                      decorations.onStampChange({ textureStyle: 'classic' });
+                    }
+                  }}
+                  className="app-select text-sm"
+                >
+                  <option value="natural">{t('stampNaturalImpression')}</option>
+                  <option value="classic">{t('stampClassicImpression')}</option>
+                </select>
+                {decorations.stamp.textureStyle === 'natural' && (
+                  <button
+                    type="button"
+                    onClick={() => decorations.onStampChange({
+                      textureSeed: nextNaturalSealSeed(getNaturalSealSeed(decorations.stamp)),
+                    })}
+                    className="mt-2 rounded-lg border border-[rgba(34,48,52,0.16)] px-3 py-1.5 text-xs font-medium text-(--app-accent-700) hover:bg-[rgba(244,230,217,0.55)]"
+                  >
+                    {t('stampNewImpression')}
+                  </button>
+                )}
               </div>
 
               <div className="space-y-2">
