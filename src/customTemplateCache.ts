@@ -225,6 +225,19 @@ export function hasLegacyTemplateCache(storage: Pick<Storage, 'getItem'>): boole
   }
 }
 
+/**
+ * A failed guest write leaves the latest edits only in React state. Reading
+ * older disk state during legacy import would undo creations, renames or
+ * deletions; require the pending guest snapshot to be durable first.
+ */
+export function canImportLegacyGuestTemplates(state: {
+  scope: TemplateScope | null;
+  cacheCorrupt: boolean;
+  guestCacheDirty: boolean;
+}): boolean {
+  return state.scope === 'guest' && !state.cacheCorrupt && !state.guestCacheDirty;
+}
+
 /** Only an explicit guest action may recover the unscoped historical cache. */
 export function importLegacyGuestTemplates(
   storage: Pick<Storage, 'getItem' | 'setItem'>,

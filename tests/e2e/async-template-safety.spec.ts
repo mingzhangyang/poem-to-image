@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 test.use({ viewport: { width: 1440, height: 900 } });
 
@@ -12,7 +12,7 @@ test.beforeEach(async ({ context }) => {
   });
 });
 
-test('an unscoped legacy template stays untouched until explicit guest import', async ({ page }) => {
+async function seedLegacyGuestTemplate(page: Page) {
   await page.addInitScript(() => {
     const legacy = {
       id: 'custom-legacy-sample',
@@ -45,7 +45,10 @@ test('an unscoped legacy template stays untouched until explicit guest import', 
     };
     localStorage.setItem('poem-to-image.custom-templates', JSON.stringify([legacy]));
   });
+}
 
+test('an unscoped legacy template stays untouched until explicit guest import', async ({ page }) => {
+  await seedLegacyGuestTemplate(page);
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.getByRole('button', { name: /^Templates/ }).click();
   await expect(page.getByText('Legacy Guest Template', { exact: true })).toHaveCount(0);
@@ -92,4 +95,49 @@ test('a background selection made during slow upload transcoding stays selected'
   await page.getByRole('button', { name: 'Solid', exact: true }).click();
   await page.waitForTimeout(1_200);
   await expect(page.getByRole('button', { name: 'Solid', exact: true })).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('guest import protects an unsaved template after localStorage quota failure', async ({ page }) => {
+  await seedLegacyGuestTemplate(page);
+  await page.addInitScript(() => {
+    const originalSet = Storage.prototype.setItem;
+    const state = window as Window & { __failGuestCacheWrites?: boolean };
+    state.__failGuestCacheWrites = true;
+    Storage.prototype.setItem = function (key, value) {
+      if (key === 'poem-to-image.custom-templates.v2.guest' && state.__failGuestCacheWrites) {
+        throw new DOMException('Quota exceeded', 'QuotaExceededError');
+      }
+      return originalSet.call(this, key, value);
+    };
+  });
+
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: /^Templates/ }).click();
+  await page.getByRole('button', { name: 'Save as Template' }).click();
+  await page.getByPlaceholder('Template name...').fill('Unsaved Guest Template');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+
+  await expect(page.getByText('Unsaved Guest Template', { exact: true })).toBeVisible();
+  await expect(page.getByText('Legacy Guest Template', { exact: true })).toHaveCount(0);
+  const importButton = page.getByRole('button', { name: /Review and import older templates into guest library/ });
+  await expect(importButton).toBeDisabled();
+  await expect(page.getByText('Save current guest edits with Retry sync', { exact: false })).toBeVisible();
+  expect(await page.evaluate(() => localStorage.getItem('poem-to-image.custom-templates.v2.guest'))).toBeNull();
+
+  await page.evaluate(() => {
+    (window as Window & { __failGuestCacheWrites?: boolean }).__failGuestCacheWrites = false;
+  });
+  await page.getByRole('button', { name: 'Retry sync' }).click();
+  await expect(importButton).toBeEnabled();
+  await importButton.click();
+  await expect(page.getByText('Legacy Guest Template', { exact: true })).toBeVisible();
+  await expect(page.getByText('Unsaved Guest Template', { exact: true })).toBeVisible();
+
+  const saved = await page.evaluate(() => JSON.parse(
+    localStorage.getItem('poem-to-image.custom-templates.v2.guest') || '[]',
+  ) as Array<{ name: string }>);
+  expect(saved.map((template) => template.name).sort()).toEqual([
+    'Legacy Guest Template', 'Unsaved Guest Template',
+  ]);
+  expect(await page.evaluate(() => localStorage.getItem('poem-to-image.custom-templates'))).not.toBeNull();
 });

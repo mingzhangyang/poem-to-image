@@ -257,6 +257,7 @@ export interface TemplateSectionProps {
   customTemplatesSyncing: boolean;
   onRetryCustomTemplateSync: () => void;
   hasLegacyCustomTemplates: boolean;
+  canImportLegacyCustomTemplates: boolean;
   onImportLegacyCustomTemplates: () => void;
   activeCustomTemplateId: string | null;
   onApplyCustomTemplate: (id: string) => void;

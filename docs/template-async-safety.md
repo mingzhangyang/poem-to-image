@@ -41,11 +41,16 @@ anonymous templates and cloud snapshots from whichever account last logged in.
   and other explicitly optional fields remain supported.
 - After a mutation completes, an authoritative refetch reconciles cases in
   which the write was accepted by the server but its response was lost.
-  A warning remains for uncertain outcomes so the user can inspect the list
-  **before repeating a create**. No duplicate POST retry is automatic.
+  Localized failure warnings explicitly explain that the server may already
+  have saved the change. Users should **retry synchronization and inspect
+  the refreshed list before repeating a create**, avoiding duplicate POSTs.
+  No duplicate POST retry is automatic.
 - LocalStorage quota and corruption are reported. Corrupt guest cache
   content is not replaced without user recovery; failed writes still leave
-  the in-memory list visible.
+  the in-memory list visible. A failed guest write marks the view as
+  unpersisted and blocks explicit legacy import until **Retry sync** saves
+  that in-memory snapshot. This prevents importing an older disk copy from
+  losing guest creates, renames or deletions.
 
 ## AI image/background request ownership
 
@@ -71,8 +76,8 @@ anonymous templates and cloud snapshots from whichever account last logged in.
 
 ## Local-only verification
 
-Do **not** manually start Actions/CI. The change uses a single commit with
-`[skip ci]` and one independent PR.
+Do **not** manually start Actions/CI. All commits use
+`[skip ci]` on one independent PR.
 
 ```sh
 npm ci
@@ -80,6 +85,7 @@ npm run typecheck
 npm run lint
 npm run test:unit
 npx playwright test tests/e2e/async-template-safety.spec.ts
+npx playwright test tests/e2e/graceful-whitespace-template.spec.ts
 npx playwright test tests/e2e/background-presets.spec.ts
 npx playwright test tests/e2e/editor-draft-safety.spec.ts
 npm run build
@@ -99,7 +105,12 @@ Manual acceptance checklist:
    be inserted into the new account's cache. Inspect server state before
    retrying an uncertain POST.
 6. Review the explicit legacy import notice on a browser with pre-PR caches;
-   ensure no automatic cross-account import occurs.
+   ensure no automatic cross-account import occurs. Simulate a guest cache
+   quota failure while saving, renaming or deleting a template: import must
+   remain disabled until Retry sync succeeds, and the subsequent import must
+   preserve the in-memory edits.
+   For uncertain cloud POST responses, verify warning copy recommends
+   synchronization and inspection before repeating a save.
 7. Start AI generation, then change built-in template, upload image, or
    select Solid/Paper before the response. The old completion must not
    change the current background, even if transcoding finishes later.

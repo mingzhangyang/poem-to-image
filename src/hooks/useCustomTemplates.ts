@@ -9,6 +9,7 @@ import {
 } from '../templateScopeLifetime';
 import { getPaperStyle } from '../paperStyles';
 import {
+  canImportLegacyGuestTemplates,
   hasLegacyTemplateCache,
   importLegacyGuestTemplates,
   readTemplateCache,
@@ -39,13 +40,15 @@ interface ScopeView {
   syncError: TemplateSyncError;
   isSyncing: boolean;
   cacheCorrupt: boolean;
+  // True if the newest guest edits exist only in memory after a failed write.
+  guestCacheDirty: boolean;
   hasLegacyCache: boolean;
 }
 
 function readScope(scope: TemplateScope | null): ScopeView {
   const empty: ScopeView = {
     scope, templates: [], activeId: null, syncError: null,
-    isSyncing: false, cacheCorrupt: false, hasLegacyCache: false,
+    isSyncing: false, cacheCorrupt: false, guestCacheDirty: false, hasLegacyCache: false,
   };
   if (!scope) return empty;
   try {
@@ -122,11 +125,11 @@ export function useCustomTemplates({ isLoaded, isSignedIn, userId, getToken }: U
       } else {
         try {
           writeTemplateCache(ownerScope, next.templates, window.localStorage);
-          next = { ...next, cacheCorrupt: false };
+          next = { ...next, cacheCorrupt: false, guestCacheDirty: false };
         } catch {
-          // Keep the updated list in memory; make loss of warm-cache durability
-          // visible rather than pretending the local save succeeded.
-          next = { ...next, syncError: 'storage' };
+          // Keep the updated list in memory. A legacy import cannot read from
+          // older disk state until these in-memory edits have been saved.
+          next = { ...next, syncError: 'storage', guestCacheDirty: ownerScope === 'guest' };
         }
       }
     }
@@ -355,6 +358,13 @@ export function useCustomTemplates({ isLoaded, isSignedIn, userId, getToken }: U
 
   const importLegacyTemplates = useCallback(() => {
     if (scopeRef.current !== 'guest') return;
+    // A previous quota/write failure can leave newer creates, renames or
+    // deletes only in memory. Importing from disk would silently discard them.
+    // The Retry sync action persists the current in-memory view first.
+    if (!canImportLegacyGuestTemplates(viewRef.current)) {
+      update('guest', (old) => ({ ...old, syncError: 'storage' }));
+      return;
+    }
     try {
       const templates = importLegacyGuestTemplates(window.localStorage);
       update('guest', (old) => ({
@@ -394,6 +404,7 @@ export function useCustomTemplates({ isLoaded, isSignedIn, userId, getToken }: U
     syncError: visible.syncError,
     isSyncing: visible.isSyncing,
     hasLegacyCache: visible.hasLegacyCache,
+    canImportLegacyCustomTemplates: canImportLegacyGuestTemplates(visible),
     isGuest: scope === 'guest',
     retryTemplateSync,
     importLegacyTemplates,

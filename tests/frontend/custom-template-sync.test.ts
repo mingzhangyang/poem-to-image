@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   LEGACY_TEMPLATE_KEY,
+  canImportLegacyGuestTemplates,
   hasLegacyTemplateCache,
   importLegacyGuestTemplates,
   parseCloudTemplateList,
@@ -224,4 +225,31 @@ test('genuinely optional fields in old templates are normalized safely', () => {
   assert.equal(parsed[0].poemStyle.bodyAlign, 'center');
   assert.deepEqual(parsed[0].decorations.customTexts, []);
   assert.deepEqual(parsed[0].decorations.logos, []);
+});
+
+test('guest legacy import waits for durable cache after a failed local edit', () => {
+  const local = storage();
+  local.setItem(LEGACY_TEMPLATE_KEY, JSON.stringify([fixture('legacy')]));
+  const current = fixture('unsaved');
+  const quotaStorage = {
+    getItem: local.getItem,
+    setItem(key: string, value: string) {
+      if (key === templateCacheKey('guest')) throw new Error('QuotaExceededError');
+      local.setItem(key, value);
+    },
+  };
+  assert.throws(() => writeTemplateCache('guest', [current], quotaStorage), /QuotaExceededError/);
+  const dirtyView = { scope: 'guest' as const, cacheCorrupt: false, guestCacheDirty: true };
+  assert.equal(canImportLegacyGuestTemplates(dirtyView), false);
+  assert.equal(canImportLegacyGuestTemplates({ ...dirtyView, cacheCorrupt: true }), false);
+  assert.equal(canImportLegacyGuestTemplates({ ...dirtyView, scope: 'account:a' }), false);
+  assert.deepEqual(readTemplateCache('guest', local), [], 'disk is still older than the in-memory edit');
+
+  // Retry sync writes the in-memory snapshot before older templates can merge.
+  writeTemplateCache('guest', [current], local);
+  assert.equal(canImportLegacyGuestTemplates({ ...dirtyView, guestCacheDirty: false }), true);
+  const merged = importLegacyGuestTemplates(local);
+  assert.deepEqual(merged.map((template) => template.id), ['unsaved', 'legacy']);
+  assert.deepEqual(readTemplateCache('guest', local).map((template) => template.id), ['unsaved', 'legacy']);
+  assert.ok(local.getItem(LEGACY_TEMPLATE_KEY), 'legacy backup is preserved');
 });

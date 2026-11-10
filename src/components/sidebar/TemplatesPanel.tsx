@@ -322,10 +322,14 @@ export function TemplatesPanel({ t, language, expanded, onToggle, templates, cur
                 <button
                   type="button"
                   onClick={templates.onImportLegacyCustomTemplates}
-                  className="mt-2 min-h-10 rounded-lg border border-(--app-accent-400) px-3 font-semibold"
+                  disabled={!templates.canImportLegacyCustomTemplates}
+                  className="mt-2 min-h-10 rounded-lg border border-(--app-accent-400) px-3 font-semibold disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {syncMessages.importLegacy}
                 </button>
+                {!templates.canImportLegacyCustomTemplates ? (
+                  <p role="status" className="mt-2">{syncMessages.legacyImportBlocked}</p>
+                ) : null}
               </div>
             ) : null}
 
