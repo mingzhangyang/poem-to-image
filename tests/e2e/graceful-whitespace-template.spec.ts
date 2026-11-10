@@ -98,7 +98,7 @@ test('a custom copy keeps its handwriting and drops it when another template is 
   await page.getByPlaceholder('Template name...').fill('Graceful Copy');
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expect.poll(() => page.evaluate(() => {
-    const copies = JSON.parse(localStorage.getItem('poem-to-image.custom-templates') || '[]');
+    const copies = JSON.parse(localStorage.getItem('poem-to-image.custom-templates.v2.guest') || '[]');
     const saved = copies.find((copy: { name: string }) => copy.name === 'Graceful Copy');
     return [saved?.decorations?.showStamp, saved?.decorations?.signatures?.[0]?.text, saved?.decorations?.signatures?.[0]?.font];
   })).toEqual([false, 'the poet', 'Mr Dafoe']);

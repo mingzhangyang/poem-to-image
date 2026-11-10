@@ -5,6 +5,7 @@ import { discardDraftAssetRegistration, registerDraftAssetObjectUrl } from '../e
 import type { AiProvider, BackgroundImageSource, BackgroundType, TemplateBackgroundConfig, TranslateFn } from '../types';
 import { inferBackgroundImageSource } from '../backgroundImageSource';
 import { getPaperStyle, paperPreviewStyle, type PaperId } from '../paperStyles';
+import { nextAsyncAccountOwner } from '../asyncIntentGate';
 import { useAiBackground } from './useAiBackground';
 
 const MAX_EXPORT_SCALE = 3;
@@ -33,11 +34,12 @@ interface UseBackgroundConfigParams {
   canvasHeight: number;
   t: TranslateFn;
   getToken?: () => Promise<string | null>;
+  accountId: string | null;
   onBalanceChange?: (newBalance: number) => void;
   initialDraft?: TemplateBackgroundConfig;
 }
 
-export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getToken, onBalanceChange, initialDraft }: UseBackgroundConfigParams) {
+export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getToken, accountId, onBalanceChange, initialDraft }: UseBackgroundConfigParams) {
   const [backgroundType, setBackgroundType] = useState<BackgroundType>(initialDraft?.backgroundType ?? 'solid');
   const [paperId, setPaperId] = useState<PaperId>(() => getPaperStyle(initialDraft?.paperId).id);
   const [backgroundColor, setBackgroundColor] = useState(initialDraft?.backgroundColor ?? '#f8fafc');
@@ -62,6 +64,14 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getTok
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageRequestIdRef = useRef(0);
+  const uploadAccountOwnerRef = useRef({ accountId });
+  // A new account is a new lifetime, even when the user later returns to the
+  // same account. Drop older image conversions before they can commit.
+  const nextUploadOwner = nextAsyncAccountOwner(uploadAccountOwnerRef.current, accountId);
+  if (nextUploadOwner !== uploadAccountOwnerRef.current) {
+    uploadAccountOwnerRef.current = nextUploadOwner;
+    imageRequestIdRef.current += 1;
+  }
   const stagedUploadUrlsRef = useRef<Set<string>>(new Set());
   const mountEpochRef = useRef(0);
 
@@ -99,9 +109,17 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getTok
     setBackgroundImage(nextUrl);
   }, []);
 
-  const applyBackgroundImage = useCallback(async (source: Blob | string, origin: 'upload' | 'ai' = 'upload') => {
+  const applyBackgroundImage = useCallback(async (
+    source: Blob | string,
+    origin: 'upload' | 'ai' = 'upload',
+    isCurrent?: () => boolean,
+  ): Promise<boolean> => {
     const requestId = ++imageRequestIdRef.current;
-    const sourceBlob = source instanceof Blob ? source : await fetch(source).then((response) => response.blob());
+    const sourceBlob = source instanceof Blob ? source : await fetch(source).then((response) => {
+      if (!response.ok) throw new Error('Failed to load background image');
+      return response.blob();
+    });
+    if (imageRequestIdRef.current !== requestId || (isCurrent && !isCurrent())) return false;
     const sourceUrl = URL.createObjectURL(sourceBlob);
 
     try {
@@ -140,7 +158,7 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getTok
         }
       }
 
-      if (imageRequestIdRef.current === requestId) {
+      if (imageRequestIdRef.current === requestId && (!isCurrent || isCurrent())) {
         registerDraftAssetObjectUrl(nextUrl, nextBlob);
         stagedUploadUrlsRef.current.add(nextUrl);
         updateBackgroundImage(nextUrl);
@@ -151,7 +169,7 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getTok
           revokeObjectUrl(sourceUrl);
         }
 
-        return;
+        return true;
       }
 
       if (nextUrl !== sourceUrl) {
@@ -159,6 +177,7 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getTok
       }
 
       revokeObjectUrl(sourceUrl);
+      return false;
     } catch (error) {
       revokeObjectUrl(sourceUrl);
       throw error;
@@ -170,6 +189,8 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getTok
     setAiError('');
   };
 
+  // A new background choice supersedes both pending AI responses and older
+  // image conversions. It does not assume the server can refund a generation.
   const onImageUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
 
@@ -177,26 +198,37 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getTok
       return;
     }
 
+    invalidateAiBackground();
+    // An upload belongs to this specific account lifetime and conversion,
+    // not merely the account ID (which may cycle A -> B -> A).
+    const uploadOwner = uploadAccountOwnerRef.current;
+    const uploadRequestId = imageRequestIdRef.current + 1;
+    const isCurrentUpload = () => uploadAccountOwnerRef.current === uploadOwner
+      && imageRequestIdRef.current === uploadRequestId;
     try {
-      await applyBackgroundImage(file);
+      const applied = await applyBackgroundImage(file, 'upload', isCurrentUpload);
+      if (!applied || !isCurrentUpload()) return;
       setBackgroundType('image');
       setBackgroundSize('cover');
       setBackgroundPosition('center');
       setAiError('');
     } catch (error) {
-      logError('Failed to process background image', error);
-      setAiError(t('errGenFailed'));
+      if (isCurrentUpload()) {
+        logError('Failed to process background image', error);
+        setAiError(t('errGenFailed'));
+      }
     } finally {
       event.target.value = '';
     }
   };
 
-  const onGenerateAiBackground = useAiBackground({
+  const { generate: onGenerateAiBackground, invalidate: invalidateAiBackground } = useAiBackground({
     text,
     aiProvider,
     aiPrompt,
     canvasWidth,
     canvasHeight,
+    accountId,
     t,
     getToken,
     setAiError,
@@ -206,7 +238,17 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getTok
     onBalanceChange,
   });
 
+  const invalidateImageConversion = () => { imageRequestIdRef.current += 1; };
+
+  const chooseBackgroundType = (value: BackgroundType) => {
+    invalidateAiBackground();
+    invalidateImageConversion();
+    setBackgroundType(value);
+  };
+
   const applyBackgroundTemplate = (template: TemplateBackgroundConfig) => {
+    invalidateAiBackground();
+    invalidateImageConversion();
     setBackgroundType(template.backgroundType);
     setPaperId(getPaperStyle(template.paperId).id);
     setBackgroundColor(template.backgroundColor);
@@ -268,15 +310,31 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getTok
     isGeneratingAI,
     fileInputRef,
     backgroundStyle,
-    setBackgroundType,
+    setBackgroundType: chooseBackgroundType,
     setPaperId: (id: PaperId) => {
+      chooseBackgroundType('paper');
       setPaperId(getPaperStyle(id).id);
-      setBackgroundType('paper');
     },
-    setBackgroundColor,
-    setGradientColor1,
-    setGradientColor2,
-    setGradientDirection,
+    setBackgroundColor: (value: string) => {
+      invalidateAiBackground();
+      invalidateImageConversion();
+      setBackgroundColor(value);
+    },
+    setGradientColor1: (value: string) => {
+      invalidateAiBackground();
+      invalidateImageConversion();
+      setGradientColor1(value);
+    },
+    setGradientColor2: (value: string) => {
+      invalidateAiBackground();
+      invalidateImageConversion();
+      setGradientColor2(value);
+    },
+    setGradientDirection: (value: string) => {
+      invalidateAiBackground();
+      invalidateImageConversion();
+      setGradientDirection(value);
+    },
     setBackgroundSize,
     setBgBrightness,
     setBgBlur,

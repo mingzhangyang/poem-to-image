@@ -7,6 +7,7 @@ export interface AppAuthUser {
 export interface AppAuthContextValue {
   isLoaded: boolean;
   isSignedIn: boolean;
+  userId: string | null;
   user: AppAuthUser | null;
   getToken: () => Promise<string | null>;
 }
@@ -14,6 +15,7 @@ export interface AppAuthContextValue {
 const FALLBACK: AppAuthContextValue = {
   isLoaded: true,
   isSignedIn: false,
+  userId: null,
   user: null,
   getToken: async () => null,
 };

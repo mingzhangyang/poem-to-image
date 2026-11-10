@@ -4,7 +4,7 @@ import { AppAuthContext } from '../../context/auth';
 
 /** Bridges Clerk auth state into our AppAuthContext. Must be rendered inside ClerkProvider. */
 export function ClerkAuthBridge({ children }: { children: ReactNode }) {
-  const { isLoaded, isSignedIn, getToken } = useAuth();
+  const { isLoaded, isSignedIn, userId, getToken } = useAuth();
   const { user } = useUser();
 
   return (
@@ -12,6 +12,7 @@ export function ClerkAuthBridge({ children }: { children: ReactNode }) {
       value={{
         isLoaded: isLoaded ?? false,
         isSignedIn: isSignedIn ?? false,
+        userId: userId ?? null,
         user: user ?? null,
         getToken,
       }}
