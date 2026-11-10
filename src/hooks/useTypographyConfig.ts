@@ -7,22 +7,22 @@ type TypographyConfigResult = TypographySectionProps & {
   applyTypographyTemplate: (template: TemplateTypographyConfig) => void;
 };
 
-export function useTypographyConfig(language: Language): TypographyConfigResult {
-  const [fontFamily, setFontFamily] = useState(() => getDefaultFontForLanguage(language));
-  const [fontSize, setFontSize] = useState(32);
-  const [textColor, setTextColor] = useState('#1e293b');
-  const [textAlign, setTextAlign] = useState<'left' | 'center' | 'right'>('center');
-  const [writingMode, setWritingMode] = useState<'horizontal-tb' | 'vertical-rl'>('horizontal-tb');
-  const [padding, setPadding] = useState(64);
-  const [lineHeight, setLineHeight] = useState(1.8);
-  const [letterSpacing, setLetterSpacing] = useState(4);
-  const [columns, setColumns] = useState(1);
-  const [columnGap, setColumnGap] = useState(32);
-  const [textShadowEnabled, setTextShadowEnabled] = useState(false);
-  const [textShadowColor, setTextShadowColor] = useState('#000000');
-  const [textShadowBlur, setTextShadowBlur] = useState(10);
-  const [textShadowOffsetY, setTextShadowOffsetY] = useState(2);
-  const [textShadowOffsetX, setTextShadowOffsetX] = useState(0);
+export function useTypographyConfig(language: Language, initialDraft?: TemplateTypographyConfig): TypographyConfigResult {
+  const [fontFamily, setFontFamily] = useState(() => initialDraft?.fontFamily ?? getDefaultFontForLanguage(language));
+  const [fontSize, setFontSize] = useState(() => initialDraft?.fontSize ?? 32);
+  const [textColor, setTextColor] = useState(() => initialDraft?.textColor ?? '#1e293b');
+  const [textAlign, setTextAlign] = useState(() => initialDraft?.textAlign ?? 'center');
+  const [writingMode, setWritingMode] = useState(() => initialDraft?.writingMode ?? 'horizontal-tb');
+  const [padding, setPadding] = useState(() => initialDraft?.padding ?? 64);
+  const [lineHeight, setLineHeight] = useState(() => initialDraft?.lineHeight ?? 1.8);
+  const [letterSpacing, setLetterSpacing] = useState(() => initialDraft?.letterSpacing ?? 4);
+  const [columns, setColumns] = useState(() => initialDraft?.columns ?? 1);
+  const [columnGap, setColumnGap] = useState(() => initialDraft?.columnGap ?? 32);
+  const [textShadowEnabled, setTextShadowEnabled] = useState(() => initialDraft?.textShadowEnabled ?? false);
+  const [textShadowColor, setTextShadowColor] = useState(() => initialDraft?.textShadowColor ?? '#000000');
+  const [textShadowBlur, setTextShadowBlur] = useState(() => initialDraft?.textShadowBlur ?? 10);
+  const [textShadowOffsetY, setTextShadowOffsetY] = useState(() => initialDraft?.textShadowOffsetY ?? 2);
+  const [textShadowOffsetX, setTextShadowOffsetX] = useState(() => initialDraft?.textShadowOffsetX ?? 0);
   const previousLanguageRef = useRef(language);
 
   useEffect(() => {

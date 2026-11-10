@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useUndoHistory } from './useUndoHistory';
+import { releaseEditorDraftAssets, retainEditorDraftAssets } from '../editorDraftStore';
 import type { PaperId } from '../paperStyles';
 import type {
   BackgroundImageSource,
@@ -113,7 +114,9 @@ export function useEditorHistory({
   setCanvasHeight,
   setPresetSize,
 }: UseEditorHistoryParams) {
-  const { push: pushSnapshot, undo: undoHistory, redo: redoHistory, canUndo, canRedo } = useUndoHistory<EditorSnapshot>();
+  const { push: pushSnapshot, undo: undoHistory, redo: redoHistory, canUndo, canRedo, getSnapshots } = useUndoHistory<EditorSnapshot>();
+  const assetOwnerRef = useRef(crypto.randomUUID());
+  const assetLeaseRef = useRef(0);
 
   // Always-current snapshot data — closures in timers read from here to avoid stale values.
   const snapshotDataRef = useRef({ poem, poemStyle, canvasWidth, canvasHeight, presetSize, background, typography, decorations });
@@ -126,6 +129,17 @@ export function useEditorHistory({
   applyBackgroundRef.current = background.applyBackgroundTemplate;
   applyTypographyRef.current = typography.applyTypographyTemplate;
   applyDecorationsRef.current = decorations.applyDecorationsTemplate;
+
+  useEffect(() => {
+    const lease = ++assetLeaseRef.current;
+    return () => {
+      // A timer runs after StrictMode's immediate effect replay, and after the
+      // persistence hook has had a chance to pin its detached final save.
+      setTimeout(() => {
+        if (assetLeaseRef.current === lease) releaseEditorDraftAssets(assetOwnerRef.current);
+      }, 0);
+    };
+  }, []);
 
   const isRestoringRef = useRef(false);
   const snapshotTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -184,6 +198,18 @@ export function useEditorHistory({
     };
   }, []); // stable — reads from refs
 
+  // Keep binaries for the current scene AND every retained undo/redo state.
+  // Removed images are evicted once they leave history and no save pins them.
+  const refreshAssetReferences = useCallback(() => {
+    const urls = new Set<string>();
+    for (const scene of [...getSnapshots(), buildSnapshot()]) {
+      for (const url of [scene.background.backgroundImage, ...scene.decorations.logos.map((logo) => logo.imageUrl)]) {
+        if (url?.startsWith('blob:') || url?.startsWith('data:')) urls.add(url);
+      }
+    }
+    retainEditorDraftAssets(assetOwnerRef.current, urls);
+  }, [buildSnapshot, getSnapshots]);
+
   const restoreSnapshot = useCallback(
     (snapshot: EditorSnapshot) => {
       isRestoringRef.current = true;
@@ -201,20 +227,31 @@ export function useEditorHistory({
   );
 
   const isFirstSnapshotRef = useRef(true);
+  const observedSceneRef = useRef({ exportScene, presetSize });
   useEffect(() => {
     if (isRestoringRef.current) {
       isRestoringRef.current = false;
+      observedSceneRef.current = { exportScene, presetSize };
+      refreshAssetReferences();
       return;
     }
     if (isFirstSnapshotRef.current) {
       isFirstSnapshotRef.current = false;
       pushSnapshot(buildSnapshot());
+      refreshAssetReferences();
       return;
     }
+    if (observedSceneRef.current.exportScene === exportScene
+      && observedSceneRef.current.presetSize === presetSize) return;
+    observedSceneRef.current = { exportScene, presetSize };
     if (snapshotTimerRef.current) clearTimeout(snapshotTimerRef.current);
     snapshotTimerRef.current = setTimeout(() => {
-      if (!isRestoringRef.current) pushSnapshot(buildSnapshot());
+      if (!isRestoringRef.current) {
+        pushSnapshot(buildSnapshot());
+        refreshAssetReferences();
+      }
     }, 800);
+    refreshAssetReferences();
     return () => {
       if (snapshotTimerRef.current) clearTimeout(snapshotTimerRef.current);
     };

@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, CSSProperties } from 'react';
 import { logError } from '../logger';
+import { discardDraftAssetRegistration, registerDraftAssetObjectUrl } from '../editorDraftStore';
 import type { AiProvider, BackgroundImageSource, BackgroundType, TemplateBackgroundConfig, TranslateFn } from '../types';
 import { inferBackgroundImageSource } from '../backgroundImageSource';
-import { DEFAULT_PAPER_ID, getPaperStyle, paperPreviewStyle, type PaperId } from '../paperStyles';
+import { getPaperStyle, paperPreviewStyle, type PaperId } from '../paperStyles';
 import { useAiBackground } from './useAiBackground';
 
 const MAX_EXPORT_SCALE = 3;
@@ -33,41 +34,69 @@ interface UseBackgroundConfigParams {
   t: TranslateFn;
   getToken?: () => Promise<string | null>;
   onBalanceChange?: (newBalance: number) => void;
+  initialDraft?: TemplateBackgroundConfig;
 }
 
-export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getToken, onBalanceChange }: UseBackgroundConfigParams) {
-  const [backgroundType, setBackgroundType] = useState<BackgroundType>('solid');
-  const [paperId, setPaperId] = useState<PaperId>(DEFAULT_PAPER_ID);
-  const [backgroundColor, setBackgroundColor] = useState('#f8fafc');
-  const [gradientColor1, setGradientColor1] = useState('#e0e7ff');
-  const [gradientColor2, setGradientColor2] = useState('#ede9fe');
-  const [gradientDirection, setGradientDirection] = useState('to bottom right');
-  const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
-  const [backgroundImageSource, setBackgroundImageSource] = useState<BackgroundImageSource>(null);
-  const [backgroundSize, setBackgroundSize] = useState<'cover' | 'contain' | 'stretch'>('cover');
-  const [backgroundPosition, setBackgroundPosition] = useState<string>('center');
-  const [bgBrightness, setBgBrightness] = useState(100);
-  const [bgBlur, setBgBlur] = useState(0);
+export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getToken, onBalanceChange, initialDraft }: UseBackgroundConfigParams) {
+  const [backgroundType, setBackgroundType] = useState<BackgroundType>(initialDraft?.backgroundType ?? 'solid');
+  const [paperId, setPaperId] = useState<PaperId>(() => getPaperStyle(initialDraft?.paperId).id);
+  const [backgroundColor, setBackgroundColor] = useState(initialDraft?.backgroundColor ?? '#f8fafc');
+  const [gradientColor1, setGradientColor1] = useState(initialDraft?.gradientColor1 ?? '#e0e7ff');
+  const [gradientColor2, setGradientColor2] = useState(initialDraft?.gradientColor2 ?? '#ede9fe');
+  const [gradientDirection, setGradientDirection] = useState(initialDraft?.gradientDirection ?? 'to bottom right');
+  // An image remains part of the editable draft when Solid/Paper is selected.
+  // Keep its hydrated URL (and provenance) so undo, switching back to Image,
+  // and asset-lease adoption work even while the image is not displayed.
+  const [backgroundImage, setBackgroundImage] = useState<string | null>(() => initialDraft?.backgroundImage ?? null);
+  const [backgroundImageSource, setBackgroundImageSource] = useState<BackgroundImageSource>(() => {
+    const url = initialDraft?.backgroundImage;
+    return url ? (initialDraft?.backgroundImageSource ?? inferBackgroundImageSource(url)) : null;
+  });
+  const [backgroundSize, setBackgroundSize] = useState<'cover' | 'contain' | 'stretch'>(initialDraft?.backgroundSize ?? 'cover');
+  const [backgroundPosition, setBackgroundPosition] = useState<string>(initialDraft?.backgroundPosition ?? 'center');
+  const [bgBrightness, setBgBrightness] = useState(initialDraft?.bgBrightness ?? 100);
+  const [bgBlur, setBgBlur] = useState(initialDraft?.bgBlur ?? 0);
   const [aiProvider, setAiProvider] = useState<AiProvider>('gemini');
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiError, setAiError] = useState('');
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const backgroundUrlRef = useRef<string | null>(null);
   const imageRequestIdRef = useRef(0);
-  // All blob URLs ever set — kept alive so undo history can reference them.
-  // Revoked in bulk on unmount instead of eagerly on each image change.
-  const heldBlobUrlsRef = useRef<Set<string>>(new Set());
+  const stagedUploadUrlsRef = useRef<Set<string>>(new Set());
+  const mountEpochRef = useRef(0);
+
+  useEffect(() => {
+    const epoch = ++mountEpochRef.current;
+    return () => {
+      // Reject the results of uploads that finish after unmount.
+      imageRequestIdRef.current += 1;
+      // StrictMode replays effects without actually disposing the editor.
+      queueMicrotask(() => {
+        if (mountEpochRef.current !== epoch) return;
+        for (const url of stagedUploadUrlsRef.current) discardDraftAssetRegistration(url);
+        stagedUploadUrlsRef.current.clear();
+      });
+    };
+  }, []);
+
+  useEffect(() => {
+    // An upload may be superseded before React commits its URL (for example,
+    // two rapid image selections). Drop its staging lease after the new scene
+    // commits; any history or in-flight save still owns the old URL.
+    for (const url of stagedUploadUrlsRef.current) {
+      if (url === backgroundImage) continue;
+      discardDraftAssetRegistration(url);
+      stagedUploadUrlsRef.current.delete(url);
+    }
+  }, [backgroundImage]);
 
   const maxImageWidth = Math.min(Math.round(canvasWidth * MAX_EXPORT_SCALE * 1.1), MAX_BACKGROUND_EDGE);
   const maxImageHeight = Math.min(Math.round(canvasHeight * MAX_EXPORT_SCALE * 1.1), MAX_BACKGROUND_EDGE);
 
+  // Editor history and detached saves own object URLs; hook cleanups must not
+  // revoke them during React StrictMode effect replay.
   const updateBackgroundImage = useCallback((nextUrl: string | null) => {
-    backgroundUrlRef.current = nextUrl;
-    if (nextUrl?.startsWith('blob:')) heldBlobUrlsRef.current.add(nextUrl);
     setBackgroundImage(nextUrl);
-    // Don't revoke previous blob URL eagerly — undo history entries may still reference it.
-    // All held blob URLs are revoked together on unmount.
   }, []);
 
   const applyBackgroundImage = useCallback(async (source: Blob | string, origin: 'upload' | 'ai' = 'upload') => {
@@ -86,6 +115,7 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getTok
       const shouldTranscode = needsResize || sourceBlob.size > LARGE_BACKGROUND_BLOB_BYTES || typeof source === 'string';
 
       let nextUrl = sourceUrl;
+      let nextBlob: Blob = sourceBlob;
 
       if (shouldTranscode) {
         const canvas = document.createElement('canvas');
@@ -106,10 +136,13 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getTok
 
         if (optimizedBlob) {
           nextUrl = URL.createObjectURL(optimizedBlob);
+          nextBlob = optimizedBlob;
         }
       }
 
       if (imageRequestIdRef.current === requestId) {
+        registerDraftAssetObjectUrl(nextUrl, nextBlob);
+        stagedUploadUrlsRef.current.add(nextUrl);
         updateBackgroundImage(nextUrl);
         setBackgroundImageSource(origin);
         setBackgroundPosition('center');
@@ -131,10 +164,6 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getTok
       throw error;
     }
   }, [maxImageHeight, maxImageWidth, updateBackgroundImage]);
-
-  useEffect(() => () => {
-    for (const url of heldBlobUrlsRef.current) revokeObjectUrl(url);
-  }, []);
 
   const onAiProviderChange = (value: AiProvider) => {
     setAiProvider(value);

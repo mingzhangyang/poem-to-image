@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { DEFAULT_STAMP_FONT } from '../fontOptions';
 import { getDefaultStampTextForLanguage } from '../stampDefaults';
-import { DEFAULT_SIGNATURE_FONT, ensureSignatureFontsLoaded } from '../signatureRendering';
+import { DEFAULT_SIGNATURE_FONT } from '../signatureRendering';
 import type { Language } from '../translations';
 import type { BorderStyle, CustomText, LogoConfig, PositionedElement, SignatureConfig, StampConfig, TemplateDecorationsConfig, TranslateFn, WritingMode } from '../types';
 
@@ -95,6 +95,7 @@ interface UseDecorationsConfigParams {
   textColor: string;
   writingMode: WritingMode;
   onCustomTextAdded?: () => void;
+  initialDraft?: TemplateDecorationsConfig;
 }
 
 export function useDecorationsConfig({
@@ -104,6 +105,7 @@ export function useDecorationsConfig({
   textColor,
   writingMode,
   onCustomTextAdded,
+  initialDraft,
 }: UseDecorationsConfigParams) {
   const createDefaultPoemPosition = (): PositionedElement => ({
     positionX: 50,
@@ -124,16 +126,19 @@ export function useDecorationsConfig({
     fontFamily: DEFAULT_STAMP_FONT,
   });
 
-  const [showBorder, setShowBorder] = useState(false);
-  const [borderStyle, setBorderStyle] = useState<BorderStyle>('solid');
-  const [borderColor, setBorderColor] = useState(textColor);
-  const [borderWidth, setBorderWidth] = useState(4);
-  const [showStamp, setShowStamp] = useState(false);
-  const [stamp, setStamp] = useState<StampConfig>(() => createDefaultStamp());
-  const [poemPosition, setPoemPosition] = useState<PositionedElement>(() => createDefaultPoemPosition());
-  const [customTexts, setCustomTexts] = useState<CustomText[]>([]);
-  const [logos, setLogos] = useState<LogoConfig[]>([]);
-  const [signatures, setSignatures] = useState<SignatureConfig[]>([]);
+  const [showBorder, setShowBorder] = useState(() => initialDraft?.showBorder ?? false);
+  const [borderStyle, setBorderStyle] = useState<BorderStyle>(() => initialDraft?.borderStyle ?? 'solid');
+  const [borderColor, setBorderColor] = useState(() => initialDraft?.borderColor ?? textColor);
+  const [borderWidth, setBorderWidth] = useState(() => initialDraft?.borderWidth ?? 4);
+  const [showStamp, setShowStamp] = useState(() => initialDraft?.showStamp ?? false);
+  const [stamp, setStamp] = useState<StampConfig>(() => initialDraft?.stamp ?? createDefaultStamp());
+  const [poemPosition, setPoemPosition] = useState<PositionedElement>(() => initialDraft?.poemPosition ?? createDefaultPoemPosition());
+  const [initialLayers] = useState(() => normalizeDecorationLayers(
+    initialDraft?.customTexts ?? [], initialDraft?.logos ?? [],
+  ));
+  const [customTexts, setCustomTexts] = useState<CustomText[]>(() => initialLayers.customTexts);
+  const [logos, setLogos] = useState<LogoConfig[]>(() => initialLayers.logos);
+  const [signatures, setSignatures] = useState<SignatureConfig[]>(() => initialDraft?.signatures ?? []);
   const previousLanguageRef = useRef(language);
   const customTextsRef = useRef(customTexts);
   const logosRef = useRef(logos);
@@ -210,8 +215,6 @@ export function useDecorationsConfig({
   };
 
   const addSignature = () => {
-    void ensureSignatureFontsLoaded();
-
     const nextSignature: SignatureConfig = {
       id: Date.now().toString(),
       text: 'Signature',
@@ -272,9 +275,6 @@ export function useDecorationsConfig({
 
   const applyDecorationsTemplate = (template: TemplateDecorationsConfig) => {
     const normalized = normalizeDecorationLayers(template.customTexts, template.logos || []);
-    if ((template.signatures?.length ?? 0) > 0) {
-      void ensureSignatureFontsLoaded();
-    }
     setShowBorder(template.showBorder);
     setBorderStyle(template.borderStyle);
     setBorderColor(template.borderColor ?? textColor);

@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useRef, useState, type ChangeEvent } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { useAppAuth } from './context/auth';
 import { useToast } from './components/ToastProvider';
 import { getPlainPoemText, isSamePoemContent } from './poemContent';
@@ -19,7 +19,9 @@ import { usePoemAutofill } from './hooks/usePoemAutofill';
 import { useAppLanguage } from './hooks/useAppLanguage';
 import { useBillingState } from './hooks/useBillingState';
 import { useEditorHistory } from './hooks/useEditorHistory';
-import { useEditorPersistence, loadPersistedState } from './hooks/useEditorPersistence';
+import { useEditorPersistence } from './hooks/useEditorPersistence';
+import { loadEditorDraft, releaseDraftObjectUrls, type EditorDraftState, type LoadedEditorDraft } from './editorDraftStore';
+import { getDraftSafetyMessages } from './editorDraftMessages';
 import { DEFAULT_POEMS } from './defaultPoems';
 import { editorTemplates } from './templates';
 import { isStampSupportedForEditor } from './stampDefaults';
@@ -50,14 +52,21 @@ function normalizeCanvasSize(value: number | undefined, fallback: number) {
   return Math.round(clampNumber(value, MIN_CANVAS_SIZE, MAX_CANVAS_SIZE));
 }
 
-export default function App() {
+interface EditorAppProps {
+  initialState: EditorDraftState | null;
+  initialRevision: number;
+  promoteInitial: boolean;
+}
+
+function EditorApp({ initialState, initialRevision, promoteInitial }: EditorAppProps) {
   const { showToast } = useToast();
   const { getToken, isSignedIn } = useAppAuth();
 
   const { language, initialLanguageRef, t, changeLanguage } = useAppLanguage();
 
-  // Load once on first render; drives initial state for poem/canvas and a one-time layout effect for hooks.
-  const [initialState] = useState(() => loadPersistedState());
+  // Bootstrapping is complete before the editor mounts; it cannot overwrite
+  // an unread IndexedDB draft with default content during hydration.
+  const draftMessages = getDraftSafetyMessages(language);
 
   usePageMetadata({
     title: 'InkPoem – Turn Poems into Beautiful Art with AI',
@@ -176,8 +185,9 @@ export default function App() {
     t,
     getToken,
     onBalanceChange: billing.refetchBalance,
+    initialDraft: initialState?.background,
   });
-  const typography = useTypographyConfig(language);
+  const typography = useTypographyConfig(language, initialState?.typography);
   const decorations = useDecorationsConfig({
     language,
     t,
@@ -185,6 +195,7 @@ export default function App() {
     textColor: typography.textColor,
     writingMode: typography.writingMode,
     onCustomTextAdded: () => setExpandedSections((prev) => ({ ...prev, decorations: true })),
+    initialDraft: initialState?.decorations,
   });
   const customTemplates = useCustomTemplates({ isSignedIn, getToken });
 
@@ -217,21 +228,8 @@ export default function App() {
     }
   }, [decorations.showStamp, stampSupported, decorations.stamp.fontFamily]);
 
-  // Restore persisted background/typography/decorations once after hooks initialize.
-  // Refs ensure we always call the latest version of each apply function.
-  const applyBgRef = useRef(background.applyBackgroundTemplate);
-  applyBgRef.current = background.applyBackgroundTemplate;
-  const applyTypoRef = useRef(typography.applyTypographyTemplate);
-  applyTypoRef.current = typography.applyTypographyTemplate;
-  const applyDecoRef = useRef(decorations.applyDecorationsTemplate);
-  applyDecoRef.current = decorations.applyDecorationsTemplate;
-
-  useLayoutEffect(() => {
-    if (!initialState) return;
-    applyBgRef.current(initialState.background);
-    applyTypoRef.current(initialState.typography);
-    applyDecoRef.current(initialState.decorations);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // Hooks initialize directly from the loaded draft. No restore effects run
+  // after the first render, so StrictMode cannot create phantom edits.
 
   // Rebuilt every render from its source fields and stabilized by deep equality.
   // No dependency array to keep in sync, so a new field can't silently go stale.
@@ -302,8 +300,10 @@ export default function App() {
     setPresetSize,
   });
 
-  useEditorPersistence({
+  const { saveError, retrySave } = useEditorPersistence({
     exportScene,
+    initialRevision,
+    promoteInitial,
     poem,
     poemStyle,
     canvasWidth,
@@ -733,6 +733,16 @@ export default function App() {
   return (
     <div className="min-h-dvh bg-transparent flex flex-col lg:flex-row font-sans text-(--app-ink)">
       <Sidebar {...sidebarProps} />
+      {saveError ? (
+        <div role="alert" className="fixed bottom-4 left-4 right-4 z-50 mx-auto flex max-w-xl items-center justify-between gap-3 rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-900 shadow-lg">
+          <span>{saveError === 'conflict' ? draftMessages.saveConflict : draftMessages.saveFailed}</span>
+          {saveError === 'failure' ? (
+            <button type="button" onClick={retrySave} className="shrink-0 rounded-md border border-red-400 px-3 py-2 font-medium hover:bg-red-100">
+              {draftMessages.retrySaving}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       <CanvasPreview {...canvasPreviewProps} canUndo={canUndo} canRedo={canRedo} onUndo={handleUndo} onRedo={handleRedo} />
 
@@ -755,4 +765,49 @@ export default function App() {
       </Suspense>
     </div>
   );
+}
+
+/**
+ * Refuse to mount the editable app until the authoritative draft has loaded.
+ * On storage errors, allow retry but never overwrite an unread or corrupt draft.
+ */
+export default function App() {
+  const [loaded, setLoaded] = useState<LoadedEditorDraft | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadEditorDraft().then((draft) => {
+      if (cancelled) releaseDraftObjectUrls(draft.objectUrls);
+      else setLoaded(draft);
+    }).catch(() => {
+      if (!cancelled) setLoadFailed(true);
+    });
+    return () => { cancelled = true; };
+  }, [loadAttempt]);
+
+  // The normal editor uses the user's selected language. During an IndexedDB
+  // failure it is not mounted; use the browser's language for a recovery notice.
+  const bootLanguage = typeof navigator !== 'undefined' && navigator.language.startsWith('zh') ? 'zh-CN' : 'en';
+  const messages = getDraftSafetyMessages(bootLanguage);
+  if (loadFailed) {
+    return (
+      <main className="flex min-h-dvh flex-col items-center justify-center gap-5 p-6 text-center">
+        <p role="alert" className="max-w-lg text-red-700">{messages.loadFailed}</p>
+        <button
+          type="button"
+          onClick={() => { setLoadFailed(false); setLoadAttempt((current) => current + 1); }}
+          className="rounded-lg border border-(--app-accent-300) px-5 py-3"
+        >
+          {messages.retryLoading}
+        </button>
+      </main>
+    );
+  }
+  if (!loaded) {
+    return <main role="status" className="flex min-h-dvh items-center justify-center p-6">{messages.loading}</main>;
+  }
+  return <EditorApp initialState={loaded.state} initialRevision={loaded.revision}
+    promoteInitial={loaded.state !== null && (loaded.revision === 0 || loaded.recoveredPending)} />;
 }
