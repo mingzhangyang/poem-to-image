@@ -15,6 +15,11 @@ const PAUSE = new Set(Array.from('，。、；：！？'));
 const OPENING = new Set(Array.from('「『（〔【《〈〖［“‘'));
 const CLOSING = new Set(Array.from('」』）〕】》〉〗］”’'));
 
+// Match vertical text segmentation so mixed Latin/numeric tokens stay intact.
+export function isVerticalSidewaysRunGlyph(character: string): boolean {
+  return /[\p{Script=Latin}\p{Number}\s.,!?;:'"()[\]{}\-–—/&]/u.test(character);
+}
+
 export type VerticalPunctuationClass = 'pause' | 'opening' | 'closing' | 'other';
 
 export function classifyVerticalPunctuation(character: string): VerticalPunctuationClass {
@@ -50,6 +55,7 @@ export function splitVerticalColumns(line: string, requestedColumns: number): st
   if (!characters.length) return [line];
   const legalCuts: number[] = [];
   for (let index = 1; index < characters.length; index += 1) {
+    if (isVerticalSidewaysRunGlyph(characters[index - 1]) && isVerticalSidewaysRunGlyph(characters[index])) continue;
     if (classifyVerticalPunctuation(characters[index - 1]) === 'opening') continue;
     const nextClass = classifyVerticalPunctuation(characters[index]);
     if (nextClass === 'pause' || nextClass === 'closing') continue;

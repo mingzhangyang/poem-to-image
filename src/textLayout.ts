@@ -1,5 +1,5 @@
 import type { TextAlign, WritingMode } from './types';
-import { getVerticalGlyphPresentation, isVerticalPausePunctuation, splitVerticalColumns } from './verticalPunctuation';
+import { getVerticalGlyphPresentation, isVerticalPausePunctuation, isVerticalSidewaysRunGlyph, splitVerticalColumns } from './verticalPunctuation';
 
 export interface MeasuredText {
   width: number;
@@ -201,7 +201,7 @@ function measureHorizontalVisualBounds(measurer: TextLayoutMeasurer, text: strin
 }
 
 function isHorizontalRunGlyph(text: string) {
-  return /[\p{Script=Latin}\p{Number}\s.,!?;:'"()[\]{}\-–—/&]/u.test(text);
+  return isVerticalSidewaysRunGlyph(text);
 }
 
 interface VerticalLineSegment {

@@ -148,3 +148,12 @@ test('punctuation ink sits within the em square, independent of extra line leadi
   assert.equal(compact[1].startX, loose[1].startX);
   assert.ok(loose[1].y > compact[1].y, 'line height affects logical advance only');
 });
+
+
+test('automatic columns never split a contiguous Latin or numeric sideways run', () => {
+  const sentence = '春2026夏2027秋';
+  const parts = splitVerticalColumns(sentence, 4);
+  assert.equal(parts.join(''), sentence);
+  assert.ok(parts.some(part => part.includes('2026')), '2026 stays one sideways run');
+  assert.ok(parts.some(part => part.includes('2027')), '2027 stays one sideways run');
+});
