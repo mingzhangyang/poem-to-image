@@ -359,6 +359,8 @@ const es: TranslationMessages = {
     stampStyleRound: "Sello redondo",
     stampStyleBrush: "Sello de pincel",
     stampSize: "Tamaño del sello",
+    stampTextSize: "Tamaño del texto del sello",
+    stampStrokeWidth: "Grosor del trazo del sello",
     stampRotation: "Rotación del sello",
     stampOpacity: "Opacidad del sello",
     stampFont: "Fuente del sello",

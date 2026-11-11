@@ -359,6 +359,8 @@ const ko: TranslationMessages = {
     stampStyleRound: "원형 인장",
     stampStyleBrush: "붓터치 인장",
     stampSize: "도장 크기",
+    stampTextSize: "인장 글자 크기",
+    stampStrokeWidth: "인장 획 굵기",
     stampRotation: "도장 각도",
     stampOpacity: "도장 투명도",
     stampFont: "도장 폰트",

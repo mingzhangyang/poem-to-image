@@ -78,6 +78,27 @@ export function getBrushStampSkew() {
   };
 }
 
+/** Safe, backwards-compatible glyph controls shared by preview and exports. */
+export function getStampTextScale(stamp: Pick<StampConfig, 'textScale'>): number {
+  const value = stamp.textScale;
+  return typeof value === 'number' && Number.isFinite(value)
+    ? Math.min(1.1, Math.max(0.7, value))
+    : 1;
+}
+
+export function getStampTextStrokeWidthPct(stamp: Pick<StampConfig, 'textStrokeWidthPct'>): number {
+  const value = stamp.textStrokeWidthPct;
+  return typeof value === 'number' && Number.isFinite(value)
+    ? Math.min(4, Math.max(0, value))
+    : 0;
+}
+
+export function getStampTextStrokeWidth(stamp: Pick<StampConfig, 'size' | 'textStrokeWidthPct'>): number {
+  return Number.isFinite(stamp.size) && stamp.size > 0
+    ? stamp.size * getStampTextStrokeWidthPct(stamp) / 100
+    : 0;
+}
+
 export function getStampTextFontSize(size: number, count: number) {
   return count <= 1 ? size * 0.6 : size * 0.4;
 }

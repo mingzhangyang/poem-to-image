@@ -172,6 +172,10 @@ export interface StampConfig {
   textureStyle?: 'classic' | 'natural';
   /** Stable identity of the normalized natural impression, independent of ink color/size. */
   textureSeed?: number;
+  /** Glyph size relative to the historical layout (0.7–1.1); absent = 1. */
+  textScale?: number;
+  /** Added glyph stroke as a percentage of seal size (0–4); absent = 0 for legacy art. */
+  textStrokeWidthPct?: number;
   positionX: number;
   positionY: number;
   size: number;

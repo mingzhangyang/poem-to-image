@@ -8,6 +8,8 @@ import {
   getStampCanvasRadii,
   getStampCharacters,
   getStampTextFontSize,
+  getStampTextScale,
+  getStampTextStrokeWidth,
   getStampTextPlacements,
   STAMP_INK_COLOR,
 } from '../stampRendering';
@@ -92,7 +94,8 @@ function drawStampShape(ctx: CanvasRenderingContext2D, stamp: StampConfig, inset
 function drawStampText(ctx: CanvasRenderingContext2D, stamp: StampConfig) {
   const isFilled = stamp.colorScheme !== 'outline';
   const characters = getStampCharacters(stamp.text);
-  const fontSize = getStampTextFontSize(stamp.size, characters.length);
+  const fontSize = getStampTextFontSize(stamp.size, characters.length) * getStampTextScale(stamp);
+  const strokeWidth = getStampTextStrokeWidth(stamp);
   const placements = getStampTextPlacements(stamp.size, characters.length);
 
   ctx.save();
@@ -110,9 +113,15 @@ function drawStampText(ctx: CanvasRenderingContext2D, stamp: StampConfig) {
   } else {
     ctx.fillStyle = inkColor;
   }
+  if (strokeWidth > 0) {
+    ctx.lineWidth = strokeWidth;
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = isFilled ? '#000' : inkColor;
+  }
 
   characters.forEach((character, index) => {
     const { x, y } = placements[index] ?? placements[placements.length - 1];
+    if (strokeWidth > 0) ctx.strokeText(character, x, y);
     ctx.fillText(character, x, y);
   });
 
@@ -128,6 +137,7 @@ function drawTraditionalStampBody(ctx: CanvasRenderingContext2D, stamp: StampCon
   const layout = getTraditionalStampLayout(stamp);
   const inkColor = stamp.inkColor ?? STAMP_INK_COLOR;
   const isWhiteCharacters = stamp.mode === 'baiwen';
+  const glyphStrokeWidth = getStampTextStrokeWidth(stamp);
 
   ctx.save();
   drawStampShape(ctx, stamp, isWhiteCharacters ? 0 : layout.borderWidth / 2);
@@ -152,6 +162,10 @@ function drawTraditionalStampBody(ctx: CanvasRenderingContext2D, stamp: StampCon
   }
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
+  if (glyphStrokeWidth > 0) {
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = isWhiteCharacters ? '#000' : inkColor;
+  }
   // Match the round clipping path's inset; reserve a little extra breathing
   // room so measured corner strokes do not graze the circular border.
   const roundClipRadius = stamp.style === 'round'
@@ -163,10 +177,19 @@ function drawTraditionalStampBody(ctx: CanvasRenderingContext2D, stamp: StampCon
       slot,
       ctx.measureText(slot.character),
       roundClipRadius === null ? undefined : { x: slot.x, y: slot.y, radius: roundClipRadius },
+      getStampTextScale(stamp),
+      glyphStrokeWidth,
     );
+    if (fit.scale <= 0) continue; // No drawable glyph fits inside the ink/clip budget.
     ctx.save();
     ctx.translate(slot.x, slot.y);
     ctx.scale(fit.scale, fit.scale);
+    if (glyphStrokeWidth > 0) {
+      // Canvas scales lineWidth with its transform. Counteract glyph fitting
+      // so the stroke slider always means a percentage of the seal, not the glyph.
+      ctx.lineWidth = glyphStrokeWidth / fit.scale;
+      ctx.strokeText(slot.character, fit.offsetX, fit.offsetY);
+    }
     ctx.fillText(slot.character, fit.offsetX, fit.offsetY);
     ctx.restore();
   }

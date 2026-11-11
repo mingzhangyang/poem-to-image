@@ -359,6 +359,8 @@ const fr: TranslationMessages = {
     stampStyleRound: "Sceau rond",
     stampStyleBrush: "Sceau encre",
     stampSize: "Taille du sceau",
+    stampTextSize: "Taille du texte du sceau",
+    stampStrokeWidth: "Épaisseur du trait du sceau",
     stampRotation: "Rotation du sceau",
     stampOpacity: "Opacité du sceau",
     stampFont: "Police du sceau",

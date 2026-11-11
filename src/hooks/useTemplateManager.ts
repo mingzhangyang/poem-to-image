@@ -133,6 +133,11 @@ function matchesDecorations(
     decorations.stamp.colorScheme === d.stamp.colorScheme &&
     decorations.stamp.inkColor === d.stamp.inkColor &&
     decorations.stamp.weathering === d.stamp.weathering &&
+    decorations.stamp.textScale === d.stamp.textScale &&
+    // A pre-upgrade built-in draft has no stroke field. Absence means legacy
+    // ink, not a user edit, so it must still receive localized decorations.
+    (decorations.stamp.textStrokeWidthPct === d.stamp.textStrokeWidthPct ||
+      (decorations.stamp.textStrokeWidthPct === undefined && d.stamp.textStrokeWidthPct === 2)) &&
     decorations.stamp.textureStyle === d.stamp.textureStyle &&
     decorations.stamp.textureSeed === d.stamp.textureSeed &&
     decorations.stamp.fontFamily === d.stamp.fontFamily &&
@@ -328,7 +333,13 @@ export function useTemplateManager({
         applyEditorTemplate({
           background: resolved.background,
           typography: resolved.typography,
-          decorations: resolved.decorations,
+          decorations: shouldSyncDecorations && decorations.stamp.textStrokeWidthPct === undefined
+            ? {
+              ...resolved.decorations,
+              // Do not silently thicken an old seal while changing its language.
+              stamp: { ...resolved.decorations.stamp, textStrokeWidthPct: undefined },
+            }
+            : resolved.decorations,
           poemStyle: resolved.poemStyle ?? { ...DEFAULT_POEM_STYLE },
         }, {
           background: false,

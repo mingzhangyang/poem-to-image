@@ -359,6 +359,8 @@ const de: TranslationMessages = {
     stampStyleRound: "Runder Stempel",
     stampStyleBrush: "Pinselstempel",
     stampSize: "Stempelgröße",
+    stampTextSize: "Größe der Siegelzeichen",
+    stampStrokeWidth: "Strichstärke des Siegels",
     stampRotation: "Stempelwinkel",
     stampOpacity: "Stempeltransparenz",
     stampFont: "Stempelschrift",

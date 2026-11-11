@@ -8,6 +8,9 @@ import {
   getStampRasterMetrics,
   getStampShadow,
   getStampTransform,
+  getStampTextScale,
+  getStampTextStrokeWidth,
+  getStampTextStrokeWidthPct,
   limitStampText,
   STAMP_MAX_CHARACTERS,
 } from '../../src/stampRendering';
@@ -89,4 +92,17 @@ test('shadow reflects seal color and historical outline/filled modes', () => {
   assert.equal(getStampShadow(stamp).color, '#c8282938');
   assert.equal(getStampShadow({ ...stamp, colorScheme: 'outline' }).color, '#c828291f');
   assert.equal(getStampShadow({ ...stamp, inkColor: 'invalid' }).color, '#c8282938');
+});
+
+test('glyph controls are opt-in, finite and normalized to logical stamp size', () => {
+  assert.equal(getStampTextScale(stamp), 1);
+  assert.equal(getStampTextStrokeWidthPct(stamp), 0);
+  assert.equal(getStampTextStrokeWidth(stamp), 0);
+  assert.equal(getStampTextScale({ textScale: Number.POSITIVE_INFINITY }), 1);
+  assert.equal(getStampTextScale({ textScale: 8 }), 1.1);
+  assert.equal(getStampTextScale({ textScale: 0 }), 0.7);
+  assert.equal(getStampTextStrokeWidthPct({ textStrokeWidthPct: 8 }), 4);
+  assert.equal(getStampTextStrokeWidthPct({ textStrokeWidthPct: -1 }), 0);
+  assert.equal(getStampTextStrokeWidth({ size: 120, textStrokeWidthPct: 2 }), 2.4);
+  assert.equal(getStampTextStrokeWidth({ size: 0, textStrokeWidthPct: 4 }), 0);
 });

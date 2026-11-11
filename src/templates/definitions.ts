@@ -410,7 +410,7 @@ export const ALL_EDITOR_TEMPLATES: EditorTemplateDefinition[] = [
       borderWidth: 3,
       showStamp: false,
       stamp: {
-        text: 'XP',
+        text: '霓',
         style: 'brush',
         positionX: 78,
         positionY: 82,
@@ -651,7 +651,7 @@ export const ALL_EDITOR_TEMPLATES: EditorTemplateDefinition[] = [
       borderWidth: 4,
       showStamp: false,
       stamp: {
-        text: 'NEO',
+        text: '夜',
         style: 'brush',
         positionX: 80,
         positionY: 83,
@@ -770,7 +770,7 @@ export const ALL_EDITOR_TEMPLATES: EditorTemplateDefinition[] = [
       borderWidth: 6,
       showStamp: false,
       stamp: {
-        text: 'CM',
+        text: '彩',
         style: 'round',
         positionX: 84,
         positionY: 82,
