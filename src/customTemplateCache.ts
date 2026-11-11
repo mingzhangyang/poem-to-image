@@ -79,7 +79,13 @@ function isStamp(value: unknown): boolean {
     && isOneOf(value.style, ['square', 'round', 'brush'])
     && hasNumbers(value, ['positionX', 'positionY', 'size', 'rotation', 'opacity'])
     && (value.colorScheme === undefined || isOneOf(value.colorScheme, ['outline', 'filled']))
-    && optionalString(value.inkColor) && optionalNumber(value.weathering);
+    && optionalString(value.inkColor) && optionalNumber(value.weathering)
+    && (value.textureStyle === undefined || isOneOf(value.textureStyle, ['classic', 'natural']))
+    && (value.textureSeed === undefined
+      || (typeof value.textureSeed === 'number'
+        && Number.isInteger(value.textureSeed)
+        && value.textureSeed >= 0
+        && value.textureSeed <= 0xffffffff));
 }
 
 function isCustomText(value: unknown): boolean {
