@@ -1,4 +1,5 @@
 import type { StampConfig, StampStyle } from './types';
+import { getStampCanvasRadii } from './stampRendering';
 
 export type SealPoint = readonly [number, number];
 
@@ -165,32 +166,45 @@ export function getNaturalSealEdgePoint(style: StampStyle, perimeter: number, de
     const radius = 0.5 - inset;
     return [0.5 + Math.cos(angle) * radius, 0.5 + Math.sin(angle) * radius];
   }
-  // Follow the rounded contour instead of the sharp bounding box. Keep
-  // the point inside the deposited ink by insetting the contour first.
-  const radius = style === 'brush' ? 0.20 : 0.12;
-  const r = Math.max(0, radius - inset);
+  // Share the same four radii and order as the painted Canvas roundRect.
+  // Offsetting both the bounding box and radii by inset keeps the arc centers
+  // fixed, placing nicks inside the deposited ink rather than empty corners.
+  const radii = getStampCanvasRadii(style, 1);
+  const [topLeft, topRight, bottomRight, bottomLeft] = Array.isArray(radii)
+    ? radii : [radii, radii, radii, radii];
+  const tl = Math.max(0, topLeft - inset);
+  const tr = Math.max(0, topRight - inset);
+  const br = Math.max(0, bottomRight - inset);
+  const bl = Math.max(0, bottomLeft - inset);
   const left = inset;
   const right = 1 - inset;
   const top = inset;
   const bottom = 1 - inset;
-  const straight = Math.max(0, right - left - 2 * r);
-  const arc = Math.PI * r / 2;
-  const length = 4 * (straight + arc);
-  let distance = position * length;
-  // Clockwise from the top edge, with circular quarter-arcs at corners.
-  const segments: Array<{ length: number; point: (t: number) => SealPoint }> = [
-    { length: straight, point: (t) => [left + r + t, top] },
-    { length: arc, point: (t) => [right - r + r * Math.sin(t / r), top + r - r * Math.cos(t / r)] },
-    { length: straight, point: (t) => [right, top + r + t] },
-    { length: arc, point: (t) => [right - r + r * Math.cos(t / r), bottom - r + r * Math.sin(t / r)] },
-    { length: straight, point: (t) => [right - r - t, bottom] },
-    { length: arc, point: (t) => [left + r - r * Math.sin(t / r), bottom - r + r * Math.cos(t / r)] },
-    { length: straight, point: (t) => [left, bottom - r - t] },
-    { length: arc, point: (t) => [left + r - r * Math.cos(t / r), top + r - r * Math.sin(t / r)] },
+  const horizontal = right - left;
+  const vertical = bottom - top;
+  const quarterArc = Math.PI / 2;
+  const lengths = [
+    horizontal - tl - tr, tr * quarterArc,
+    vertical - tr - br, br * quarterArc,
+    horizontal - br - bl, bl * quarterArc,
+    vertical - bl - tl, tl * quarterArc,
   ];
-  for (const segment of segments) {
-    if (distance <= segment.length) return segment.point(distance);
-    distance -= segment.length;
+  const total = lengths.reduce((sum, length) => sum + length, 0);
+  let distance = position * total;
+  const segments: Array<(t: number) => SealPoint> = [
+    (t) => [left + tl + t, top],
+    (t) => [right - tr + tr * Math.sin(t / tr), top + tr - tr * Math.cos(t / tr)],
+    (t) => [right, top + tr + t],
+    (t) => [right - br + br * Math.cos(t / br), bottom - br + br * Math.sin(t / br)],
+    (t) => [right - br - t, bottom],
+    (t) => [left + bl - bl * Math.sin(t / bl), bottom - bl + bl * Math.cos(t / bl)],
+    (t) => [left, bottom - bl - t],
+    (t) => [left + tl - tl * Math.cos(t / tl), top + tl - tl * Math.sin(t / tl)],
+  ];
+  for (let index = 0; index < lengths.length; index++) {
+    // Zero-length arcs must not evaluate t / 0 when an inset removes a corner.
+    if (lengths[index] > 0 && distance <= lengths[index]) return segments[index](distance);
+    distance -= lengths[index];
   }
-  return [left + r, top];
+  return [left + tl, top];
 }

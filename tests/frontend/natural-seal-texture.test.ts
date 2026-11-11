@@ -10,6 +10,7 @@ import {
   nextNaturalSealSeed,
 } from '../../src/naturalSealTexture';
 import type { StampConfig, StampStyle } from '../../src/types';
+import { getStampCanvasRadii } from '../../src/stampRendering';
 
 const stamp: StampConfig = {
   text: '山水天地', style: 'brush', mode: 'zhuwen',
@@ -68,27 +69,48 @@ test('strength only reveals more of the same stable marks; zero strength is pris
   assert.deepEqual(getNaturalSealFeatureCounts(Number.NaN), getNaturalSealFeatureCounts(0));
 });
 
-test('normalized edge samples stay on the intended style-aware perimeter', () => {
+test('edge samples match the Canvas rounded contour, including all four brush corner radii', () => {
+  const tolerance = 1e-9;
   for (const style of ['round', 'square', 'brush'] as StampStyle[]) {
-    for (let index = 0; index <= 80; index++) {
-      const [x, y] = getNaturalSealEdgePoint(style, index / 80, 0.01);
-      assert.ok(x >= 0 && x <= 1 && y >= 0 && y <= 1);
-      if (style === 'round') {
-        assert.ok(Math.abs(Math.hypot(x - 0.5, y - 0.5) - 0.49) < 1e-9);
-      } else {
-        const radius = style === 'brush' ? 0.20 : 0.12;
-        const innerRadius = radius - 0.01;
-        const cx = Math.max(radius, Math.min(1 - radius, x));
-        const cy = Math.max(radius, Math.min(1 - radius, y));
-        const cornerDistance = Math.hypot(x - cx, y - cy);
-        // Straight edges or actual quarter-circle arcs, never the
-        // sharp bounding-box corners that contain no ink.
-        assert.ok(
-          Math.abs(x - 0.01) < 1e-9 || Math.abs(x - 0.99) < 1e-9
-          || Math.abs(y - 0.01) < 1e-9 || Math.abs(y - 0.99) < 1e-9
-          || Math.abs(cornerDistance - innerRadius) < 1e-9,
-        );
-        assert.ok(!(x < 0.04 && y < 0.04), 'no empty top-left corner');
+    const canvasRadii = getStampCanvasRadii(style, 1);
+    const [tl, tr, br, bl] = Array.isArray(canvasRadii)
+      ? canvasRadii : [canvasRadii, canvasRadii, canvasRadii, canvasRadii];
+    for (const inset of [0.004, 0.01, 0.018]) {
+      const [tlInset, trInset, brInset, blInset] =
+        [tl, tr, br, bl].map((radius) => Math.max(0, radius - inset));
+      const cornerHits = [0, 0, 0, 0];
+      for (let index = 0; index <= 400; index++) {
+        const [x, y] = getNaturalSealEdgePoint(style, index / 400, inset);
+        assert.ok(x >= 0 && x <= 1 && y >= 0 && y <= 1);
+        if (style === 'round') {
+          assert.ok(Math.abs(Math.hypot(x - 0.5, y - 0.5) - (0.5 - inset)) < tolerance);
+          continue;
+        }
+        // Test against the actual painted radii; do not repeat the sampler's
+        // old uniform 0.20 brush assumption in the expected geometry.
+        const onStraight =
+          (Math.abs(y - inset) < tolerance && x >= tl - tolerance && x <= 1 - tr + tolerance)
+          || (Math.abs(x - (1 - inset)) < tolerance
+            && y >= tr - tolerance && y <= 1 - br + tolerance)
+          || (Math.abs(y - (1 - inset)) < tolerance
+            && x >= bl - tolerance && x <= 1 - br + tolerance)
+          || (Math.abs(x - inset) < tolerance
+            && y >= tl - tolerance && y <= 1 - bl + tolerance);
+        const arcs = [
+          { cx: tl, cy: tl, radius: tlInset, quadrant: x <= tl && y <= tl },
+          { cx: 1 - tr, cy: tr, radius: trInset, quadrant: x >= 1 - tr && y <= tr },
+          { cx: 1 - br, cy: 1 - br, radius: brInset, quadrant: x >= 1 - br && y >= 1 - br },
+          { cx: bl, cy: 1 - bl, radius: blInset, quadrant: x <= bl && y >= 1 - bl },
+        ];
+        const onArcs = arcs.map((arc) =>
+          arc.quadrant && Math.abs(Math.hypot(x - arc.cx, y - arc.cy) - arc.radius) < tolerance);
+        onArcs.forEach((hit, corner) => { if (hit) cornerHits[corner]++; });
+        assert.ok(onStraight || onArcs.some(Boolean),
+          style + ' contour mismatch at perimeter=' + index / 400 + ', inset=' + inset);
+      }
+      if (style !== 'round') {
+        assert.ok(cornerHits.every((hits) => hits > 0),
+          style + ' each painted corner must be covered by regression samples');
       }
     }
   }
