@@ -1,4 +1,5 @@
 import { createCanvasTextMeasurer, createTextLayout, type TextLayoutMeasurer, type TextLayoutResult } from './textLayout';
+import { getBodyFontScale } from './poemStyle';
 import type { PoemContentData, PoemLayerStyle, TextAlign, WritingMode } from './types';
 
 export interface StructuredPoemSectionLayout {
@@ -88,7 +89,7 @@ function createSectionSpecs(
     text: bodyText,
     // Independent relative size, using the same structured layout in preview
     // and export. Old drafts without bodyScale keep their original font size.
-    fontSize: roundFontSize(fontSize * (poemStyle.bodyScale ?? 1)),
+    fontSize: roundFontSize(fontSize * getBodyFontScale(poemStyle)),
     lineHeight: poemStyle.bodyLineHeight,
     letterSpacing: poemStyle.bodyLetterSpacing,
     opacity: body ? 1 : 0.72,

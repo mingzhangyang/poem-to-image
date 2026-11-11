@@ -180,7 +180,7 @@ const ko: TranslationMessages = {
     poemEditorTextSection: "시 텍스트",
     poemLayerStyles: "레이어 스타일",
     relativeFontSize: "상대 글자 크기",
-    relativeFontSizeHint: "각 비율은 기준 글자 크기를 바탕으로 합니다. 한 부분을 변경해도 다른 부분의 비율은 바뀌지 않습니다.",
+    relativeFontSizeHint: "100%는 각 부분의 기본 크기입니다. 기준 글자 크기에 맞춰 함께 조정되며, 개별 변경은 다른 부분에 영향을 주지 않습니다.",
     resetLayerStyles: "레이어 스타일 초기화",
     bodyGap: "본문 간격",
     sectionGap: "구간 간격",

@@ -180,7 +180,7 @@ const fr: TranslationMessages = {
     poemEditorTextSection: "Texte du poème",
     poemLayerStyles: "Styles de niveaux",
     relativeFontSize: "Taille relative du texte",
-    relativeFontSizeHint: "Chaque pourcentage se rapporte à la taille de base. Modifier une partie ne change pas les autres pourcentages.",
+    relativeFontSizeHint: "100 % correspond à la taille par défaut de chaque partie, calculée depuis la base. Ajuster une partie ne modifie pas les autres.",
     resetLayerStyles: "Réinitialiser les styles",
     bodyGap: "Espacement avec le corps",
     sectionGap: "Espacement du bloc",

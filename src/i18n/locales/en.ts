@@ -188,7 +188,7 @@ const en = {
     poemEditorTextSection: "Poem Text",
     poemLayerStyles: "Layer Styles",
     relativeFontSize: "Relative Font Size",
-    relativeFontSizeHint: "Each percentage is relative to the base font size. Changing one section does not change the others.",
+    relativeFontSizeHint: "100% keeps that section’s default size relative to the base font. Changing one section does not change the others.",
     resetLayerStyles: "Reset Layer Styles",
     bodyGap: "Gap To Body",
     sectionGap: "Section Gap",

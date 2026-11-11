@@ -28,11 +28,20 @@ export const DEFAULT_POEM_STYLE: PoemLayerStyle = {
   sourcePlacement: 'after-body',
 };
 
+/** A saved legacy style may omit the field; keep the slider and layout bounded. */
+export function getBodyFontScale(style: Pick<PoemLayerStyle, 'bodyScale'>): number {
+  const value = style.bodyScale;
+  return typeof value === 'number' && Number.isFinite(value)
+    ? Math.min(1.6, Math.max(0.7, value))
+    : 1;
+}
+
 export function normalizePoemLayerStyle(input?: Partial<PoemLayerStyle> | null): PoemLayerStyle {
-  return {
+  const merged = {
     ...DEFAULT_POEM_STYLE,
     ...(input ?? {}),
   };
+  return { ...merged, bodyScale: getBodyFontScale(merged) };
 }
 
 export function isSamePoemLayerStyle(left: PoemLayerStyle, right: PoemLayerStyle) {

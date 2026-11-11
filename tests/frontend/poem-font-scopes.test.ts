@@ -58,4 +58,9 @@ test('body size persists in layer style projection and can be reset', () => {
   assert.equal(updated.bodyScale, 0.7);
   assert.equal(calculateSizes(32, updated).body, 22);
   assert.equal(normalizePoemLayerStyle().bodyScale, 1);
+  assert.equal(normalizePoemLayerStyle({ bodyScale: Number.NaN }).bodyScale, 1);
+  assert.equal(normalizePoemLayerStyle({ bodyScale: Number.POSITIVE_INFINITY }).bodyScale, 1);
+  assert.equal(normalizePoemLayerStyle({ bodyScale: 20 }).bodyScale, 1.6);
+  assert.equal(normalizePoemLayerStyle({ bodyScale: -20 }).bodyScale, 0.7);
+  assert.equal(calculateSizes(32, { ...DEFAULT_POEM_STYLE, bodyScale: Number.NaN }).body, 32);
 });

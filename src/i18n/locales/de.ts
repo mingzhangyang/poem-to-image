@@ -180,7 +180,7 @@ const de: TranslationMessages = {
     poemEditorTextSection: "Gedichttext",
     poemLayerStyles: "Ebenenstile",
     relativeFontSize: "Relative Schriftgröße",
-    relativeFontSizeHint: "Jeder Prozentwert bezieht sich auf die Grundschriftgröße. Änderungen an einem Bereich verändern die anderen Werte nicht.",
+    relativeFontSizeHint: "100 % entspricht der Standardgröße des jeweiligen Abschnitts relativ zur Grundgröße. Änderungen an einem Abschnitt ändern die anderen nicht.",
     resetLayerStyles: "Ebenenstile zurücksetzen",
     bodyGap: "Abstand zum Haupttext",
     sectionGap: "Blockabstand",

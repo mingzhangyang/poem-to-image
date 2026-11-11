@@ -180,7 +180,7 @@ const ja: TranslationMessages = {
     poemEditorTextSection: "詩の本文",
     poemLayerStyles: "レイヤースタイル",
     relativeFontSize: "相対文字サイズ",
-    relativeFontSizeHint: "各項目の割合は基準文字サイズに対する値です。1つ変更しても他の項目の割合は変わりません。",
+    relativeFontSizeHint: "100%は各項目の標準サイズです。基準文字サイズに応じて全体が変わり、個別の調整は他の項目に影響しません。",
     resetLayerStyles: "レイヤースタイルをリセット",
     bodyGap: "本文との間隔",
     sectionGap: "区画間隔",

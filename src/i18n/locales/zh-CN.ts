@@ -180,7 +180,7 @@ const zhCN: TranslationMessages = {
     poemEditorTextSection: "诗歌文本",
     poemLayerStyles: "层级样式",
     relativeFontSize: "相对字号",
-    relativeFontSizeHint: "百分比相对于全篇基础字号；调整某一部分，不会改变其他部分的相对字号。",
+    relativeFontSizeHint: "各部分以自身默认字号为 100%，并随全篇基础字号整体缩放；单独调整不会改变其他部分。",
     resetLayerStyles: "重置层级样式",
     bodyGap: "与正文间距",
     sectionGap: "区块间距",
