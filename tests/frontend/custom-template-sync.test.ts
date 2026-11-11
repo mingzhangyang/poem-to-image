@@ -216,6 +216,41 @@ test('nested template structures are validated before replacing a good cache', a
   }
 });
 
+test('stamp texture fields preserve legacy templates and reject malformed persisted values', () => {
+  const base = fixture('texture-validation');
+  const withStamp = (fields: Record<string, unknown>) => ({
+    ...base,
+    decorations: {
+      ...base.decorations,
+      stamp: { ...base.decorations.stamp, ...fields },
+    },
+  });
+
+  for (const valid of [
+    withStamp({}),
+    withStamp({ textureStyle: 'classic' }),
+    withStamp({ textureStyle: 'natural', textureSeed: 0 }),
+    withStamp({ textureStyle: 'natural', textureSeed: 0xffffffff }),
+  ]) {
+    assert.equal(parseCloudTemplateList({ templates: [valid] }).length, 1);
+  }
+
+  for (const malformed of [
+    withStamp({ textureStyle: 'bogus' }),
+    withStamp({ textureStyle: null }),
+    withStamp({ textureStyle: 1 }),
+    withStamp({ textureSeed: -1 }),
+    withStamp({ textureSeed: 1.5 }),
+    withStamp({ textureSeed: 0x100000000 }),
+    withStamp({ textureSeed: '42' }),
+    withStamp({ textureSeed: null }),
+    withStamp({ textureSeed: Number.NaN }),
+    withStamp({ textureSeed: Infinity }),
+  ]) {
+    assert.throws(() => parseCloudTemplateList({ templates: [malformed] }), /INVALID_TEMPLATE_LIST/);
+  }
+});
+
 test('genuinely optional fields in old templates are normalized safely', () => {
   const valid = fixture('legacy');
   const legacy = {

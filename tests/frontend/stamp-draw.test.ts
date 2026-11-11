@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { drawStamp, drawStampImpression } from '../../src/export/stampDraw';
 import { STAMP_SHADOW_PADDING, getStampRasterMetrics, getStampTransform } from '../../src/stampRendering';
+import { drawNaturalSealImpression } from '../../src/naturalSealDraw';
+import { getNaturalSealTexturePlan } from '../../src/naturalSealTexture';
 import { getTraditionalStampLayout } from '../../src/sealTypography';
 import type { StampConfig } from '../../src/types';
 
@@ -43,6 +45,8 @@ class RecordingContext {
   clip() { this.add('clip'); }
   fill() { this.add('fill'); }
   stroke() { this.add('stroke'); }
+  rotate(a: number) { this.add('rotate', a); }
+  quadraticCurveTo(...args: number[]) { this.add('quadraticCurveTo', ...args); }
   moveTo(x: number, y: number) { this.add('moveTo', x, y); }
   lineTo(x: number, y: number) { this.add('lineTo', x, y); }
   measureText(text: string) {
@@ -260,4 +264,74 @@ test('explicit modern mode preserves the exact legacy ink command trace', () => 
     });
   }
   assert.deepEqual(traces[0], traces[1]);
+});
+
+
+test('natural ink uses translucent organic blotches and fiber curves, not the old random circles', () => {
+  for (const style of ['square', 'round', 'brush'] as const) {
+    for (const mode of ['zhuwen', 'baiwen'] as const) {
+      withCanvas((created) => {
+        drawStampImpression(new RecordingContext() as unknown as CanvasRenderingContext2D,
+          { ...stamp, style, mode, textureStyle: 'natural', textureSeed: 4153,
+            text: '山水天地', weathering: 70 }, { pixelScale: 3 });
+        const ops = created[0].context.ops;
+        assert.ok(ops.some((op) => op.method === 'quadraticCurveTo'), style + ' ' + mode + ' organic curves');
+        assert.equal(ops.filter((op) => op.method === 'fillText').length, 4);
+        assert.equal(ops.filter((op) => op.method === 'lineTo').length, 0, 'no legacy divider grid');
+        assert.equal(ops.filter((op) => op.method === 'arc').length,
+          style === 'round' ? 2 : 0, 'no random-dot arcs in the natural renderer');
+        assert.ok(ops.length < 2000, 'work per stamp must be bounded even at 3x');
+      });
+    }
+  }
+});
+
+test('natural pattern remains identical across changes to color, size and opacity', () => {
+  const baseline = { ...stamp, textureStyle: 'natural' as const,
+    textureSeed: 52, weathering: 80 };
+  const traces: RecordOp[][] = [];
+  for (const variant of [
+    baseline,
+    { ...baseline, size: 200, inkColor: '#551111', opacity: 0.2, rotation: -30 },
+  ]) {
+    const ctx = new RecordingContext();
+    drawNaturalSealImpression(ctx as unknown as CanvasRenderingContext2D, variant);
+    traces.push(ctx.ops.filter((op) =>
+      // Initial unit-square normalization changes with size; mark placements do not.
+      !(op.method === 'translate' && Number(op.args[0]) < 0)
+      && !(op.method === 'scale' && op.args[0] === variant.size),
+    ));
+  }
+  assert.deepEqual(traces[0], traces[1]);
+  assert.strictEqual(getNaturalSealTexturePlan(52), getNaturalSealTexturePlan(52));
+});
+
+test('zero wear and classic old drafts retain the same drawing path', () => {
+  const traces: RecordOp[][] = [];
+  for (const textureStyle of [undefined, 'classic'] as const) {
+    withCanvas((created) => {
+      drawStampImpression(new RecordingContext() as unknown as CanvasRenderingContext2D,
+        { ...stamp, textureStyle, weathering: 50, mode: undefined });
+      traces.push(created[0].context.ops);
+    });
+  }
+  assert.deepEqual(traces[0], traces[1], 'missing mode/style must be visually unchanged');
+  const pristine: RecordOp[][] = [];
+  for (const textureStyle of ['classic', 'natural'] as const) {
+    withCanvas((created) => {
+      drawStampImpression(new RecordingContext() as unknown as CanvasRenderingContext2D,
+        { ...stamp, textureStyle, weathering: 0, mode: 'zhuwen' });
+      pristine.push(created[0].context.ops);
+    });
+  }
+  assert.deepEqual(pristine[0], pristine[1], 'at zero aging there are no impression defects');
+});
+
+test('maximum wear has a fixed command budget independent of stamp size or export DPR', () => {
+  for (const size of [64, 180, 4000]) {
+    const ctx = new RecordingContext();
+    drawNaturalSealImpression(ctx as unknown as CanvasRenderingContext2D,
+      { ...stamp, size, textureStyle: 'natural', textureSeed: 73, weathering: 100 });
+    assert.ok(ctx.ops.length < 2500, 'no loops over pixels or stamp dimensions');
+  }
 });

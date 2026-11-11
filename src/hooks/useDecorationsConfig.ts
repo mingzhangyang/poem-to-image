@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { DEFAULT_STAMP_FONT } from '../fontOptions';
+import { getNaturalSealSeed } from '../naturalSealTexture';
 import { getDefaultStampTextForLanguage } from '../stampDefaults';
 import { DEFAULT_SIGNATURE_FONT } from '../signatureRendering';
 import { mergePositionUpdate } from '../positioningRect';
@@ -115,6 +116,9 @@ export function useDecorationsConfig({
 
   const createDefaultStamp = (): StampConfig => ({
     text: getDefaultStampTextForLanguage(language),
+    // Only new stamps opt in; persisted stamps and built-in templates stay unchanged.
+    textureStyle: 'natural',
+    textureSeed: getNaturalSealSeed({ text: getDefaultStampTextForLanguage(language) }),
     style: 'square',
     colorScheme: 'filled',
     inkColor: '#c82829',
