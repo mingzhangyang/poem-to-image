@@ -1,4 +1,4 @@
-import type { PoemLayerStyle, UserCustomTemplate } from './types';
+import type { PoemLayerStyle, UserCustomTemplate, WritingMode } from './types';
 
 export const DEFAULT_POEM_STYLE: PoemLayerStyle = {
   titleScale: 1,
@@ -18,7 +18,7 @@ export const DEFAULT_POEM_STYLE: PoemLayerStyle = {
   authorLetterSpacing: 4,
   authorBodyGap: 12,
   authorAlign: 'center',
-  authorPlacement: 'before-body',
+  authorPlacement: 'auto',
   sourceScale: 1,
   sourceOpacity: 1,
   sourceLineHeight: 1.4,
@@ -42,6 +42,17 @@ export function normalizePoemLayerStyle(input?: Partial<PoemLayerStyle> | null):
     ...(input ?? {}),
   };
   return { ...merged, bodyScale: getBodyFontScale(merged) };
+}
+
+/** Keep explicit placements (including restored old drafts); choose a sensible default per writing direction. */
+export function resolveAuthorPlacement(
+  authorPlacement: PoemLayerStyle['authorPlacement'],
+  writingMode: WritingMode,
+): 'before-body' | 'after-body' {
+  if (authorPlacement === 'auto') {
+    return writingMode === 'vertical-rl' ? 'after-body' : 'before-body';
+  }
+  return authorPlacement;
 }
 
 export function isSamePoemLayerStyle(left: PoemLayerStyle, right: PoemLayerStyle) {

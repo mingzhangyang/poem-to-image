@@ -193,6 +193,7 @@ const en = {
     bodyGap: "Gap To Body",
     sectionGap: "Section Gap",
     relativePosition: "Relative Position",
+    positionAutomatic: "Automatic (before body horizontal, after body vertical)",
     positionBeforeBody: "Before Body",
     positionAfterBody: "After Body",
     positionAfterAuthor: "After Author",

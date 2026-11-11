@@ -185,6 +185,7 @@ const ja: TranslationMessages = {
     bodyGap: "本文との間隔",
     sectionGap: "区画間隔",
     relativePosition: "相対位置",
+    positionAutomatic: "自動（横書きは前・縦書きは後）",
     positionBeforeBody: "本文の前",
     positionAfterBody: "本文の後",
     positionAfterAuthor: "作者の後",

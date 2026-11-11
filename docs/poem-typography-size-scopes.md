@@ -53,3 +53,22 @@ share the same `PoemLayerStyle`.
 Recommended local commands: `npm ci`, `npm run typecheck`, `npm run lint`,
 `npm run test:unit`, `npm run build`, and `npm run test:e2e`.
 None should manually dispatch GitHub Actions.
+
+## Vertical author placement
+
+New artwork uses **Automatic** author placement: horizontal writing keeps the
+author between the title and body; vertical right-to-left writing puts the
+author as an attribution on the **left** of the poem body. The author's final
+glyph aligns near the lower edge of the body instead of competing with the
+title at the top. This is computed inside `createStructuredPoemLayout`, so
+on-screen SVG/HTML preview and Canvas exports use the same geometry.
+
+The editor still lets users choose explicit **Before body** or **After body**
+placement. Those explicit settings—including old saved drafts and custom
+templates—retain their reading order. Both vertical author placements receive
+the improved lower alignment. On very short poems, author layout expands
+normally rather than clipping or producing a negative coordinate.
+
+Local regression: compare horizontal/vertical layouts, multi-column poems,
+long attribution / short body, language switching, Undo/Redo, template
+application, and mobile preview/export at multiple image pixel scales.

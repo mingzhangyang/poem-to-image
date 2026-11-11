@@ -185,6 +185,7 @@ const de: TranslationMessages = {
     bodyGap: "Abstand zum Haupttext",
     sectionGap: "Blockabstand",
     relativePosition: "Relative Position",
+    positionAutomatic: "Automatisch (horizontal davor, vertikal danach)",
     positionBeforeBody: "Vor dem Haupttext",
     positionAfterBody: "Nach dem Haupttext",
     positionAfterAuthor: "Nach dem Autor",

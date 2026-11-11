@@ -185,6 +185,7 @@ const ko: TranslationMessages = {
     bodyGap: "본문 간격",
     sectionGap: "구간 간격",
     relativePosition: "상대 위치",
+    positionAutomatic: "자동 (가로쓰기 앞 / 세로쓰기 뒤)",
     positionBeforeBody: "본문 앞",
     positionAfterBody: "본문 뒤",
     positionAfterAuthor: "작가 뒤",

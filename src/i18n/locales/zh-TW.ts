@@ -185,6 +185,7 @@ const zhTW: TranslationMessages = {
     bodyGap: "與正文間距",
     sectionGap: "區塊間距",
     relativePosition: "相對位置",
+    positionAutomatic: "自動（橫排正文前，直排正文後）",
     positionBeforeBody: "正文前",
     positionAfterBody: "正文後",
     positionAfterAuthor: "作者後",

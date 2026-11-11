@@ -185,6 +185,7 @@ const fr: TranslationMessages = {
     bodyGap: "Espacement avec le corps",
     sectionGap: "Espacement du bloc",
     relativePosition: "Position relative",
+    positionAutomatic: "Auto (avant horizontal, après vertical)",
     positionBeforeBody: "Avant le corps",
     positionAfterBody: "Après le corps",
     positionAfterAuthor: "Après l’auteur",
