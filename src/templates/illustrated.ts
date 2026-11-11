@@ -35,7 +35,7 @@ function illustrated(options: IllustratedOptions): EditorTemplateDefinition {
       showBorder: false, borderStyle: 'solid', borderColor: inkColor, borderWidth: 2,
       showStamp: false,
       stamp: {
-        text: '', style: 'square', positionX: 82, positionY: 82, size: 56,
+        text: '印', style: 'square', positionX: 82, positionY: 82, size: 56,
         rotation: 0, opacity: 0.7, colorScheme: 'outline', fontFamily: DEFAULT_STAMP_FONT,
       },
       poemPosition: { positionX: 50, positionY: poemY }, customTexts: [], logos: [],

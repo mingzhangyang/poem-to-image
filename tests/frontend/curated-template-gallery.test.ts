@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { LANGUAGES } from '../../src/translations';
+import { getDefaultStampTextForLanguage } from '../../src/stampDefaults';
 import {
   ALL_EDITOR_TEMPLATES,
   editorTemplates,
@@ -53,4 +54,18 @@ test('classic and magazine template ornamentation is intentionally simplified', 
   assert.equal(magazine.decorations.showBorder, true);
   assert.equal(magazine.decorations.borderStyle, 'solid');
   assert.equal(magazine.decorations.borderWidth, 2);
+});
+
+test('new seals and built-in templates use Han characters rather than Latin labels', () => {
+  const han = /\p{Script=Han}/u;
+  for (const language of LANGUAGES) {
+    assert.match(getDefaultStampTextForLanguage(language), han, language);
+    for (const definition of ALL_EDITOR_TEMPLATES) {
+      const template = resolveTemplateForLanguage(definition.id, language);
+      assert.ok(template);
+      assert.match(template.decorations.stamp.text, han, definition.id + ' / ' + language);
+      assert.equal(template.decorations.stamp.text.includes('Seal'), false);
+      assert.equal(template.decorations.stamp.textStrokeWidthPct, 2);
+    }
+  }
 });

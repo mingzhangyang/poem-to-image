@@ -82,6 +82,7 @@ export function StampOverlay({ ariaLabel, frameRef, stamp, effectiveScale, onSta
     const paintKey = JSON.stringify([
       stamp.text, stamp.style, stamp.size, stamp.fontFamily, stamp.mode,
       stamp.colorScheme, stamp.inkColor, stamp.weathering,
+      stamp.textScale, stamp.textStrokeWidthPct,
       stamp.textureStyle, stamp.textureSeed, pixels, rasterScale, fontRevision,
     ]);
     if (lastPaintKeyRef.current === paintKey) return;

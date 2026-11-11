@@ -1,7 +1,7 @@
 import { Plus, Stamp, Trash2, Upload, Text, TextCursorInput, ChevronUp, ChevronDown, ArrowUpToLine, ArrowDownToLine, PenLine } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { STAMP_FONT_OPTIONS } from '../../fontOptions';
-import { limitStampText } from '../../stampRendering';
+import { getStampTextScale, getStampTextStrokeWidthPct, limitStampText } from '../../stampRendering';
 import { getNaturalSealSeed, nextNaturalSealSeed } from '../../naturalSealTexture';
 import { getLXGWUnlistedCharacters } from '../../lxgwSealCoverage';
 import {
@@ -456,6 +456,42 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                   /[a-zA-Z]/.test(decorations.stamp.text) && (
                   <p className="mt-1 text-xs text-amber-600">{t('stampFontCjkWarning')}</p>
                 )}
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs text-(--app-accent-500)">
+                  <span>{t('stampTextSize')}</span>
+                  <span>{Math.round(getStampTextScale(decorations.stamp) * 100)}%</span>
+                </div>
+                <input
+                  type="range"
+                  aria-label={t('stampTextSize')}
+                  aria-valuetext={`${Math.round(getStampTextScale(decorations.stamp) * 100)}%`}
+                  min="70"
+                  max="110"
+                  step="5"
+                  value={Math.round(getStampTextScale(decorations.stamp) * 100)}
+                  onChange={(event) => decorations.onStampChange({ textScale: Number(event.target.value) / 100 })}
+                  className="app-range app-range-warm"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs text-(--app-accent-500)">
+                  <span>{t('stampStrokeWidth')}</span>
+                  <span>{getStampTextStrokeWidthPct(decorations.stamp)}%</span>
+                </div>
+                <input
+                  type="range"
+                  aria-label={t('stampStrokeWidth')}
+                  aria-valuetext={`${getStampTextStrokeWidthPct(decorations.stamp)}%`}
+                  min="0"
+                  max="4"
+                  step="0.5"
+                  value={getStampTextStrokeWidthPct(decorations.stamp)}
+                  onChange={(event) => decorations.onStampChange({ textStrokeWidthPct: Number(event.target.value) })}
+                  className="app-range app-range-warm"
+                />
               </div>
 
               <div className="space-y-2">

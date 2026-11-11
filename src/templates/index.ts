@@ -103,6 +103,7 @@ export function resolveTemplateForLanguage(templateId: EditorTemplateId, languag
       ...template.decorations,
       ...decorationsOverride,
       stamp: {
+        textStrokeWidthPct: 2,
         ...template.decorations.stamp,
         ...decorationsOverride?.stamp,
       },

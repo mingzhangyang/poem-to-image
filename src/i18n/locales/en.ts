@@ -367,6 +367,8 @@ const en = {
     stampStyleRound: "Round Seal",
     stampStyleBrush: "Brush Seal",
     stampSize: "Stamp Size",
+    stampTextSize: "Seal text size",
+    stampStrokeWidth: "Seal stroke thickness",
     stampRotation: "Stamp Rotation",
     stampOpacity: "Stamp Opacity",
     stampFont: "Stamp Font",

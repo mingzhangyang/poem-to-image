@@ -359,6 +359,8 @@ const ja: TranslationMessages = {
     stampStyleRound: "丸印",
     stampStyleBrush: "朱墨印",
     stampSize: "印章サイズ",
+    stampTextSize: "印文の大きさ",
+    stampStrokeWidth: "印文の線の太さ",
     stampRotation: "印章の角度",
     stampOpacity: "印章の不透明度",
     stampFont: "印章フォント",

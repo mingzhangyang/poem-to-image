@@ -133,6 +133,8 @@ function matchesDecorations(
     decorations.stamp.colorScheme === d.stamp.colorScheme &&
     decorations.stamp.inkColor === d.stamp.inkColor &&
     decorations.stamp.weathering === d.stamp.weathering &&
+    decorations.stamp.textScale === d.stamp.textScale &&
+    decorations.stamp.textStrokeWidthPct === d.stamp.textStrokeWidthPct &&
     decorations.stamp.textureStyle === d.stamp.textureStyle &&
     decorations.stamp.textureSeed === d.stamp.textureSeed &&
     decorations.stamp.fontFamily === d.stamp.fontFamily &&

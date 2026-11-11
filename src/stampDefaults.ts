@@ -1,15 +1,16 @@
 import type { Language } from './translations';
 import { isCjkLanguage } from './fontOptions';
 
+// A Chinese seal uses Han characters, not a translated label.
 const DEFAULT_STAMP_TEXTS: Record<Language, string> = {
-  en: 'Mark',
-  'zh-CN': '印记',
-  'zh-TW': '印記',
+  en: '印',
+  'zh-CN': '印',
+  'zh-TW': '印',
   ja: '印',
-  ko: '표식',
-  es: 'Marca',
-  fr: 'Marque',
-  de: 'Zeichen',
+  ko: '印',
+  es: '印',
+  fr: '印',
+  de: '印',
 };
 
 export function getDefaultStampTextForLanguage(language: Language) {

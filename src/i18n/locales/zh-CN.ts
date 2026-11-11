@@ -359,6 +359,8 @@ const zhCN: TranslationMessages = {
     stampStyleRound: "圆章",
     stampStyleBrush: "写意章",
     stampSize: "印章大小",
+    stampTextSize: "印文字号",
+    stampStrokeWidth: "印文笔画粗细",
     stampRotation: "印章角度",
     stampOpacity: "印章透明度",
     stampFont: "印章字体",

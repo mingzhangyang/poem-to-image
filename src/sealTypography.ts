@@ -113,6 +113,8 @@ export function fitTraditionalStampGlyph(
   slot: Pick<TraditionalStampSlot, 'width' | 'height'>,
   bounds: GlyphBounds,
   roundClip?: { x: number; y: number; radius: number },
+  textScale = 1,
+  strokeWidth = 0,
 ) {
   const left = Number.isFinite(bounds.actualBoundingBoxLeft) ? bounds.actualBoundingBoxLeft : 0;
   const right = Number.isFinite(bounds.actualBoundingBoxRight) ? bounds.actualBoundingBoxRight : 0;
@@ -120,7 +122,13 @@ export function fitTraditionalStampGlyph(
   const descent = Number.isFinite(bounds.actualBoundingBoxDescent) ? bounds.actualBoundingBoxDescent : 0;
   const glyphWidth = Math.max(1, left + right);
   const glyphHeight = Math.max(1, ascent + descent);
-  let scale = Math.min(1, slot.width * 0.88 / glyphWidth, slot.height * 0.88 / glyphHeight);
+  // Fit the stroke's outer bounds so bolder glyphs do not clip circular seals.
+  const safeStroke = Number.isFinite(strokeWidth) ? Math.max(0, strokeWidth) : 0;
+  const outerWidth = glyphWidth + safeStroke;
+  const outerHeight = glyphHeight + safeStroke;
+  const sizeMultiplier = Number.isFinite(textScale) ? Math.min(1.1, Math.max(0.7, textScale)) : 1;
+  const fillRatio = 0.88 * sizeMultiplier;
+  let scale = Math.min(sizeMultiplier, slot.width * fillRatio / outerWidth, slot.height * fillRatio / outerHeight);
   if (roundClip) {
     // After optical centering, the farthest ink corner is
     // (|x| + halfGlyphWidth * scale, |y| + halfGlyphHeight * scale).
@@ -132,8 +140,8 @@ export function fitTraditionalStampGlyph(
     if (remainingRadiusSquared <= 0) {
       scale = 0;
     } else {
-      const halfWidth = glyphWidth / 2;
-      const halfHeight = glyphHeight / 2;
+      const halfWidth = outerWidth / 2;
+      const halfHeight = outerHeight / 2;
       const a = halfWidth * halfWidth + halfHeight * halfHeight;
       const b = 2 * (x * halfWidth + y * halfHeight);
       const circleScale = 2 * remainingRadiusSquared

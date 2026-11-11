@@ -170,3 +170,20 @@ test('published LXGW seal coverage helps flag unlisted characters without blocki
   assert.deepEqual(getLXGWUnlistedCharacters('𠮷春'), ['𠮷']);
   assert.deepEqual(getLXGWUnlistedCharacters(''), []);
 });
+
+test('larger and bolder glyphs fit square and round seals safely', () => {
+  const slot = { width: 50, height: 50 };
+  const bounds = {
+    actualBoundingBoxLeft: 25, actualBoundingBoxRight: 25,
+    actualBoundingBoxAscent: 25, actualBoundingBoxDescent: 25,
+  };
+  const original = fitTraditionalStampGlyph(slot, bounds);
+  const enlarged = fitTraditionalStampGlyph(slot, bounds, undefined, 1.1);
+  const thicker = fitTraditionalStampGlyph(slot, bounds, undefined, 1.1, 3);
+  assert.ok(enlarged.scale > original.scale);
+  assert.ok(thicker.scale < enlarged.scale);
+  const round = fitTraditionalStampGlyph(slot, bounds, { x: 6, y: 0, radius: 42 }, 1.1, 3);
+  const outer = (50 + 3) * round.scale / 2;
+  assert.ok(Math.hypot(6 + outer, outer) <= 42 + 1e-9);
+  assert.equal(fitTraditionalStampGlyph(slot, bounds).scale, original.scale);
+});

@@ -120,3 +120,30 @@ for (const edit of ['mode', 'font'] as const) {
     await expect(page.getByRole('combobox', { name: '印章字體' })).toHaveValue(expectedFont);
   });
 }
+
+test('glyph size and stroke sliders persist through editor reload', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'chromium-mobile', 'Desktop settings flow');
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: /^装饰与元素/ }).click();
+  await page.getByRole('checkbox', { name: '显示印章' }).check();
+  await expect(page.getByRole('textbox', { name: '印章文字' })).toHaveValue('印');
+  const textSize = page.getByRole('slider', { name: '印文字号' });
+  const stroke = page.getByRole('slider', { name: '印文笔画粗细' });
+  await expect(textSize).toHaveValue('100');
+  await expect(stroke).toHaveValue('2');
+  await textSize.focus();
+  await textSize.press('End');
+  await stroke.focus();
+  await stroke.press('End');
+  await expect(textSize).toHaveValue('110');
+  await expect(stroke).toHaveValue('4');
+  await expect.poll(async () => page.evaluate(() => {
+    const json = localStorage.getItem('inkpoem.editor-state.v1');
+    const scene = json ? JSON.parse(json) : null;
+    return [scene?.decorations?.stamp?.textScale, scene?.decorations?.stamp?.textStrokeWidthPct];
+  })).toEqual([1.1, 4]);
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: /^装饰与元素/ }).click();
+  await expect(page.getByRole('slider', { name: '印文字号' })).toHaveValue('110');
+  await expect(page.getByRole('slider', { name: '印文笔画粗细' })).toHaveValue('4');
+});

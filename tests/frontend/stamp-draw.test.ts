@@ -69,6 +69,9 @@ class RecordingContext {
     };
   }
   fillText(value: string, x: number, y: number) { this.add('fillText', value, x, y); }
+  strokeText(value: string, x: number, y: number) {
+    this.add('strokeText', value, x, y, this.lineWidth, this.globalCompositeOperation);
+  }
   drawImage(image: unknown, ...values: number[]) { this.add('drawImage', image, ...values); }
 }
 
@@ -333,5 +336,28 @@ test('maximum wear has a fixed command budget independent of stamp size or expor
     drawNaturalSealImpression(ctx as unknown as CanvasRenderingContext2D,
       { ...stamp, size, textureStyle: 'natural', textureSeed: 73, weathering: 100 });
     assert.ok(ctx.ops.length < 2500, 'no loops over pixels or stamp dimensions');
+  }
+});
+
+test('glyph size and stroke thickness use the same modern, Zhu and Bai Wen painters', () => {
+  for (const mode of ['modern', 'zhuwen', 'baiwen'] as const) {
+    withCanvas((created) => {
+      drawStampImpression(new RecordingContext() as unknown as CanvasRenderingContext2D,
+        { ...stamp, mode, text: '山水', weathering: 0, textScale: 1.1, textStrokeWidthPct: 2 });
+      const ink = created[0].context;
+      const strokes = ink.ops.filter((op) => op.method === 'strokeText');
+      assert.equal(strokes.length, 2, mode + ' thickens both characters');
+      assert.ok(strokes.every((op) => Number(op.args[3]) > 0));
+      assert.ok(strokes.every((op) => op.args[4] ===
+        (mode === 'baiwen' || (mode === 'modern' && stamp.colorScheme === 'filled')
+          ? 'destination-out' : 'source-over')));
+      assert.equal(ink.ops.filter((op) => op.method === 'fillText').length, 2);
+    });
+    withCanvas((created) => {
+      drawStampImpression(new RecordingContext() as unknown as CanvasRenderingContext2D,
+        { ...stamp, mode, text: '山水', weathering: 0 });
+      assert.equal(created[0].context.ops.filter((op) => op.method === 'strokeText').length, 0,
+        'missing optional properties retain legacy ink commands');
+    });
   }
 });

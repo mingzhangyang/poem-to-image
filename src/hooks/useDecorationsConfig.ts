@@ -126,6 +126,8 @@ export function useDecorationsConfig({
     positionX: 80,
     positionY: 80,
     size: Math.round(fontSize * 2.5),
+    textScale: 1,
+    textStrokeWidthPct: 2,
     rotation: -8,
     opacity: 0.82,
     fontFamily: DEFAULT_STAMP_FONT,

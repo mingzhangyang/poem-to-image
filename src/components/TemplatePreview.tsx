@@ -1,3 +1,4 @@
+import { getStampTextScale, getStampTextStrokeWidth } from '../stampRendering';
 import { useEffect, type CSSProperties } from 'react';
 import type { Language } from '../translations';
 import type { EditorTemplateDefinition } from '../types';
@@ -123,7 +124,8 @@ export function TemplatePreview({
             color: template.decorations.stamp.inkColor ?? '#ab605c',
             opacity: template.decorations.stamp.opacity,
             fontFamily: template.decorations.stamp.fontFamily,
-            fontSize: `${Math.max(11, template.decorations.stamp.size * 0.23)}px`,
+            fontSize: `${Math.max(11, template.decorations.stamp.size * 0.23) * getStampTextScale(template.decorations.stamp)}px`,
+            WebkitTextStroke: `${(getStampTextStrokeWidth(template.decorations.stamp) * 0.45).toFixed(2)}px currentColor`,
             lineHeight: 1.1,
             writingMode: 'vertical-rl',
           }}
