@@ -166,9 +166,8 @@ function isPoemStyle(value: unknown): boolean {
     const field = value[key];
     if (field === undefined) return true;
     if (alignKeys.includes(key)) return isOneOf(field, ['left', 'center', 'right']);
-    if (key === 'titlePlacement' || key === 'authorPlacement') {
-      return isOneOf(field, earlyPlacements);
-    }
+    if (key === 'titlePlacement') return isOneOf(field, earlyPlacements);
+    if (key === 'authorPlacement') return isOneOf(field, [...earlyPlacements, 'auto']);
     if (key === 'sourcePlacement') return isOneOf(field, [...earlyPlacements, 'after-author']);
     return typeof field === typeof fallback
       && (typeof field !== 'number' || Number.isFinite(field));
