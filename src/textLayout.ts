@@ -327,7 +327,11 @@ function normalizeVerticalLines(text: string, columns: number) {
     return sourceLines;
   }
 
-  return distributeEvenly(Array.from(sourceLines[0] || ' '), Math.max(1, columns)).map((characters) => characters.join(''));
+  const characters = Array.from(sourceLines[0] || ' ');
+  // Never reserve blank vertical columns for a short poem. Such phantom
+  // columns artificially push title, author and source away from the body.
+  const usedColumns = Math.min(characters.length, Math.max(1, columns));
+  return distributeEvenly(characters, usedColumns).map((group) => group.join(''));
 }
 
 function createHorizontalTextLayout(input: TextLayoutInput, measurer: TextLayoutMeasurer): TextLayoutResult {

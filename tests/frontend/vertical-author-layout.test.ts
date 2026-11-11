@@ -77,12 +77,15 @@ test('an explicit earlier column remains on the right; automatic/explicit later 
 });
 
 test('short body and long author safely expand the vertical layout', () => {
-  const vertical = layoutFor('vertical-rl', {}, '山',);
-  const author = section(vertical, 'author');
-  assert.ok(author.y >= 0);
-  assert.ok(author.y + author.layout.height <= vertical.height + 1);
-  const longAuthor = layoutFor('vertical-rl', {}, '山');
-  assert.ok(longAuthor.width > 0 && longAuthor.height > 0);
+  const baseline = layoutFor('vertical-rl', {}, '山');
+  const author = section(baseline, 'author');
+  const body = section(baseline, 'body');
+  assert.ok(author.layout.height > body.layout.height, 'signature is taller than one body glyph');
+  assert.ok(author.y >= 0, 'short poems do not put the signature above the layout');
+  assert.ok(author.y + author.layout.height <= baseline.height + 1);
+  const moreText = layoutFor('vertical-rl', {}, '山川明月松间照');
+  assert.ok(section(moreText, 'author').y > section(baseline, 'author').y,
+    'author follows the end of the body when body gains lines');
 });
 
 test('no author omits the attribution without changing poem body placement', () => {

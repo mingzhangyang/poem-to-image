@@ -1,7 +1,20 @@
 import { expect, test } from '@playwright/test';
 
 test('real-browser vertical author follows body and aligns near its lower edge', async ({ page }) => {
+  await page.route('**/api/billing/packages', async (route) => {
+    await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ packages: [] }) });
+  });
+  await page.addInitScript(() => {
+    localStorage.setItem('poem-to-image.onboarding-dismissed', 'true');
+    localStorage.setItem('poem-to-image.language', 'en');
+  });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
+  if ((page.viewportSize()?.width ?? 0) >= 1024) {
+    await page.getByRole('button', { name: 'Open Editor' }).click();
+    const authorPlacement = page.getByRole('dialog', { name: 'Poem Editor' })
+      .getByRole('combobox', { name: 'Relative Position' }).nth(1);
+    await expect(authorPlacement).toHaveValue('auto');
+  }
   const result = await page.evaluate(async () => {
     const contentPath = '/src/poemContent.ts';
     const stylePath = '/src/poemStyle.ts';
