@@ -210,3 +210,49 @@ test('glyph size and stroke sliders persist through editor reload', async ({ pag
   await expect(page.getByRole('slider', { name: '印文字号' })).toHaveValue('110');
   await expect(page.getByRole('slider', { name: '印文笔画粗细' })).toHaveValue('4');
 });
+
+test('Phase 4A: a new elongated seal retains eight glyphs and ratio after reload', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'chromium-mobile', 'UI controls checked on desktop; drawing core is shared');
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: /^装饰与元素/ }).click();
+  await page.getByRole('checkbox', { name: '显示印章' }).check();
+  const stampText = page.getByRole('textbox', { name: '印章文字' });
+  await stampText.fill('春夏秋冬山水天地');
+  await expect(stampText).toHaveValue('春夏秋冬山水天地');
+
+  const shape = page.getByRole('combobox', { name: '印章样式' });
+  await shape.selectOption('rect-vertical');
+  await expect(shape).toHaveValue('rect-vertical');
+  const ratio = page.getByRole('slider', { name: '短边 / 长边比例' });
+  // An untouched, unpersisted elongated stamp must start at a valid 68% step.
+  await expect(ratio).toHaveAttribute('min', '45');
+  await expect(ratio).toHaveAttribute('max', '90');
+  await expect(ratio).toHaveAttribute('step', '1');
+  await expect(ratio).toHaveValue('68');
+  await expect(ratio).toHaveAttribute('aria-valuetext', '68%');
+  await ratio.focus();
+  await ratio.press('ArrowRight');
+  await expect(ratio).toHaveValue('69');
+  await ratio.press('ArrowLeft');
+  await expect(ratio).toHaveValue('68');
+
+  // Range inputs are keyboard-operated in Playwright; fill() is not supported.
+  await ratio.press('Home'); // 45%
+  for (let step = 0; step < 15; step++) await ratio.press('ArrowRight'); // 60%
+  await expect(ratio).toHaveValue('60');
+  await shape.selectOption('oval');
+  await expect(shape).toHaveValue('oval');
+  await expect(ratio).toHaveValue('60');
+
+  await expect.poll(async () => page.evaluate(() => {
+    const stored = localStorage.getItem('inkpoem.editor-state.v1');
+    const stamp = stored ? JSON.parse(stored)?.decorations?.stamp : null;
+    return [stamp?.text, stamp?.style, stamp?.shapeRatio];
+  })).toEqual(['春夏秋冬山水天地', 'oval', 0.6]);
+
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: /^装饰与元素/ }).click();
+  await expect(page.getByRole('textbox', { name: '印章文字' })).toHaveValue('春夏秋冬山水天地');
+  await expect(page.getByRole('combobox', { name: '印章样式' })).toHaveValue('oval');
+  await expect(page.getByRole('slider', { name: '短边 / 长边比例' })).toHaveValue('60');
+});

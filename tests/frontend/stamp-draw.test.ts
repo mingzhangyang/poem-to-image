@@ -42,6 +42,7 @@ class RecordingContext {
     this.add('arc', ...values);
   }
   roundRect(...values: unknown[]) { this.add('roundRect', ...values); }
+  ellipse(...values: number[]) { this.add('ellipse', ...values); }
   clip() { this.add('clip'); }
   fill() { this.add('fill'); }
   stroke() { this.add('stroke'); }
@@ -386,4 +387,57 @@ test('glyph size and stroke thickness use the same modern, Zhu and Bai Wen paint
         'missing optional properties retain legacy ink commands');
     });
   }
+});
+
+// Phase 4A: rectangular backing, measured layout and shape-aware Canvas contours.
+test('elongated seals use independent bitmap dimensions and undistorted glyph fits', () => {
+  for (const style of ['rect-vertical', 'rect-horizontal', 'oval'] as const) {
+    withCanvas((created) => {
+      const shaped: StampConfig = { ...stamp, text: '李明之印', mode: 'zhuwen',
+        style, shapeRatio: 0.6, size: 120, weathering: 0 };
+      drawStampImpression(new RecordingContext() as unknown as CanvasRenderingContext2D,
+        shaped, { pixelScale: 2 });
+      const expectedWidth = style === 'rect-horizontal' ? 120 : 72;
+      const expectedHeight = style === 'rect-horizontal' ? 72 : 120;
+      assert.equal(created[0].width, expectedWidth * 2);
+      assert.equal(created[0].height, expectedHeight * 2);
+      assert.equal(created[1].width, (expectedWidth + STAMP_SHADOW_PADDING * 2) * 2);
+      assert.equal(created[1].height, (expectedHeight + STAMP_SHADOW_PADDING * 2) * 2);
+      const ops = created[0].context.ops;
+      assert.equal(ops.filter((op) => op.method === 'fillText').length, 4);
+      assert.ok(ops.some((op) => op.method === (style === 'oval' ? 'ellipse' : 'roundRect')));
+      assert.ok(ops.filter((op) => op.method === 'scale').slice(1)
+        .every((op) => op.args[0] === op.args[1]), 'glyphs cannot be distorted');
+    });
+  }
+});
+
+test('1–8 characters render in non-square seal modes with shape-aware clipping', () => {
+  for (const mode of ['zhuwen', 'baiwen', 'modern'] as const) {
+    withCanvas((created) => {
+      drawStampImpression(new RecordingContext() as unknown as CanvasRenderingContext2D, {
+        ...stamp, text: '春夏秋冬山水天地', size: 130,
+        style: 'oval', shapeRatio: 0.65, mode, colorScheme: 'filled', weathering: 0,
+      });
+      const operations = created[0].context.ops;
+      assert.equal(operations.filter((op) => op.method === 'fillText').length, 8);
+      assert.ok(operations.filter((op) => op.method === 'ellipse').length >= 2);
+    }, true);
+  }
+});
+
+// An elongated classic impression must wear along its actual edge, not an
+// invisible square outside the red face.
+test('classic rectangular weathering stays bounded to its actual face', () => {
+  withCanvas((created) => {
+    drawStampImpression(new RecordingContext() as unknown as CanvasRenderingContext2D, {
+      ...stamp, style: 'rect-vertical', shapeRatio: 0.6,
+      textureStyle: 'classic', weathering: 40,
+    });
+    const ops = created[0].context.ops;
+    const marks = ops.filter((op) => op.method === 'arc');
+    assert.ok(marks.length > 0);
+    assert.ok(marks.every((op) => Math.abs(Number(op.args[0])) <= 36 + 1e-6
+      && Math.abs(Number(op.args[1])) <= 60 + 1e-6));
+  });
 });

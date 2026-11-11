@@ -80,14 +80,16 @@ test('seal rasterization remains deterministic across pixel ratios and shape mod
   }
 });
 
-test('Unicode stamp input survives editing and draft restore', async ({ page }, testInfo) => {
+test('Unicode stamp input honors the eight-grapheme cap and survives draft restore', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name === 'chromium-mobile', 'Desktop UI flow; mobile raster tests run separately');
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.getByRole('button', { name: /^装饰与元素/ }).click();
   await page.getByRole('checkbox', { name: '显示印章' }).check();
   const input = page.getByRole('textbox', { name: '印章文字' });
-  await input.fill('𠮷\u0301印記詩畫');
-  await expect(input).toHaveValue('𠮷\u0301印記詩');
+  // The accent combines with 𠮷: nine graphemes in, eight retained.
+  const expected = '𠮷\u0301印記詩畫春夏秋';
+  await input.fill(`${expected}冬`);
+  await expect(input).toHaveValue(expected);
   const previewCanvas = page.locator('[aria-label="印章元素"] canvas');
   await expect(previewCanvas).toHaveCount(1);
   const metrics = await previewCanvas.evaluate((element) => {
@@ -98,11 +100,11 @@ test('Unicode stamp input survives editing and draft restore', async ({ page }, 
   await expect.poll(() => page.evaluate(() => {
     const state = JSON.parse(localStorage.getItem('inkpoem.editor-state.v1') || 'null');
     return state?.decorations?.stamp?.text ?? null;
-  })).toBe('𠮷\u0301印記詩');
+  })).toBe(expected);
 
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.getByRole('button', { name: /^装饰与元素/ }).click();
-  await expect(page.getByRole('textbox', { name: '印章文字' })).toHaveValue('𠮷\u0301印記詩');
+  await expect(page.getByRole('textbox', { name: '印章文字' })).toHaveValue(expected);
 });
 
 

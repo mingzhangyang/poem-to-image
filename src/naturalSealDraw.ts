@@ -1,4 +1,5 @@
 import type { StampConfig } from './types';
+import { getStampDimensions } from './stampRendering';
 import {
   getNaturalSealEdgePoint,
   getNaturalSealFeatureCounts,
@@ -20,8 +21,9 @@ export function drawNaturalSealImpression(ctx: CanvasRenderingContext2D, stamp: 
   if (!counts.mottle && !counts.edgeWear && !counts.cracks && !counts.fibers) return;
   const plan = getNaturalSealTexturePlan(getNaturalSealSeed(stamp));
   ctx.save();
-  ctx.translate(-size / 2, -size / 2);
-  ctx.scale(size, size);
+  const { width, height } = getStampDimensions(stamp);
+  ctx.translate(-width / 2, -height / 2);
+  ctx.scale(width, height);
   ctx.globalCompositeOperation = 'destination-out';
   ctx.fillStyle = '#000';
   ctx.strokeStyle = '#000';
@@ -32,7 +34,7 @@ export function drawNaturalSealImpression(ctx: CanvasRenderingContext2D, stamp: 
   }
   for (let index = 0; index < counts.edgeWear; index++) {
     const item = plan.edgeWear[index];
-    const [x, y] = getNaturalSealEdgePoint(stamp.style, item.perimeter, item.depth);
+    const [x, y] = getNaturalSealEdgePoint(stamp.style, item.perimeter, item.depth, stamp.shapeRatio);
     drawPatch(ctx, { ...item, x, y });
   }
   for (let index = 0; index < counts.cracks; index++) {

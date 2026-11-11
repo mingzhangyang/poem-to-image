@@ -1,7 +1,10 @@
 import { Plus, Stamp, Trash2, Upload, Text, TextCursorInput, ChevronUp, ChevronDown, ArrowUpToLine, ArrowDownToLine, PenLine } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { STAMP_FONT_OPTIONS } from '../../fontOptions';
-import { getStampTextScale, getStampTextStrokeWidthPct, limitStampText } from '../../stampRendering';
+import {
+  getStampShapeRatio, getStampTextScale, getStampTextStrokeWidthPct,
+  isExtendedStampStyle, limitStampText,
+} from '../../stampRendering';
 import { getNaturalSealSeed, nextNaturalSealSeed } from '../../naturalSealTexture';
 import { getLXGWUnlistedCharacters } from '../../lxgwSealCoverage';
 import {
@@ -302,8 +305,31 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                   <option value="square">{t('stampStyleSquare')}</option>
                   <option value="round">{t('stampStyleRound')}</option>
                   <option value="brush">{t('stampStyleBrush')}</option>
+                  <option value="rect-vertical">{t('stampStyleRectVertical')}</option>
+                  <option value="rect-horizontal">{t('stampStyleRectHorizontal')}</option>
+                  <option value="oval">{t('stampStyleOval')}</option>
                 </select>
               </div>
+
+              {isExtendedStampStyle(decorations.stamp.style) && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs text-(--app-accent-500)">
+                    <span>{t('stampShapeRatio')}</span>
+                    <span>{Math.round(getStampShapeRatio(decorations.stamp) * 100)}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    aria-label={t('stampShapeRatio')}
+                    aria-valuetext={`${Math.round(getStampShapeRatio(decorations.stamp) * 100)}%`}
+                    min="45"
+                    max="90"
+                    step="1"
+                    value={Math.round(getStampShapeRatio(decorations.stamp) * 100)}
+                    onChange={(event) => decorations.onStampChange({ shapeRatio: Number(event.target.value) / 100 })}
+                    className="app-range app-range-warm"
+                  />
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs text-(--app-accent-500) mb-1">{t('stampColorScheme')}</label>

@@ -25,7 +25,7 @@ export type BorderStyle =
   | 'leiwen'
   | 'ornamental'
   | 'envelope';
-export type StampStyle = 'square' | 'round' | 'brush';
+export type StampStyle = 'square' | 'round' | 'brush' | 'rect-vertical' | 'rect-horizontal' | 'oval';
 export type SignatureFlourish = 'none' | 'swoosh' | 'double' | 'loop' | 'strike' | 'wave' | 'underline';
 export type EditorTemplateId =
   | 'ink-wash'
@@ -163,6 +163,8 @@ export interface SignatureConfig {
 export interface StampConfig {
   text: string;
   style: StampStyle;
+  /** Optional shorter/longer side ratio (0.45–0.90) for new non-square forms; legacy styles ignore it. */
+  shapeRatio?: number;
   /** Optional: missing means legacy visual rules for all saved artworks/templates. */
   mode?: 'zhuwen' | 'baiwen' | 'modern';
   colorScheme?: 'outline' | 'filled';

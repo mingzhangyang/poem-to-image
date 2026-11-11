@@ -80,9 +80,9 @@ test('traditional layouts use right-to-left columns with top-to-bottom glyph ord
 
 test('traditional layout respects complete Unicode grapheme glyphs and size scaling', () => {
   const initial = getTraditionalStampLayout({ text: '𠮷\u0301印記詩畫', size: 100 });
-  assert.deepEqual(initial.slots.map((slot) => slot.character), ['𠮷\u0301', '印', '記', '詩']);
+  assert.deepEqual(initial.slots.map((slot) => slot.character), ['𠮷\u0301', '印', '記', '詩', '畫']);
   const double = getTraditionalStampLayout({ text: '𠮷\u0301印記詩畫', size: 200 });
-  for (let index = 0; index < 4; index++) {
+  for (let index = 0; index < 5; index++) {
     const a = initial.slots[index];
     const b = double.slots[index];
     assert.equal(b.x, a.x * 2);
@@ -161,7 +161,7 @@ test('published LXGW seal coverage helps flag unlisted characters without blocki
   // Deterministically regenerated from the 165-row pinned upstream table.
   assert.equal(LXGW_DOCUMENTED_CODEPOINTS.size, 377);
   assert.deepEqual(getLXGWUnlistedCharacters('春水'), []);
-  // Each alias is checked separately: the stamp model displays at most 4 glyphs.
+  // Each alias is checked separately: the stamp model displays at most 8 glyphs.
   for (const character of Array.from('萅秊咊䢉夓㞢䔢花秌淸䨮㢴戼')) {
     assert.deepEqual(getLXGWUnlistedCharacters(character), [], character);
   }

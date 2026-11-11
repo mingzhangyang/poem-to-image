@@ -1,5 +1,5 @@
 import type { StampConfig, StampStyle } from './types';
-import { getStampCanvasRadii } from './stampRendering';
+import { getStampCanvasRadii, getStampDimensions, isExtendedStampStyle } from './stampRendering';
 
 export type SealPoint = readonly [number, number];
 
@@ -158,8 +158,58 @@ export function getNaturalSealFeatureCounts(weathering: number) {
 }
 
 /** Pure style-aware perimeter sampler for organic nicks and worn ink edges. */
-export function getNaturalSealEdgePoint(style: StampStyle, perimeter: number, depth: number): SealPoint {
+/**
+ * For elongated seals sample the actual proportional perimeter. Rounded-rect
+ * corners use the same physical 3.5% radius as the Canvas ink outline.
+ * The legacy contour sampling below is deliberately byte-for-byte unchanged.
+ */
+function getElongatedSealEdgePoint(
+  style: StampStyle, position: number, depth: number, shapeRatio?: number,
+): SealPoint {
+  const { width, height } = getStampDimensions({ style, size: 1, shapeRatio });
+  const shortSide = Math.min(width, height);
+  const inset = Math.max(0, Math.min(0.45, depth)) * shortSide;
+  if (style === 'oval') {
+    const theta = position * Math.PI * 2 - Math.PI / 2;
+    const rx = Math.max(0, width / 2 - inset);
+    const ry = Math.max(0, height / 2 - inset);
+    return [0.5 + rx * Math.cos(theta) / width, 0.5 + ry * Math.sin(theta) / height];
+  }
+  const r0 = shortSide * 0.035;
+  const r = Math.max(0, r0 - inset);
+  const lengths = [width - 2 * r0, r * Math.PI / 2, height - 2 * r0,
+    r * Math.PI / 2, width - 2 * r0, r * Math.PI / 2,
+    height - 2 * r0, r * Math.PI / 2];
+  const total = lengths.reduce((sum, length) => sum + length, 0);
+  let distance = position * total;
+  let segment = 0;
+  while (segment < lengths.length - 1 && distance >= lengths[segment]) {
+    distance -= lengths[segment++];
+  }
+  const t = lengths[segment] > 0 ? distance / lengths[segment] : 0;
+  const a = t * Math.PI / 2;
+  let x: number;
+  let y: number;
+  switch (segment) {
+    case 0: x = r0 + t * (width - 2 * r0); y = inset; break;
+    case 1: x = width - r0 + r * Math.sin(a); y = r0 - r * Math.cos(a); break;
+    case 2: x = width - inset; y = r0 + t * (height - 2 * r0); break;
+    case 3: x = width - r0 + r * Math.cos(a); y = height - r0 + r * Math.sin(a); break;
+    case 4: x = width - r0 - t * (width - 2 * r0); y = height - inset; break;
+    case 5: x = r0 - r * Math.sin(a); y = height - r0 + r * Math.cos(a); break;
+    case 6: x = inset; y = height - r0 - t * (height - 2 * r0); break;
+    default: x = r0 - r * Math.cos(a); y = r0 - r * Math.sin(a); break;
+  }
+  return [x / width, y / height];
+}
+
+export function getNaturalSealEdgePoint(
+  style: StampStyle, perimeter: number, depth: number, shapeRatio?: number,
+): SealPoint {
   const position = ((perimeter % 1) + 1) % 1;
+  if (isExtendedStampStyle(style)) {
+    return getElongatedSealEdgePoint(style, position, depth, shapeRatio);
+  }
   const inset = Math.max(0, Math.min(0.49, depth));
   if (style === 'round') {
     const angle = position * Math.PI * 2 - Math.PI / 2;

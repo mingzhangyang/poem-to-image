@@ -258,6 +258,7 @@ function isDraftState(value: unknown): value is EditorDraftState {
     || !optionalField(stamp, 'weathering', 'number')
     || !optionalField(stamp, 'textScale', 'number')
     || !optionalField(stamp, 'textStrokeWidthPct', 'number')
+    || !optionalField(stamp, 'shapeRatio', 'number')
     || (stamp.textureStyle !== undefined && stamp.textureStyle !== 'classic' && stamp.textureStyle !== 'natural')
     || (stamp.textureSeed !== undefined && (typeof stamp.textureSeed !== 'number'
       || !Number.isInteger(stamp.textureSeed) || stamp.textureSeed < 0 || stamp.textureSeed > 0xffffffff))

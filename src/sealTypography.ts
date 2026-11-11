@@ -1,4 +1,4 @@
-import { getStampCharacters } from './stampRendering';
+import { getStampCharacters, getStampDimensions, isExtendedStampStyle } from './stampRendering';
 import type { StampConfig } from './types';
 
 /**
@@ -70,31 +70,72 @@ export interface TraditionalStampLayout {
 }
 
 /**
- * A single shared pure seal-composition layout. Columns read right-to-left;
- * within each column characters read top-to-bottom. For a 3-character seal,
- * the leftmost character spans the full height and stays visually centered.
- * Everything is proportional to the logical seal size (no pixel breakpoints).
+ * Traditional 1–4 character square, round and brush layout remains unchanged.
+ * New elongated forms use real rectangular glyph cells, never stretched fonts.
+ * Extended 5–8 character texts use right-to-left columns and top-to-bottom rows.
  */
-export function getTraditionalStampLayout(stamp: Pick<StampConfig, 'size' | 'text'>): TraditionalStampLayout {
+export function getTraditionalStampLayout(
+  stamp: Pick<StampConfig, 'size' | 'text'> & Partial<Pick<StampConfig, 'style' | 'shapeRatio'>>,
+): TraditionalStampLayout {
   const characters = getStampCharacters(stamp.text);
   const count = characters.length;
   const size = Number.isFinite(stamp.size) && stamp.size > 0 ? stamp.size : 1;
-  const usable = size * 0.76;
-  const gap = size * 0.055;
-  const cols = count === 1 ? 1 : 2;
-  const width = cols === 1 ? usable : (usable - gap) / 2;
-  const borderWidth = Math.min(size * 0.2, Math.max(0.5, size * 0.038));
-  const slots: TraditionalStampSlot[] = characters.map((character, index) => {
-    const column = count === 1 ? 0 : count === 2 ? index : Math.floor(index / 2);
-    const rightColumn = column === 0;
-    const rowsInColumn = count <= 2 ? 1 : (count === 3 && column === 1 ? 1 : 2);
-    const row = count <= 2 ? 0 : (count === 3 && column === 1 ? 0 : index % 2);
-    const height = rowsInColumn === 1 ? usable : (usable - gap) / 2;
-    const x = cols === 1 ? 0 : (rightColumn ? 1 : -1) * (width + gap) / 2;
-    const y = rowsInColumn === 1 ? 0 : (row === 0 ? -1 : 1) * (height + gap) / 2;
-    const fontSize = Math.min(width * 1.12, height * 1.08);
-    return { character, x, y, width, height, fontSize };
+  const style = stamp.style ?? 'square';
+  const extended = isExtendedStampStyle(style);
+  if (!extended && count <= 4) {
+    const usable = size * 0.76;
+    const gap = size * 0.055;
+    const cols = count === 1 ? 1 : 2;
+    const width = cols === 1 ? usable : (usable - gap) / 2;
+    const borderWidth = Math.min(size * 0.2, Math.max(0.5, size * 0.038));
+    const slots: TraditionalStampSlot[] = characters.map((character, index) => {
+      const column = count === 1 ? 0 : count === 2 ? index : Math.floor(index / 2);
+      const rightColumn = column === 0;
+      const rowsInColumn = count <= 2 ? 1 : (count === 3 && column === 1 ? 1 : 2);
+      const row = count <= 2 ? 0 : (count === 3 && column === 1 ? 0 : index % 2);
+      const height = rowsInColumn === 1 ? usable : (usable - gap) / 2;
+      const x = cols === 1 ? 0 : (rightColumn ? 1 : -1) * (width + gap) / 2;
+      const y = rowsInColumn === 1 ? 0 : (row === 0 ? -1 : 1) * (height + gap) / 2;
+      const fontSize = Math.min(width * 1.12, height * 1.08);
+      return { character, x, y, width, height, fontSize };
+    });
+    return { borderWidth, slots };
+  }
+
+  const { width: faceWidth, height: faceHeight } = getStampDimensions({
+    style, size, shapeRatio: stamp.shapeRatio,
   });
+  const shortSide = Math.min(faceWidth, faceHeight);
+  const borderWidth = Math.min(shortSide * 0.2, Math.max(0.5, shortSide * 0.038));
+  const gap = shortSide * 0.045;
+  const usableWidth = faceWidth * 0.75;
+  const usableHeight = faceHeight * 0.76;
+  let columnCounts: number[];
+  if ((style === 'rect-vertical' && count <= 6) || (style === 'oval' && count <= 4)) {
+    columnCounts = [count]; // a calligraphic vertical line
+  } else if (style === 'rect-horizontal') {
+    columnCounts = count <= 4
+      ? Array.from({ length: count }, () => 1)
+      : Array.from({ length: Math.ceil(count / 2) }, (_, index) =>
+          Math.min(2, count - index * 2));
+  } else {
+    columnCounts = [Math.ceil(count / 2), Math.floor(count / 2)];
+  }
+  const columns = columnCounts.length;
+  const cellWidth = (usableWidth - gap * (columns - 1)) / columns;
+  const slots: TraditionalStampSlot[] = [];
+  let textIndex = 0;
+  for (let column = 0; column < columns; column++) {
+    const rows = columnCounts[column];
+    const cellHeight = (usableHeight - gap * (rows - 1)) / rows;
+    const x = usableWidth / 2 - cellWidth / 2 - column * (cellWidth + gap);
+    for (let row = 0; row < rows; row++) {
+      const y = (row - (rows - 1) / 2) * (cellHeight + gap);
+      const fontSize = Math.min(cellWidth * 1.12, cellHeight * 1.08);
+      slots.push({ character: characters[textIndex++], x, y, width: cellWidth,
+        height: cellHeight, fontSize });
+    }
+  }
   return { borderWidth, slots };
 }
 
@@ -112,7 +153,8 @@ export interface GlyphBounds {
 export function fitTraditionalStampGlyph(
   slot: Pick<TraditionalStampSlot, 'width' | 'height'>,
   bounds: GlyphBounds,
-  roundClip?: { x: number; y: number; radius: number },
+  roundClip?: { x: number; y: number; radius: number } |
+    { x: number; y: number; radiusX: number; radiusY: number },
   textScale = 1,
   strokeWidth = 0,
 ) {
@@ -132,7 +174,26 @@ export function fitTraditionalStampGlyph(
     (slot.width * fillRatio - safeStroke) / glyphWidth,
     (slot.height * fillRatio - safeStroke) / glyphHeight,
   ));
-  if (roundClip) {
+  if (roundClip && 'radiusX' in roundClip) {
+    // Uniformly fit all four outer ink corners within an elliptical face.
+    // A monotonic binary search preserves the glyph aspect ratio and stroke.
+    const rx = Math.max(0, roundClip.radiusX);
+    const ry = Math.max(0, roundClip.radiusY);
+    const inside = (s: number) => rx > 0 && ry > 0
+      && ((Math.abs(roundClip.x) + (glyphWidth * s + safeStroke) / 2) / rx) ** 2
+       + ((Math.abs(roundClip.y) + (glyphHeight * s + safeStroke) / 2) / ry) ** 2 <= 1;
+    if (!inside(0)) scale = 0;
+    else {
+      let lower = 0;
+      let upper = scale;
+      for (let index = 0; index < 32; index++) {
+        const mid = (lower + upper) / 2;
+        if (inside(mid)) lower = mid;
+        else upper = mid;
+      }
+      scale = lower;
+    }
+  } else if (roundClip && 'radius' in roundClip) {
     // The stroke expands every side by half its unscaled seal-space width.
     // Solve the farthest outer-ink corner against the actual clipping circle.
     const x = Math.abs(roundClip.x) + safeStroke / 2;
