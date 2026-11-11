@@ -1,4 +1,4 @@
-import { createCanvasTextMeasurer, createTextLayout, type TextLayoutMeasurer, type TextLayoutResult } from './textLayout';
+import { createCanvasTextMeasurer, createTextLayout, type TextLayoutMeasurer, type TextLayoutResult, type VerticalTextLayoutItem } from './textLayout';
 import { getBodyFontScale, resolveAuthorPlacement } from './poemStyle';
 import type { PoemContentData, PoemLayerStyle, TextAlign, WritingMode } from './types';
 
@@ -353,27 +353,25 @@ export function createStructuredPoemLayout({
     const topPaddings = adjustedSections.map((s) => s.fontSize * ((s.lineHeight - 1) / 2 + 0.1));
     const maxTopPadding = Math.max(0, ...topPaddings);
     const bodyIndex = adjustedSections.findIndex((section) => section.key === 'body');
-    // Match the center of the last painted glyph rather than the bottom of
-    // the logical layout box. Different author/body font sizes and line-height
-    // values add different trailing half-cell space, which made the final
-    // author character visibly lower than the poem in vertical compositions.
-    const lastGlyphCenter = (layout: TextLayoutResult) => Math.max(
+    // Logical cell centers differ from painted ink centers: punctuation
+    // shifts inside the cell, and a rotated run's vertical span comes from
+    // its horizontal ink. The renderers consume these same text metrics.
+    const paintedGlyphs = (layout: TextLayoutResult) => layout.items.filter(
+      (item): item is VerticalTextLayoutItem => item.kind === 'vertical-segment' && Boolean(item.text.trim()),
+    );
+    const lastGlyphInkCenter = (layout: TextLayoutResult) => Math.max(
       0,
-      ...layout.items
-        .filter((item) => item.kind === 'vertical-segment' && item.text.trim())
-        .map((item) => item.y),
+      ...paintedGlyphs(layout).map((item) => item.y + (item.inkTopY + item.inkBottomY) / 2),
     );
     const bodyLastGlyphY = Math.round(maxTopPadding - topPaddings[bodyIndex])
-      + lastGlyphCenter(adjustedSections[bodyIndex].layout);
-    // Use glyph ink bounds, not the font's logical line box, to center
-    // columns with different font sizes and line heights.
+      + lastGlyphInkCenter(adjustedSections[bodyIndex].layout);
     const visibleGlyphCenter = (layout: TextLayoutResult) => {
       let top = Number.POSITIVE_INFINITY;
       let bottom = Number.NEGATIVE_INFINITY;
       for (const item of layout.items) {
         if (item.kind !== 'vertical-segment' || !item.text.trim()) continue;
-        top = Math.min(top, item.y - item.height / 2);
-        bottom = Math.max(bottom, item.y + item.height / 2);
+        top = Math.min(top, item.y + item.inkTopY);
+        bottom = Math.max(bottom, item.y + item.inkBottomY);
       }
       return Number.isFinite(top) ? (top + bottom) / 2 : layout.height / 2;
     };
@@ -397,7 +395,7 @@ export function createStructuredPoemLayout({
         y: section.key === 'author'
           ? centerAuthorOnTitle
             ? Math.round(titleGlyphCenterY - visibleGlyphCenter(section.layout))
-            : Math.max(topAlignedY, Math.round(bodyLastGlyphY - lastGlyphCenter(section.layout)))
+            : Math.max(topAlignedY, Math.round(bodyLastGlyphY - lastGlyphInkCenter(section.layout)))
           : topAlignedY,
       };
       currentX -= getSectionGap(fontSize, writingMode, section.key, adjustedSections[index + 1]);

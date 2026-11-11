@@ -21,7 +21,7 @@ test('real-browser vertical author appears beside title and shares its visual ce
     const { createStructuredPoemLayout } = await import(/* @vite-ignore */ contentPath) as typeof import('../../src/poemContent');
     const { DEFAULT_POEM_STYLE } = await import(/* @vite-ignore */ stylePath) as typeof import('../../src/poemStyle');
     const scene = createStructuredPoemLayout({
-      poem: { title: '山居秋暝', author: '王维', body: '空山新雨后天气晚来秋\n明月松间照清泉石上流', sourceNote: '' },
+      poem: { title: '山居2026。', author: '王维', body: '空山新雨后天气晚来秋\n明月松间照清泉石上流', sourceNote: '' },
       poemStyle: DEFAULT_POEM_STYLE,
       placeholder: '', writingMode: 'vertical-rl',
       fontFamily: 'serif', fontSize: 32, columns: 2, columnGap: 12, wrapWidth: 620,
@@ -34,8 +34,8 @@ test('real-browser vertical author appears beside title and shares its visual ce
       let bottom = Number.NEGATIVE_INFINITY;
       for (const item of section.layout.items) {
         if (item.kind !== 'vertical-segment' || !item.text.trim()) continue;
-        top = Math.min(top, item.y - item.height / 2);
-        bottom = Math.max(bottom, item.y + item.height / 2);
+        top = Math.min(top, item.y + item.inkTopY);
+        bottom = Math.max(bottom, item.y + item.inkBottomY);
       }
       return section.y + (top + bottom) / 2;
     };

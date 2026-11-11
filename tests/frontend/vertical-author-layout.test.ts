@@ -65,18 +65,27 @@ function visibleGlyphCenter(section: ReturnType<typeof layoutFor>['sections'][nu
   let bottom = Number.NEGATIVE_INFINITY;
   for (const item of section.layout.items) {
     if (item.kind !== 'vertical-segment' || !item.text.trim()) continue;
-    top = Math.min(top, item.y - item.height / 2);
-    bottom = Math.max(bottom, item.y + item.height / 2);
+    top = Math.min(top, item.y + item.inkTopY);
+    bottom = Math.max(bottom, item.y + item.inkBottomY);
   }
   return section.y + (Number.isFinite(top) ? (top + bottom) / 2 : section.layout.height / 2);
 }
 
 test('vertical auto author is visually centered on the title and remains inside layout', () => {
-  const vertical = layoutFor('vertical-rl', {}, '床前明月光\\n疑是地上霜\\n举头望明月\\n低头思故乡', {
+  const vertical = layoutFor('vertical-rl', {}, '床前明月光\n疑是地上霜\n举头望明月\n低头思故乡', {
     title: '静夜思', author: '唐·李白', sourceNote: '',
   });
   const title = section(vertical, 'title');
   const author = section(vertical, 'author');
+  const body = section(vertical, 'body');
+  const columns = new Map<number, string>();
+  for (const item of body.layout.items) {
+    if (item.kind !== 'vertical-segment') continue;
+    columns.set(item.x, (columns.get(item.x) ?? '') + item.text);
+  }
+  assert.deepEqual([...columns.entries()].sort(([left], [right]) => right - left).map(([, text]) => text),
+    ['床前明月光', '疑是地上霜', '举头望明月', '低头思故乡'],
+    'newlines must yield four separate right-to-left columns');
   assert.ok(Math.abs(visibleGlyphCenter(title) - visibleGlyphCenter(author)) <= 1,
     'title and author should share the same painted-glyph center');
   for (const item of vertical.sections) {

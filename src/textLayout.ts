@@ -48,6 +48,9 @@ export interface VerticalTextLayoutItem {
   height: number;
   startX: number;
   baselineY: number;
+  /** Painted vertical ink bounds relative to item.y, after any rotation. */
+  inkTopY: number;
+  inkBottomY: number;
 }
 
 export type TextLayoutItem = HorizontalTextLayoutItem | VerticalTextLayoutItem;
@@ -251,12 +254,20 @@ function getRotatedRunDrawOffset(measurer: TextLayoutMeasurer, text: string, let
   const actualAscent = metrics.actualBoundingBoxAscent;
   const actualDescent = metrics.actualBoundingBoxDescent;
   const visualWidth = Math.max(measuredWidth, actualLeft + actualRight);
+  const startX = -visualWidth / 2 + actualLeft;
+  // After a 90-degree rotation, horizontal ink coordinates become vertical
+  // ink bounds. Canvas paints per character only with positive spacing.
+  const ink = letterSpacing > 0
+    ? measureHorizontalVisualBounds(measurer, text, letterSpacing)
+    : { left: -actualLeft, right: actualRight };
 
   return {
-    startX: -visualWidth / 2 + actualLeft,
+    startX,
     baselineY: (actualAscent - actualDescent) / 2,
     width: visualWidth,
     height: actualAscent + actualDescent,
+    inkTopY: startX + ink.left,
+    inkBottomY: startX + ink.right,
   };
 }
 
@@ -288,6 +299,8 @@ function getUprightGlyphDrawOffset(
     baselineY: centerY + (ascent - descent) / 2,
     width: inkWidth,
     height: inkHeight,
+    inkTopY: centerY - inkHeight / 2,
+    inkBottomY: centerY + inkHeight / 2,
   };
 }
 
@@ -513,6 +526,8 @@ function createVerticalTextLayout(input: TextLayoutInput, measurer: TextLayoutMe
           height: metrics.height,
           startX: metrics.startX,
           baselineY: metrics.baselineY,
+          inkTopY: metrics.inkTopY,
+          inkBottomY: metrics.inkBottomY,
         });
         cursorY += advance + (segmentIndex === lineLayout.segments.length - 1 ? 0 : input.letterSpacing);
       });

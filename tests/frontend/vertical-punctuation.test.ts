@@ -12,12 +12,22 @@ function fakeMeasurer(size = 30, glyphSupported = true): TextLayoutMeasurer {
     measureText: (text) => ({
       width: size * Array.from(text).length,
       actualBoundingBoxLeft: 0,
-      actualBoundingBoxRight: size * (/[，。、；：！？]/u.test(text) ? 0.2 : 0.8),
+      actualBoundingBoxRight: size * Array.from(text).length * (/[，。、；：！？]/u.test(text) ? 0.2 : 0.8),
       actualBoundingBoxAscent: size * (/[，。、；：！？]/u.test(text) ? 0.15 : 0.8),
       actualBoundingBoxDescent: size * 0.1,
     }),
     supportsGlyph: () => glyphSupported,
   };
+}
+
+function paintedSectionCenter(section: ReturnType<typeof createStructuredPoemLayout>['sections'][number]) {
+  const items = section.layout.items.filter(
+    (item): item is VerticalTextLayoutItem => item.kind === 'vertical-segment' && Boolean(item.text.trim()),
+  );
+  assert.ok(items.length > 0);
+  const top = Math.min(...items.map(item => item.y + item.inkTopY));
+  const bottom = Math.max(...items.map(item => item.y + item.inkBottomY));
+  return section.y + (top + bottom) / 2;
 }
 
 function glyphs(text: string, columns = 1, fontSize = 30, letterSpacing = 0, lineHeight = 1.5) {
@@ -151,11 +161,11 @@ test('Latin, numeric runs, punctuation and spacing remain finite and in reading 
   for (let i = 1; i < items.length; i += 1) assert.ok(items[i].y > items[i - 1].y);
 });
 
-test('body 70%, 100%, 160% preserve author-left and bottom-alignment across layout changes', () => {
+test('body 70%, 100%, 160% preserve auto title-author ink centering across layout changes', () => {
   for (const bodyScale of [0.7, 1, 1.6]) {
     const layout = createStructuredPoemLayout({
       poem: {
-        title: '静夜思', author: '李白',
+        title: '静夜思。', author: '李白',
         body: '床前明月光，\n疑是地上霜。\n举头望明月，\n低头思故乡。',
         sourceNote: '',
       },
@@ -164,13 +174,76 @@ test('body 70%, 100%, 160% preserve author-left and bottom-alignment across layo
       fontSize: 32, columns: 4, columnGap: 8,
       measurerFactory: (_, size) => fakeMeasurer(size),
     });
+    assert.deepEqual(layout.sections.map(s => s.key), ['title', 'author', 'body']);
+    const title = layout.sections.find(s => s.key === 'title')!;
     const body = layout.sections.find(s => s.key === 'body')!;
     const author = layout.sections.find(s => s.key === 'author')!;
-    assert.ok(author.x < body.x);
-    assert.ok(Math.abs(author.y + author.layout.height - body.y - body.layout.height) <= 1);
+    assert.ok(title.x > author.x && author.x > body.x);
+    assert.ok(Math.abs(paintedSectionCenter(title) - paintedSectionCenter(author)) <= 1);
     assert.ok(layout.sections.every(s => s.x >= 0 && s.y >= 0
       && s.x + s.layout.width <= layout.width + 1
       && s.y + s.layout.height <= layout.height + 1));
+  }
+});
+
+test('painted ink bounds include shifted punctuation and rotated sideways runs', () => {
+  const stop = glyphs('山。', 1, 32).find(item => item.text === '。')!;
+  assert.ok((stop.inkTopY + stop.inkBottomY) / 2 < -2,
+    'full-stop ink sits above its logical cell center');
+  assert.equal(stop.inkBottomY - stop.inkTopY, stop.height);
+
+  const run = glyphs('山2026', 1, 32).find(item => item.text === '2026')!;
+  assert.equal(run.rotation, 90);
+  assert.ok(run.inkBottomY - run.inkTopY > run.height,
+    'rotated number uses horizontal ink width for vertical bounds');
+  assert.equal(run.inkTopY, run.startX, 'left ink edge rotates into the top edge');
+});
+
+test('automatic author aligns to painted title ink for punctuation and numeric runs', () => {
+  for (const titleText of ['山。', '山2026']) {
+    const layout = createStructuredPoemLayout({
+      poem: { title: titleText, author: '唐李白', body: '山。\n月。', sourceNote: '' },
+      poemStyle: DEFAULT_POEM_STYLE,
+      placeholder: '', writingMode: 'vertical-rl', fontFamily: 'serif',
+      fontSize: 36, columns: 2, columnGap: 12,
+      measurerFactory: (_, size) => fakeMeasurer(size),
+    });
+    const title = layout.sections.find(s => s.key === 'title')!;
+    const author = layout.sections.find(s => s.key === 'author')!;
+    const titleInkCenter = paintedSectionCenter(title);
+    assert.ok(Math.abs(titleInkCenter - paintedSectionCenter(author)) <= 1,
+      `painted centers differ for ${titleText}`);
+    const oldBoxTop = Math.min(...title.layout.items
+      .filter(item => item.kind === 'vertical-segment')
+      .map(item => item.y - item.height / 2));
+    const oldBoxBottom = Math.max(...title.layout.items
+      .filter(item => item.kind === 'vertical-segment')
+      .map(item => item.y + item.height / 2));
+    assert.ok(Math.abs(titleInkCenter - (title.y + (oldBoxTop + oldBoxBottom) / 2)) > 2,
+      `old logical-box centering would miss the painted center of ${titleText}`);
+  }
+});
+
+test('explicit and title-less author placements align last painted ink after punctuation or numbers', () => {
+  for (const bodyText of ['山川云海明月照林间。', '山川云海明月照2026']) {
+    for (const placement of ['before-body', 'after-body', 'auto'] as const) {
+      const layout = createStructuredPoemLayout({
+        poem: { title: placement === 'auto' ? '' : '山居', author: '李白', body: bodyText, sourceNote: '' },
+        poemStyle: { ...DEFAULT_POEM_STYLE, authorPlacement: placement },
+        placeholder: '', writingMode: 'vertical-rl', fontFamily: 'serif',
+        fontSize: 36, columns: 1, columnGap: 12,
+        measurerFactory: (_, size) => fakeMeasurer(size),
+      });
+      const body = layout.sections.find(s => s.key === 'body')!;
+      const author = layout.sections.find(s => s.key === 'author')!;
+      const lastInkCenter = (section: typeof author) => section.y + Math.max(
+        ...section.layout.items
+          .filter((item): item is VerticalTextLayoutItem => item.kind === 'vertical-segment' && Boolean(item.text.trim()))
+          .map(item => item.y + (item.inkTopY + item.inkBottomY) / 2),
+      );
+      assert.ok(Math.abs(lastInkCenter(body) - lastInkCenter(author)) <= 1,
+        `last painted glyph mismatch: ${placement}, ${bodyText}`);
+    }
   }
 });
 
