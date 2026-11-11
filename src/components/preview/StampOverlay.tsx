@@ -6,7 +6,8 @@ import {
 } from '../../positioningRect';
 import {
   getStampCharacters,
-  getStampPreviewRasterMetrics,
+  getStampDimensions,
+  getStampPreviewRasterDimensions,
   getStampTransform,
   STAMP_SHADOW_PADDING,
 } from '../../stampRendering';
@@ -27,8 +28,7 @@ interface StampOverlayProps {
 function getFrameStyle(stamp: StampConfig): CSSProperties {
   const { a, b, c, d } = getStampTransform(stamp);
   return {
-    width: stamp.size,
-    height: stamp.size,
+    ...getStampDimensions(stamp),
     opacity: stamp.opacity,
     // The ink outline itself comes from Canvas, not a different CSS radius.
     transform: 'matrix(' + [a, b, c, d, 0, 0].join(', ') + ')',
@@ -65,11 +65,12 @@ export function StampOverlay({ ariaLabel, frameRef, stamp, effectiveScale, onSta
     };
   }, []);
 
-  const logicalSide = stamp.size + STAMP_SHADOW_PADDING * 2;
-  // The bitmap must be bounded during the first JSX mount, not only in the
-  // painting effect. CSS keeps the original logical size for placement.
-  const { pixels, scale: rasterScale } = getStampPreviewRasterMetrics(
-    stamp.size, effectiveScale, devicePixelRatio,
+  const { width, height } = getStampDimensions(stamp);
+  const logicalWidth = width + STAMP_SHADOW_PADDING * 2;
+  const logicalHeight = height + STAMP_SHADOW_PADDING * 2;
+  // Allocate bounded rectangular backing pixels before the first paint.
+  const { widthPixels, heightPixels, scale: rasterScale } = getStampPreviewRasterDimensions(
+    stamp, effectiveScale, devicePixelRatio,
   );
 
   useEffect(() => {
@@ -82,23 +83,23 @@ export function StampOverlay({ ariaLabel, frameRef, stamp, effectiveScale, onSta
     const paintKey = JSON.stringify([
       stamp.text, stamp.style, stamp.size, stamp.fontFamily, stamp.mode,
       stamp.colorScheme, stamp.inkColor, stamp.weathering,
-      stamp.textScale, stamp.textStrokeWidthPct,
-      stamp.textureStyle, stamp.textureSeed, pixels, rasterScale, fontRevision,
+      stamp.textScale, stamp.textStrokeWidthPct, stamp.shapeRatio,
+      stamp.textureStyle, stamp.textureSeed, widthPixels, heightPixels, rasterScale, fontRevision,
     ]);
     if (lastPaintKeyRef.current === paintKey) return;
-    canvas.width = pixels;
-    canvas.height = pixels;
+    canvas.width = widthPixels;
+    canvas.height = heightPixels;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     ctx.setTransform(rasterScale, 0, 0, rasterScale, 0, 0);
-    ctx.translate(STAMP_SHADOW_PADDING + stamp.size / 2, STAMP_SHADOW_PADDING + stamp.size / 2);
+    ctx.translate(STAMP_SHADOW_PADDING + width / 2, STAMP_SHADOW_PADDING + height / 2);
     drawStampImpression(ctx, stamp, {
       pixelScale: rasterScale,
       applyTransform: false,
       applyOpacity: false,
     });
     lastPaintKeyRef.current = paintKey;
-  }, [stamp, fontRevision, effectiveScale, devicePixelRatio, pixels, rasterScale]);
+  }, [stamp, fontRevision, effectiveScale, devicePixelRatio, width, height, widthPixels, heightPixels, rasterScale]);
 
   useEffect(() => {
     if (!isDraggingRef.current) {
@@ -199,13 +200,13 @@ export function StampOverlay({ ariaLabel, frameRef, stamp, effectiveScale, onSta
         <canvas
           ref={canvasRef}
           className="pointer-events-none absolute"
-          width={pixels}
-          height={pixels}
+          width={widthPixels}
+          height={heightPixels}
           style={{
             left: -STAMP_SHADOW_PADDING,
             top: -STAMP_SHADOW_PADDING,
-            width: logicalSide,
-            height: logicalSide,
+            width: logicalWidth,
+            height: logicalHeight,
           }}
         />
       </div>

@@ -7,7 +7,7 @@ export interface StampTextPlacement {
 
 export const STAMP_INK_COLOR = '#c82829';
 
-export const STAMP_MAX_CHARACTERS = 4;
+export const STAMP_MAX_CHARACTERS = 8;
 const COMBINING_MARK = /\p{Mark}/u;
 
 /** Count user-perceived characters, not UTF-16 code units or code points. */
@@ -44,6 +44,30 @@ export function getStampCharacters(text: string): string[] {
   return segmentStampText(text || '印').slice(0, STAMP_MAX_CHARACTERS);
 }
 
+/** Non-square forms opt into their own geometry. Existing square/circle/brush are unchanged. */
+export function isExtendedStampStyle(style: StampStyle): boolean {
+  return style === 'rect-vertical' || style === 'rect-horizontal' || style === 'oval';
+}
+
+export function getStampShapeRatio(stamp: Pick<StampConfig, 'shapeRatio'>): number {
+  const ratio = stamp.shapeRatio;
+  return typeof ratio === 'number' && Number.isFinite(ratio)
+    ? Math.min(0.9, Math.max(0.45, ratio)) : 0.68;
+}
+
+/** size is the longest dimension for a non-square impression. No font stretching. */
+export function getStampDimensions(stamp: Pick<StampConfig, 'style' | 'size' | 'shapeRatio'>) {
+  const size = Number.isFinite(stamp.size) && stamp.size > 0 ? stamp.size : 1;
+  const ratio = getStampShapeRatio(stamp);
+  if (stamp.style === 'rect-vertical' || stamp.style === 'oval') {
+    return { width: size * ratio, height: size };
+  }
+  if (stamp.style === 'rect-horizontal') {
+    return { width: size, height: size * ratio };
+  }
+  return { width: size, height: size };
+}
+
 export function getStampBorderWidth(size: number) {
   if (!Number.isFinite(size) || size <= 0) return 0;
   // Old drafts can contain seals smaller than the usual 3px border.
@@ -59,7 +83,8 @@ export function getStampCssBorderRadius(style: StampStyle, size: number) {
   if (style === 'brush') {
     return '34% 23% 30% 27% / 26% 36% 24% 34%';
   }
-
+  if (style === 'oval') return '50%';
+  if (style === 'rect-vertical' || style === 'rect-horizontal') return '4%';
   return `${Math.round(size * 0.12)}px`;
 }
 
@@ -68,6 +93,7 @@ export function getStampCanvasRadii(style: StampStyle, size: number) {
     return [size * 0.24, size * 0.16, size * 0.22, size * 0.18];
   }
 
+  if (style === 'rect-vertical' || style === 'rect-horizontal') return size * 0.035;
   return size * 0.12;
 }
 
@@ -100,10 +126,22 @@ export function getStampTextStrokeWidth(stamp: Pick<StampConfig, 'size' | 'textS
 }
 
 export function getStampTextFontSize(size: number, count: number) {
-  return count <= 1 ? size * 0.6 : size * 0.4;
+  return count > 4 ? size * 0.24 : count <= 1 ? size * 0.6 : size * 0.4;
 }
 
 export function getStampTextPlacements(size: number, count: number): StampTextPlacement[] {
+  // Legacy 1–4 character cells are never changed; longer modern text gets its
+  // own right-to-left grid rather than piling into the old four positions.
+  if (count > 4) {
+    const rightRows = Math.ceil(count / 2);
+    return Array.from({ length: count }, (_, index) => {
+      const column = index < rightRows ? 0 : 1;
+      const rows = column === 0 ? rightRows : count - rightRows;
+      const row = index - (column === 0 ? 0 : rightRows);
+      return { x: (column === 0 ? 1 : -1) * size * 0.23,
+        y: (row - (rows - 1) / 2) * size * 0.21 };
+    });
+  }
   const offset = size * 0.25;
   const vo = size * 0.02; // slight vertical offset to center visually
 
@@ -185,6 +223,34 @@ export function getStampRasterMetrics(logicalSide: number, requestedScale: numbe
     : 1;
   const pixels = Math.max(1, Math.min(MAX_STAMP_RASTER_SIDE, Math.ceil(side * scale)));
   return { pixels, scale: pixels / side };
+}
+
+/** Shared rectangular bitmap metrics: a single uniform scale with a 2048 px longest-side cap. */
+export function getStampRasterDimensions(width: number, height: number, requestedScale: number) {
+  const safeWidth = Number.isFinite(width) && width > 0 ? width : 1;
+  const safeHeight = Number.isFinite(height) && height > 0 ? height : 1;
+  const longest = Math.max(safeWidth, safeHeight);
+  const { pixels: longestPixels, scale } = getStampRasterMetrics(longest, requestedScale);
+  return {
+    // Exact reuse prevents a floating-point ceil from changing old square bitmaps.
+    widthPixels: safeWidth === longest ? longestPixels
+      : Math.max(1, Math.min(MAX_STAMP_RASTER_SIDE, Math.ceil(safeWidth * scale))),
+    heightPixels: safeHeight === longest ? longestPixels
+      : Math.max(1, Math.min(MAX_STAMP_RASTER_SIDE, Math.ceil(safeHeight * scale))),
+    scale,
+  };
+}
+
+export function getStampPreviewRasterDimensions(
+  stamp: Pick<StampConfig, 'style' | 'size' | 'shapeRatio'>,
+  effectiveScale: number, devicePixelRatio: number,
+) {
+  const { width, height } = getStampDimensions(stamp);
+  return getStampRasterDimensions(
+    width + STAMP_SHADOW_PADDING * 2,
+    height + STAMP_SHADOW_PADDING * 2,
+    effectiveScale * devicePixelRatio,
+  );
 }
 
 /** The preview's CSS zoom and device DPR both consume backing pixels. */

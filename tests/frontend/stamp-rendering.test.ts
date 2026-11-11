@@ -4,7 +4,11 @@ import {
   createStampWeatheringRand,
   getStampBorderWidth,
   getStampCharacters,
+  getStampDimensions,
   getStampPreviewRasterMetrics,
+  getStampPreviewRasterDimensions,
+  getStampRasterDimensions,
+  getStampShapeRatio,
   getStampRasterMetrics,
   getStampShadow,
   getStampTransform,
@@ -31,14 +35,14 @@ const stamp: StampConfig = {
 };
 
 test('seal input counts graphemes instead of UTF-16 code units', () => {
-  assert.equal(STAMP_MAX_CHARACTERS, 4);
-  assert.deepEqual(getStampCharacters('𠮷印記詩畫'), ['𠮷', '印', '記', '詩']);
-  assert.equal(limitStampText('𠮷印記詩畫'), '𠮷印記詩');
-  assert.equal(limitStampText('繁體書畫印'), '繁體書畫');
-  assert.equal(limitStampText('𠮷\u0301印記詩畫'), '𠮷\u0301印記詩');
+  assert.equal(STAMP_MAX_CHARACTERS, 8);
+  assert.deepEqual(getStampCharacters('𠮷印記詩畫'), ['𠮷', '印', '記', '詩', '畫']);
+  assert.equal(limitStampText('𠮷印記詩畫'), '𠮷印記詩畫');
+  assert.equal(limitStampText('繁體書畫印'), '繁體書畫印');
+  assert.equal(limitStampText('𠮷\u0301印記詩畫'), '𠮷\u0301印記詩畫');
   assert.deepEqual(getStampCharacters(''), ['印']);
   assert.equal(limitStampText(''), '');
-  assert.equal(limitStampText('𠮷𠮷𠮷𠮷𠮷'), '𠮷𠮷𠮷𠮷');
+  assert.equal(limitStampText('𠮷𠮷𠮷𠮷𠮷𠮷𠮷𠮷𠮷'), '𠮷'.repeat(8));
 });
 
 test('backing resolution follows 1x, 2x and 3x while the logical size stays unchanged', () => {

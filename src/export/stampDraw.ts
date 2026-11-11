@@ -1,7 +1,9 @@
 import {
   createStampWeatheringRand,
   getStampBorderWidth,
-  getStampRasterMetrics,
+  getStampRasterDimensions,
+  getStampDimensions,
+  isExtendedStampStyle,
   getStampShadow,
   getStampTransform,
   STAMP_SHADOW_PADDING,
@@ -15,6 +17,7 @@ import {
 } from '../stampRendering';
 import { positionToCanvasPoint } from '../positioningRect';
 import { drawNaturalSealImpression } from '../naturalSealDraw';
+import { getNaturalSealEdgePoint } from '../naturalSealTexture';
 import { fitTraditionalStampGlyph, getTraditionalStampLayout, isTraditionalStamp } from '../sealTypography';
 import type { StampConfig } from '../types';
 import type { CanvasExportScene } from './renderCanvasExport';
@@ -76,17 +79,46 @@ function applyStampWeathering(
   ctx.restore();
 }
 
+/** Classic dots for new forms follow their real face; old dot paths stay untouched. */
+function applyElongatedStampWeathering(
+  ctx: CanvasRenderingContext2D, stamp: StampConfig, rand: () => number,
+  weatheringLevel: number,
+) {
+  const { width, height } = getStampDimensions(stamp);
+  const weathering = Math.max(0, Math.min(100, weatheringLevel)) / 100;
+  ctx.save();
+  ctx.globalCompositeOperation = 'destination-out';
+  ctx.fillStyle = '#000';
+  for (let index = 0; index < weathering * 600; index++) {
+    ctx.beginPath();
+    ctx.arc((rand() - 0.5) * width, (rand() - 0.5) * height, rand() * 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  for (let index = 0; index < weathering * 220; index++) {
+    const [x, y] = getNaturalSealEdgePoint(stamp.style, rand(), rand() * 0.04, stamp.shapeRatio);
+    ctx.beginPath();
+    ctx.arc((x - 0.5) * width, (y - 0.5) * height, rand() * 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
 function drawStampShape(ctx: CanvasRenderingContext2D, stamp: StampConfig, inset = 0) {
-  const half = stamp.size / 2 - inset;
+  const { width, height } = getStampDimensions(stamp);
+  const halfWidth = Math.max(0, width / 2 - inset);
+  const halfHeight = Math.max(0, height / 2 - inset);
   ctx.beginPath();
   if (stamp.style === 'round') {
-    ctx.arc(0, 0, half, 0, Math.PI * 2);
+    ctx.arc(0, 0, halfWidth, 0, Math.PI * 2);
+  } else if (stamp.style === 'oval') {
+    ctx.ellipse(0, 0, halfWidth, halfHeight, 0, 0, Math.PI * 2);
   } else {
-    const radii = getStampCanvasRadii(stamp.style, stamp.size);
+    const radii = getStampCanvasRadii(stamp.style,
+      isExtendedStampStyle(stamp.style) ? Math.min(width, height) : stamp.size);
     const insetRadii = Array.isArray(radii)
       ? radii.map((radius) => Math.max(0, radius - inset))
       : Math.max(0, radii - inset);
-    ctx.roundRect(-half, -half, half * 2, half * 2, insetRadii);
+    ctx.roundRect(-halfWidth, -halfHeight, halfWidth * 2, halfHeight * 2, insetRadii);
   }
   ctx.closePath();
 }
@@ -136,7 +168,9 @@ function drawStampText(ctx: CanvasRenderingContext2D, stamp: StampConfig) {
 function drawTraditionalStampBody(ctx: CanvasRenderingContext2D, stamp: StampConfig) {
   const layout = getTraditionalStampLayout(stamp);
   const inkColor = stamp.inkColor ?? STAMP_INK_COLOR;
-  const isWhiteCharacters = stamp.mode === 'baiwen';
+  // New forms share the measured glyph renderer even when used in modern mode.
+  const isWhiteCharacters = stamp.mode === 'baiwen'
+    || (stamp.mode !== 'zhuwen' && stamp.colorScheme !== 'outline');
   const glyphStrokeWidth = getStampTextStrokeWidth(stamp);
 
   ctx.save();
@@ -171,12 +205,18 @@ function drawTraditionalStampBody(ctx: CanvasRenderingContext2D, stamp: StampCon
   const roundClipRadius = stamp.style === 'round'
     ? Math.max(0, stamp.size / 2 - layout.borderWidth * 0.75 - stamp.size * 0.015)
     : null;
+  const dimensions = getStampDimensions(stamp);
+  const ovalClip = stamp.style === 'oval' ? {
+    radiusX: Math.max(0, dimensions.width / 2 - layout.borderWidth * 0.75 - dimensions.width * 0.015),
+    radiusY: Math.max(0, dimensions.height / 2 - layout.borderWidth * 0.75 - dimensions.height * 0.015),
+  } : null;
   for (const slot of layout.slots) {
     ctx.font = 'normal ' + slot.fontSize + 'px ' + stamp.fontFamily;
     const fit = fitTraditionalStampGlyph(
       slot,
       ctx.measureText(slot.character),
-      roundClipRadius === null ? undefined : { x: slot.x, y: slot.y, radius: roundClipRadius },
+      roundClipRadius !== null ? { x: slot.x, y: slot.y, radius: roundClipRadius }
+        : ovalClip ? { x: slot.x, y: slot.y, ...ovalClip } : undefined,
       getStampTextScale(stamp),
       glyphStrokeWidth,
     );
@@ -203,7 +243,9 @@ export function drawStampBody(ctx: CanvasRenderingContext2D, stamp: StampConfig)
   const chars = getStampCharacters(stamp.text);
   const inkColor = stamp.inkColor ?? STAMP_INK_COLOR;
 
-  if (isTraditionalStamp(stamp)) {
+  const useMeasuredLayout = isTraditionalStamp(stamp)
+    || isExtendedStampStyle(stamp.style) || chars.length > 4;
+  if (useMeasuredLayout) {
     drawTraditionalStampBody(ctx, stamp);
   } else if (isFilled) {
     drawStampShape(ctx, stamp);
@@ -238,14 +280,19 @@ export function drawStampBody(ctx: CanvasRenderingContext2D, stamp: StampConfig)
     ctx.restore();
   }
 
-  if (!isTraditionalStamp(stamp)) drawStampText(ctx, stamp);
+  if (!useMeasuredLayout) drawStampText(ctx, stamp);
   const weatheringLevel = stamp.weathering ?? 50;
   if (weatheringLevel > 0) {
     if (stamp.textureStyle === 'natural') {
       drawNaturalSealImpression(ctx, stamp);
     } else {
       // Unset/classic preserves the previous image bit-for-bit for old works.
-      applyStampWeathering(ctx, stamp.size, createStampWeatheringRand(stamp), weatheringLevel);
+      const rand = createStampWeatheringRand(stamp);
+      if (isExtendedStampStyle(stamp.style)) {
+        applyElongatedStampWeathering(ctx, stamp, rand, weatheringLevel);
+      } else {
+        applyStampWeathering(ctx, stamp.size, rand, weatheringLevel);
+      }
     }
   }
 }
@@ -270,26 +317,32 @@ export function drawStampImpression(
   options: StampImpressionOptions = {},
 ) {
   if (!Number.isFinite(stamp.size) || stamp.size <= 0) return;
-  const half = stamp.size / 2;
-  const paddedSide = stamp.size + STAMP_SHADOW_PADDING * 2;
-  const { pixels, scale } = getStampRasterMetrics(paddedSide, options.pixelScale ?? 1);
-  const { pixels: inkPixels, scale: inkScale } = getStampRasterMetrics(stamp.size, scale);
+  const { width, height } = getStampDimensions(stamp);
+  const halfWidth = width / 2;
+  const halfHeight = height / 2;
+  const paddedWidth = width + STAMP_SHADOW_PADDING * 2;
+  const paddedHeight = height + STAMP_SHADOW_PADDING * 2;
+  const { widthPixels, heightPixels, scale } = getStampRasterDimensions(
+    paddedWidth, paddedHeight, options.pixelScale ?? 1,
+  );
+  const { widthPixels: inkWidth, heightPixels: inkHeight, scale: inkScale } =
+    getStampRasterDimensions(width, height, scale);
 
   // The ink must be isolated because both white-character carving and
   // weathering use destination-out. A second bounded bitmap receives the
   // shadow before compositing: it can then rotate as part of the impression.
   const inkCanvas = document.createElement('canvas');
-  inkCanvas.width = inkPixels;
-  inkCanvas.height = inkPixels;
+  inkCanvas.width = inkWidth;
+  inkCanvas.height = inkHeight;
   const inkCtx = inkCanvas.getContext('2d');
   if (!inkCtx) return;
   inkCtx.scale(inkScale, inkScale);
-  inkCtx.translate(half, half);
+  inkCtx.translate(halfWidth, halfHeight);
   drawStampBody(inkCtx, stamp);
 
   const impression = document.createElement('canvas');
-  impression.width = pixels;
-  impression.height = pixels;
+  impression.width = widthPixels;
+  impression.height = heightPixels;
   const impressionCtx = impression.getContext('2d');
   if (!impressionCtx) return;
 
@@ -301,7 +354,7 @@ export function drawStampImpression(
   impressionCtx.shadowOffsetX = shadow.offsetX * scale;
   impressionCtx.shadowOffsetY = shadow.offsetY * scale;
   impressionCtx.scale(scale, scale);
-  impressionCtx.drawImage(inkCanvas, STAMP_SHADOW_PADDING, STAMP_SHADOW_PADDING, stamp.size, stamp.size);
+  impressionCtx.drawImage(inkCanvas, STAMP_SHADOW_PADDING, STAMP_SHADOW_PADDING, width, height);
 
   ctx.save();
   if (options.applyTransform !== false) {
@@ -314,7 +367,8 @@ export function drawStampImpression(
 
   // A shadow baked in local coordinates rotates together with the seal in
   // both the CSS-transformed preview and the transformed Canvas export.
-  ctx.drawImage(impression, -half - STAMP_SHADOW_PADDING, -half - STAMP_SHADOW_PADDING, paddedSide, paddedSide);
+  ctx.drawImage(impression, -halfWidth - STAMP_SHADOW_PADDING,
+    -halfHeight - STAMP_SHADOW_PADDING, paddedWidth, paddedHeight);
   ctx.restore();
 }
 
