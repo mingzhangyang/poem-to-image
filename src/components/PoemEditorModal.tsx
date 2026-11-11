@@ -68,11 +68,12 @@ function LayerControlCard({
         {scale !== undefined && onScaleChange ? (
           <div>
             <label htmlFor={`${controlId}-scale`} className="mb-1 block text-xs text-(--app-accent-600)">
-              {t('fontSize')} ({Math.round(scale * 100)}%)
+              {t('relativeFontSize')} ({Math.round(scale * 100)}%)
             </label>
             <input
               id={`${controlId}-scale`}
               type="range"
+              aria-label={`${title}: ${t('relativeFontSize')}`}
               min="70"
               max="160"
               step="1"
@@ -432,6 +433,10 @@ export function PoemEditorModal({ isOpen, onClose, t, content }: PoemEditorModal
                 <span>{t('poemLayerStyles')}</span>
               </div>
 
+              <p className="mb-4 text-xs leading-5 text-(--app-accent-500)">
+                {t('relativeFontSizeHint')}
+              </p>
+
               <div className="space-y-4">
                 <LayerControlCard
                   title={t('poemTitle')}
@@ -455,6 +460,8 @@ export function PoemEditorModal({ isOpen, onClose, t, content }: PoemEditorModal
 
                 <LayerControlCard
                   title={t('poemBody')}
+                  scale={content.poemStyle.bodyScale}
+                  onScaleChange={(value) => content.onPoemStyleChange({ bodyScale: value })}
                   lineHeight={content.poemStyle.bodyLineHeight}
                   letterSpacing={content.poemStyle.bodyLetterSpacing}
                   align={content.poemStyle.bodyAlign}

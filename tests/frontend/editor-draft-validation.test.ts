@@ -123,3 +123,33 @@ test('draft hydration retains legacy texture compatibility and rejects corrupt p
     }
   }
 });
+
+
+test('old poem styles without bodyScale still load; malformed present values are rejected', async () => {
+  const cases: Array<{ name: string; scale?: unknown; valid: boolean }> = [
+    { name: 'legacy missing', valid: true },
+    { name: 'new default', scale: 1, valid: true },
+    { name: 'body enlarged', scale: 1.5, valid: true },
+    { name: 'body reduced', scale: 0.7, valid: true },
+    { name: 'null', scale: null, valid: false },
+    { name: 'text', scale: '1.5', valid: false },
+    { name: 'NaN', scale: Number.NaN, valid: false },
+    { name: 'Infinity', scale: Infinity, valid: false },
+  ];
+  for (const { name, scale, valid } of cases) {
+    const scene = validScene();
+    if (scale === undefined) {
+      delete (scene.poemStyle as Partial<typeof scene.poemStyle>).bodyScale;
+    } else {
+      (scene.poemStyle as unknown as Record<string, unknown>).bodyScale = scale;
+    }
+    const record = { version: 2, revision: 11, scene };
+    if (valid) {
+      const loaded = await loadStoredRecord(record);
+      assert.equal(loaded.revision, 11, name);
+      assert.deepEqual(loaded.state?.poemStyle, scene.poemStyle, name);
+    } else {
+      await assert.rejects(loadStoredRecord(record), /DRAFT_INVALID/, name);
+    }
+  }
+});

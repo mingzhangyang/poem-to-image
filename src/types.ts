@@ -310,6 +310,8 @@ export interface PoemLayerStyle {
   titleBodyGap: number;
   titleAlign: TextAlign;
   titlePlacement: Exclude<PoemSectionPlacement, 'after-author'>;
+  /** Multiplier of the global base font size; 1 preserves legacy body text. */
+  bodyScale: number;
   bodyLineHeight: number;
   bodyLetterSpacing: number;
   bodyAlign: TextAlign;

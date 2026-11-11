@@ -189,3 +189,28 @@ test('preset command keeps built-in sizes and existing legacy ratio behavior', (
   executeEditorCommand({ type: 'canvas-preset', presetId: 'custom' }, mockTargets(log));
   assert.deepEqual(log, ['preset:custom']);
 });
+
+
+test('restore and template commands normalize legacy body sizing without changing other styles', () => {
+  const doc = createEditorDocument(source());
+  const oldStyle = { ...doc.poemStyle } as Partial<typeof doc.poemStyle>;
+  delete oldStyle.bodyScale;
+  const applied: Array<typeof doc.poemStyle> = [];
+  const targets = {
+    ...mockTargets([]),
+    setPoemStyle: (style: typeof doc.poemStyle) => applied.push(style),
+  };
+  executeEditorCommand({
+    type: 'restore', document: { ...doc, poemStyle: oldStyle as typeof doc.poemStyle },
+  }, targets);
+  executeEditorCommand({
+    type: 'template',
+    template: { background: doc.background, typography: doc.typography, decorations: doc.decorations,
+      poemStyle: oldStyle as typeof doc.poemStyle },
+  }, targets);
+  assert.equal(applied.length, 2);
+  for (const style of applied) {
+    assert.equal(style.bodyScale, 1);
+    assert.deepEqual(style, doc.poemStyle);
+  }
+});

@@ -221,7 +221,9 @@ function isDraftState(value: unknown): value is EditorDraftState {
     ['titleScale', 'titleOpacity', 'titleLineHeight', 'titleLetterSpacing', 'titleBodyGap',
       'bodyLineHeight', 'bodyLetterSpacing', 'authorScale', 'authorOpacity', 'authorLineHeight',
       'authorLetterSpacing', 'authorBodyGap', 'sourceScale', 'sourceOpacity', 'sourceLineHeight',
-      'sourceLetterSpacing', 'sourceGap'])) return false;
+      'sourceLetterSpacing', 'sourceGap'])
+    // Optional for drafts written before per-layer body sizing was added.
+    || !optionalField(poemStyle, 'bodyScale', 'number')) return false;
   if (!hasFields(value, [], ['canvasWidth', 'canvasHeight'])
     || !optionalField(value, 'presetSize', 'string')) return false;
   if (!hasFields(background,

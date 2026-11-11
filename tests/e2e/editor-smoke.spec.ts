@@ -389,3 +389,42 @@ test('first-visit onboarding CTA opens the editor once in a clean browser contex
     await context.close();
   }
 });
+
+
+test('body text gets an independent relative size and base size is clearly global', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'chromium-mobile', 'Desktop controls; mobile tab coverage is separate');
+  await page.setViewportSize({ width: 1440, height: 960 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: /^Typography/ }).click();
+  const baseSize = page.getByRole('slider', { name: 'Base Font Size' });
+  await expect(baseSize).toHaveValue('32');
+  await expect(page.getByText(/Changes title, body, author and source together/)).toBeVisible();
+
+  await page.getByRole('button', { name: 'Open Editor' }).click();
+  const editor = page.getByRole('dialog', { name: 'Poem Editor' });
+  const bodySize = editor.getByRole('slider', { name: 'Body: Relative Font Size' });
+  const titleSize = editor.getByRole('slider', { name: 'Title: Relative Font Size' });
+  await expect(bodySize).toHaveValue('100');
+  await expect(titleSize).toHaveValue('100');
+
+  await bodySize.focus();
+  await bodySize.press('End');
+  await expect(bodySize).toHaveValue('160');
+  await expect(titleSize).toHaveValue('100');
+  await editor.getByRole('button', { name: 'Done' }).click();
+
+  await baseSize.focus();
+  await baseSize.press('ArrowRight');
+  await expect(baseSize).toHaveValue('33');
+  await expect.poll(async () => page.evaluate(() => {
+    const saved = JSON.parse(localStorage.getItem('inkpoem.editor-state.v1') || 'null');
+    return [saved?.typography?.fontSize, saved?.poemStyle?.bodyScale, saved?.poemStyle?.titleScale];
+  })).toEqual([33, 1.6, 1]);
+
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: 'Open Editor' }).click();
+  const restored = page.getByRole('dialog', { name: 'Poem Editor' });
+  await expect(restored.getByRole('slider', { name: 'Body: Relative Font Size' })).toHaveValue('160');
+  await expect(restored.getByRole('slider', { name: 'Title: Relative Font Size' })).toHaveValue('100');
+});
+

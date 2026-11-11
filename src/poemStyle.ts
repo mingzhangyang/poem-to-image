@@ -8,6 +8,7 @@ export const DEFAULT_POEM_STYLE: PoemLayerStyle = {
   titleBodyGap: 20,
   titleAlign: 'center',
   titlePlacement: 'before-body',
+  bodyScale: 1,
   bodyLineHeight: 1.8,
   bodyLetterSpacing: 4,
   bodyAlign: 'center',
@@ -35,8 +36,12 @@ export function normalizePoemLayerStyle(input?: Partial<PoemLayerStyle> | null):
 }
 
 export function isSamePoemLayerStyle(left: PoemLayerStyle, right: PoemLayerStyle) {
+  // Older saved documents have no bodyScale; interpret that as 100% when
+  // matching a localized built-in template to avoid losing its sync identity.
+  const normalizedLeft = normalizePoemLayerStyle(left);
+  const normalizedRight = normalizePoemLayerStyle(right);
   return (Object.keys(DEFAULT_POEM_STYLE) as Array<keyof PoemLayerStyle>)
-    .every((key) => left[key] === right[key]);
+    .every((key) => normalizedLeft[key] === normalizedRight[key]);
 }
 
 export function normalizeUserCustomTemplate(template: Omit<UserCustomTemplate, 'poemStyle'> & { poemStyle?: Partial<PoemLayerStyle> | null }): UserCustomTemplate {

@@ -86,7 +86,9 @@ function createSectionSpecs(
   const bodySection = {
     key: 'body' as const,
     text: bodyText,
-    fontSize,
+    // Independent relative size, using the same structured layout in preview
+    // and export. Old drafts without bodyScale keep their original font size.
+    fontSize: roundFontSize(fontSize * (poemStyle.bodyScale ?? 1)),
     lineHeight: poemStyle.bodyLineHeight,
     letterSpacing: poemStyle.bodyLetterSpacing,
     opacity: body ? 1 : 0.72,
