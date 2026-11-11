@@ -76,6 +76,26 @@ test('automatic columns forbid closing punctuation at starts and opening punctua
   }
 });
 
+test('automatic columns never split six-dot Chinese ellipsis pairs', () => {
+  for (const sample of ['甲……乙', '甲…………乙', '山川……草木']) {
+    const characters = Array.from(sample);
+    for (const columns of [2, 3, 4, 8]) {
+      const parts = splitVerticalColumns(sample, columns);
+      assert.equal(parts.join(''), sample);
+      assert.ok(parts.length <= columns && parts.every(Boolean));
+      let boundary = 0;
+      for (const part of parts.slice(0, -1)) {
+        boundary += Array.from(part).length;
+        if (characters[boundary - 1] !== '…' || characters[boundary] !== '…') continue;
+        let start = boundary - 1;
+        while (start > 0 && characters[start - 1] === '…') start -= 1;
+        assert.equal((boundary - start) % 2, 0, 'cut must fall between complete ellipsis pairs');
+      }
+    }
+  }
+  assert.deepEqual(splitVerticalColumns('甲……乙', 2), ['甲', '……乙']);
+});
+
 test('no eligible boundary gracefully shrinks the number of columns', () => {
   assert.deepEqual(splitVerticalColumns('字，', 3), ['字，']);
   assert.deepEqual(splitVerticalColumns('《字》', 3), ['《字》']);
@@ -97,6 +117,30 @@ test('brackets, quotes, book-title marks and unsupported-font rotation', () => {
   assert.equal(unsupported[0].rotation, 90);
   assert.equal(unsupported[2].rotation, 90);
   assert.ok(unsupported.every(i => Number.isFinite(i.startX) && Number.isFinite(i.baselineY)));
+});
+
+test('curly Chinese quotes use vertical corner glyphs and rotate source glyphs as fallback', () => {
+  const forms: Array<[string, string]> = [
+    ['“', '﹃'], ['”', '﹄'], ['‘', '﹁'], ['’', '﹂'],
+  ];
+  for (const [original, form] of forms) {
+    assert.deepEqual(getVerticalGlyphPresentation(original), { renderText: form, rotation: 0 });
+    assert.deepEqual(getVerticalGlyphPresentation(original, false), { renderText: original, rotation: 90 });
+  }
+  for (const source of ['“诗”', '‘诗’']) {
+    const rendered = glyphs(source);
+    assert.equal(rendered.map(item => item.text).join(''), source);
+    assert.equal(rendered[0].rotation, 0);
+    assert.equal(rendered[2].rotation, 0);
+
+    const fallback = createTextLayout({
+      text: source, writingMode: 'vertical-rl', fontSize: 32, lineHeight: 1.5, letterSpacing: 0,
+    }, fakeMeasurer(32, false)).items as VerticalTextLayoutItem[];
+    assert.equal(fallback[0].renderText, Array.from(source)[0]);
+    assert.equal(fallback[0].rotation, 90);
+    assert.equal(fallback[2].renderText, Array.from(source)[2]);
+    assert.equal(fallback[2].rotation, 90);
+  }
 });
 
 test('Latin, numeric runs, punctuation and spacing remain finite and in reading order', () => {

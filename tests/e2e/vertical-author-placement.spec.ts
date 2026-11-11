@@ -18,8 +18,8 @@ test('real-browser vertical author follows body and aligns near its lower edge',
   const result = await page.evaluate(async () => {
     const contentPath = '/src/poemContent.ts';
     const stylePath = '/src/poemStyle.ts';
-    const { createStructuredPoemLayout } = await import(/* @vite-ignore */ contentPath);
-    const { DEFAULT_POEM_STYLE } = await import(/* @vite-ignore */ stylePath);
+    const { createStructuredPoemLayout } = await import(/* @vite-ignore */ contentPath) as typeof import('../../src/poemContent');
+    const { DEFAULT_POEM_STYLE } = await import(/* @vite-ignore */ stylePath) as typeof import('../../src/poemStyle');
     const scene = createStructuredPoemLayout({
       poem: { title: '山居秋暝', author: '王维', body: '空山新雨后天气晚来秋\n明月松间照清泉石上流', sourceNote: '' },
       poemStyle: DEFAULT_POEM_STYLE,

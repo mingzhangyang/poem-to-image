@@ -48,7 +48,7 @@ test('the shared layout returns upright punctuation and rotated fallback in an a
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   const result = await page.evaluate(async () => {
     const path = '/src/textLayout.ts';
-    const { createTextLayout, createCanvasTextMeasurer } = await import(/* @vite-ignore */ path);
+    const { createTextLayout, createCanvasTextMeasurer } = await import(/* @vite-ignore */ path) as typeof import('../../src/textLayout');
     const layout = createTextLayout({
       text: '山，海。\n「诗」《书》', writingMode: 'vertical-rl',
       fontSize: 40, lineHeight: 1.6, letterSpacing: 4, columns: 2,

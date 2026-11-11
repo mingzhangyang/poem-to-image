@@ -9,6 +9,8 @@ const VERTICAL_FORMS: Readonly<Record<string, string>> = {
   '〈': '︿', '〉': '﹀', '「': '﹁', '」': '﹂',
   '『': '﹃', '』': '﹄', '〖': '︗', '〗': '︘',
   '［': '﹇', '］': '﹈', '…': '︙',
+  // Horizontal curly quotes become traditional vertical corner quotation marks.
+  '“': '﹃', '”': '﹄', '‘': '﹁', '’': '﹂',
 };
 
 const PAUSE = new Set(Array.from('，。、；：！？'));
@@ -54,7 +56,12 @@ export function splitVerticalColumns(line: string, requestedColumns: number): st
   const characters = Array.from(line);
   if (!characters.length) return [line];
   const legalCuts: number[] = [];
+  let ellipsisRunLength = 0;
   for (let index = 1; index < characters.length; index += 1) {
+    // A six-dot Chinese ellipsis is two U+2026 marks. Keep each pair intact;
+    // consecutive pairs may still break between pairs when columns require it.
+    ellipsisRunLength = characters[index - 1] === '…' ? ellipsisRunLength + 1 : 0;
+    if (characters[index] === '…' && ellipsisRunLength % 2 === 1) continue;
     if (isVerticalSidewaysRunGlyph(characters[index - 1]) && isVerticalSidewaysRunGlyph(characters[index])) continue;
     if (classifyVerticalPunctuation(characters[index - 1]) === 'opening') continue;
     const nextClass = classifyVerticalPunctuation(characters[index]);
