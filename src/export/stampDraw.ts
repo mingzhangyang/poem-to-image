@@ -18,6 +18,7 @@ import {
 import { positionToCanvasPoint } from '../positioningRect';
 import { drawNaturalSealImpression } from '../naturalSealDraw';
 import { getNaturalSealEdgePoint } from '../naturalSealTexture';
+import { drawSealMotif, isSealMotifId } from '../sealMotifs';
 import { fitTraditionalStampGlyph, getTraditionalStampLayout, isTraditionalStamp } from '../sealTypography';
 import type { StampConfig } from '../types';
 import type { CanvasExportScene } from './renderCanvasExport';
@@ -121,6 +122,48 @@ function drawStampShape(ctx: CanvasRenderingContext2D, stamp: StampConfig, inset
     ctx.roundRect(-halfWidth, -halfHeight, halfWidth * 2, halfHeight * 2, insetRadii);
   }
   ctx.closePath();
+}
+
+/**
+ * Motif stamps share the same frame, clipping and isolated ink canvas as
+ * traditional text seals. The vector is uniformly scaled, never distorted.
+ * Bai Wen carves negative space via destination-out on the isolated ink layer.
+ */
+function drawMotifStampBody(ctx: CanvasRenderingContext2D, stamp: StampConfig) {
+  if (!isSealMotifId(stamp.motifId)) return;
+  const { width, height } = getStampDimensions(stamp);
+  const shortSide = Math.min(width, height);
+  const borderWidth = Math.min(shortSide * 0.2, Math.max(0.5, shortSide * 0.038));
+  const inkColor = stamp.inkColor ?? STAMP_INK_COLOR;
+  const isCarved = stamp.mode === 'baiwen'
+    || (stamp.mode !== 'zhuwen' && stamp.colorScheme !== 'outline');
+
+  ctx.save();
+  drawStampShape(ctx, stamp, isCarved ? 0 : borderWidth / 2);
+  if (isCarved) {
+    ctx.fillStyle = inkColor;
+    ctx.fill();
+  } else {
+    ctx.strokeStyle = inkColor;
+    ctx.lineWidth = borderWidth;
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  ctx.save();
+  drawStampShape(ctx, stamp, borderWidth * 0.75);
+  ctx.clip();
+  ctx.globalCompositeOperation = isCarved ? 'destination-out' : 'source-over';
+  ctx.strokeStyle = isCarved ? '#000' : inkColor;
+  ctx.fillStyle = isCarved ? '#000' : inkColor;
+
+  // Keep the motif's proportions even inside a tall or wide seal.
+  // The additional oval inset leaves room near its curved boundary.
+  const side = Math.max(0, Math.min(width, height)
+    * (stamp.style === 'round' || stamp.style === 'oval' ? 0.67 : 0.77));
+  ctx.scale(side / 100, side / 100);
+  drawSealMotif(ctx, stamp.motifId);
+  ctx.restore();
 }
 
 function drawStampText(ctx: CanvasRenderingContext2D, stamp: StampConfig) {
@@ -243,9 +286,12 @@ export function drawStampBody(ctx: CanvasRenderingContext2D, stamp: StampConfig)
   const chars = getStampCharacters(stamp.text);
   const inkColor = stamp.inkColor ?? STAMP_INK_COLOR;
 
+  const useMotif = isSealMotifId(stamp.motifId);
   const useMeasuredLayout = isTraditionalStamp(stamp)
     || isExtendedStampStyle(stamp.style) || chars.length > 4;
-  if (useMeasuredLayout) {
+  if (useMotif) {
+    drawMotifStampBody(ctx, stamp);
+  } else if (useMeasuredLayout) {
     drawTraditionalStampBody(ctx, stamp);
   } else if (isFilled) {
     drawStampShape(ctx, stamp);
@@ -280,7 +326,7 @@ export function drawStampBody(ctx: CanvasRenderingContext2D, stamp: StampConfig)
     ctx.restore();
   }
 
-  if (!useMeasuredLayout) drawStampText(ctx, stamp);
+  if (!useMotif && !useMeasuredLayout) drawStampText(ctx, stamp);
   const weatheringLevel = stamp.weathering ?? 50;
   if (weatheringLevel > 0) {
     if (stamp.textureStyle === 'natural') {
