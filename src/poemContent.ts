@@ -334,8 +334,18 @@ export function createStructuredPoemLayout({
     const topPaddings = adjustedSections.map((s) => s.fontSize * ((s.lineHeight - 1) / 2 + 0.1));
     const maxTopPadding = Math.max(0, ...topPaddings);
     const bodyIndex = adjustedSections.findIndex((section) => section.key === 'body');
-    const bodyEnd = Math.round(maxTopPadding - topPaddings[bodyIndex])
-      + adjustedSections[bodyIndex].layout.height;
+    // Match the center of the last painted glyph rather than the bottom of
+    // the logical layout box. Different author/body font sizes and line-height
+    // values add different trailing half-cell space, which made the final
+    // author character visibly lower than the poem in vertical compositions.
+    const lastGlyphCenter = (layout: TextLayoutResult) => Math.max(
+      0,
+      ...layout.items
+        .filter((item) => item.kind === 'vertical-segment' && item.text.trim())
+        .map((item) => item.y),
+    );
+    const bodyLastGlyphY = Math.round(maxTopPadding - topPaddings[bodyIndex])
+      + lastGlyphCenter(adjustedSections[bodyIndex].layout);
 
     let currentX = width;
     const positionedSections = adjustedSections.map((section, index) => {
@@ -344,11 +354,11 @@ export function createStructuredPoemLayout({
       const positionedSection = {
         ...section,
         x: currentX,
-        // Keep explicit before/after placement, but place both author variants
-        // lower as a signed attribution. Very short bodies safely fall back to
-        // the normal top alignment so the signature cannot have a negative y.
+        // Keep explicit before/after placement, and line up the signature's
+        // final painted glyph with the final body glyph. Clamp for short poems
+        // so a longer attribution never starts above the layout.
         y: section.key === 'author'
-          ? Math.max(topAlignedY, Math.round(bodyEnd - section.layout.height))
+          ? Math.max(topAlignedY, Math.round(bodyLastGlyphY - lastGlyphCenter(section.layout)))
           : topAlignedY,
       };
       currentX -= getSectionGap(fontSize, writingMode, section.key, adjustedSections[index + 1]);
