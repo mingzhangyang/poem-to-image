@@ -1,4 +1,5 @@
 import { getCanvasSizePresetById } from './canvasPresets';
+import { normalizePoemLayerStyle } from './poemStyle';
 import type { EditorDocument } from './editorDocument';
 import type {
   PoemContentData,
@@ -53,7 +54,7 @@ export function executeEditorCommand(command: EditorCommand, targets: EditorComm
     case 'restore': {
       const { document } = command;
       targets.setPoem(document.poem);
-      targets.setPoemStyle(document.poemStyle);
+      targets.setPoemStyle(normalizePoemLayerStyle(document.poemStyle));
       targets.setCanvasWidth(document.canvasWidth);
       targets.setCanvasHeight(document.canvasHeight);
       targets.setPresetSize(document.presetSize);
@@ -67,7 +68,7 @@ export function executeEditorCommand(command: EditorCommand, targets: EditorComm
       if (sections?.background !== false) targets.applyBackground(template.background);
       if (sections?.typography !== false) targets.applyTypography(template.typography);
       if (sections?.decorations !== false) targets.applyDecorations(template.decorations);
-      if (sections?.poemStyle !== false) targets.setPoemStyle(template.poemStyle);
+      if (sections?.poemStyle !== false) targets.setPoemStyle(normalizePoemLayerStyle(template.poemStyle));
       return;
     }
     case 'canvas-preset': {

@@ -166,9 +166,8 @@ function isPoemStyle(value: unknown): boolean {
     const field = value[key];
     if (field === undefined) return true;
     if (alignKeys.includes(key)) return isOneOf(field, ['left', 'center', 'right']);
-    if (key === 'titlePlacement' || key === 'authorPlacement') {
-      return isOneOf(field, earlyPlacements);
-    }
+    if (key === 'titlePlacement') return isOneOf(field, earlyPlacements);
+    if (key === 'authorPlacement') return isOneOf(field, [...earlyPlacements, 'auto']);
     if (key === 'sourcePlacement') return isOneOf(field, [...earlyPlacements, 'after-author']);
     return typeof field === typeof fallback
       && (typeof field !== 'number' || Number.isFinite(field));
@@ -193,6 +192,14 @@ export function parseTemplateList(input: unknown): UserCustomTemplate[] {
   }
   return input.map((template) => normalizeUserCustomTemplate({
     ...template,
+    // A pre-auto custom template may omit poemStyle entirely, or only omit
+    // authorPlacement. It historically placed the author before the body in
+    // vertical writing; decoding it must not silently opt into today's Auto.
+    // Newly authored templates still use DEFAULT_POEM_STYLE ('auto').
+    poemStyle: {
+      ...(template.poemStyle ?? {}),
+      authorPlacement: template.poemStyle?.authorPlacement ?? 'before-body',
+    },
     decorations: { ...template.decorations, logos: template.decorations.logos ?? [] },
   }));
 }

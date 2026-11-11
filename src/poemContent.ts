@@ -1,4 +1,5 @@
 import { createCanvasTextMeasurer, createTextLayout, type TextLayoutMeasurer, type TextLayoutResult } from './textLayout';
+import { getBodyFontScale, resolveAuthorPlacement } from './poemStyle';
 import type { PoemContentData, PoemLayerStyle, TextAlign, WritingMode } from './types';
 
 export interface StructuredPoemSectionLayout {
@@ -71,6 +72,7 @@ function createSectionSpecs(
   const body = poem.body.trim();
   const sourceNote = normalizeSourceNoteForWritingMode(poem.sourceNote.trim(), writingMode);
   const bodyText = body || placeholder;
+  const authorPlacement = resolveAuthorPlacement(poemStyle.authorPlacement, writingMode);
   const titleScale = writingMode === 'vertical-rl' ? 1.12 : 1.18;
   const metaScale = writingMode === 'vertical-rl' ? 0.74 : 0.72;
   const titleSection = title ? {
@@ -86,7 +88,9 @@ function createSectionSpecs(
   const bodySection = {
     key: 'body' as const,
     text: bodyText,
-    fontSize,
+    // Independent relative size, using the same structured layout in preview
+    // and export. Old drafts without bodyScale keep their original font size.
+    fontSize: roundFontSize(fontSize * getBodyFontScale(poemStyle)),
     lineHeight: poemStyle.bodyLineHeight,
     letterSpacing: poemStyle.bodyLetterSpacing,
     opacity: body ? 1 : 0.72,
@@ -119,7 +123,7 @@ function createSectionSpecs(
     orderedSections.push(titleSection);
   }
 
-  if (authorSection && poemStyle.authorPlacement === 'before-body') {
+  if (authorSection && authorPlacement === 'before-body') {
     orderedSections.push(authorSection);
     if (sourceSection && poemStyle.sourcePlacement === 'after-author') {
       orderedSections.push(sourceSection);
@@ -136,7 +140,7 @@ function createSectionSpecs(
     orderedSections.push(titleSection);
   }
 
-  if (authorSection && poemStyle.authorPlacement === 'after-body') {
+  if (authorSection && authorPlacement === 'after-body') {
     orderedSections.push(authorSection);
     if (sourceSection && poemStyle.sourcePlacement === 'after-author') {
       orderedSections.push(sourceSection);
@@ -324,20 +328,28 @@ export function createStructuredPoemLayout({
     );
     const width = adjustedSections.reduce((sum, section) => sum + section.layout.width, 0) + totalGap;
 
-    // Compute y-offsets to align first characters of all sections at the same visual top position.
-    // The 0.1 * fontSize term corrects for the font's internal glyph offset within the em box:
-    // CJK glyphs sit ~10% of fontSize below the span top, and this offset scales with font size,
-    // so without it the smaller author font appears visually above the larger title font.
+    // Align title/body/source by their first visible glyph, taking font-specific
+    // internal top padding into account. An author is a signature, not another
+    // main-text column: its last glyph should sit near the body's lower edge.
     const topPaddings = adjustedSections.map((s) => s.fontSize * ((s.lineHeight - 1) / 2 + 0.1));
     const maxTopPadding = Math.max(0, ...topPaddings);
+    const bodyIndex = adjustedSections.findIndex((section) => section.key === 'body');
+    const bodyEnd = Math.round(maxTopPadding - topPaddings[bodyIndex])
+      + adjustedSections[bodyIndex].layout.height;
 
     let currentX = width;
     const positionedSections = adjustedSections.map((section, index) => {
       currentX -= section.layout.width;
+      const topAlignedY = Math.round(maxTopPadding - topPaddings[index]);
       const positionedSection = {
         ...section,
         x: currentX,
-        y: Math.round(maxTopPadding - topPaddings[index]),
+        // Keep explicit before/after placement, but place both author variants
+        // lower as a signed attribution. Very short bodies safely fall back to
+        // the normal top alignment so the signature cannot have a negative y.
+        y: section.key === 'author'
+          ? Math.max(topAlignedY, Math.round(bodyEnd - section.layout.height))
+          : topAlignedY,
       };
       currentX -= getSectionGap(fontSize, writingMode, section.key, adjustedSections[index + 1]);
       return positionedSection;

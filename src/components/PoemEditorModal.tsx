@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import { AlignCenter, AlignLeft, AlignRight, BookOpenText, LoaderCircle, SlidersHorizontal, X } from 'lucide-react';
-import type { ContentSectionProps, PoemSectionPlacement, TextAlign, TranslateFn } from '../types';
+import type { ContentSectionProps, PoemLayerStyle, PoemSectionPlacement, TextAlign, TranslateFn } from '../types';
 import { useDialogA11y } from '../hooks/useDialogA11y';
 
 interface PoemEditorModalProps {
@@ -20,15 +20,15 @@ interface LayerControlCardProps {
   letterSpacing?: number;
   bodyGap?: number;
   align?: TextAlign;
-  placement?: PoemSectionPlacement | Exclude<PoemSectionPlacement, 'after-author'>;
+  placement?: PoemSectionPlacement | 'auto';
   onScaleChange?: (value: number) => void;
   onOpacityChange?: (value: number) => void;
   onLineHeightChange?: (value: number) => void;
   onLetterSpacingChange?: (value: number) => void;
   onBodyGapChange?: (value: number) => void;
   onAlignChange?: (value: TextAlign) => void;
-  onPlacementChange?: (value: PoemSectionPlacement | Exclude<PoemSectionPlacement, 'after-author'>) => void;
-  placementOptions?: Array<{ value: PoemSectionPlacement | Exclude<PoemSectionPlacement, 'after-author'>; label: string }>;
+  onPlacementChange?: (value: PoemSectionPlacement | 'auto') => void;
+  placementOptions?: Array<{ value: PoemSectionPlacement | 'auto'; label: string }>;
   t: TranslateFn;
 }
 
@@ -68,11 +68,12 @@ function LayerControlCard({
         {scale !== undefined && onScaleChange ? (
           <div>
             <label htmlFor={`${controlId}-scale`} className="mb-1 block text-xs text-(--app-accent-600)">
-              {t('fontSize')} ({Math.round(scale * 100)}%)
+              {t('relativeFontSize')} ({Math.round(scale * 100)}%)
             </label>
             <input
               id={`${controlId}-scale`}
               type="range"
+              aria-label={`${title}: ${t('relativeFontSize')}`}
               min="70"
               max="160"
               step="1"
@@ -220,6 +221,7 @@ export function PoemEditorModal({ isOpen, onClose, t, content }: PoemEditorModal
     { value: 'after-body' as const, label: t('positionAfterBody') },
   ];
   const authorPlacementOptions = [
+    { value: 'auto' as const, label: t('positionAutomatic') },
     { value: 'before-body' as const, label: t('positionBeforeBody') },
     { value: 'after-body' as const, label: t('positionAfterBody') },
   ];
@@ -432,6 +434,10 @@ export function PoemEditorModal({ isOpen, onClose, t, content }: PoemEditorModal
                 <span>{t('poemLayerStyles')}</span>
               </div>
 
+              <p className="mb-4 text-xs leading-5 text-(--app-accent-500)">
+                {t('relativeFontSizeHint')}
+              </p>
+
               <div className="space-y-4">
                 <LayerControlCard
                   title={t('poemTitle')}
@@ -455,6 +461,8 @@ export function PoemEditorModal({ isOpen, onClose, t, content }: PoemEditorModal
 
                 <LayerControlCard
                   title={t('poemBody')}
+                  scale={content.poemStyle.bodyScale}
+                  onScaleChange={(value) => content.onPoemStyleChange({ bodyScale: value })}
                   lineHeight={content.poemStyle.bodyLineHeight}
                   letterSpacing={content.poemStyle.bodyLetterSpacing}
                   align={content.poemStyle.bodyAlign}
@@ -479,7 +487,7 @@ export function PoemEditorModal({ isOpen, onClose, t, content }: PoemEditorModal
                   onLetterSpacingChange={(value) => content.onPoemStyleChange({ authorLetterSpacing: value })}
                   onBodyGapChange={(value) => content.onPoemStyleChange({ authorBodyGap: value })}
                   onAlignChange={(value) => content.onPoemStyleChange({ authorAlign: value })}
-                  onPlacementChange={(value) => content.onPoemStyleChange({ authorPlacement: value as 'before-body' | 'after-body' })}
+                  onPlacementChange={(value) => content.onPoemStyleChange({ authorPlacement: value as PoemLayerStyle['authorPlacement'] })}
                   placementOptions={authorPlacementOptions}
                   t={t}
                 />

@@ -20,7 +20,8 @@ import {
   type TemplateRequestOwner,
 } from '../../src/customTemplateApi';
 import type { UserCustomTemplate } from '../../src/types';
-import { DEFAULT_POEM_STYLE } from '../../src/poemStyle';
+import { DEFAULT_POEM_STYLE, resolveAuthorPlacement } from '../../src/poemStyle';
+import { executeEditorCommand } from '../../src/editorCommands';
 
 function fixture(id: string): UserCustomTemplate {
   return {
@@ -297,4 +298,57 @@ test('template saves are disabled until the current auth scope has hydrated', ()
   assert.equal(isWritableTemplateScope('guest', 'guest', true), false, 'corrupt guest cache');
   assert.equal(isWritableTemplateScope('guest', 'guest', false), true, 'ready guest library');
   assert.equal(isWritableTemplateScope('account:a', 'account:a', true), true, 'cloud writes can proceed despite corrupt local warm cache');
+});
+
+
+test('custom templates round-trip auto author placement and body scale while accepting old styles', () => {
+  const modern = fixture('auto');
+  modern.poemStyle = { ...DEFAULT_POEM_STYLE, bodyScale: 1.3, authorPlacement: 'auto' };
+  const parsed = parseCloudTemplateList({ templates: [modern] });
+  assert.equal(parsed[0].poemStyle.authorPlacement, 'auto');
+  assert.equal(parsed[0].poemStyle.bodyScale, 1.3);
+  const local = storage();
+  writeTemplateCache('guest', parsed, local);
+  const restored = readTemplateCache('guest', local);
+  assert.equal(restored[0].poemStyle.authorPlacement, 'auto');
+  assert.equal(restored[0].poemStyle.bodyScale, 1.3);
+
+  const legacy = fixture('legacy-explicit');
+  delete (legacy.poemStyle as Partial<typeof legacy.poemStyle>).bodyScale;
+  legacy.poemStyle.authorPlacement = 'before-body';
+  const loaded = parseCloudTemplateList({ templates: [legacy] });
+  assert.equal(loaded[0].poemStyle.authorPlacement, 'before-body');
+  assert.equal(loaded[0].poemStyle.bodyScale, 1);
+
+  const invalidPlacement = fixture('bad-placement');
+  (invalidPlacement.poemStyle as unknown as Record<string, unknown>).authorPlacement = 'top';
+  assert.throws(() => parseCloudTemplateList({ templates: [invalidPlacement] }), /INVALID_TEMPLATE_LIST/);
+
+  const invalidScale = fixture('bad-body-scale');
+  (invalidScale.poemStyle as unknown as Record<string, unknown>).bodyScale = Number.POSITIVE_INFINITY;
+  assert.throws(() => parseCloudTemplateList({ templates: [invalidScale] }), /INVALID_TEMPLATE_LIST/);
+});
+
+
+test('legacy custom templates preserve the historical author column on parse and apply', () => {
+  const withoutStyle = { ...fixture('no-style'), poemStyle: undefined };
+  const withoutPlacement = fixture('no-placement');
+  delete (withoutPlacement.poemStyle as Partial<typeof withoutPlacement.poemStyle>).authorPlacement;
+  const modern = fixture('new-auto');
+  modern.poemStyle.authorPlacement = 'auto';
+
+  const templates = parseCloudTemplateList({ templates: [
+    withoutStyle, withoutPlacement, modern,
+  ] });
+  const applied: string[] = [];
+  for (const template of templates) {
+    executeEditorCommand({ type: 'template', template }, {
+      setPoem: () => {},
+      setPoemStyle: (style) => applied.push(resolveAuthorPlacement(style.authorPlacement, 'vertical-rl')),
+      setCanvasWidth: () => {}, setCanvasHeight: () => {}, setPresetSize: () => {},
+      applyBackground: () => {}, applyTypography: () => {}, applyDecorations: () => {},
+    });
+  }
+  assert.deepEqual(applied, ['before-body', 'before-body', 'after-body']);
+  assert.deepEqual(templates.map(t => t.poemStyle.authorPlacement), ['before-body', 'before-body', 'auto']);
 });

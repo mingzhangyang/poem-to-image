@@ -197,3 +197,17 @@ test('vertical-rl: a single line splits across columns when columns > 1', () => 
   const xs = items.map((i) => i.x);
   assert.ok(Math.max(...xs) > Math.min(...xs), 'columns should occupy distinct x positions');
 });
+
+
+test('vertical-rl: short text does not allocate phantom empty columns', () => {
+  const layout = createTextLayout(
+    { text: '山', writingMode: 'vertical-rl', fontSize: 22,
+      lineHeight: 1.5, letterSpacing: 0, columns: 12, columnGap: 10,
+      wrapWidth: 1000 },
+    fakeMeasurer(22),
+  );
+  const items = verticalItems(layout.items);
+  assert.equal(items.length, 1);
+  assert.equal(items[0].text, '山');
+  assert.equal(layout.width, 22, 'unused columns must not expand the visual width');
+});

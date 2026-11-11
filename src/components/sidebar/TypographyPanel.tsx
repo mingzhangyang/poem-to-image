@@ -20,7 +20,7 @@ export function TypographyPanel({ language, t, expanded, onToggle, typography }:
     .split(',')[0]
     ?.replaceAll("'", '')
     .trim();
-  const summary = `${fontName} · ${typography.fontSize}px · ${typography.writingMode === 'vertical-rl' ? t('vertical') : t('horizontal')}`;
+  const summary = `${fontName} · ${t('baseFontSize')} ${typography.fontSize}px · ${typography.writingMode === 'vertical-rl' ? t('vertical') : t('horizontal')}`;
   const hasAdvancedLayoutAdjustments = (
     typography.padding !== 64 ||
     typography.lineHeight !== 1.8 ||
@@ -73,10 +73,10 @@ export function TypographyPanel({ language, t, expanded, onToggle, typography }:
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs text-(--app-accent-500) mb-1">{t('fontSize')} ({typography.fontSize}px)</label>
+            <label className="block text-xs text-(--app-accent-500) mb-1">{t('baseFontSize')} ({typography.fontSize}px)</label>
             <input
               type="range"
-              aria-label={t('fontSize')}
+              aria-label={t('baseFontSize')}
               aria-valuetext={`${typography.fontSize}px`}
               min="12"
               max="120"
@@ -99,6 +99,10 @@ export function TypographyPanel({ language, t, expanded, onToggle, typography }:
             </div>
           </div>
         </div>
+
+        <p className="text-xs leading-5 text-(--app-accent-500)">
+          {t('baseFontSizeHint')}
+        </p>
 
         <div className="flex gap-2 pt-2 border-t border-[rgba(34,48,52,0.06)]">
           <div className="app-segment flex-1 p-1 rounded-lg flex">

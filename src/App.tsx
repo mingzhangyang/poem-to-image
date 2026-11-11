@@ -2,7 +2,7 @@ import { Suspense, lazy, useCallback, useEffect, useRef, useState, type ChangeEv
 import { useAppAuth } from './context/auth';
 import { useToast } from './components/ToastProvider';
 import { getPlainPoemText, isSamePoemContent } from './poemContent';
-import { DEFAULT_POEM_STYLE } from './poemStyle';
+import { DEFAULT_POEM_STYLE, normalizePoemLayerStyle } from './poemStyle';
 import { type Language } from './translations';
 import { CanvasPreview } from './components/CanvasPreview';
 import { Sidebar } from './components/Sidebar';
@@ -81,7 +81,7 @@ function EditorApp({ initialState, initialRevision, promoteInitial }: EditorAppP
   });
 
   const [poem, setPoem] = useState(() => initialState?.poem ?? DEFAULT_POEMS[initialLanguageRef.current]);
-  const [poemStyle, setPoemStyle] = useState(() => initialState?.poemStyle ?? { ...DEFAULT_POEM_STYLE });
+  const [poemStyle, setPoemStyle] = useState(() => normalizePoemLayerStyle(initialState?.poemStyle));
   const poemAutofill = usePoemAutofill({ poem, language });
 
   const [canvasWidth, setCanvasWidthState] = useState(() => normalizeCanvasSize(initialState?.canvasWidth, 1080));
