@@ -36,6 +36,11 @@ jobs:
 
   browser-smoke:
     runs-on: ubuntu-latest
+    # Chromium and its Linux dependencies are bundled to avoid apt mirror/DNS failures.
+    # Keep this version in sync with the package-lock.json Playwright version.
+    container:
+      image: mcr.microsoft.com/playwright:v1.61.1-noble
+      options: --user 1001
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -46,5 +51,4 @@ jobs:
           cache: npm
 
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e

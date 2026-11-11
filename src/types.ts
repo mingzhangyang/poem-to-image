@@ -325,7 +325,7 @@ export interface PoemLayerStyle {
   authorLetterSpacing: number;
   authorBodyGap: number;
   authorAlign: TextAlign;
-  /** Auto places the author before the body in horizontal text and after it in vertical text. */
+  /** Auto: horizontal before-body; vertical beside the title when present, else after-body. */
   authorPlacement: 'auto' | Exclude<PoemSectionPlacement, 'after-author'>;
   sourceScale: number;
   sourceOpacity: number;

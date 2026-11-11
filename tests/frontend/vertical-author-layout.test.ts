@@ -11,9 +11,14 @@ const poem = {
   sourceNote: '唐诗',
 };
 
-function layoutFor(writingMode: WritingMode, overrides: Partial<PoemLayerStyle> = {}, body = poem.body) {
+function layoutFor(
+  writingMode: WritingMode,
+  overrides: Partial<PoemLayerStyle> = {},
+  body = poem.body,
+  poemOverrides: Partial<typeof poem> = {},
+) {
   return createStructuredPoemLayout({
-    poem: { ...poem, body },
+    poem: { ...poem, body, ...poemOverrides },
     poemStyle: { ...DEFAULT_POEM_STYLE, ...overrides },
     placeholder: '', writingMode, fontFamily: 'serif', fontSize: 32,
     columns: writingMode === 'vertical-rl' ? 2 : 1,
@@ -36,26 +41,53 @@ function section(layout: ReturnType<typeof layoutFor>, key: 'title' | 'body' | '
   return match;
 }
 
-test('the automatic placement keeps horizontal reading order but moves vertical attribution left', () => {
+test('auto vertical groups title and author before body while horizontal order stays unchanged', () => {
   assert.equal(DEFAULT_POEM_STYLE.authorPlacement, 'auto');
   assert.equal(resolveAuthorPlacement('auto', 'horizontal-tb'), 'before-body');
   assert.equal(resolveAuthorPlacement('auto', 'vertical-rl'), 'after-body');
   const horizontal = layoutFor('horizontal-tb');
   assert.deepEqual(horizontal.sections.map(s => s.key), ['title', 'author', 'body', 'sourceNote']);
   assert.ok(section(horizontal, 'author').y < section(horizontal, 'body').y);
-  const vertical = layoutFor('vertical-rl');
-  assert.deepEqual(vertical.sections.map(s => s.key), ['title', 'body', 'author', 'sourceNote']);
-  assert.ok(section(vertical, 'title').x > section(vertical, 'body').x);
-  assert.ok(section(vertical, 'body').x > section(vertical, 'author').x);
-});
 
-test('vertical author lands at the lower body edge without clipping or changing other layers', () => {
   const vertical = layoutFor('vertical-rl');
-  const body = section(vertical, 'body');
+  assert.deepEqual(vertical.sections.map(s => s.key), ['title', 'author', 'body', 'sourceNote']);
+  const title = section(vertical, 'title');
   const author = section(vertical, 'author');
-  assert.ok(author.y > body.y, 'the attribution should not start alongside the first poem glyph');
-  assert.ok(Math.abs(author.y + author.layout.height - (body.y + body.layout.height)) <= 1,
-    'author signature should finish near the bottom of the main poem');
+  const body = section(vertical, 'body');
+  assert.ok(title.x > author.x && author.x > body.x);
+  const titleAuthorGap = title.x - (author.x + author.layout.width);
+  const authorBodyGap = author.x - (body.x + body.layout.width);
+  assert.ok(titleAuthorGap >= 0 && titleAuthorGap < authorBodyGap,
+    'the attribution should sit closer to the title than to the poem body');
+});
+function visibleGlyphCenter(section: ReturnType<typeof layoutFor>['sections'][number]) {
+  let top = Number.POSITIVE_INFINITY;
+  let bottom = Number.NEGATIVE_INFINITY;
+  for (const item of section.layout.items) {
+    if (item.kind !== 'vertical-segment' || !item.text.trim()) continue;
+    top = Math.min(top, item.y + item.inkTopY);
+    bottom = Math.max(bottom, item.y + item.inkBottomY);
+  }
+  return section.y + (Number.isFinite(top) ? (top + bottom) / 2 : section.layout.height / 2);
+}
+
+test('vertical auto author is visually centered on the title and remains inside layout', () => {
+  const vertical = layoutFor('vertical-rl', {}, '床前明月光\n疑是地上霜\n举头望明月\n低头思故乡', {
+    title: '静夜思', author: '唐·李白', sourceNote: '',
+  });
+  const title = section(vertical, 'title');
+  const author = section(vertical, 'author');
+  const body = section(vertical, 'body');
+  const columns = new Map<number, string>();
+  for (const item of body.layout.items) {
+    if (item.kind !== 'vertical-segment') continue;
+    columns.set(item.x, (columns.get(item.x) ?? '') + item.text);
+  }
+  assert.deepEqual([...columns.entries()].sort(([left], [right]) => right - left).map(([, text]) => text),
+    ['床前明月光', '疑是地上霜', '举头望明月', '低头思故乡'],
+    'newlines must yield four separate right-to-left columns');
+  assert.ok(Math.abs(visibleGlyphCenter(title) - visibleGlyphCenter(author)) <= 1,
+    'title and author should share the same painted-glyph center');
   for (const item of vertical.sections) {
     assert.ok(item.x >= 0);
     assert.ok(item.y >= 0);
@@ -63,29 +95,56 @@ test('vertical author lands at the lower body edge without clipping or changing 
     assert.ok(item.y + item.layout.height <= vertical.height + 1);
   }
 });
-
-test('an explicit earlier column remains on the right; automatic/explicit later columns remain left', () => {
+test('manual before/after placements preserve reading order and lower-body alignment', () => {
   const before = layoutFor('vertical-rl', { authorPlacement: 'before-body' });
   const after = layoutFor('vertical-rl', { authorPlacement: 'after-body' });
+  const automatic = layoutFor('vertical-rl');
   assert.deepEqual(before.sections.map(s => s.key), ['title', 'author', 'body', 'sourceNote']);
+  assert.deepEqual(after.sections.map(s => s.key), ['title', 'body', 'author', 'sourceNote']);
   assert.ok(section(before, 'author').x > section(before, 'body').x);
   assert.ok(section(after, 'author').x < section(after, 'body').x);
+  assert.ok(section(automatic, 'author').x > section(automatic, 'body').x);
   assert.ok(section(before, 'author').y > section(before, 'body').y,
-    'legacy explicit before-body positioning still benefits from lower visual alignment');
-  const defaultLayout = layoutFor('vertical-rl');
-  assert.equal(section(after, 'author').x, section(defaultLayout, 'author').x);
+    'explicit before-body still aligns lower against the poem body');
+  assert.ok(section(after, 'author').y > section(after, 'body').y,
+    'explicit after-body still aligns lower against the poem body');
+});
+test('short body and long attribution keep title centering without clipping', () => {
+  const baseline = layoutFor('vertical-rl', {}, '山', {
+    title: '秋', author: '唐代诗人李太白', sourceNote: '',
+  });
+  const author = section(baseline, 'author');
+  const title = section(baseline, 'title');
+  const body = section(baseline, 'body');
+  assert.ok(author.layout.height > title.layout.height);
+  assert.ok(author.layout.height > body.layout.height);
+  assert.ok(Math.abs(visibleGlyphCenter(title) - visibleGlyphCenter(author)) <= 1,
+    'long signatures must not lose visual centering after shifting the scene');
+  for (const item of baseline.sections) {
+    assert.ok(item.y >= 0 && item.y + item.layout.height <= baseline.height + 1);
+  }
+  const moreText = layoutFor('vertical-rl', {}, '山川明月松间照', {
+    title: '秋', author: '唐代诗人李太白', sourceNote: '',
+  });
+  assert.ok(Math.abs(visibleGlyphCenter(section(moreText, 'title')) - visibleGlyphCenter(section(moreText, 'author'))) <= 1);
+});
+test('title-less auto attribution retains its left-side body alignment', () => {
+  const vertical = layoutFor('vertical-rl', {}, poem.body, { title: '', sourceNote: '' });
+  assert.deepEqual(vertical.sections.map(s => s.key), ['body', 'author']);
+  assert.ok(section(vertical, 'author').x < section(vertical, 'body').x);
 });
 
-test('short body and long author safely expand the vertical layout', () => {
-  const baseline = layoutFor('vertical-rl', {}, '山');
-  const author = section(baseline, 'author');
-  const body = section(baseline, 'body');
-  assert.ok(author.layout.height > body.layout.height, 'signature is taller than one body glyph');
-  assert.ok(author.y >= 0, 'short poems do not put the signature above the layout');
-  assert.ok(author.y + author.layout.height <= baseline.height + 1);
-  const moreText = layoutFor('vertical-rl', {}, '山川明月松间照');
-  assert.ok(section(moreText, 'author').y > section(baseline, 'author').y,
-    'author follows the end of the body when body gains lines');
+test('source set after author follows the author even when auto groups it beside title', () => {
+  const vertical = layoutFor('vertical-rl', { sourcePlacement: 'after-author' });
+  assert.deepEqual(vertical.sections.map(s => s.key), ['title', 'author', 'sourceNote', 'body']);
+  assert.ok(section(vertical, 'author').x > section(vertical, 'sourceNote').x);
+});
+
+test('auto attribution follows title moved after body while manual title placement stays intact', () => {
+  const vertical = layoutFor('vertical-rl', { titlePlacement: 'after-body' });
+  assert.deepEqual(vertical.sections.map(s => s.key), ['body', 'title', 'author', 'sourceNote']);
+  assert.ok(section(vertical, 'title').x > section(vertical, 'author').x);
+  assert.ok(Math.abs(visibleGlyphCenter(section(vertical, 'title')) - visibleGlyphCenter(section(vertical, 'author'))) <= 1);
 });
 
 test('no author omits the attribution without changing poem body placement', () => {
