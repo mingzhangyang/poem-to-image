@@ -118,12 +118,30 @@ function createSectionSpecs(
   } : null;
 
   const orderedSections: BaseSectionSpec[] = [];
+  // In automatic vertical layouts, the poet attribution belongs with the
+  // title: title → author → body from right to left. Explicit before/after
+  // choices keep their established placement, and no-title poems keep the
+  // old after-body fallback.
+  const autoAuthorBesideTitle = writingMode === 'vertical-rl'
+    && poemStyle.authorPlacement === 'auto'
+    && titleSection !== null
+    && authorSection !== null;
+  const appendTitle = () => {
+    if (!titleSection) return;
+    orderedSections.push(titleSection);
+    if (autoAuthorBesideTitle && authorSection) {
+      orderedSections.push(authorSection);
+      if (sourceSection && poemStyle.sourcePlacement === 'after-author') {
+        orderedSections.push(sourceSection);
+      }
+    }
+  };
 
   if (titleSection && poemStyle.titlePlacement === 'before-body') {
-    orderedSections.push(titleSection);
+    appendTitle();
   }
 
-  if (authorSection && authorPlacement === 'before-body') {
+  if (authorSection && !autoAuthorBesideTitle && authorPlacement === 'before-body') {
     orderedSections.push(authorSection);
     if (sourceSection && poemStyle.sourcePlacement === 'after-author') {
       orderedSections.push(sourceSection);
@@ -137,10 +155,10 @@ function createSectionSpecs(
   orderedSections.push(bodySection);
 
   if (titleSection && poemStyle.titlePlacement === 'after-body') {
-    orderedSections.push(titleSection);
+    appendTitle();
   }
 
-  if (authorSection && authorPlacement === 'after-body') {
+  if (authorSection && !autoAuthorBesideTitle && authorPlacement === 'after-body') {
     orderedSections.push(authorSection);
     if (sourceSection && poemStyle.sourcePlacement === 'after-author') {
       orderedSections.push(sourceSection);
@@ -329,8 +347,9 @@ export function createStructuredPoemLayout({
     const width = adjustedSections.reduce((sum, section) => sum + section.layout.width, 0) + totalGap;
 
     // Align title/body/source by their first visible glyph, taking font-specific
-    // internal top padding into account. An author is a signature, not another
-    // main-text column: its last glyph should sit near the body's lower edge.
+    // internal top padding into account. An automatic attribution next to a
+    // title is centered on that title; manual placement retains lower
+    // alignment with the body.
     const topPaddings = adjustedSections.map((s) => s.fontSize * ((s.lineHeight - 1) / 2 + 0.1));
     const maxTopPadding = Math.max(0, ...topPaddings);
     const bodyIndex = adjustedSections.findIndex((section) => section.key === 'body');
@@ -346,6 +365,25 @@ export function createStructuredPoemLayout({
     );
     const bodyLastGlyphY = Math.round(maxTopPadding - topPaddings[bodyIndex])
       + lastGlyphCenter(adjustedSections[bodyIndex].layout);
+    // Use glyph ink bounds, not the font's logical line box, to center
+    // columns with different font sizes and line heights.
+    const visibleGlyphCenter = (layout: TextLayoutResult) => {
+      let top = Number.POSITIVE_INFINITY;
+      let bottom = Number.NEGATIVE_INFINITY;
+      for (const item of layout.items) {
+        if (item.kind !== 'vertical-segment' || !item.text.trim()) continue;
+        top = Math.min(top, item.y - item.height / 2);
+        bottom = Math.max(bottom, item.y + item.height / 2);
+      }
+      return Number.isFinite(top) ? (top + bottom) / 2 : layout.height / 2;
+    };
+    const titleIndex = adjustedSections.findIndex((section) => section.key === 'title');
+    const centerAuthorOnTitle = poemStyle.authorPlacement === 'auto'
+      && titleIndex !== -1
+      && adjustedSections[titleIndex + 1]?.key === 'author';
+    const titleGlyphCenterY = titleIndex < 0 ? 0
+      : Math.round(maxTopPadding - topPaddings[titleIndex])
+        + visibleGlyphCenter(adjustedSections[titleIndex].layout);
 
     let currentX = width;
     const positionedSections = adjustedSections.map((section, index) => {
@@ -354,24 +392,32 @@ export function createStructuredPoemLayout({
       const positionedSection = {
         ...section,
         x: currentX,
-        // Keep explicit before/after placement, and line up the signature's
-        // final painted glyph with the final body glyph. Clamp for short poems
-        // so a longer attribution never starts above the layout.
+        // Pair the automatic author with the title, while keeping the old
+        // lower-body alignment for explicit positions and title-less poems.
         y: section.key === 'author'
-          ? Math.max(topAlignedY, Math.round(bodyLastGlyphY - lastGlyphCenter(section.layout)))
+          ? centerAuthorOnTitle
+            ? Math.round(titleGlyphCenterY - visibleGlyphCenter(section.layout))
+            : Math.max(topAlignedY, Math.round(bodyLastGlyphY - lastGlyphCenter(section.layout)))
           : topAlignedY,
       };
       currentX -= getSectionGap(fontSize, writingMode, section.key, adjustedSections[index + 1]);
       return positionedSection;
     });
 
-    const height = Math.max(...positionedSections.map((s) => s.y + s.layout.height));
+    // A long author beside a short title may extend above the nominal
+    // origin. Shift the entire scene, rather than clamping only the author
+    // and breaking the requested center alignment.
+    const minY = Math.min(0, ...positionedSections.map((s) => s.y));
+    const normalizedSections = minY < 0
+      ? positionedSections.map((s) => ({ ...s, y: s.y - minY }))
+      : positionedSections;
+    const height = Math.max(...normalizedSections.map((s) => s.y + s.layout.height));
 
     return {
       writingMode,
       width: Math.max(1, width),
       height: Math.max(1, height),
-      sections: positionedSections,
+      sections: normalizedSections,
     };
   }
 

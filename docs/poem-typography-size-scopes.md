@@ -56,19 +56,23 @@ None should manually dispatch GitHub Actions.
 
 ## Vertical author placement
 
-New artwork uses **Automatic** author placement: horizontal writing keeps the
-author between the title and body; vertical right-to-left writing puts the
-author as an attribution on the **left** of the poem body. The author's final
-glyph aligns near the lower edge of the body instead of competing with the
-title at the top. This is computed inside `createStructuredPoemLayout`, so
-on-screen SVG/HTML preview and Canvas exports use the same geometry.
+New artwork uses **Automatic** author placement. Horizontal writing keeps the
+author between the title and body. Vertical right-to-left writing with a title
+now groups **title → author → body** (right to left), putting the smaller
+attribution in the column beside the title, closer to the title than to the
+body. Its painted-glyph vertical center aligns with the title's painted-glyph
+center, rather than the end of the body. The screenshot reference is
+**静夜思 / 唐·李白**. A title-less vertical poem retains its earlier
+after-body attribution position.
 
 The editor still lets users choose explicit **Before body** or **After body**
-placement. Those explicit settings—including old saved drafts and custom
-templates—retain their reading order. Both vertical author placements receive
-the improved lower alignment. On very short poems, author layout expands
-normally rather than clipping or producing a negative coordinate.
+placement. Both explicit choices keep their previous reading order and lower
+alignment to the body, as do legacy saved documents with explicit settings.
+Source notes continue to obey their own placement control. Very long authors
+and short titles shift the entire layout down if needed to maintain center
+alignment without clipping.
 
-Local regression: compare horizontal/vertical layouts, multi-column poems,
-long attribution / short body, language switching, Undo/Redo, template
-application, and mobile preview/export at multiple image pixel scales.
+Browser preview and Canvas export share the same structured layout function.
+Local regression: horizontal/vertical, title-less poems, long author / short
+title, explicit positions, after-author source notes, mobile preview/export,
+and the app's original 2×/3× output scales. Do not manually start CI.

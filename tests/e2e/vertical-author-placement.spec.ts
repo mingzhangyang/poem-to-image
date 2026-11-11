@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('real-browser vertical author follows body and aligns near its lower edge', async ({ page }) => {
+test('real-browser vertical author appears beside title and shares its visual center', async ({ page }) => {
   await page.route('**/api/billing/packages', async (route) => {
     await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ packages: [] }) });
   });
@@ -26,18 +26,30 @@ test('real-browser vertical author follows body and aligns near its lower edge',
       placeholder: '', writingMode: 'vertical-rl',
       fontFamily: 'serif', fontSize: 32, columns: 2, columnGap: 12, wrapWidth: 620,
     });
+    const title = scene.sections.find((s) => s.key === 'title')!;
     const body = scene.sections.find((s) => s.key === 'body')!;
     const author = scene.sections.find((s) => s.key === 'author')!;
+    const visualCenter = (section: typeof title) => {
+      let top = Number.POSITIVE_INFINITY;
+      let bottom = Number.NEGATIVE_INFINITY;
+      for (const item of section.layout.items) {
+        if (item.kind !== 'vertical-segment' || !item.text.trim()) continue;
+        top = Math.min(top, item.y - item.height / 2);
+        bottom = Math.max(bottom, item.y + item.height / 2);
+      }
+      return section.y + (top + bottom) / 2;
+    };
     return {
       order: scene.sections.map((s) => s.key),
-      bodyX: body.x, authorX: author.x,
-      bodyY: body.y, authorY: author.y,
-      bodyGlyphEnd: body.y + Math.max(...body.layout.items.filter(i => i.kind === 'vertical-segment' && i.text.trim()).map(i => i.y)),
-      authorGlyphEnd: author.y + Math.max(...author.layout.items.filter(i => i.kind === 'vertical-segment' && i.text.trim()).map(i => i.y)),
+      titleX: title.x, authorX: author.x, bodyX: body.x,
+      titleAuthorGap: title.x - (author.x + author.layout.width),
+      authorBodyGap: author.x - (body.x + body.layout.width),
+      titleCenter: visualCenter(title), authorCenter: visualCenter(author),
     };
   });
-  expect(result.order).toEqual(['title', 'body', 'author']);
-  expect(result.authorX).toBeLessThan(result.bodyX);
-  expect(result.authorY).toBeGreaterThan(result.bodyY);
-  expect(Math.abs(result.bodyGlyphEnd - result.authorGlyphEnd)).toBeLessThanOrEqual(1);
+  expect(result.order).toEqual(['title', 'author', 'body']);
+  expect(result.titleX).toBeGreaterThan(result.authorX);
+  expect(result.authorX).toBeGreaterThan(result.bodyX);
+  expect(result.titleAuthorGap).toBeLessThan(result.authorBodyGap);
+  expect(Math.abs(result.titleCenter - result.authorCenter)).toBeLessThanOrEqual(1);
 });
