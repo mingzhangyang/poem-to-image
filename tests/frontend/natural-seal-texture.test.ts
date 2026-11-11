@@ -20,14 +20,18 @@ const stamp: StampConfig = {
   textureStyle: 'natural', textureSeed: 0x12abd3e,
 };
 
+function makeStampVariant(changes: Partial<StampConfig>): StampConfig {
+  return { ...stamp, ...changes };
+}
+
 test('texture identity is independent of ink color, size, font, position and opacity', () => {
   const original = getNaturalSealSeed(stamp);
   assert.equal(original, 0x12abd3e);
-  assert.equal(getNaturalSealSeed({
-    ...stamp, text: '𠮷𠮷', size: 300, weathering: 100,
+  assert.equal(getNaturalSealSeed(makeStampVariant({
+    text: '𠮷𠮷', size: 300, weathering: 100,
     fontFamily: 'sans-serif', inkColor: '#abcdef',
     positionX: 5, opacity: 0.2, rotation: 33,
-  }), original);
+  })), original);
   assert.equal(getNaturalSealSeed({ text: '印記' }), getNaturalSealSeed({ text: '印記', textureSeed: undefined }));
   assert.notEqual(getNaturalSealSeed({ text: '印記' }), getNaturalSealSeed({ text: '山水' }));
   assert.equal(nextNaturalSealSeed(original), nextNaturalSealSeed(original));
@@ -124,5 +128,5 @@ test('bounded plan count keeps generation predictable for giant saved stamps', (
   );
   // No scale or pixel ratio is passed to the generator, and changing size
   // only changes how the same unit texture is painted.
-  assert.deepEqual(plan, createNaturalSealTexturePlan(getNaturalSealSeed({ ...stamp, size: 10000 })));
+  assert.deepEqual(plan, createNaturalSealTexturePlan(getNaturalSealSeed(makeStampVariant({ size: 10000 }))));
 });
