@@ -54,8 +54,11 @@ test('vertical author lands at the lower body edge without clipping or changing 
   const body = section(vertical, 'body');
   const author = section(vertical, 'author');
   assert.ok(author.y > body.y, 'the attribution should not start alongside the first poem glyph');
-  assert.ok(Math.abs(author.y + author.layout.height - (body.y + body.layout.height)) <= 1,
-    'author signature should finish near the bottom of the main poem');
+  const lastGlyphY = (s: typeof author) => Math.max(...s.layout.items
+    .filter(item => item.kind === 'vertical-segment' && item.text.trim())
+    .map(item => item.y));
+  assert.ok(Math.abs(author.y + lastGlyphY(author) - (body.y + lastGlyphY(body))) <= 1,
+    'the final visible author glyph should align with the final visible body glyph');
   for (const item of vertical.sections) {
     assert.ok(item.x >= 0);
     assert.ok(item.y >= 0);
