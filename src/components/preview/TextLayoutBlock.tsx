@@ -35,42 +35,47 @@ export const TextLayoutBlock = forwardRef<HTMLDivElement, TextLayoutBlockProps>(
         height: `${layout.height}px`,
       }}
     >
-      {layout.items.map((item, index) => {
-        if (item.kind === 'horizontal-line') {
-          return (
-            <span
-              key={`text-line-${index}`}
-              className="absolute left-0 top-0"
+      {layout.writingMode === 'vertical-rl' ? (
+        <svg
+          data-vertical-text-layout="true"
+          width={layout.width}
+          height={layout.height}
+          className="absolute left-0 top-0 overflow-visible"
+          style={{ overflow: 'visible' }}
+          role="img"
+          aria-label={layout.items.map((item) => item.text).join('')}
+        >
+          {layout.items.map((item, index) => item.kind === 'vertical-segment' ? (
+            <text
+              key={`vertical-glyph-${index}`}
+              data-original-char={item.text}
+              x={item.startX}
+              y={item.baselineY}
+              transform={`translate(${item.x} ${item.y}) rotate(${item.rotation})`}
               style={{
-                ...sharedTextStyle,
-                left: `${item.x}px`,
-                top: `${item.y}px`,
+                fontFamily,
+                fontSize: `${fontSize}px`,
+                fill: color,
+                letterSpacing: `${letterSpacing}px`,
+                textShadow,
+                whiteSpace: 'pre',
               }}
-            >
-              {item.text}
-            </span>
-          );
-        }
-
-        return (
-          <span
-            key={`text-segment-${index}`}
-            className="absolute left-0 top-0"
-            style={{
-              ...sharedTextStyle,
-              left: `${item.x}px`,
-              top: `${item.y}px`,
-              transform: item.sideways
-                ? 'translate(-50%, -50%) rotate(90deg)'
-                : 'translate(-50%, -50%)',
-              transformOrigin: 'center',
-              lineHeight: 1,
-            }}
-          >
-            {item.text}
-          </span>
-        );
-      })}
+            >{item.renderText}</text>
+          ) : null)}
+        </svg>
+      ) : layout.items.map((item, index) => item.kind === 'horizontal-line' ? (
+        <span
+          key={`text-line-${index}`}
+          className="absolute left-0 top-0"
+          style={{
+            ...sharedTextStyle,
+            left: `${item.x}px`,
+            top: `${item.y}px`,
+          }}
+        >
+          {item.text}
+        </span>
+      ) : null)}
     </div>
   );
 });

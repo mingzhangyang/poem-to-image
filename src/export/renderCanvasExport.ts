@@ -165,19 +165,15 @@ function drawTextLayout(
       drawHorizontalLine(ctx, item.text, offsetX + item.x, offsetY + item.y, letterSpacing);
       return;
     }
-    if (item.sideways) {
-      ctx.save();
-      ctx.translate(offsetX + item.x, offsetY + item.y);
-      ctx.rotate(Math.PI / 2);
-      ctx.textAlign = 'start';
-      ctx.textBaseline = 'alphabetic';
-      drawHorizontalLine(ctx, item.text, item.startX, item.baselineY, letterSpacing);
-      ctx.restore();
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      return;
-    }
-    ctx.fillText(item.text, offsetX + item.x, offsetY + item.y);
+    // Preview SVG and Canvas consume the same per-glyph ink origin and
+    // rotation. The logical cell is never compressed into its predecessor.
+    ctx.save();
+    ctx.translate(offsetX + item.x, offsetY + item.y);
+    if (item.rotation) ctx.rotate((item.rotation * Math.PI) / 180);
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    drawHorizontalLine(ctx, item.renderText, item.startX, item.baselineY, letterSpacing);
+    ctx.restore();
   });
 }
 

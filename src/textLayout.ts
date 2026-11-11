@@ -1,4 +1,5 @@
 import type { TextAlign, WritingMode } from './types';
+import { getVerticalGlyphPresentation, isVerticalPausePunctuation, splitVerticalColumns } from './verticalPunctuation';
 
 export interface MeasuredText {
   width: number;
@@ -10,6 +11,8 @@ export interface MeasuredText {
 
 export interface TextLayoutMeasurer {
   measureText: (text: string) => MeasuredText;
+  /** Best-effort font coverage check; a false result triggers rotated-source fallback. */
+  supportsGlyph?: (character: string) => boolean;
 }
 
 export interface TextLayoutInput {
@@ -36,6 +39,9 @@ export interface VerticalTextLayoutItem {
   kind: 'vertical-segment';
   text: string;
   sideways: boolean;
+  /** Actual glyph to paint; the source text remains unchanged. */
+  renderText: string;
+  rotation: 0 | 90;
   x: number;
   y: number;
   width: number;
@@ -88,26 +94,25 @@ export function createCanvasTextMeasurer(
         actualBoundingBoxAscent: fontSize,
         actualBoundingBoxDescent: 0,
       }),
+      supportsGlyph: () => false,
     };
   }
 
-  canvasContext.font = font;
   const measureCache = new Map<string, MeasuredText>();
-
-  return {
+  const measurer: TextLayoutMeasurer = {
     measureText: (text: string) => {
       const key = text || ' ';
       const cached = measureCache.get(key);
-      if (cached) {
-        return cached;
-      }
+      if (cached) return cached;
 
-      // Canvas state can change when a shared context is passed from drawing code.
-      if (canvasContext.font !== font) {
-        canvasContext.font = font;
-      }
-
+      // TextMetrics ink bounds depend on textAlign/textBaseline. Measure in
+      // one consistent coordinate system, without changing the drawing context.
+      canvasContext.save();
+      canvasContext.font = font;
+      canvasContext.textAlign = 'left';
+      canvasContext.textBaseline = 'alphabetic';
       const metrics = canvasContext.measureText(key);
+      canvasContext.restore();
       const measured: MeasuredText = {
         width: metrics.width,
         actualBoundingBoxLeft: metrics.actualBoundingBoxLeft ?? 0,
@@ -115,16 +120,32 @@ export function createCanvasTextMeasurer(
         actualBoundingBoxAscent: metrics.actualBoundingBoxAscent ?? fontSize,
         actualBoundingBoxDescent: metrics.actualBoundingBoxDescent ?? 0,
       };
-
       measureCache.set(key, measured);
       if (measureCache.size > 2048) {
         measureCache.clear();
         measureCache.set(key, measured);
       }
-
       return measured;
     },
+    supportsGlyph: (character: string) => {
+      const glyph = measurer.measureText(character);
+      if (glyph.width <= 0 || glyph.actualBoundingBoxAscent + glyph.actualBoundingBoxDescent <= 0) return false;
+      // Canvas provides no font glyph-coverage API. Treat a missing-character
+      // box as unsupported when its ink metrics match the noncharacter boxes.
+      // False negatives are safe: rotation of the original remains legible.
+      const absentA = measurer.measureText('\u{10FFFE}');
+      const absentB = measurer.measureText('\u{10FFFF}');
+      const same = (sample: MeasuredText) => (
+        Math.abs(glyph.width - sample.width) < 0.01
+        && Math.abs(glyph.actualBoundingBoxLeft - sample.actualBoundingBoxLeft) < 0.01
+        && Math.abs(glyph.actualBoundingBoxRight - sample.actualBoundingBoxRight) < 0.01
+        && Math.abs(glyph.actualBoundingBoxAscent - sample.actualBoundingBoxAscent) < 0.01
+        && Math.abs(glyph.actualBoundingBoxDescent - sample.actualBoundingBoxDescent) < 0.01
+      );
+      return !(same(absentA) && same(absentB));
+    },
   };
+  return measurer;
 }
 
 export function measureTextWidth(measurer: TextLayoutMeasurer, text: string, letterSpacing: number) {
@@ -239,6 +260,36 @@ function getRotatedRunDrawOffset(measurer: TextLayoutMeasurer, text: string, let
   };
 }
 
+/**
+ * Ink positioning is independent of logical cell advance. Mainland-style
+ * Chinese stop punctuation sits in the upper-right part of its own full cell,
+ * bounded by measured glyph ink rather than fixed per-font pixel offsets.
+ */
+function getUprightGlyphDrawOffset(
+  measurer: TextLayoutMeasurer,
+  renderText: string,
+  fontSize: number,
+  advance: number,
+  upperRight: boolean,
+) {
+  const metrics = measurer.measureText(renderText);
+  const left = Math.max(0, metrics.actualBoundingBoxLeft);
+  const right = Math.max(0, metrics.actualBoundingBoxRight);
+  const ascent = Math.max(0, metrics.actualBoundingBoxAscent);
+  const descent = Math.max(0, metrics.actualBoundingBoxDescent);
+  const inkWidth = left + right;
+  const inkHeight = ascent + descent;
+  const inset = fontSize * 0.08;
+  const centerX = upperRight ? Math.max(0, (fontSize - inkWidth) / 2 - inset) : 0;
+  const centerY = upperRight ? -Math.max(0, (advance - inkHeight) / 2 - inset) : 0;
+  return {
+    startX: centerX + (left - right) / 2,
+    baselineY: centerY + (ascent - descent) / 2,
+    width: inkWidth,
+    height: inkHeight,
+  };
+}
+
 function isBreakableWhitespace(character: string | undefined) {
   return character !== undefined && /\s/u.test(character) && !/[\u00a0\u2007\u202f]/u.test(character);
 }
@@ -322,16 +373,10 @@ function wrapHorizontalParagraph(measurer: TextLayoutMeasurer, paragraph: string
 
 function normalizeVerticalLines(text: string, columns: number) {
   const sourceLines = splitLines(text || ' ');
-
   if (Math.max(1, columns) === 1 || sourceLines.length > 1) {
     return sourceLines;
   }
-
-  const characters = Array.from(sourceLines[0] || ' ');
-  // Never reserve blank vertical columns for a short poem. Such phantom
-  // columns artificially push title, author and source away from the body.
-  const usedColumns = Math.min(characters.length, Math.max(1, columns));
-  return distributeEvenly(characters, usedColumns).map((group) => group.join(''));
+  return splitVerticalColumns(sourceLines[0] || ' ', columns);
 }
 
 function createHorizontalTextLayout(input: TextLayoutInput, measurer: TextLayoutMeasurer): TextLayoutResult {
@@ -408,16 +453,10 @@ function createVerticalTextLayout(input: TextLayoutInput, measurer: TextLayoutMe
         const advance = segment.sideways
           ? Math.max(input.fontSize, measureTextWidth(measurer, segment.text, input.letterSpacing))
           : input.fontSize * input.lineHeight;
-        const spacing = index === segments.length - 1 ? 0 : input.letterSpacing;
-        return total + advance + spacing;
+        return total + advance + (index === segments.length - 1 ? 0 : input.letterSpacing);
       }, 0);
-
-      return {
-        segments,
-        height: Math.max(input.fontSize, height),
-      };
+      return { segments, height: Math.max(input.fontSize, height) };
     });
-
     return {
       lineLayouts,
       width: Math.max(1, group.length) * input.fontSize + Math.max(0, group.length - 1) * columnGap,
@@ -425,13 +464,16 @@ function createVerticalTextLayout(input: TextLayoutInput, measurer: TextLayoutMe
     };
   });
 
-  const width = groupMeasurements.reduce((sum, measurement) => sum + measurement.width, 0) + Math.max(0, groupMeasurements.length - 1) * columnGap;
+  const width = groupMeasurements.reduce((sum, measurement) => sum + measurement.width, 0)
+    + Math.max(0, groupMeasurements.length - 1) * columnGap;
   const height = Math.max(input.fontSize, ...groupMeasurements.map((measurement) => measurement.height));
 
-  let currentGroupX = 0;
+  // Read order is right-to-left not just within a group but across groups.
+  let currentGroupRight = width;
   columnGroups.forEach((group, groupIndex) => {
     const measurement = groupMeasurements[groupIndex];
-    const lineOriginX = currentGroupX + measurement.width - input.fontSize / 2;
+    currentGroupRight -= measurement.width;
+    const lineOriginX = currentGroupRight + measurement.width - input.fontSize / 2;
 
     group.forEach((_, lineIndex) => {
       const lineLayout = measurement.lineLayouts[lineIndex];
@@ -443,27 +485,38 @@ function createVerticalTextLayout(input: TextLayoutInput, measurer: TextLayoutMe
           ? Math.max(input.fontSize, measureTextWidth(measurer, segment.text, input.letterSpacing))
           : input.fontSize * input.lineHeight;
         const centerY = cursorY + advance / 2;
-        const rotatedRunMetrics = segment.sideways
-          ? getRotatedRunDrawOffset(measurer, segment.text, input.letterSpacing)
-          : { startX: 0, baselineY: 0, width: input.fontSize, height: input.fontSize };
+        const candidate = segment.sideways
+          ? { renderText: segment.text, rotation: 90 as const }
+          : getVerticalGlyphPresentation(segment.text);
+        const supportsVariant = candidate.renderText === segment.text
+          || measurer.supportsGlyph?.(candidate.renderText) !== false;
+        const presentation = supportsVariant
+          ? candidate
+          : getVerticalGlyphPresentation(segment.text, false);
+        const metrics = presentation.rotation === 90
+          ? getRotatedRunDrawOffset(measurer, presentation.renderText, input.letterSpacing)
+          : getUprightGlyphDrawOffset(
+            measurer, presentation.renderText, input.fontSize, advance,
+            isVerticalPausePunctuation(segment.text),
+          );
 
         items.push({
           kind: 'vertical-segment',
           text: segment.text,
+          renderText: presentation.renderText,
+          rotation: presentation.rotation,
           sideways: segment.sideways,
           x: columnX,
           y: centerY,
-          width: rotatedRunMetrics.width,
-          height: rotatedRunMetrics.height,
-          startX: rotatedRunMetrics.startX,
-          baselineY: rotatedRunMetrics.baselineY,
+          width: metrics.width,
+          height: metrics.height,
+          startX: metrics.startX,
+          baselineY: metrics.baselineY,
         });
-
         cursorY += advance + (segmentIndex === lineLayout.segments.length - 1 ? 0 : input.letterSpacing);
       });
     });
-
-    currentGroupX += measurement.width + columnGap;
+    currentGroupRight -= columnGap;
   });
 
   return {
