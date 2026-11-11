@@ -20,7 +20,8 @@ import {
   type TemplateRequestOwner,
 } from '../../src/customTemplateApi';
 import type { UserCustomTemplate } from '../../src/types';
-import { DEFAULT_POEM_STYLE } from '../../src/poemStyle';
+import { DEFAULT_POEM_STYLE, resolveAuthorPlacement } from '../../src/poemStyle';
+import { executeEditorCommand } from '../../src/editorCommands';
 
 function fixture(id: string): UserCustomTemplate {
   return {
@@ -326,4 +327,28 @@ test('custom templates round-trip auto author placement and body scale while acc
   const invalidScale = fixture('bad-body-scale');
   (invalidScale.poemStyle as unknown as Record<string, unknown>).bodyScale = Number.POSITIVE_INFINITY;
   assert.throws(() => parseCloudTemplateList({ templates: [invalidScale] }), /INVALID_TEMPLATE_LIST/);
+});
+
+
+test('legacy custom templates preserve the historical author column on parse and apply', () => {
+  const withoutStyle = { ...fixture('no-style'), poemStyle: undefined };
+  const withoutPlacement = fixture('no-placement');
+  delete (withoutPlacement.poemStyle as Partial<typeof withoutPlacement.poemStyle>).authorPlacement;
+  const modern = fixture('new-auto');
+  modern.poemStyle.authorPlacement = 'auto';
+
+  const templates = parseCloudTemplateList({ templates: [
+    withoutStyle, withoutPlacement, modern,
+  ] });
+  const applied: string[] = [];
+  for (const template of templates) {
+    executeEditorCommand({ type: 'template', template }, {
+      setPoem: () => {},
+      setPoemStyle: (style) => applied.push(resolveAuthorPlacement(style.authorPlacement, 'vertical-rl')),
+      setCanvasWidth: () => {}, setCanvasHeight: () => {}, setPresetSize: () => {},
+      applyBackground: () => {}, applyTypography: () => {}, applyDecorations: () => {},
+    });
+  }
+  assert.deepEqual(applied, ['before-body', 'before-body', 'after-body']);
+  assert.deepEqual(templates.map(t => t.poemStyle.authorPlacement), ['before-body', 'before-body', 'auto']);
 });

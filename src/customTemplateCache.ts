@@ -192,6 +192,14 @@ export function parseTemplateList(input: unknown): UserCustomTemplate[] {
   }
   return input.map((template) => normalizeUserCustomTemplate({
     ...template,
+    // A pre-auto custom template may omit poemStyle entirely, or only omit
+    // authorPlacement. It historically placed the author before the body in
+    // vertical writing; decoding it must not silently opt into today's Auto.
+    // Newly authored templates still use DEFAULT_POEM_STYLE ('auto').
+    poemStyle: {
+      ...(template.poemStyle ?? {}),
+      authorPlacement: template.poemStyle?.authorPlacement ?? 'before-body',
+    },
     decorations: { ...template.decorations, logos: template.decorations.logos ?? [] },
   }));
 }
