@@ -32,11 +32,12 @@ test('real-browser vertical author follows body and aligns near its lower edge',
       order: scene.sections.map((s) => s.key),
       bodyX: body.x, authorX: author.x,
       bodyY: body.y, authorY: author.y,
-      bodyEnd: body.y + body.layout.height, authorEnd: author.y + author.layout.height,
+      bodyGlyphEnd: body.y + Math.max(...body.layout.items.filter(i => i.kind === 'vertical-segment' && i.text.trim()).map(i => i.y)),
+      authorGlyphEnd: author.y + Math.max(...author.layout.items.filter(i => i.kind === 'vertical-segment' && i.text.trim()).map(i => i.y)),
     };
   });
   expect(result.order).toEqual(['title', 'body', 'author']);
   expect(result.authorX).toBeLessThan(result.bodyX);
   expect(result.authorY).toBeGreaterThan(result.bodyY);
-  expect(Math.abs(result.bodyEnd - result.authorEnd)).toBeLessThanOrEqual(1);
+  expect(Math.abs(result.bodyGlyphEnd - result.authorGlyphEnd)).toBeLessThanOrEqual(1);
 });
