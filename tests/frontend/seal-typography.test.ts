@@ -183,7 +183,32 @@ test('larger and bolder glyphs fit square and round seals safely', () => {
   assert.ok(enlarged.scale > original.scale);
   assert.ok(thicker.scale < enlarged.scale);
   const round = fitTraditionalStampGlyph(slot, bounds, { x: 6, y: 0, radius: 42 }, 1.1, 3);
-  const outer = (50 + 3) * round.scale / 2;
+  const outer = (50 * round.scale + 3) / 2;
   assert.ok(Math.hypot(6 + outer, outer) <= 42 + 1e-9);
   assert.equal(fitTraditionalStampGlyph(slot, bounds).scale, original.scale);
+});
+
+test('fixed logical stroke thickness fits outer ink in square and round seals at every glyph size', () => {
+  const slot = { width: 50, height: 50 };
+  const bounds = {
+    actualBoundingBoxLeft: 25, actualBoundingBoxRight: 25,
+    actualBoundingBoxAscent: 25, actualBoundingBoxDescent: 25,
+  };
+  for (const textScale of [0.7, 1, 1.1]) {
+    for (const strokeWidth of [0, 2, 4]) {
+      const square = fitTraditionalStampGlyph(slot, bounds, undefined, textScale, strokeWidth);
+      const outerSide = 50 * square.scale + strokeWidth;
+      assert.ok(square.scale > 0);
+      assert.ok(outerSide <= 50 * 0.88 * textScale + 1e-9,
+        'square glyph including unscaled stroke must fit the requested area');
+
+      const round = fitTraditionalStampGlyph(slot, bounds,
+        { x: 6, y: 0, radius: 42 }, textScale, strokeWidth);
+      const halfOuter = (50 * round.scale + strokeWidth) / 2;
+      assert.ok(Math.hypot(6 + halfOuter, halfOuter) <= 42 + 1e-9,
+        'circular clip must contain the post-transform stroke at every text size');
+    }
+  }
+  assert.equal(fitTraditionalStampGlyph({ width: 4, height: 4 }, bounds, undefined, 1, 10).scale, 0,
+    'a stroke thicker than the cell must never produce a negative glyph scale');
 });

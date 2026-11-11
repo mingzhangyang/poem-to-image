@@ -121,6 +121,69 @@ for (const edit of ['mode', 'font'] as const) {
   });
 }
 
+test('pre-upgrade built-in draft localizes its seal without gaining a new stroke', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'chromium-mobile', 'Desktop language settings flow');
+  await page.addInitScript(() => {
+    localStorage.setItem('poem-to-image.active-template', 'graceful-whitespace');
+  });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await expect(page.getByLabel('印章元素')).toBeVisible();
+
+  // First persist a real built-in document, then mimic a pre-upgrade saved
+  // draft whose optional seal stroke field did not exist.
+  await expect.poll(() => page.evaluate(async () => new Promise<number | null>((resolve, reject) => {
+    const open = indexedDB.open('inkpoem-editor-drafts', 1);
+    open.onerror = () => reject(open.error);
+    open.onsuccess = () => {
+      const db = open.result;
+      const tx = db.transaction('documents', 'readonly');
+      const request = tx.objectStore('documents').get('current');
+      request.onsuccess = () => resolve(request.result?.scene?.decorations?.stamp?.textStrokeWidthPct ?? null);
+      tx.oncomplete = () => db.close();
+      tx.onerror = () => reject(tx.error);
+    };
+  }))).toBe(2);
+
+  await page.evaluate(async () => {
+    const mirror = localStorage.getItem('inkpoem.editor-state.v1');
+    if (mirror) {
+      const scene = JSON.parse(mirror);
+      delete scene.decorations.stamp.textStrokeWidthPct;
+      localStorage.setItem('inkpoem.editor-state.v1', JSON.stringify(scene));
+    }
+    await new Promise<void>((resolve, reject) => {
+      const open = indexedDB.open('inkpoem-editor-drafts', 1);
+      open.onerror = () => reject(open.error);
+      open.onsuccess = () => {
+        const db = open.result;
+        const tx = db.transaction('documents', 'readwrite');
+        const store = tx.objectStore('documents');
+        const read = store.get('current');
+        read.onsuccess = () => {
+          const saved = read.result;
+          delete saved.scene.decorations.stamp.textStrokeWidthPct;
+          store.put(saved, 'current');
+        };
+        tx.oncomplete = () => { db.close(); resolve(); };
+        tx.onerror = () => { db.close(); reject(tx.error); };
+      };
+    });
+  });
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await expect.poll(() => page.evaluate(() => {
+    const scene = JSON.parse(localStorage.getItem('inkpoem.editor-state.v1') || 'null');
+    return [scene?.decorations?.stamp?.text, scene?.decorations?.stamp?.textStrokeWidthPct ?? null];
+  })).toEqual(['清韵', null]);
+
+  await page.getByRole('button', { name: '设置' }).click();
+  await page.getByRole('button', { name: '繁體中文', exact: true }).click();
+  await page.getByRole('button', { name: '設定' }).click();
+  await expect.poll(() => page.evaluate(() => {
+    const scene = JSON.parse(localStorage.getItem('inkpoem.editor-state.v1') || 'null');
+    return [scene?.decorations?.stamp?.text, scene?.decorations?.stamp?.textStrokeWidthPct ?? null];
+  })).toEqual(['清韻', null]);
+});
+
 test('glyph size and stroke sliders persist through editor reload', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name === 'chromium-mobile', 'Desktop settings flow');
   await page.goto('/', { waitUntil: 'domcontentloaded' });

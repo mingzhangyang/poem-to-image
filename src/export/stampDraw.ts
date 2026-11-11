@@ -163,7 +163,6 @@ function drawTraditionalStampBody(ctx: CanvasRenderingContext2D, stamp: StampCon
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   if (glyphStrokeWidth > 0) {
-    ctx.lineWidth = glyphStrokeWidth;
     ctx.lineJoin = 'round';
     ctx.strokeStyle = isWhiteCharacters ? '#000' : inkColor;
   }
@@ -181,10 +180,16 @@ function drawTraditionalStampBody(ctx: CanvasRenderingContext2D, stamp: StampCon
       getStampTextScale(stamp),
       glyphStrokeWidth,
     );
+    if (fit.scale <= 0) continue; // No drawable glyph fits inside the ink/clip budget.
     ctx.save();
     ctx.translate(slot.x, slot.y);
     ctx.scale(fit.scale, fit.scale);
-    if (glyphStrokeWidth > 0) ctx.strokeText(slot.character, fit.offsetX, fit.offsetY);
+    if (glyphStrokeWidth > 0) {
+      // Canvas scales lineWidth with its transform. Counteract glyph fitting
+      // so the stroke slider always means a percentage of the seal, not the glyph.
+      ctx.lineWidth = glyphStrokeWidth / fit.scale;
+      ctx.strokeText(slot.character, fit.offsetX, fit.offsetY);
+    }
     ctx.fillText(slot.character, fit.offsetX, fit.offsetY);
     ctx.restore();
   }

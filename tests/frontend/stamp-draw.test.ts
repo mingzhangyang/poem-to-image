@@ -339,6 +339,32 @@ test('maximum wear has a fixed command budget independent of stamp size or expor
   }
 });
 
+test('traditional seal stroke width stays fixed in logical pixels across glyph sizes', () => {
+  for (const mode of ['zhuwen', 'baiwen'] as const) {
+    for (const style of ['square', 'round'] as const) {
+      for (const textScale of [0.7, 1, 1.1]) {
+        withCanvas((created) => {
+          drawStampImpression(new RecordingContext() as unknown as CanvasRenderingContext2D,
+            { ...stamp, mode, style, text: '山水天地', size: 100, weathering: 0,
+              textScale, textStrokeWidthPct: 2 });
+          const ops = created[0].context.ops;
+          // First scale belongs to the 1x ink backing canvas; the remaining
+          // scales are the individual glyph fits.
+          const glyphScales = ops.filter((op) => op.method === 'scale').slice(1);
+          const strokes = ops.filter((op) => op.method === 'strokeText');
+          assert.equal(strokes.length, 4);
+          assert.equal(glyphScales.length, strokes.length);
+          strokes.forEach((stroke, index) => {
+            const effectiveWidth = Number(stroke.args[3]) * Number(glyphScales[index].args[0]);
+            assert.ok(Math.abs(effectiveWidth - 2) < 1e-9,
+              'effective traditional stroke must equal 2% of the 100px seal');
+          });
+        });
+      }
+    }
+  }
+});
+
 test('glyph size and stroke thickness use the same modern, Zhu and Bai Wen painters', () => {
   for (const mode of ['modern', 'zhuwen', 'baiwen'] as const) {
     withCanvas((created) => {

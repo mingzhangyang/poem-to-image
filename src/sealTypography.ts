@@ -122,26 +122,28 @@ export function fitTraditionalStampGlyph(
   const descent = Number.isFinite(bounds.actualBoundingBoxDescent) ? bounds.actualBoundingBoxDescent : 0;
   const glyphWidth = Math.max(1, left + right);
   const glyphHeight = Math.max(1, ascent + descent);
-  // Fit the stroke's outer bounds so bolder glyphs do not clip circular seals.
+  // Stroke thickness is in logical seal pixels, independently of glyph scale.
+  // Reserve its full post-transform width rather than scaling it with the font.
   const safeStroke = Number.isFinite(strokeWidth) ? Math.max(0, strokeWidth) : 0;
-  const outerWidth = glyphWidth + safeStroke;
-  const outerHeight = glyphHeight + safeStroke;
   const sizeMultiplier = Number.isFinite(textScale) ? Math.min(1.1, Math.max(0.7, textScale)) : 1;
   const fillRatio = 0.88 * sizeMultiplier;
-  let scale = Math.min(sizeMultiplier, slot.width * fillRatio / outerWidth, slot.height * fillRatio / outerHeight);
+  let scale = Math.max(0, Math.min(
+    sizeMultiplier,
+    (slot.width * fillRatio - safeStroke) / glyphWidth,
+    (slot.height * fillRatio - safeStroke) / glyphHeight,
+  ));
   if (roundClip) {
-    // After optical centering, the farthest ink corner is
-    // (|x| + halfGlyphWidth * scale, |y| + halfGlyphHeight * scale).
-    // Solve its circle inequality instead of clipping the outer strokes.
-    const x = Math.abs(roundClip.x);
-    const y = Math.abs(roundClip.y);
+    // The stroke expands every side by half its unscaled seal-space width.
+    // Solve the farthest outer-ink corner against the actual clipping circle.
+    const x = Math.abs(roundClip.x) + safeStroke / 2;
+    const y = Math.abs(roundClip.y) + safeStroke / 2;
     const radius = Math.max(0, roundClip.radius);
     const remainingRadiusSquared = radius * radius - x * x - y * y;
     if (remainingRadiusSquared <= 0) {
       scale = 0;
     } else {
-      const halfWidth = outerWidth / 2;
-      const halfHeight = outerHeight / 2;
+      const halfWidth = glyphWidth / 2;
+      const halfHeight = glyphHeight / 2;
       const a = halfWidth * halfWidth + halfHeight * halfHeight;
       const b = 2 * (x * halfWidth + y * halfHeight);
       const circleScale = 2 * remainingRadiusSquared
