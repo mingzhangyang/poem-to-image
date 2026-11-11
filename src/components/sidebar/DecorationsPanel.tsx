@@ -323,7 +323,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                     aria-valuetext={`${Math.round(getStampShapeRatio(decorations.stamp) * 100)}%`}
                     min="45"
                     max="90"
-                    step="5"
+                    step="1"
                     value={Math.round(getStampShapeRatio(decorations.stamp) * 100)}
                     onChange={(event) => decorations.onStampChange({ shapeRatio: Number(event.target.value) / 100 })}
                     className="app-range app-range-warm"

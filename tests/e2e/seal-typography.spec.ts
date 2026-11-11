@@ -224,10 +224,21 @@ test('Phase 4A: a new elongated seal retains eight glyphs and ratio after reload
   await shape.selectOption('rect-vertical');
   await expect(shape).toHaveValue('rect-vertical');
   const ratio = page.getByRole('slider', { name: '短边 / 长边比例' });
-  // Range inputs are keyboard-operated in Playwright; fill() is not supported.
+  // An untouched, unpersisted elongated stamp must start at a valid 68% step.
+  await expect(ratio).toHaveAttribute('min', '45');
+  await expect(ratio).toHaveAttribute('max', '90');
+  await expect(ratio).toHaveAttribute('step', '1');
+  await expect(ratio).toHaveValue('68');
+  await expect(ratio).toHaveAttribute('aria-valuetext', '68%');
   await ratio.focus();
+  await ratio.press('ArrowRight');
+  await expect(ratio).toHaveValue('69');
+  await ratio.press('ArrowLeft');
+  await expect(ratio).toHaveValue('68');
+
+  // Range inputs are keyboard-operated in Playwright; fill() is not supported.
   await ratio.press('Home'); // 45%
-  for (let step = 0; step < 3; step++) await ratio.press('ArrowRight'); // 60%
+  for (let step = 0; step < 15; step++) await ratio.press('ArrowRight'); // 60%
   await expect(ratio).toHaveValue('60');
   await shape.selectOption('oval');
   await expect(shape).toHaveValue('oval');
