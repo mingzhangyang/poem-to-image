@@ -139,3 +139,12 @@ test('horizontal lines and source data are untouched by vertical-only presentati
   assert.deepEqual(layout.items.map(item => item.text), poem.split('\n'));
   assert.equal(layout.items[0].kind, 'horizontal-line');
 });
+
+
+test('punctuation ink sits within the em square, independent of extra line leading', () => {
+  const compact = glyphs('山，', 1, 32, 0, 1);
+  const loose = glyphs('山，', 1, 32, 0, 2.8);
+  assert.equal(compact[1].baselineY, loose[1].baselineY);
+  assert.equal(compact[1].startX, loose[1].startX);
+  assert.ok(loose[1].y > compact[1].y, 'line height affects logical advance only');
+});

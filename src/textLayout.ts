@@ -269,7 +269,6 @@ function getUprightGlyphDrawOffset(
   measurer: TextLayoutMeasurer,
   renderText: string,
   fontSize: number,
-  advance: number,
   upperRight: boolean,
 ) {
   const metrics = measurer.measureText(renderText);
@@ -281,7 +280,9 @@ function getUprightGlyphDrawOffset(
   const inkHeight = ascent + descent;
   const inset = fontSize * 0.08;
   const centerX = upperRight ? Math.max(0, (fontSize - inkWidth) / 2 - inset) : 0;
-  const centerY = upperRight ? -Math.max(0, (advance - inkHeight) / 2 - inset) : 0;
+  // The em square stays centered inside line-height leading. Punctuation
+  // should rise within that square, not jump into the preceding line's gap.
+  const centerY = upperRight ? -Math.max(0, (fontSize - inkHeight) / 2 - inset) : 0;
   return {
     startX: centerX + (left - right) / 2,
     baselineY: centerY + (ascent - descent) / 2,
@@ -496,7 +497,7 @@ function createVerticalTextLayout(input: TextLayoutInput, measurer: TextLayoutMe
         const metrics = presentation.rotation === 90
           ? getRotatedRunDrawOffset(measurer, presentation.renderText, input.letterSpacing)
           : getUprightGlyphDrawOffset(
-            measurer, presentation.renderText, input.fontSize, advance,
+            measurer, presentation.renderText, input.fontSize,
             isVerticalPausePunctuation(segment.text),
           );
 
