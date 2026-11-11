@@ -53,11 +53,16 @@ test('the shared layout returns upright punctuation and rotated fallback in an a
       text: '山，海。\n「诗」《书》', writingMode: 'vertical-rl',
       fontSize: 40, lineHeight: 1.6, letterSpacing: 4, columns: 2,
     }, createCanvasTextMeasurer('serif', 40));
-    return layout.items.map(item => ({
-      text: item.text, renderText: item.renderText,
-      rotation: item.rotation, x: item.x, y: item.y,
-      startX: item.startX, baselineY: item.baselineY,
-    }));
+    return layout.items.map((item) => {
+      if (item.kind !== 'vertical-segment') {
+        throw new Error('Expected vertical-segment items in a vertical-rl layout');
+      }
+      return {
+        text: item.text, renderText: item.renderText,
+        rotation: item.rotation, x: item.x, y: item.y,
+        startX: item.startX, baselineY: item.baselineY,
+      };
+    });
   });
   const comma = result.find(item => item.text === '，')!;
   const fullStop = result.find(item => item.text === '。')!;
