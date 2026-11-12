@@ -1,0 +1,132 @@
+import { expect, test } from '@playwright/test';
+
+test.beforeEach(async ({ page }) => {
+  await page.route('**/api/billing/packages', async (route) => {
+    await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ packages: [] }) });
+  });
+  await page.addInitScript(() => {
+    localStorage.setItem('poem-to-image.onboarding-dismissed', 'true');
+    localStorage.setItem('poem-to-image.language', 'zh-CN');
+  });
+});
+
+test('style cards render genuine previews and offer functional category filters', async ({ page }, info) => {
+  test.skip(info.project.name === 'chromium-mobile', 'Desktop control panel; shared renderer is covered below');
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: /^装饰与元素/ }).click();
+  await page.getByRole('checkbox', { name: '显示印章' }).check();
+  const group = page.getByRole('group', { name: '中国印章样式库' });
+  const filters = page.getByRole('group', { name: '筛选印章样式' });
+  const canvases = group.locator('canvas');
+  await expect(canvases).toHaveCount(10);
+  await expect.poll(async () => canvases.evaluateAll((nodes) =>
+    nodes.map((node) => {
+      const canvas = node as HTMLCanvasElement;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return false;
+      const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+      for (let i = 3; i < data.length; i += 4) if (data[i] > 0) return true;
+      return false;
+    }),
+  )).toEqual(Array(10).fill(true));
+
+  await filters.getByRole('button', { name: '图案类' }).click();
+  await expect(group.locator('canvas')).toHaveCount(2);
+  await expect(page.getByRole('button', { name: '山水印', exact: true })).toBeVisible();
+  await filters.getByRole('button', { name: '文字类' }).click();
+  await expect(group.locator('canvas')).toHaveCount(8);
+  await expect(page.getByRole('button', { name: '斋馆印', exact: true })).toBeVisible();
+  await filters.getByRole('button', { name: '全部', exact: true }).click();
+  await expect(group.locator('canvas')).toHaveCount(10);
+});
+
+test('style selection preserves user text, shape identity and placement until example explicitly requested', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'chromium-mobile', 'Desktop editing flow; Canvas core shared');
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: /^装饰与元素/ }).click();
+  await page.getByRole('checkbox', { name: '显示印章' }).check();
+  const text = page.getByRole('textbox', { name: '印章文字' });
+  await text.fill('澄怀观道');
+  await page.getByRole('button', { name: '斋馆印', exact: true }).click();
+  await expect(text).toHaveValue('澄怀观道');
+  await expect(page.getByRole('combobox', { name: '印章样式' })).toHaveValue('rect-vertical');
+  await expect(page.getByRole('slider', { name: '短边 / 长边比例' })).toHaveValue('58');
+  // Choosing a style collapses the gallery, keeping core editing controls near the top.
+  await page.getByRole('button', { name: /^中国印章样式库/ }).click();
+  await expect(page.getByRole('button', { name: '斋馆印', exact: true }))
+    .toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(() => page.evaluate(() => {
+    const s = localStorage.getItem('inkpoem.editor-state.v1');
+    const stamp = s ? JSON.parse(s)?.decorations?.stamp : null;
+    return [stamp?.text, stamp?.style, stamp?.shapeRatio, stamp?.motifId];
+  })).toEqual(['澄怀观道', 'rect-vertical', 0.58, undefined]);
+
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: /^装饰与元素/ }).click();
+  await expect(page.getByRole('textbox', { name: '印章文字' })).toHaveValue('澄怀观道');
+  await expect(page.getByRole('button', { name: '斋馆印', exact: true }))
+    .toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: '使用示例印文', exact: true }).click();
+  await expect(page.getByRole('textbox', { name: '印章文字' })).toHaveValue('书画之印');
+});
+
+test('motif gallery and advanced settings retain existing keyboard and text controls', async ({ page }, info) => {
+  test.skip(info.project.name === 'chromium-mobile', 'Desktop settings flow');
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: /^装饰与元素/ }).click();
+  await page.getByRole('checkbox', { name: '显示印章' }).check();
+  await page.getByRole('textbox', { name: '印章文字' }).fill('李明之印');
+
+  const advanced = page.getByRole('button', { name: '精细调整' });
+  await expect(page.getByRole('combobox', { name: '印章字体' })).toBeVisible();
+  await advanced.click();
+  await expect(advanced).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.getByRole('combobox', { name: '印章字体' })).toHaveCount(0);
+  await expect(page.getByRole('slider', { name: '印章大小' })).toBeVisible();
+  await expect(page.getByRole('slider', { name: '印章角度' })).toHaveCount(0);
+  await advanced.click();
+  await expect(page.getByRole('combobox', { name: '印章字体' })).toBeVisible();
+
+  const filters = page.getByRole('group', { name: '筛选印章样式' });
+  await filters.getByRole('button', { name: '图案类' }).click();
+  await page.getByRole('button', { name: '山水印', exact: true }).click();
+  await page.getByRole('button', { name: /^中国印章样式库/ }).click();
+  await expect(page.getByRole('button', { name: '山水印', exact: true }))
+    .toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('textbox', { name: '印章文字' })).toHaveCount(0);
+  await page.getByRole('button', { name: '梅花', exact: true }).click();
+  await expect(page.getByRole('button', { name: '山水印', exact: true }))
+    .toHaveAttribute('aria-pressed', 'false');
+  await page.getByRole('button', { name: '文字印', exact: true }).click();
+  await expect(page.getByRole('textbox', { name: '印章文字' })).toHaveValue('李明之印');
+  await expect(page.getByRole('combobox', { name: '印章字体' })).toBeVisible();
+});
+
+// Pixel-level smoke test for every gallery style; runs in all browser projects
+// even if mobile app navigation differs from desktop settings.
+test('all catalog designs render through the shared impression core', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  const counts = await page.evaluate(async () => {
+    const { SEAL_STYLE_DESIGN_IDS, getSealStyleDesignPreview } =
+      await import(/* @vite-ignore */ '/src/sealStyleCatalog.ts');
+    const { drawStampImpression } =
+      await import(/* @vite-ignore */ '/src/export/stampDraw.ts');
+    return SEAL_STYLE_DESIGN_IDS.map((id) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = 144;
+      const ctx = canvas.getContext('2d')!;
+      ctx.translate(72, 72);
+      drawStampImpression(ctx, getSealStyleDesignPreview(id), {
+        pixelScale: 1, applyTransform: false, applyOpacity: false,
+      });
+      const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+      let opaquePixels = 0;
+      for (let i = 3; i < data.length; i += 4) {
+        if (data[i] > 12) opaquePixels++;
+      }
+      return { id, opaquePixels };
+    });
+  });
+  expect(counts).toHaveLength(10);
+  for (const item of counts) expect(item.opaquePixels, item.id).toBeGreaterThan(0);
+});
