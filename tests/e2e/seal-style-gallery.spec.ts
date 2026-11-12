@@ -108,13 +108,13 @@ test('font registration after gallery mount repaints all existing thumbnails', a
   // This probes the mounted Canvas subscriber without depending on a remote CDN.
   await page.addInitScript(() => {
     const original = CanvasRenderingContext2D.prototype.clearRect;
-    const win = window as Window & { __sealThumbnailPaints: number };
+    const win = window as Window & { __sealThumbnailPaints?: number };
     win.__sealThumbnailPaints = 0;
     CanvasRenderingContext2D.prototype.clearRect = function (
       this: CanvasRenderingContext2D, ...args: [number, number, number, number]
     ) {
       if (this.canvas.width === 192 && this.canvas.height === 192) {
-        win.__sealThumbnailPaints++;
+        win.__sealThumbnailPaints = (win.__sealThumbnailPaints ?? 0) + 1;
       }
       return original.apply(this, args);
     };
@@ -124,7 +124,7 @@ test('font registration after gallery mount repaints all existing thumbnails', a
   await page.getByRole('checkbox', { name: '显示印章' }).check();
   await expect(page.getByRole('group', { name: '中国印章样式库' }).locator('canvas')).toHaveCount(10);
   const countPaints = () => page.evaluate(() =>
-    (window as Window & { __sealThumbnailPaints: number }).__sealThumbnailPaints);
+    (window as Window & { __sealThumbnailPaints?: number }).__sealThumbnailPaints ?? 0);
   await expect.poll(countPaints).toBeGreaterThanOrEqual(10);
   const before = await countPaints();
   await page.evaluate(async () => {
