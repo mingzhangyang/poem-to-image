@@ -29,6 +29,8 @@ const allowedEnglishMatches: Record<keyof typeof locales, ReadonlySet<string>> =
     'exportFormatPng', 'exportFormatJpg', 'exportFormatWebp', 'exportTargetStory',
     'exportQualityStandard', 'exportQualityUltraHd', 'contact', 'signatures', 'addSignature',
     'signatureRotation',
+    // “Dragon” and “Lotus” are also the natural French names for these motifs.
+    'stampMotifDragon', 'stampMotifLotus',
   ]),
   ja: new Set(['appTitle', 'bgAI', 'exportFormatPng', 'exportFormatJpg', 'exportFormatWebp', 'allRightsReserved']),
   ko: new Set(['appTitle', 'bgAI', 'exportFormatPng', 'exportFormatJpg', 'exportFormatWebp', 'allRightsReserved']),

@@ -377,7 +377,7 @@ const de: TranslationMessages = {
     stampMotifBamboo: "Bambus",
     stampMotifPine: "Kiefer",
     stampMotifLandscape: "Landschaft",
-    stampMotifLotus: "Lotus",
+    stampMotifLotus: "Lotosblüte",
     stampMotifClouds: "Glückswolken",
     stampMotifHint: "Vektormotive nutzen dieselbe Tinte und Drucktextur. Der ursprüngliche Siegeltext bleibt erhalten.",
     stampMode: "Siegelmodus",
