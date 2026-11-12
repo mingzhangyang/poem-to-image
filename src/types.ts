@@ -1,6 +1,7 @@
 import type { CSSProperties, ChangeEvent, ReactNode, RefObject } from 'react';
 import type { Language, TranslationKey } from './translations';
 import type { PaperId } from './paperStyles';
+import type { SealMotifId } from './sealMotifs';
 
 export type AiProvider = 'gemini' | 'openai';
 export const CREDIT_COST: Record<AiProvider, number> = { gemini: 2, openai: 1 };
@@ -165,6 +166,8 @@ export interface StampConfig {
   style: StampStyle;
   /** Optional shorter/longer side ratio (0.45–0.90) for new non-square forms; legacy styles ignore it. */
   shapeRatio?: number;
+  /** Optional: a hand-authored vector motif replaces glyphs without rewriting the saved text. */
+  motifId?: SealMotifId;
   /** Optional: missing means legacy visual rules for all saved artworks/templates. */
   mode?: 'zhuwen' | 'baiwen' | 'modern';
   colorScheme?: 'outline' | 'filled';

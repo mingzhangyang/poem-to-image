@@ -1,6 +1,7 @@
 import { createStructuredPoemLayout, getPlainPoemText } from '../poemContent';
 import { ensureFontReady } from '../fontLoader';
 import { getStampCharacters } from '../stampRendering';
+import { isSealMotifId } from '../sealMotifs';
 import { getCanvasPositioningRect, getCanvasTextOrigin, positionToCanvasPoint } from '../positioningRect';
 import { createCanvasTextMeasurer, createTextLayout } from '../textLayout';
 import { drawSignatureToCanvas, ensureSignatureFontsLoaded, getSignatureCanvasSize } from '../signatureRendering';
@@ -344,9 +345,9 @@ export async function renderCanvasExport(inputScene: CanvasExportScene, options:
     ...scene.decorations.customTexts.map((item) => item.text),
   ].join('\n');
   await ensureFontReady(scene.typography.fontFamily, primaryText);
-  if (scene.decorations.showStamp) {
-    // Preload precisely the glyphs drawn by drawStampText, including its
-    // '印' fallback for empty text and the four-character limit.
+  if (scene.decorations.showStamp && !isSealMotifId(scene.decorations.stamp.motifId)) {
+    // Graphic seals require no font network access. Text seals preload only
+    // the glyphs actually drawn, including the '印' empty-text fallback.
     await ensureFontReady(scene.decorations.stamp.fontFamily, getStampCharacters(scene.decorations.stamp.text).join(''));
   }
   if ('fonts' in document) await document.fonts.ready;

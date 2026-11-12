@@ -126,6 +126,8 @@ function matchesDecorations(
     decorations.poemPosition.positionX === d.poemPosition.positionX &&
     decorations.poemPosition.positionY === d.poemPosition.positionY &&
     decorations.stamp.text === d.stamp.text &&
+    // Missing IDs on legacy text seals are equal; selecting a motif is a user edit.
+    decorations.stamp.motifId === d.stamp.motifId &&
     decorations.stamp.style === d.stamp.style &&
     // A user-chosen seal mode, face, ink, weathering or font makes these
     // decorations custom; switching UI language must not reapply the stamp.

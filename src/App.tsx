@@ -27,6 +27,7 @@ import { getDraftSafetyMessages } from './editorDraftMessages';
 import { DEFAULT_POEMS } from './defaultPoems';
 import { editorTemplates } from './templates';
 import { isStampSupportedForEditor } from './stampDefaults';
+import { isSealMotifId } from './sealMotifs';
 import { ensureFontLoaded } from './fontLoader';
 import { usePageMetadata } from './hooks/usePageMetadata';
 import { useStructuralMemo } from './hooks/useStructuralMemo';
@@ -231,10 +232,11 @@ function EditorApp({ initialState, initialRevision, promoteInitial }: EditorAppP
   }, [typography.fontFamily]);
 
   useEffect(() => {
-    if (decorations.showStamp && stampSupported) {
+    // A valid graphic seal never draws its retained text glyphs.
+    if (decorations.showStamp && stampSupported && !isSealMotifId(decorations.stamp.motifId)) {
       ensureFontLoaded(decorations.stamp.fontFamily);
     }
-  }, [decorations.showStamp, stampSupported, decorations.stamp.fontFamily]);
+  }, [decorations.showStamp, stampSupported, decorations.stamp.fontFamily, decorations.stamp.motifId]);
 
   // Hooks initialize directly from the loaded draft. No restore effects run
   // after the first render, so StrictMode cannot create phantom edits.

@@ -14,6 +14,8 @@ import type { StampPresetId } from '../../sealTypography';
 import { SIGNATURE_FONTS } from '../../signatureRendering';
 import type { BorderStyle, DecorationsSectionProps, ExpandedSections, SignatureFlourish, StampStyle, TranslateFn } from '../../types';
 import { ControlSection } from '../ControlSection';
+import { SealMotifPicker } from './SealMotifPicker';
+import { isSealMotifId } from '../../sealMotifs';
 
 const BORDER_STYLE_LABELS: Record<
   BorderStyle,
@@ -224,6 +226,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                         className="rounded-lg border border-[rgba(34,48,52,0.12)] bg-[rgba(253,248,242,0.95)] px-2.5 py-2 text-left text-xs font-medium text-(--app-accent-700) transition-colors hover:border-[rgba(154,48,37,0.45)] hover:bg-[rgba(244,230,217,0.5)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgba(154,48,37,0.65)]"
                         onClick={() => decorations.onStampChange({
                           ...getStampPresetUpdates(preset),
+                          motifId: undefined,
                           textureSeed: getNaturalSealSeed(decorations.stamp),
                         })}
                       >
@@ -234,6 +237,12 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                 </div>
               </div>
 
+              <SealMotifPicker
+                value={isSealMotifId(decorations.stamp.motifId) ? decorations.stamp.motifId : undefined}
+                onChange={(motifId) => decorations.onStampChange({ motifId })}
+                t={t}
+              />
+
               <div>
                 <label className="mb-1 block text-xs text-(--app-accent-500)">{t('stampMode')}</label>
                 <select
@@ -241,13 +250,15 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                   value={decorations.stamp.mode ?? 'modern'}
                   onChange={(event) => {
                     const mode = event.target.value as 'zhuwen' | 'baiwen' | 'modern';
+                    // Preserve the hidden text font while changing a graphic seal's face.
+                    const textSeal = !isSealMotifId(decorations.stamp.motifId);
                     decorations.onStampChange({
                       mode,
                       ...(mode === 'zhuwen' ? { colorScheme: 'outline' as const } : {}),
                       ...(mode === 'baiwen' ? { colorScheme: 'filled' as const } : {}),
-                      ...(mode !== 'modern' && !isSealScriptFont(decorations.stamp.fontFamily)
+                      ...(textSeal && mode !== 'modern' && !isSealScriptFont(decorations.stamp.fontFamily)
                         ? { fontFamily: SEAL_FONT_STACK } : {}),
-                      ...(mode === 'modern' && isSealScriptFont(decorations.stamp.fontFamily)
+                      ...(textSeal && mode === 'modern' && isSealScriptFont(decorations.stamp.fontFamily)
                         ? { fontFamily: '"Ma Shan Zheng", cursive' } : {}),
                     });
                   }}
@@ -260,7 +271,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
               </div>
 
               <div className="grid grid-cols-[1fr_auto] gap-2 items-center">
-                <label className="text-xs text-(--app-accent-500)">{t('stampText')}</label>
+                <label className="text-xs text-(--app-accent-500)">{t(isSealMotifId(decorations.stamp.motifId) ? 'stampArtwork' : 'stampText')}</label>
                 <button
                   type="button"
                   onClick={decorations.onResetStampPosition}
@@ -269,10 +280,11 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                 >
                   {t('resetStampPosition')}
                 </button>
-                <input
-                  type="text"
-                  aria-label={t('stampText')}
-                  value={stampInputText}
+                {!isSealMotifId(decorations.stamp.motifId) && (
+                  <input
+                    type="text"
+                    aria-label={t('stampText')}
+                    value={stampInputText}
                   onChange={(event) => {
                     const newValue = isComposingRef.current
                       ? event.target.value
@@ -292,6 +304,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                   className="app-input col-span-2 text-sm text-center"
                   placeholder={t('stampText')}
                 />
+                )}
               </div>
 
               <div>
@@ -456,6 +469,8 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                 />
               </div>
 
+              {!isSealMotifId(decorations.stamp.motifId) && (
+                <>
               <div>
                 <label className="block text-xs text-(--app-accent-500) mb-1">{t('stampFont')}</label>
                 <select
@@ -519,6 +534,9 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                   className="app-range app-range-warm"
                 />
               </div>
+
+                </>
+              )}
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs text-(--app-accent-500)">

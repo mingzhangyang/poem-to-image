@@ -48,6 +48,7 @@ class RecordingContext {
   stroke() { this.add('stroke'); }
   rotate(a: number) { this.add('rotate', a); }
   quadraticCurveTo(...args: number[]) { this.add('quadraticCurveTo', ...args); }
+  bezierCurveTo(...args: number[]) { this.add('bezierCurveTo', ...args); }
   moveTo(x: number, y: number) { this.add('moveTo', x, y); }
   lineTo(x: number, y: number) { this.add('lineTo', x, y); }
   measureText(text: string) {
@@ -440,4 +441,67 @@ test('classic rectangular weathering stays bounded to its actual face', () => {
     assert.ok(marks.every((op) => Math.abs(Number(op.args[0])) <= 36 + 1e-6
       && Math.abs(Number(op.args[1])) <= 60 + 1e-6));
   });
+});
+
+// Phase 4B: path-based motifs must bypass all glyph measurement and share
+// the old isolated ink compositor for both red lines and carved white paths.
+test('eight vector motifs render with Zhu/Bai ink and zero font operations', () => {
+  for (const motifId of [
+    'dragon', 'phoenix', 'plum', 'bamboo', 'pine', 'landscape', 'lotus', 'clouds',
+  ] as const) {
+    for (const mode of ['zhuwen', 'baiwen'] as const) {
+      withCanvas((created) => {
+        drawStampImpression(new RecordingContext() as unknown as CanvasRenderingContext2D,
+          { ...stamp, motifId, mode, text: '字库不需要', fontFamily: 'not-loaded',
+            weathering: 0, style: 'round', size: 120 }, { pixelScale: 3 });
+        const ops = created[0].context.ops;
+        assert.equal(ops.filter((op) => op.method === 'fillText').length, 0,
+          motifId + '/' + mode + ' must not render the hidden text');
+        assert.equal(ops.filter((op) => op.method === 'strokeText').length, 0);
+        assert.ok(ops.filter((op) => op.method === 'stroke').length >= 4);
+        assert.ok(ops.filter((op) => op.method === 'clip').length >= 1);
+        assert.equal(ops.some((op) => op.method === 'composite' &&
+          op.args[0] === 'destination-out'), mode === 'baiwen');
+        assert.equal(created[0].width, 360);
+        assert.equal(created[0].height, 360);
+      });
+    }
+  }
+});
+
+test('graphic seals retain their aspect ratio and vector paths across 1x/3x rendering', () => {
+  for (const style of ['square', 'rect-vertical', 'rect-horizontal', 'oval'] as const) {
+    const traces: RecordOp[][] = [];
+    for (const ratio of [1, 3]) {
+      withCanvas((created) => {
+        drawStampImpression(new RecordingContext() as unknown as CanvasRenderingContext2D,
+          { ...stamp, style, size: 120, shapeRatio: 0.6, motifId: 'landscape',
+            mode: 'zhuwen', weathering: 0 }, { pixelScale: ratio });
+        const ink = created[0].context;
+        assert.equal(created[0].width, (style === 'rect-horizontal' || style === 'square' ? 120 : 72) * ratio);
+        assert.equal(created[0].height, (style === 'square' || style === 'rect-vertical' || style === 'oval' ? 120 : 72) * ratio);
+        assert.ok(ink.ops.some((op) => op.method === 'quadraticCurveTo'));
+        const pure = ink.ops.filter((op) => !['scale', 'translate'].includes(op.method));
+        traces.push(pure);
+      });
+    }
+    assert.deepEqual(traces[0], traces[1], style + ' keeps stable path commands');
+  }
+});
+
+test('unknown motif IDs fall back to the historical lettering path', () => {
+  const traces: RecordOp[][] = [];
+  withCanvas((created) => {
+    drawStampImpression(new RecordingContext() as unknown as CanvasRenderingContext2D, {
+      ...stamp, weathering: 0,
+    });
+    traces.push(created[0].context.ops);
+  });
+  withCanvas((created) => {
+    drawStampImpression(new RecordingContext() as unknown as CanvasRenderingContext2D, {
+      ...stamp, motifId: 'missing-from-library' as StampConfig['motifId'], weathering: 0,
+    });
+    traces.push(created[0].context.ops);
+  });
+  assert.deepEqual(traces[1], traces[0]);
 });

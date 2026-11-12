@@ -12,6 +12,7 @@ import {
   STAMP_SHADOW_PADDING,
 } from '../../stampRendering';
 import { drawStampImpression } from '../../export/stampDraw';
+import { isSealMotifId } from '../../sealMotifs';
 import { useFontLayoutRevision } from '../../hooks/useFontLayoutRevision';
 import type { StampConfig } from '../../types';
 
@@ -40,7 +41,9 @@ export function StampOverlay({ ariaLabel, frameRef, stamp, effectiveScale, onSta
   const isDraggingRef = useRef(false);
   const stampRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const fontRevision = useFontLayoutRevision(stamp.fontFamily, getStampCharacters(stamp.text).join(''));
+  const hasMotif = isSealMotifId(stamp.motifId);
+  const fontRevision = useFontLayoutRevision(hasMotif ? '' : stamp.fontFamily,
+    hasMotif ? '' : getStampCharacters(stamp.text).join(''));
   const lastPaintKeyRef = useRef<string | null>(null);
   const [devicePixelRatio, setDevicePixelRatio] = useState(() =>
     typeof window === 'undefined' ? 1 : (window.devicePixelRatio || 1),
@@ -81,7 +84,7 @@ export function StampOverlay({ ariaLabel, frameRef, stamp, effectiveScale, onSta
     // nudges. A stable key also avoids any plan recomputation during unrelated
     // React updates. Font readiness and backing resolution DO repaint.
     const paintKey = JSON.stringify([
-      stamp.text, stamp.style, stamp.size, stamp.fontFamily, stamp.mode,
+      stamp.text, stamp.motifId, stamp.style, stamp.size, stamp.fontFamily, stamp.mode,
       stamp.colorScheme, stamp.inkColor, stamp.weathering,
       stamp.textScale, stamp.textStrokeWidthPct, stamp.shapeRatio,
       stamp.textureStyle, stamp.textureSeed, widthPixels, heightPixels, rasterScale, fontRevision,

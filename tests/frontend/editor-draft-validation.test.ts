@@ -96,6 +96,11 @@ test('draft hydration retains legacy texture compatibility and rejects corrupt p
   const cases: Array<{ name: string; fields: Record<string, unknown>; valid: boolean }> = [
     { name: 'legacy fields absent', fields: {}, valid: true },
     { name: 'classic with no seed', fields: { textureStyle: 'classic' }, valid: true },
+    { name: 'known graphic motif', fields: { motifId: 'landscape' }, valid: true },
+    { name: 'second known graphic motif', fields: { motifId: 'dragon' }, valid: true },
+    { name: 'unknown graphic motif', fields: { motifId: 'made-up' }, valid: false },
+    { name: 'non-string graphic motif', fields: { motifId: 3 }, valid: false },
+    { name: 'null graphic motif', fields: { motifId: null }, valid: false },
     { name: 'elongated shape', fields: { style: 'rect-vertical', shapeRatio: 0.65 }, valid: true },
     { name: 'elliptical shape', fields: { style: 'oval', shapeRatio: 0.9 }, valid: true },
     { name: 'nonfinite shape ratio', fields: { style: 'oval', shapeRatio: Infinity }, valid: false },
