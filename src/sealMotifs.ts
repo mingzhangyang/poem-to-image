@@ -1,8 +1,12 @@
 /**
- * InkPoem's original hand-authored seal-cut motif paths (Phase 4B).
- * All marks are in a -50..50 coordinate frame, are deterministic and keep
- * their geometry independent of raster scale and paper/background choice.
- * Nothing is fetched or loaded from external images/fonts.
+ * InkPoem's original hand-authored pictorial seal motifs (肖形印).
+ *
+ * The designs follow the language of carved Han pictorial seals rather than
+ * line illustration: bold solid masses, few strong strokes, and details that
+ * are *carved back out* of the ink (eyes, petal separations, bamboo nodes,
+ * mountain texture). Everything is in a -50..50 coordinate frame, is
+ * deterministic and keeps its geometry independent of raster scale and
+ * paper/background choice. Nothing is fetched or loaded from images/fonts.
  */
 export const SEAL_MOTIF_IDS = [
   'dragon', 'phoenix', 'plum', 'bamboo',
@@ -23,212 +27,421 @@ export type SealPathCommand =
   | readonly ['Z'];
 
 export interface SealMotifPath {
+  /** Stroke width in motif units; filled marks use it to soften their edge. */
   readonly weight: number;
   readonly filled?: boolean;
+  /**
+   * A carved mark removes what earlier marks deposited. In Zhu Wen it cuts
+   * paper-coloured detail into the red design; in Bai Wen it restores red.
+   */
+  readonly carve?: boolean;
   readonly commands: readonly SealPathCommand[];
 }
+
+type Point = readonly [number, number];
+
+const round = (value: number) => Math.round(value * 100) / 100;
+
+/** Stroked ink. */
 const S = (weight: number, ...commands: SealPathCommand[]): SealMotifPath =>
   ({ weight, commands });
+/** Solid ink mass. */
 const F = (...commands: SealPathCommand[]): SealMotifPath =>
-  ({ weight: 1.4, filled: true, commands });
+  ({ weight: 0.8, filled: true, commands });
+/** Carved line through earlier ink. */
+const K = (weight: number, ...commands: SealPathCommand[]): SealMotifPath =>
+  ({ weight, carve: true, commands });
+/** Carved area through earlier ink. */
+const KF = (...commands: SealPathCommand[]): SealMotifPath =>
+  ({ weight: 0.6, filled: true, carve: true, commands });
 
-/** Hand-carved five-petal blossoms reused in the plum composition. */
-function blossom(x: number, y: number, radius: number): SealMotifPath[] {
-  const petals: SealMotifPath[] = [];
-  for (let i = 0; i < 5; i++) {
-    const a = i * Math.PI * 2 / 5 - Math.PI / 2;
-    const c = Math.cos(a), s = Math.sin(a);
-    const sideX = -s, sideY = c;
-    const tipX = x + c * radius, tipY = y + s * radius;
-    const shoulderX = x + c * radius * 0.55;
-    const shoulderY = y + s * radius * 0.55;
-    petals.push(S(1.45, ['M', x, y],
-      ['Q', shoulderX + sideX * radius * 0.55,
-        shoulderY + sideY * radius * 0.55, tipX, tipY],
-      ['Q', shoulderX - sideX * radius * 0.55,
-        shoulderY - sideY * radius * 0.55, x, y]));
+const asFill = (mark: SealMotifPath): SealMotifPath => ({ ...mark, weight: 0.8, filled: true });
+/** The same outline, carved as a separating line in front of earlier masses. */
+const asCarvedOutline = (mark: SealMotifPath, weight: number): SealMotifPath =>
+  ({ weight, carve: true, commands: mark.commands });
+
+function cubicAt(p0: Point, p1: Point, p2: Point, p3: Point, t: number): Point {
+  const u = 1 - t;
+  return [
+    u * u * u * p0[0] + 3 * u * u * t * p1[0] + 3 * u * t * t * p2[0] + t * t * t * p3[0],
+    u * u * u * p0[1] + 3 * u * u * t * p1[1] + 3 * u * t * t * p2[1] + t * t * t * p3[1],
+  ];
+}
+
+/**
+ * A brush-like solid stroke whose width tapers along a chain of cubic
+ * segments: [start, c1, c2, end, c1, c2, end, ...]. `widths` are sampled at
+ * the start, the middle and the end, so a stroke can swell in its belly.
+ */
+function taper(chain: readonly Point[], widths: readonly [number, number, number],
+  samples = 14): SealMotifPath {
+  const centre: Point[] = [];
+  for (let index = 0; index + 3 < chain.length; index += 3) {
+    for (let step = index === 0 ? 0 : 1; step <= samples; step++) {
+      centre.push(cubicAt(chain[index], chain[index + 1], chain[index + 2],
+        chain[index + 3], step / samples));
+    }
   }
-  petals.push(S(2.2, ['M', x - 1.1, y], ['L', x + 1.1, y]));
-  return petals;
+  const left: Point[] = [];
+  const right: Point[] = [];
+  const last = centre.length - 1;
+  centre.forEach((point, index) => {
+    const before = centre[Math.max(0, index - 1)];
+    const after = centre[Math.min(last, index + 1)];
+    const dx = after[0] - before[0];
+    const dy = after[1] - before[1];
+    const length = Math.hypot(dx, dy) || 1;
+    const t = index / last;
+    const width = t < 0.5
+      ? widths[0] + (widths[1] - widths[0]) * Math.sin(t * Math.PI)
+      : widths[2] + (widths[1] - widths[2]) * Math.sin(t * Math.PI);
+    const nx = -dy / length * width / 2;
+    const ny = dx / length * width / 2;
+    left.push([round(point[0] + nx), round(point[1] + ny)]);
+    right.push([round(point[0] - nx), round(point[1] - ny)]);
+  });
+  const commands: SealPathCommand[] = [['M', left[0][0], left[0][1]]];
+  for (const point of left.slice(1)) commands.push(['L', point[0], point[1]]);
+  for (const point of right.reverse()) commands.push(['L', point[0], point[1]]);
+  commands.push(['Z']);
+  return F(...commands);
+}
+
+/** A pointed leaf / petal lens from its base toward its tip. */
+function lens(baseX: number, baseY: number, tipX: number, tipY: number,
+  width: number, bend = 0): SealMotifPath {
+  const dx = tipX - baseX;
+  const dy = tipY - baseY;
+  const length = Math.hypot(dx, dy) || 1;
+  const nx = -dy / length;
+  const ny = dx / length;
+  const midX = baseX + dx * 0.42 + nx * bend;
+  const midY = baseY + dy * 0.42 + ny * bend;
+  return F(['M', round(baseX), round(baseY)],
+    ['Q', round(midX + nx * width), round(midY + ny * width), round(tipX), round(tipY)],
+    ['Q', round(midX - nx * width), round(midY - ny * width), round(baseX), round(baseY)],
+    ['Z']);
+}
+
+function circle(x: number, y: number, radius: number): SealPathCommand[] {
+  const k = radius * 0.5523;
+  return [
+    ['M', round(x + radius), round(y)],
+    ['C', round(x + radius), round(y + k), round(x + k), round(y + radius), round(x), round(y + radius)],
+    ['C', round(x - k), round(y + radius), round(x - radius), round(y + k), round(x - radius), round(y)],
+    ['C', round(x - radius), round(y - k), round(x - k), round(y - radius), round(x), round(y - radius)],
+    ['C', round(x + k), round(y - radius), round(x + radius), round(y - k), round(x + radius), round(y)],
+    ['Z'],
+  ];
+}
+
+/** An inward spiral polyline, used for cloud scrolls and tail curls. */
+function spiral(x: number, y: number, radius: number, startAngle: number,
+  turns: number, clockwise: boolean, innerRatio = 0.28): Point[] {
+  const points: Point[] = [];
+  const steps = Math.max(8, Math.round(turns * 28));
+  for (let step = 0; step <= steps; step++) {
+    const t = step / steps;
+    const angle = startAngle + (clockwise ? 1 : -1) * t * turns * Math.PI * 2;
+    const r = radius * (1 - (1 - innerRatio) * t);
+    points.push([round(x + Math.cos(angle) * r), round(y + Math.sin(angle) * r)]);
+  }
+  return points;
+}
+
+const polyline = (points: readonly Point[]): SealPathCommand[] =>
+  points.map((point, index) => [index === 0 ? 'M' : 'L', point[0], point[1]] as const);
+
+/** A solid five-petal plum blossom with a carved heart and stamens. */
+function blossom(x: number, y: number, radius: number, turn = 0): SealMotifPath[] {
+  const marks: SealMotifPath[] = [];
+  const petal = radius * 0.47;
+  for (let index = 0; index < 5; index++) {
+    const angle = turn + index * Math.PI * 2 / 5 - Math.PI / 2;
+    marks.push(F(...circle(x + Math.cos(angle) * radius * 0.55,
+      y + Math.sin(angle) * radius * 0.55, petal)));
+  }
+  marks.push(F(...circle(x, y, radius * 0.5)));
+  marks.push(KF(...circle(x, y, radius * 0.3)));
+  marks.push(F(...circle(x, y, radius * 0.13)));
+  return marks;
+}
+
+/** A pine needle crown: a flattened fan with carved radiating needles. */
+function pineCrown(x: number, y: number, rx: number, ry: number): SealMotifPath[] {
+  const marks: SealMotifPath[] = [
+    F(['M', round(x - rx), round(y)],
+      ['C', round(x - rx), round(y - ry * 1.3), round(x + rx), round(y - ry * 1.3), round(x + rx), round(y)],
+      ['Q', round(x), round(y + ry * 0.35), round(x - rx), round(y)], ['Z']),
+  ];
+  const needles: SealPathCommand[] = [];
+  for (let index = 1; index < 6; index++) {
+    const angle = Math.PI + index * Math.PI / 6;
+    needles.push(['M', round(x), round(y + ry * 0.12)],
+      ['L', round(x + Math.cos(angle) * rx * 0.78), round(y + Math.sin(angle) * ry * 0.85)]);
+  }
+  marks.push(K(1.7, ...needles));
+  return marks;
+}
+
+function dragon(): SealMotifPath[] {
+  // A coiled dragon (蟠龙) circling a flaming pearl, head raised at the top.
+  const body = taper([
+    [-17, -20], [-30, -14], [-36, 0], [-33, 12],
+    [-30, 24], [-16, 33], [0, 33],
+    [16, 33], [30, 24], [32, 8],
+    [34, -6], [30, -18], [22, -24],
+    [15, -29], [20, -38], [30, -41],
+  ], [12, 14, 2.6], 16);
+  return [
+    // Pearl with flames and a carved swirl.
+    F(...circle(0, 3, 9.5)),
+    K(2, ...polyline(spiral(0, 3, 6, 0, 1.1, true, 0.2))),
+    lens(-5, -5, -10, -15, 2.8), lens(0, -6, 1, -17, 3), lens(5, -5, 11, -14, 2.8),
+    body,
+    K(2.2, ['M', -25, -4], ['C', -27, 12, -14, 26, 0, 26],
+      ['C', 14, 26, 25, 16, 25, 4], ['C', 25, -8, 20, -16, 14, -20]),
+    // Tail tip flicks into a single flame.
+    lens(28, -41, 40, -47, 3.6, -1.5),
+    // Head: heavy brow, long snout and an open jaw.
+    F(['M', -25, -19], ['C', -31, -25, -31, -36, -22, -40],
+      ['Q', -14, -45, -5, -41], ['L', 5, -39], ['Q', 8, -35, 3, -34],
+      ['L', -7, -33], ['L', 1, -28], ['Q', 2, -23, -4, -24],
+      ['L', -12, -22], ['Q', -17, -17, -25, -19], ['Z']),
+    KF(...circle(-14, -36, 2)),
+    // Antlers, mane and whisker.
+    taper([[-21, -40], [-25, -45], [-32, -47], [-39, -45]], [4.2, 3.4, 1.6], 10),
+    taper([[-27, -36], [-34, -38], [-40, -36], [-44, -30]], [4, 3.2, 1.4], 10),
+    taper([[-28, -26], [-36, -27], [-42, -22], [-46, -16]], [4, 3, 1.2], 10),
+    taper([[4, -38], [10, -42], [16, -42], [18, -47]], [2.4, 2, 1], 10),
+    // Legs with three-toed claws, reaching outward.
+    taper([[-32, 4], [-40, 2], [-44, 8], [-46, 14]], [6.4, 5.2, 3], 10),
+    S(2.4, ['M', -46, 14], ['L', -48, 19], ['M', -46, 14], ['L', -43, 19],
+      ['M', -46, 14], ['L', -50, 12]),
+    taper([[-8, 33], [-10, 39], [-6, 43], [-1, 46]], [6.4, 5.2, 3], 10),
+    S(2.4, ['M', -1, 46], ['L', 5, 46], ['M', -1, 46], ['L', 3, 49], ['M', -1, 46], ['L', -3, 50]),
+    taper([[30, 14], [38, 18], [41, 26], [45, 30]], [6.4, 5.2, 3], 10),
+    S(2.4, ['M', 45, 30], ['L', 49, 27], ['M', 45, 30], ['L', 49, 33], ['M', 45, 30], ['L', 44, 35]),
+  ];
+}
+
+function phoenix(): SealMotifPath[] {
+  const wing = F(['M', -4, -2], ['C', -2, -20, 10, -34, 34, -42],
+    ['C', 30, -34, 34, -30, 30, -24], ['Q', 34, -20, 28, -14],
+    ['Q', 31, -8, 22, -4], ['Q', 22, 2, 12, 3], ['Q', 4, 6, -4, -2], ['Z']);
+  return [
+    // Tail plumes sweep behind and curl into eye-spots.
+    taper([[8, 10], [24, 14], [38, 22], [40, 36]], [8.4, 7, 3.6], 14),
+    taper([[6, 14], [14, 26], [22, 36], [20, 45]], [7.6, 6.4, 3.4], 14),
+    taper([[2, 16], [-2, 28], [-8, 36], [-16, 42]], [6.2, 5.2, 3], 14),
+    F(...circle(40, 38, 5.6)), KF(...circle(40, 38, 2.6)),
+    F(...circle(20, 45, 4.8)), KF(...circle(20, 45, 2.2)),
+    F(...circle(-17, 42, 4.2)), KF(...circle(-17, 42, 1.8)),
+    // Body and neck as one breasted mass.
+    F(['M', -12, 4], ['C', -14, -6, -16, -14, -20, -20],
+      ['C', -24, -26, -26, -34, -18, -38], ['C', -11, -40, -8, -32, -10, -26],
+      ['C', -11, -18, -2, -10, 6, -6], ['C', 16, -1, 18, 12, 8, 17],
+      ['C', 0, 20, -10, 14, -12, 4], ['Z']),
+    // Beak and crest plumes.
+    F(['M', -24, -34], ['L', -34, -30], ['L', -22, -29], ['Z']),
+    taper([[-15, -38], [-12, -44], [-6, -46], [-2, -44]], [3.2, 2.6, 1.4], 10),
+    F(...circle(-1, -44, 2.4)),
+    taper([[-18, -38], [-18, -44], [-14, -48], [-10, -48]], [2.6, 2.2, 1.2], 10),
+    KF(...circle(-17, -33, 1.7)),
+    // Raised wing with carved flight feathers.
+    wing,
+    asCarvedOutline(wing, 2),
+    K(1.9, ['M', 2, -6], ['Q', 14, -22, 30, -38],
+      ['M', 6, -2], ['Q', 18, -14, 29, -24],
+      ['M', 8, 2], ['Q', 18, -4, 26, -12]),
+    // Breast feathers carved.
+    K(1.6, ['M', -10, -6], ['Q', -6, -4, -6, 2], ['M', -8, 6], ['Q', -2, 8, 0, 13]),
+  ];
+}
+
+function plum(): SealMotifPath[] {
+  return [
+    taper([[-42, 44], [-32, 26], [-30, 10], [-14, 0],
+      [-2, -8], [8, -22], [24, -36]], [13, 9, 3], 14),
+    taper([[-16, 2], [-4, 10], [14, 10], [36, 18]], [7, 5, 2], 12),
+    taper([[-20, 4], [-30, -6], [-30, -22], [-38, -36]], [6, 4, 1.6], 12),
+    taper([[6, -16], [14, -14], [22, -8], [34, -10]], [4.6, 3.6, 1.6], 10),
+    K(2, ['M', -38, 36], ['Q', -32, 24, -24, 14], ['M', -18, 2], ['Q', -10, -4, -4, -8]),
+    ...blossom(-30, -30, 11, 0.2),
+    ...blossom(22, -34, 10.5, -0.15),
+    ...blossom(32, 12, 10, 0.4),
+    ...blossom(-2, -10, 8.6, 0.1),
+    ...blossom(30, -8, 7, -0.3),
+    F(...circle(-40, -40, 3.6)),
+    F(...circle(40, 22, 3.2)),
+    F(...circle(10, 18, 3)),
+  ];
+}
+
+function bamboo(): SealMotifPath[] {
+  const marks: SealMotifPath[] = [
+    taper([[-16, 48], [-17, 16], [-16, -16], [-13, -48]], [10, 9.5, 8.5], 16),
+    taper([[11, 48], [12, 22], [13, -6], [16, -40]], [8.4, 8, 6.8], 16),
+  ];
+  // Carved nodes.
+  marks.push(K(2.4,
+    ['M', -22, 26], ['L', -10, 26], ['M', -21, -2], ['L', -10, -2],
+    ['M', -19, -28], ['L', -8, -28],
+    ['M', 6, 30], ['L', 17, 30], ['M', 7, 6], ['L', 18, 6], ['M', 9, -18], ['L', 20, -18]));
+  marks.push(K(1.5,
+    ['M', -14, 20], ['Q', -13, 12, -14, 4], ['M', 13, 24], ['Q', 13.5, 18, 13, 12]));
+  // Broad drooping leaves gathered in 个 clusters.
+  marks.push(
+    lens(-14, -28, -42, -38, 6.4, 3),
+    lens(-15, -27, -44, -18, 6, 3),
+    lens(-15, -26, -34, -4, 5.6, 3),
+    lens(15, -18, 44, -26, 6.4, -3),
+    lens(15, -17, 44, -6, 6, -3),
+    lens(15, -16, 34, 6, 5.6, -3),
+    lens(-15, 0, -44, 12, 5.6, 3),
+    lens(-15, 1, -32, 22, 5.2, 3),
+    lens(16, 8, 42, 20, 5.6, -3),
+    lens(16, 9, 30, 30, 5.2, -3),
+  );
+  marks.push(K(1.4,
+    ['M', -18, -29], ['Q', -30, -32, -38, -36], ['M', 18, -19], ['Q', 30, -21, 40, -25],
+    ['M', -18, -1], ['Q', -30, 4, -40, 10], ['M', 19, 7], ['Q', 30, 12, 38, 18]));
+  return marks;
+}
+
+function pine(): SealMotifPath[] {
+  return [
+    // Rock the pine grips.
+    F(['M', -46, 47], ['Q', -44, 34, -32, 32], ['Q', -24, 26, -14, 34],
+      ['Q', 0, 30, 6, 40], ['Q', 12, 44, 14, 47], ['Z']),
+    K(2, ['M', -36, 41], ['Q', -28, 36, -20, 40], ['M', -6, 40], ['Q', 0, 38, 4, 44]),
+    // Twisted trunk and branches.
+    taper([[-12, 40], [-2, 26], [-20, 12], [-12, -4],
+      [-6, -16], [6, -20], [2, -36]], [13, 10, 5], 16),
+    K(2, ['M', -10, 30], ['Q', -14, 22, -16, 14], ['M', -12, 4], ['Q', -10, -4, -4, -10],
+      ['M', -6, 20], ['L', -2, 16]),
+    taper([[-12, -2], [-22, -6], [-30, -10], [-40, -10]], [6.4, 4.8, 2.4], 10),
+    taper([[-4, -14], [8, -10], [20, -16], [34, -12]], [6, 4.6, 2.4], 10),
+    taper([[-6, 14], [6, 12], [18, 16], [30, 14]], [5.4, 4.2, 2.2], 10),
+    // Needle crowns.
+    ...pineCrown(-32, -12, 15, 11),
+    ...pineCrown(4, -34, 15, 11),
+    ...pineCrown(30, -14, 15, 11),
+    ...pineCrown(30, 13, 13, 9),
+  ];
+}
+
+function landscape(): SealMotifPath[] {
+  const back = F(['M', -22, 24], ['Q', -10, 6, -2, -8], ['Q', 4, -18, 8, -18],
+    ['Q', 12, -36, 19, -38], ['Q', 26, -38, 29, -26], ['Q', 32, -16, 36, -14],
+    ['Q', 44, 2, 48, 24], ['Z']);
+  const front = F(['M', -48, 24], ['Q', -42, 8, -33, 0], ['Q', -26, -10, -20, -6],
+    ['Q', -12, 2, -6, 10], ['Q', 4, 18, 14, 24], ['Z']);
+  return [
+    F(...circle(-27, -28, 8.6)),
+    back,
+    // Texture strokes (披麻皴) carved down the far peaks.
+    K(2, ['M', 18, -33], ['Q', 14, -20, 8, -10], ['M', 22, -30], ['Q', 24, -18, 22, -6],
+      ['M', 34, -10], ['Q', 38, 2, 40, 12]),
+    front,
+    asCarvedOutline(front, 2.6),
+    asFill(front),
+    K(2, ['M', -30, 0], ['Q', -32, 8, -38, 16], ['M', -20, -2], ['Q', -18, 6, -10, 14]),
+    // Water and a lone boat.
+    S(3.6, ['M', -46, 32], ['Q', -36, 28, -26, 32], ['Q', -16, 36, -6, 32],
+      ['Q', 4, 28, 14, 32], ['Q', 24, 36, 34, 32], ['Q', 40, 29, 46, 32]),
+    S(3.4, ['M', -40, 42], ['Q', -30, 38, -20, 42], ['Q', -10, 46, 0, 42]),
+    F(['M', 10, 39], ['L', 32, 39], ['Q', 28, 46, 20, 46], ['Q', 14, 46, 10, 39], ['Z']),
+    S(2, ['M', 20, 39], ['L', 20, 27]),
+    F(['M', 20, 28], ['L', 27, 37], ['L', 20, 37], ['Z']),
+  ];
+}
+
+function lotus(): SealMotifPath[] {
+  const outerLeft = lens(-6, 10, -36, -10, 15, 3);
+  const outerRight = lens(-2, 10, 28, -10, 15, -3);
+  const left = lens(-6, 10, -25, -28, 19, 3);
+  const right = lens(-2, 10, 17, -28, 19, -3);
+  const centre = lens(-4, 10, -4, -38, 21);
+  const leaf = F(['M', 6, 26], ['C', 12, 14, 40, 12, 47, 24], ['Q', 44, 28, 46, 32],
+    ['C', 36, 40, 14, 40, 6, 32], ['Q', 9, 29, 6, 26], ['Z']);
+  return [
+    taper([[-4, 8], [-4, 24], [-6, 36], [-8, 48]], [4.8, 4.4, 4], 10),
+    taper([[-6, 26], [-16, 30], [-26, 24], [-32, 14]], [3.6, 3.2, 2.6], 10),
+    lens(-32, 16, -40, -2, 6),
+    leaf,
+    K(1.8, ['M', 22, 27], ['L', 12, 20], ['M', 22, 27], ['L', 26, 16],
+      ['M', 22, 27], ['L', 40, 20], ['M', 22, 27], ['L', 42, 32], ['M', 22, 27], ['L', 20, 36]),
+    KF(...circle(22, 27, 2)),
+    outerLeft, outerRight,
+    left, asCarvedOutline(left, 2.2), asFill(left),
+    right, asCarvedOutline(right, 2.2), asFill(right),
+    centre, asCarvedOutline(centre, 2.4), asFill(centre),
+    K(1.6, ['M', -4, 2], ['L', -4, -26], ['M', -18, -16], ['L', -10, -2], ['M', 10, -16], ['L', 2, -2]),
+    S(3.4, ['M', -48, 42], ['Q', -38, 38, -28, 42], ['Q', -20, 46, -12, 42]),
+    S(3.4, ['M', 4, 45], ['Q', 14, 41, 24, 45], ['Q', 34, 49, 44, 44]),
+  ];
+}
+
+function clouds(): SealMotifPath[] {
+  // Auspicious ruyi clouds: each head is a pair of scrolls rolling outward
+  // from a shared crown, carried on a long flowing ribbon.
+  const head = (x: number, y: number, radius: number, weight: number) => {
+    const left = spiral(x - radius, y, radius, -Math.PI / 2, 1.05, false, 0.3).reverse();
+    const right = spiral(x + radius, y, radius, -Math.PI / 2, 1.05, true, 0.3);
+    return S(weight, ...polyline([...left, ...right]));
+  };
+  return [
+    head(-16, -16, 13, 5.6),
+    S(5.6, ['M', -47, 14], ['C', -36, 2, -26, 12, -16, 6], ['Q', -9, 2, -8, -6]),
+    head(20, 16, 11, 5.2),
+    S(5.2, ['M', -40, 38], ['C', -22, 30, -2, 44, 14, 34], ['Q', 20, 30, 22, 24]),
+    head(30, -32, 7, 4.2),
+    S(4.2, ['M', 6, -22], ['Q', 16, -18, 24, -26]),
+  ];
 }
 
 const MOTIFS: Readonly<Record<SealMotifId, readonly SealMotifPath[]>> = {
-  dragon: [
-    // A single S-shaped dragon winds through the circular negative space.
-    S(6.4, ['M', 15, -30], ['C', 39, -29, 38, -5, 16, 2],
-      ['C', -7, 8, -25, 2, -20, 23], ['C', -16, 39, 11, 42, 27, 30],
-      ['C', 39, 21, 29, 10, 19, 15]),
-    S(2.8, ['M', 14, -28], ['C', 35, -19, 30, -4, 14, -3],
-      ['C', -15, 2, -30, 10, -13, 30], ['C', 0, 43, 16, 35, 22, 28]),
-    // Horns, whiskers, and squared snout distinguish the head.
-    S(3.2, ['M', 15, -30], ['Q', -4, -39, -21, -30],
-      ['L', -34, -30], ['L', -28, -21], ['Q', -16, -19, -12, -24]),
-    S(2.1, ['M', -6, -32], ['L', -10, -43], ['L', -3, -38],
-      ['L', 4, -44], ['L', 4, -34]),
-    S(2.1, ['M', -23, -25], ['Q', -37, -23, -41, -13],
-      ['M', -27, -23], ['Q', -40, -28, -44, -32]),
-    F(['M', -17, -30], ['Q', -14, -34, -11, -30], ['Q', -14, -26, -17, -30], ['Z']),
-    S(2, ['M', -30, -22], ['Q', -24, -17, -17, -21]),
-    // Scales and claws.
-    S(1.5, ['M', 25, -18], ['L', 17, -15], ['M', 29, -11], ['L', 20, -7],
-      ['M', 16, 8], ['L', 6, 10], ['M', -5, 10], ['L', -13, 13],
-      ['M', -11, 27], ['L', -3, 29], ['M', 8, 36], ['L', 13, 29]),
-    S(2.8, ['M', 31, -4], ['Q', 42, -4, 41, 6], ['L', 35, 5],
-      ['M', 26, 20], ['Q', 41, 22, 39, 33], ['L', 33, 29]),
-    S(2.8, ['M', -16, 15], ['Q', -34, 6, -39, 20],
-      ['L', -33, 18], ['M', -5, 34], ['L', -10, 44]),
-    // Two cloud curls anchor the dragon without becoming a background.
-    S(2, ['M', -36, 4], ['C', -45, 0, -41, -10, -33, -8],
-      ['C', -28, -6, -30, 0, -35, -1]),
-    S(2, ['M', 31, 41], ['C', 42, 44, 46, 34, 38, 32],
-      ['C', 32, 31, 31, 36, 36, 37]),
-  ],
-  phoenix: [
-    S(5.4, ['M', -5, 23], ['C', -15, 6, -6, -15, 14, -22],
-      ['C', 25, -25, 23, -38, 11, -38]),
-    S(2.8, ['M', 10, -33], ['Q', 24, -30, 32, -21], ['L', 19, -19]),
-    S(2.4, ['M', 11, -35], ['L', 7, -45], ['L', 17, -39],
-      ['L', 22, -44], ['L', 21, -34]),
-    F(['M', 18, -35], ['L', 21, -34], ['L', 18, -32], ['Z']),
-    S(4.2, ['M', -2, 6], ['C', -25, -10, -35, -8, -38, 5],
-      ['C', -31, 17, -17, 17, -6, 13]),
-    S(2.3, ['M', -12, -5], ['C', -34, -20, -38, -22, -40, -14],
-      ['M', -18, 0], ['C', -29, -7, -36, -8, -42, -3]),
-    // Sweeping feathers run diagonally and then curl back at the tail.
-    S(4.6, ['M', -3, 23], ['C', 13, 30, 36, 19, 41, 5],
-      ['C', 34, 29, 16, 38, -3, 39]),
-    S(3, ['M', -3, 23], ['C', 13, 17, 36, 6, 39, -7],
-      ['C', 41, 12, 24, 21, 10, 29]),
-    S(3, ['M', -4, 22], ['C', -12, 34, -34, 39, -40, 29],
-      ['C', -31, 32, -18, 22, -13, 16]),
-    S(1.9, ['M', 3, 30], ['Q', 19, 37, 25, 30],
-      ['M', 8, 19], ['Q', 26, 20, 31, 12]),
-    S(2.5, ['M', -7, 29], ['L', -13, 42], ['L', -20, 45],
-      ['M', 2, 31], ['L', 3, 42], ['L', 12, 44]),
-  ],
-  plum: [
-    S(5.8, ['M', -39, 42], ['C', -20, 17, -16, -12, 25, -35]),
-    S(3.7, ['M', -18, 12], ['Q', -3, 17, 19, 34],
-      ['M', -12, -4], ['Q', -30, -24, -36, -39],
-      ['M', 8, -21], ['L', 30, -12]),
-    S(2.2, ['M', -15, 17], ['L', -30, 18],
-      ['M', 17, -30], ['L', 24, -43],
-      ['M', -1, 21], ['L', -1, 35]),
-    ...blossom(-22, -20, 9),
-    ...blossom(23, -32, 10),
-    ...blossom(22, 24, 9),
-    ...blossom(-33, 18, 7.5),
-    ...blossom(30, -8, 7),
-  ],
-  bamboo: [
-    S(5.8, ['M', -22, 42], ['C', -24, 15, -20, -10, -18, -43]),
-    S(5.3, ['M', 7, 42], ['C', 6, 13, 9, -11, 9, -42]),
-    S(2.7, ['M', -25, -16], ['L', -13, -16],
-      ['M', -24, 15], ['L', -14, 15],
-      ['M', 4, -20], ['L', 15, -20],
-      ['M', 4, 13], ['L', 13, 13]),
-    F(['M', -19, -26], ['Q', -43, -43, -45, -32], ['Q', -35, -16, -19, -26], ['Z']),
-    F(['M', -17, -8], ['Q', -44, -20, -42, -8], ['Q', -31, 1, -17, -8], ['Z']),
-    F(['M', -17, -29], ['Q', 0, -48, 4, -39], ['Q', -2, -27, -17, -29], ['Z']),
-    F(['M', 9, -30], ['Q', 26, -49, 35, -44], ['Q', 32, -32, 9, -30], ['Z']),
-    F(['M', 9, -6], ['Q', 31, -24, 43, -13], ['Q', 31, -1, 9, -6], ['Z']),
-    F(['M', 8, 13], ['Q', 27, 0, 42, 9], ['Q', 29, 23, 8, 13], ['Z']),
-    S(1.8, ['M', 8, -32], ['L', 33, -40],
-      ['M', 9, -6], ['L', 37, -14],
-      ['M', -18, -9], ['L', -40, -11]),
-  ],
-  pine: [
-    S(7.2, ['M', -14, 44], ['C', -9, 27, -19, 10, -13, -5],
-      ['C', -8, -21, 2, -31, -3, -43]),
-    S(4, ['M', -12, 7], ['Q', 7, -7, 27, -5],
-      ['M', -9, -15], ['Q', -30, -24, -39, -20],
-      ['M', -5, -27], ['Q', 19, -36, 37, -30]),
-    S(3.2, ['M', -13, 23], ['L', -21, 37],
-      ['M', -8, 18], ['L', -2, 33]),
-    S(2.2, ['M', -40, -20], ['C', -31, -33, -18, -30, -11, -21],
-      ['C', -20, -13, -33, -10, -40, -20]),
-    S(2.2, ['M', 9, -32], ['C', 20, -43, 35, -40, 42, -30],
-      ['C', 30, -19, 13, -23, 9, -32]),
-    S(2.2, ['M', -2, -5], ['C', 10, -20, 27, -17, 37, -4],
-      ['C', 26, 7, 11, 4, -2, -5]),
-    S(1.5, ['M', -33, -25], ['L', -35, -34],
-      ['M', -24, -27], ['L', -21, -37],
-      ['M', -17, -25], ['L', -11, -34],
-      ['M', 18, -35], ['L', 15, -44],
-      ['M', 27, -33], ['L', 31, -43],
-      ['M', 15, -7], ['L', 14, -16],
-      ['M', 26, -6], ['L', 29, -15]),
-    S(2.5, ['M', -37, 42], ['Q', -11, 35, 12, 42],
-      ['M', -29, 46], ['L', 22, 46]),
-  ],
-  landscape: [
-    // Peaks, an empty cloud band, a solitary pine, and quiet water.
-    S(3.4, ['M', -45, 11], ['L', -19, -18], ['L', -10, -6],
-      ['L', 12, -40], ['L', 44, 6]),
-    S(2.1, ['M', -8, -3], ['L', 12, -27], ['L', 27, -5],
-      ['M', -19, -17], ['L', -12, -9],
-      ['M', 10, -29], ['L', 17, -14]),
-    S(2.7, ['M', -43, 27], ['L', -35, 16], ['L', -28, 22],
-      ['M', 23, 16], ['L', 35, 3], ['L', 45, 15]),
-    S(2.1, ['M', -42, 38], ['Q', -16, 28, 5, 38],
-      ['Q', 25, 46, 43, 33]),
-    S(1.9, ['M', -25, 44], ['Q', -4, 39, 10, 45],
-      ['M', 18, 31], ['Q', 35, 27, 44, 30],
-      ['M', -42, 31], ['Q', -32, 27, -23, 29]),
-    S(3.2, ['M', -28, 27], ['L', -29, 4],
-      ['M', -29, 11], ['Q', -41, 7, -44, 13],
-      ['M', -29, 8], ['Q', -18, -2, -11, 9]),
-    S(1.9, ['M', -43, 12], ['Q', -36, -1, -29, 7],
-      ['Q', -21, -3, -16, 12]),
-    S(1.7, ['M', 4, 28], ['L', 25, 28], ['L', 21, 31],
-      ['M', 13, 25], ['L', 17, 20]),
-  ],
-  lotus: [
-    S(3.5, ['M', 0, 26], ['Q', -22, -1, 0, -40],
-      ['Q', 25, -4, 0, 26]),
-    S(3, ['M', 0, 26], ['Q', -42, -7, -38, -21],
-      ['Q', -8, -23, 0, 26],
-      ['M', 0, 26], ['Q', 38, -6, 39, -23],
-      ['Q', 9, -22, 0, 26]),
-    S(3.3, ['M', -29, -12], ['Q', -40, -11, -44, 4],
-      ['Q', -34, 21, -7, 28],
-      ['M', 29, -12], ['Q', 40, -11, 44, 4],
-      ['Q', 34, 21, 7, 28]),
-    S(2.1, ['M', -17, -16], ['Q', -12, -27, 0, -31],
-      ['M', 16, -16], ['Q', 12, -27, 0, -31]),
-    S(3.2, ['M', 0, 26], ['L', 0, 44]),
-    S(2.2, ['M', -44, 38], ['Q', -24, 32, -8, 38],
-      ['Q', 11, 44, 39, 35],
-      ['M', -39, 45], ['Q', -20, 41, -2, 46],
-      ['M', 15, 45], ['Q', 28, 42, 40, 45]),
-  ],
-  clouds: [
-    S(4, ['M', -43, 0], ['C', -33, -11, -17, -11, -12, 0],
-      ['C', -7, 11, -26, 17, -29, 6],
-      ['C', -31, -1, -19, -3, -19, 2]),
-    S(4.2, ['M', -12, 0], ['C', -7, -17, 13, -24, 23, -12],
-      ['C', 32, -2, 21, 12, 12, 5],
-      ['C', 6, -1, 15, -8, 18, -2]),
-    S(4.2, ['M', -40, 18], ['C', -21, 17, -20, 30, -2, 26],
-      ['C', 14, 23, 24, 15, 42, 23]),
-    S(3.1, ['M', -35, -25], ['C', -20, -30, -14, -18, -19, -13],
-      ['C', -26, -7, -35, -18, -28, -20],
-      ['M', 4, -31], ['C', 19, -39, 35, -31, 29, -21]),
-    S(2.4, ['M', -25, 40], ['C', -7, 36, 8, 40, 19, 34],
-      ['M', -42, -38], ['Q', -30, -43, -22, -38],
-      ['M', 25, 37], ['Q', 34, 33, 43, 36]),
-  ],
+  dragon: dragon(),
+  phoenix: phoenix(),
+  plum: plum(),
+  bamboo: bamboo(),
+  pine: pine(),
+  landscape: landscape(),
+  lotus: lotus(),
+  clouds: clouds(),
 };
 
 export function getSealMotifPaths(id: SealMotifId): readonly SealMotifPath[] {
   return MOTIFS[id];
 }
 
-/** Draw with the caller's fill/stroke colour and compositing (ink or carving). */
-export function drawSealMotif(ctx: CanvasRenderingContext2D, id: SealMotifId): void {
+export interface DrawSealMotifOptions {
+  /**
+   * Bai Wen: the caller already filled the face, and the design is carved out
+   * of it. Carved detail marks then restore ink instead of removing it.
+   */
+  carved?: boolean;
+  /** Ink used for deposited marks; defaults to the context's current fill. */
+  inkColor?: string;
+}
+
+/**
+ * Draw a motif in the current transform. Ink marks deposit `inkColor` (or,
+ * in carved mode, erase the face); carved marks do the opposite, so the same
+ * design reads correctly as both Zhu Wen and Bai Wen.
+ */
+export function drawSealMotif(ctx: CanvasRenderingContext2D, id: SealMotifId,
+  options: DrawSealMotifOptions = {}): void {
+  const carved = options.carved === true;
+  const ink = options.inkColor ?? (typeof ctx.fillStyle === 'string' ? ctx.fillStyle : '#b33227');
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   for (const mark of MOTIFS[id]) {
+    const removesInk = mark.carve === true ? !carved : carved;
+    ctx.globalCompositeOperation = removesInk ? 'destination-out' : 'source-over';
+    ctx.fillStyle = removesInk ? '#000' : ink;
+    ctx.strokeStyle = removesInk ? '#000' : ink;
     ctx.beginPath();
     for (const command of mark.commands) {
       switch (command[0]) {
@@ -244,4 +457,5 @@ export function drawSealMotif(ctx: CanvasRenderingContext2D, id: SealMotifId): v
     if (mark.filled) ctx.fill();
     ctx.stroke();
   }
+  ctx.globalCompositeOperation = 'source-over';
 }

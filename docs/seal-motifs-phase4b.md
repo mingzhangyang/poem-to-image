@@ -7,16 +7,34 @@ categorised seal gallery, multiple stamp layers, image uploads or new fonts.
 
 ## Eight hand-authored vector engravings
 
+The motifs are drawn in the language of carved Han pictorial seals (肖形印),
+not line illustration: solid masses and bold tapered strokes, with details
+carved back out of the ink. Strokes never go below 1.4 motif units, so the
+designs stay legible at the 60–80px sizes seals are actually placed at.
+
 | ID | Design | Visual motif |
 | --- | --- | --- |
-| dragon | Dragon | S-shaped dragon, snout, horns, scales, claws, two cloud curls |
-| phoenix | Phoenix | Bird head, sweeping wings, fanned tail feathers |
-| plum | Plum blossom | Branches and five-petal blossoms |
-| bamboo | Bamboo | Jointed stalks and carved tapered leaves |
-| pine | Pine | Twisted trunk, needle branch crowns, rock base |
-| landscape | Mountain and water | Peaks, solitary pine, water ripples, quiet horizon |
-| lotus | Lotus | Symmetric pointed petals, stem, water ripples |
-| clouds | Auspicious clouds | Scroll curls and layered cloud bands |
+| dragon | Dragon | Coiled dragon around a flaming pearl; raised head with antlers and open jaw, three clawed legs |
+| phoenix | Phoenix | Crested bird, raised wing with carved flight feathers, three tail plumes ending in eye-spots |
+| plum | Plum blossom | Tapered gnarled branches, solid five-petal blossoms with carved hearts, buds |
+| bamboo | Bamboo | Two stalks with carved nodes, broad drooping leaves in 个 clusters |
+| pine | Pine | Twisted trunk on a rock, fan-shaped needle crowns with carved needles |
+| landscape | Mountain and water | Sun, layered peaks with carved texture strokes, water, a lone sailing boat |
+| lotus | Lotus | Cupped flower with carved petal separations, bud, veined leaf, ripples |
+| clouds | Auspicious clouds | Ruyi cloud heads (paired outward scrolls) on flowing ribbons |
+
+### Carved marks
+
+A mark can be flagged `carve`. `drawSealMotif(ctx, id, { carved, inkColor })`
+inverts it against the seal mode, so one design reads correctly both ways:
+
+| Mark | Zhu Wen (red design) | Bai Wen (design carved from red face) |
+| --- | --- | --- |
+| ink | deposits ink (`source-over`) | removes ink (`destination-out`) |
+| carve | removes ink (`destination-out`) | restores ink (`source-over`) |
+
+The motif fills the face up to a narrow channel inside the rim; curved faces
+(round/oval) fit the motif's round silhouette (radius 50) instead of its square.
 
 These paths are original hand-authored Canvas instructions kept in
 `src/sealMotifs.ts`. No externally hosted SVGs, fonts, stock illustrations,
@@ -42,8 +60,9 @@ AI-generated pictures or unlicensed image resources are required.
 2. `drawStampBody` dispatches *only* for a valid `motifId`, otherwise uses
    unchanged lettering and historical impression paths.
 3. The motif frame uses the stamp's actual square/circle/rectangular/oval path.
-4. In Zhu Wen, vector paths are red pigment on transparent paper.
-   In Bai Wen, they remove deposited pigment from a solid red face.
+4. In Zhu Wen, vector paths are red pigment on transparent paper and carved
+   details erase it again. In Bai Wen, the design removes pigment from a
+   solid red face and carved details restore it (see *Carved marks*).
 5. Font size/stroke controls are irrelevant in motif mode and are hidden.
    Motif output never requests a seal font before preview/export.
 6. Natural or classic weathering is applied **after** the vector ink body,

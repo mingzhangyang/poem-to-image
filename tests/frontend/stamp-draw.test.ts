@@ -460,8 +460,14 @@ test('eight vector motifs render with Zhu/Bai ink and zero font operations', () 
         assert.equal(ops.filter((op) => op.method === 'strokeText').length, 0);
         assert.ok(ops.filter((op) => op.method === 'stroke').length >= 4);
         assert.ok(ops.filter((op) => op.method === 'clip').length >= 1);
-        assert.equal(ops.some((op) => op.method === 'composite' &&
-          op.args[0] === 'destination-out'), mode === 'baiwen');
+        // Bai Wen carves the design out of a solid face. Zhu Wen deposits the
+        // design and carves only its details (eyes, nodes, petal edges).
+        const carves = ops.filter((op) => op.method === 'composite'
+          && op.args[0] === 'destination-out').length;
+        const deposits = ops.filter((op) => op.method === 'composite'
+          && op.args[0] === 'source-over').length;
+        if (mode === 'baiwen') assert.ok(carves > deposits, motifId + ' Bai Wen is mostly carved');
+        else assert.ok(deposits > carves, motifId + ' Zhu Wen is mostly deposited');
         assert.equal(created[0].width, 360);
         assert.equal(created[0].height, 360);
       });
