@@ -8,13 +8,14 @@ import {
 import { getNaturalSealSeed, nextNaturalSealSeed } from '../../naturalSealTexture';
 import { getLXGWUnlistedCharacters } from '../../lxgwSealCoverage';
 import {
-  getStampPresetUpdates, isSealScriptFont, isTraditionalStamp, SEAL_FONT_STACK, SEAL_PRESET_IDS, SMALL_SEAL_FONT_STACK,
+  isSealScriptFont, isTraditionalStamp, SEAL_FONT_STACK, SMALL_SEAL_FONT_STACK,
 } from '../../sealTypography';
-import type { StampPresetId } from '../../sealTypography';
 import { SIGNATURE_FONTS } from '../../signatureRendering';
 import type { BorderStyle, DecorationsSectionProps, ExpandedSections, SignatureFlourish, StampStyle, TranslateFn } from '../../types';
 import { ControlSection } from '../ControlSection';
 import { SealMotifPicker } from './SealMotifPicker';
+import { SealStyleGallery } from './SealStyleGallery';
+import { getSealStyleDesignUpdates } from '../../sealStyleCatalog';
 import { isSealMotifId } from '../../sealMotifs';
 
 const BORDER_STYLE_LABELS: Record<
@@ -66,6 +67,9 @@ interface DecorationsPanelProps {
 export function DecorationsPanel({ t, expanded, onToggle, decorations }: DecorationsPanelProps) {
   const isComposingRef = useRef(false);
   const [stampInputText, setStampInputText] = useState(decorations.stamp.text);
+  // Default open keeps familiar, testable editor controls accessible;
+  // readers can collapse glyph-level adjustments for a simpler view.
+  const [showAdvancedSealSettings, setShowAdvancedSealSettings] = useState(true);
 
   useEffect(() => {
     if (!isComposingRef.current) {
@@ -209,38 +213,15 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
 
           {decorations.showStamp && decorations.stampSupported ? (
             <div className="rounded-xl bg-white border border-[rgba(34,48,52,0.08)] p-3 space-y-3">
-              <div>
-                <label className="mb-2 block text-xs text-(--app-accent-500)">{t('stampPresets')}</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {SEAL_PRESET_IDS.map((preset) => {
-                    const labels: Record<StampPresetId, 'stampPresetVermilion' | 'stampPresetWhite' | 'stampPresetLiterati' | 'stampPresetModern'> = {
-                      'vermillion-name': 'stampPresetVermilion',
-                      'white-name': 'stampPresetWhite',
-                      'literati': 'stampPresetLiterati',
-                      'modern-calligraphy': 'stampPresetModern',
-                    };
-                    return (
-                      <button
-                        key={preset}
-                        type="button"
-                        className="rounded-lg border border-[rgba(34,48,52,0.12)] bg-[rgba(253,248,242,0.95)] px-2.5 py-2 text-left text-xs font-medium text-(--app-accent-700) transition-colors hover:border-[rgba(154,48,37,0.45)] hover:bg-[rgba(244,230,217,0.5)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgba(154,48,37,0.65)]"
-                        onClick={() => decorations.onStampChange({
-                          ...getStampPresetUpdates(preset),
-                          motifId: undefined,
-                          textureSeed: getNaturalSealSeed(decorations.stamp),
-                        })}
-                      >
-                        {t(labels[preset])}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <SealMotifPicker
-                value={isSealMotifId(decorations.stamp.motifId) ? decorations.stamp.motifId : undefined}
-                onChange={(motifId) => decorations.onStampChange({ motifId })}
+              <SealStyleGallery
+                stamp={decorations.stamp}
                 t={t}
+                onSelect={(id) => decorations.onStampChange({
+                  ...getSealStyleDesignUpdates(id),
+                  // The selected design changes visual defaults, never identity.
+                  textureSeed: getNaturalSealSeed(decorations.stamp),
+                })}
+                onUseSampleText={(text) => decorations.onStampChange({ text: limitStampText(text) })}
               />
 
               <div>
@@ -343,6 +324,12 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                   />
                 </div>
               )}
+
+              <SealMotifPicker
+                value={isSealMotifId(decorations.stamp.motifId) ? decorations.stamp.motifId : undefined}
+                onChange={(motifId) => decorations.onStampChange({ motifId })}
+                t={t}
+              />
 
               <div>
                 <label className="block text-xs text-(--app-accent-500) mb-1">{t('stampColorScheme')}</label>
@@ -469,7 +456,19 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                 />
               </div>
 
-              {!isSealMotifId(decorations.stamp.motifId) && (
+              <button
+                type="button"
+                aria-expanded={showAdvancedSealSettings}
+                onClick={() => setShowAdvancedSealSettings((previous) => !previous)}
+                className="flex w-full items-center justify-between rounded-lg border border-[rgba(34,48,52,0.12)] bg-[rgba(244,230,217,0.24)] px-3 py-2 text-xs font-medium text-(--app-accent-700)"
+              >
+                {t('stampAdvancedSettings')}
+                {showAdvancedSealSettings
+                  ? <ChevronUp aria-hidden="true" className="h-4 w-4" />
+                  : <ChevronDown aria-hidden="true" className="h-4 w-4" />}
+              </button>
+
+              {showAdvancedSealSettings && !isSealMotifId(decorations.stamp.motifId) && (
                 <>
               <div>
                 <label className="block text-xs text-(--app-accent-500) mb-1">{t('stampFont')}</label>
@@ -555,6 +554,8 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                 />
               </div>
 
+              {showAdvancedSealSettings && (
+                <>
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs text-(--app-accent-500)">
                   <span>{t('stampRotation')}</span>
@@ -588,6 +589,8 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                   className="app-range app-range-warm"
                 />
               </div>
+                </>
+              )}
             </div>
           ) : null}
         </div>

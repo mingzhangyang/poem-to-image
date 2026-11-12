@@ -2,6 +2,9 @@ import {
   SEAL_FONT_FAMILY, SEAL_FONT_URL, SMALL_SEAL_FONT_FAMILY, SMALL_SEAL_FONT_URL,
 } from './sealTypography';
 
+/** Emitted only after a manually loaded seal face has joined document.fonts. */
+export const SEAL_FONT_REGISTERED_EVENT = 'inkpoem:seal-font-registered';
+
 // On-demand font loader for the editor. Chinese handwriting fonts are bundled
 // locally via @fontsource / LXGW and requested only when selected. Other font
 // families retain their Google Fonts fallback. We wait for selected glyphs at
@@ -60,6 +63,9 @@ async function loadSealScriptFont(family: string, url: string): Promise<void> {
   });
   await font.load();
   document.fonts.add(font);
+  // An already-loaded FontFace does not necessarily emit FontFaceSet.loadingdone.
+  // Notify mounted Canvas previews without requesting another font download.
+  document.dispatchEvent?.(new Event(SEAL_FONT_REGISTERED_EVENT));
 }
 
 
