@@ -28,6 +28,7 @@ import { CustomTextItems } from './CustomTextItems';
 import { LogoOverlay } from './LogoOverlay';
 import { SignatureOverlay } from './SignatureOverlay';
 import { StampOverlay } from './StampOverlay';
+import { usePreviewPointerInteraction } from './previewInteraction';
 import { TextLayoutBlock } from './TextLayoutBlock';
 
 interface PoemContentProps {
@@ -52,6 +53,7 @@ interface PoemContentProps {
   showStamp: boolean;
   stamp: StampConfig;
   effectiveScale: number;
+  isPinching?: boolean;
   customTexts: CustomText[];
   logos: LogoConfig[];
   signatures: SignatureConfig[];
@@ -87,6 +89,7 @@ export function PoemContent({
   showStamp,
   stamp,
   effectiveScale,
+  isPinching = false,
   customTexts,
   logos,
   signatures,
@@ -100,6 +103,7 @@ export function PoemContent({
   onInteractionEnd,
 }: PoemContentProps) {
   const poemBoxRef = useRef<HTMLDivElement>(null);
+  const beginPointerInteraction = usePreviewPointerInteraction(onInteractionStart, onInteractionEnd);
   const previousCustomTextIdsRef = useRef<string[]>(customTexts.map((customText) => customText.id));
   const [livePosition, setLivePosition] = useState(poemPosition);
   const [activeTextSelection, setActiveTextSelection] = useState<{ kind: 'poem' } | { kind: 'customText'; id: string } | null>(null);
@@ -219,10 +223,7 @@ export function PoemContent({
   const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     const frameRect = poemFrameRef.current ? getPreviewPositioningRect(poemFrameRef.current) : null;
     const boxRect = poemBoxRef.current?.getBoundingClientRect();
-
-    if (!frameRect || !boxRect || (event.pointerType === 'mouse' && event.button !== 0)) {
-      return;
-    }
+    if (!frameRect || !boxRect || (event.pointerType === 'mouse' && event.button !== 0)) return;
 
     event.preventDefault();
     event.stopPropagation();
@@ -230,123 +231,70 @@ export function PoemContent({
     const startPosition = livePosition;
     const startX = event.clientX;
     const startY = event.clientY;
+    const livePositionRef = { current: startPosition };
+    const bounds = getPreviewDragBounds(frameRect, boxRect);
     isDraggingRef.current = true;
     setIsDragging(true);
-    const bounds = getPreviewDragBounds(frameRect, boxRect);
-
-    const pointerId = event.pointerId;
-    onInteractionStart();
-
-    const handlePointerUp = (upEvent: PointerEvent) => {
-      if (upEvent.pointerId !== pointerId) {
-        return;
-      }
-
-      isDraggingRef.current = false;
-      setIsDragging(false);
-      const poemRect = poemBoxRef.current?.getBoundingClientRect();
-      onPoemPositionChange(
-        poemRect
-          ? {
-              ...measurePreviewElement(frameRect, poemRect),
-              boxWidth: liveBoxWidth,
-            }
-          : { ...livePositionRef.current, exportLeft: undefined, exportTop: undefined },
-      );
-      onInteractionEnd();
-      window.removeEventListener('pointermove', handlePointerMove);
-      window.removeEventListener('pointerup', handlePointerUp);
-      window.removeEventListener('pointercancel', handlePointerUp);
-    };
-
-    const livePositionRef = { current: startPosition };
-    const handlePointerMove = (moveEvent: PointerEvent) => {
-      if (moveEvent.pointerId !== pointerId) {
-        return;
-      }
-
-      const nextPosition = movePreviewPosition(startPosition, {
-        x: moveEvent.clientX - startX,
-        y: moveEvent.clientY - startY,
-      }, frameRect, bounds);
-
-      livePositionRef.current = nextPosition;
-      setLivePosition(nextPosition);
-    };
-
-    window.addEventListener('pointermove', handlePointerMove);
-    window.addEventListener('pointerup', handlePointerUp);
-    window.addEventListener('pointercancel', handlePointerUp);
+    beginPointerInteraction(event.pointerId, {
+      onMove: (moveEvent) => {
+        const nextPosition = movePreviewPosition(startPosition, {
+          x: moveEvent.clientX - startX, y: moveEvent.clientY - startY,
+        }, frameRect, bounds);
+        livePositionRef.current = nextPosition;
+        setLivePosition(nextPosition);
+      },
+      onCommit: () => {
+        isDraggingRef.current = false;
+        setIsDragging(false);
+        const poemRect = poemBoxRef.current?.getBoundingClientRect();
+        onPoemPositionChange(poemRect
+          ? { ...measurePreviewElement(frameRect, poemRect), boxWidth: liveBoxWidth }
+          : { ...livePositionRef.current, exportLeft: undefined, exportTop: undefined });
+      },
+      onCancel: () => {
+        isDraggingRef.current = false;
+        setIsDragging(false);
+        setLivePosition(startPosition);
+      },
+    });
   };
 
   const handleResizePointerDown = (side: 'left' | 'right', event: ReactPointerEvent<HTMLDivElement>) => {
     const frameRect = poemFrameRef.current ? getPreviewPositioningRect(poemFrameRef.current) : null;
     const boxRect = poemBoxRef.current?.getBoundingClientRect();
-
-    if (!frameRect || !boxRect || (event.pointerType === 'mouse' && event.button !== 0)) {
-      return;
-    }
+    if (!frameRect || !boxRect || (event.pointerType === 'mouse' && event.button !== 0)) return;
 
     event.preventDefault();
     event.stopPropagation();
     setActiveTextSelection({ kind: 'poem' });
-
     const startX = event.clientX;
-    const pointerId = event.pointerId;
+    const startPosition = livePosition;
+    const startBoxWidth = liveBoxWidth;
+    const liveStateRef = { current: { ...startPosition, boxWidth: startBoxWidth } };
     isResizingRef.current = true;
     setIsResizing(true);
-    onInteractionStart();
-
-    const liveStateRef = {
-      current: {
-        positionX: livePosition.positionX,
-        positionY: livePosition.positionY,
-        boxWidth: liveBoxWidth,
+    beginPointerInteraction(event.pointerId, {
+      onMove: (moveEvent) => {
+        const { positionX, boxWidth } = resizePreviewTextBox(side, frameRect, boxRect, moveEvent.clientX - startX);
+        liveStateRef.current = { ...startPosition, positionX, boxWidth };
+        setLivePosition((current) => ({ ...current, positionX }));
+        setLiveBoxWidth(boxWidth);
       },
-    };
-
-    const handlePointerMove = (moveEvent: PointerEvent) => {
-      if (moveEvent.pointerId !== pointerId) {
-        return;
-      }
-
-      const { positionX: nextPositionX, boxWidth: nextBoxWidth } =
-        resizePreviewTextBox(side, frameRect, boxRect, moveEvent.clientX - startX);
-
-      liveStateRef.current = {
-        positionX: nextPositionX,
-        positionY: livePosition.positionY,
-        boxWidth: nextBoxWidth,
-      };
-      setLivePosition((current) => ({ ...current, positionX: nextPositionX }));
-      setLiveBoxWidth(nextBoxWidth);
-    };
-
-    const handlePointerUp = (upEvent: PointerEvent) => {
-      if (upEvent.pointerId !== pointerId) {
-        return;
-      }
-
-      isResizingRef.current = false;
-      setIsResizing(false);
-      const poemRect = poemBoxRef.current?.getBoundingClientRect();
-      onPoemPositionChange(
-        poemRect
-          ? {
-              ...measurePreviewElement(frameRect, poemRect),
-              boxWidth: liveStateRef.current.boxWidth,
-            }
-          : { ...liveStateRef.current, exportLeft: undefined, exportTop: undefined },
-      );
-      onInteractionEnd();
-      window.removeEventListener('pointermove', handlePointerMove);
-      window.removeEventListener('pointerup', handlePointerUp);
-      window.removeEventListener('pointercancel', handlePointerUp);
-    };
-
-    window.addEventListener('pointermove', handlePointerMove);
-    window.addEventListener('pointerup', handlePointerUp);
-    window.addEventListener('pointercancel', handlePointerUp);
+      onCommit: () => {
+        isResizingRef.current = false;
+        setIsResizing(false);
+        const poemRect = poemBoxRef.current?.getBoundingClientRect();
+        onPoemPositionChange(poemRect
+          ? { ...measurePreviewElement(frameRect, poemRect), boxWidth: liveStateRef.current.boxWidth }
+          : { ...liveStateRef.current, exportLeft: undefined, exportTop: undefined });
+      },
+      onCancel: () => {
+        isResizingRef.current = false;
+        setIsResizing(false);
+        setLivePosition(startPosition);
+        setLiveBoxWidth(startBoxWidth);
+      },
+    });
   };
 
   const handleResizeDoubleClick = (event: ReactMouseEvent) => {
@@ -583,6 +531,7 @@ export function PoemContent({
           frameRef={poemFrameRef}
           stamp={stamp}
           effectiveScale={effectiveScale}
+          isPinching={isPinching}
           onStampChange={onStampChange}
           onInteractionStart={onInteractionStart}
           onInteractionEnd={onInteractionEnd}

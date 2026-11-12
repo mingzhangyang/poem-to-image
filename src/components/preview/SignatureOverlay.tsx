@@ -13,6 +13,8 @@ import {
 import { drawSignatureToCanvas, ensureSignatureFontsLoaded, getSignatureCanvasSize } from '../../signatureRendering';
 import type { SignatureConfig } from '../../types';
 
+import { usePreviewPointerInteraction } from './previewInteraction';
+
 interface SignatureOverlayProps {
   ariaLabel: string;
   frameRef: RefObject<HTMLDivElement | null>;
@@ -35,6 +37,7 @@ export const SignatureOverlay: FC<SignatureOverlayProps> = ({
     positionY: signature.positionY,
   });
   const isDraggingRef = useRef(false);
+  const beginPointerInteraction = usePreviewPointerInteraction(onInteractionStart, onInteractionEnd);
   const signatureRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { width: canvasWidth, height: canvasHeight } = getSignatureCanvasSize(signature.fontSize);
@@ -86,44 +89,33 @@ export const SignatureOverlay: FC<SignatureOverlayProps> = ({
   const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     const frameRect = frameRef.current ? getPreviewPositioningRect(frameRef.current) : null;
     const boxRect = event.currentTarget.getBoundingClientRect();
-
     if (!frameRect || (event.pointerType === 'mouse' && event.button !== 0)) return;
 
     event.preventDefault();
     event.stopPropagation();
-    onInteractionStart();
-    isDraggingRef.current = true;
-
-    const bounds = getPreviewDragBounds(frameRect, boxRect);
-    const pointerId = event.pointerId;
+    const startPosition = livePosition;
     const startX = event.clientX;
     const startY = event.clientY;
-    const startPosition = livePosition;
-    const liveRef = { current: startPosition };
-
-    const handlePointerMove = (e: PointerEvent) => {
-      if (e.pointerId !== pointerId) return;
-      const nextPosition = movePreviewPosition(startPosition, {
-        x: e.clientX - startX,
-        y: e.clientY - startY,
-      }, frameRect, bounds);
-      liveRef.current = nextPosition;
-      setLivePosition(liveRef.current);
-    };
-
-    const handlePointerUp = (e: PointerEvent) => {
-      if (e.pointerId !== pointerId) return;
-      window.removeEventListener('pointermove', handlePointerMove);
-      window.removeEventListener('pointerup', handlePointerUp);
-      window.removeEventListener('pointercancel', handlePointerUp);
-      onSignatureChange(liveRef.current);
-      isDraggingRef.current = false;
-      onInteractionEnd();
-    };
-
-    window.addEventListener('pointermove', handlePointerMove);
-    window.addEventListener('pointerup', handlePointerUp);
-    window.addEventListener('pointercancel', handlePointerUp);
+    const livePositionRef = { current: startPosition };
+    const bounds = getPreviewDragBounds(frameRect, boxRect);
+    isDraggingRef.current = true;
+    beginPointerInteraction(event.pointerId, {
+      onMove: (moveEvent) => {
+        const nextPosition = movePreviewPosition(startPosition, {
+          x: moveEvent.clientX - startX, y: moveEvent.clientY - startY,
+        }, frameRect, bounds);
+        livePositionRef.current = nextPosition;
+        setLivePosition(nextPosition);
+      },
+      onCommit: () => {
+        isDraggingRef.current = false;
+        onSignatureChange(livePositionRef.current);
+      },
+      onCancel: () => {
+        isDraggingRef.current = false;
+        setLivePosition(startPosition);
+      },
+    });
   };
 
   const handleKeyboardMove = (event: ReactKeyboardEvent<HTMLDivElement>) => {
