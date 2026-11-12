@@ -250,13 +250,15 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                   value={decorations.stamp.mode ?? 'modern'}
                   onChange={(event) => {
                     const mode = event.target.value as 'zhuwen' | 'baiwen' | 'modern';
+                    // Preserve the hidden text font while changing a graphic seal's face.
+                    const textSeal = !isSealMotifId(decorations.stamp.motifId);
                     decorations.onStampChange({
                       mode,
                       ...(mode === 'zhuwen' ? { colorScheme: 'outline' as const } : {}),
                       ...(mode === 'baiwen' ? { colorScheme: 'filled' as const } : {}),
-                      ...(mode !== 'modern' && !isSealScriptFont(decorations.stamp.fontFamily)
+                      ...(textSeal && mode !== 'modern' && !isSealScriptFont(decorations.stamp.fontFamily)
                         ? { fontFamily: SEAL_FONT_STACK } : {}),
-                      ...(mode === 'modern' && isSealScriptFont(decorations.stamp.fontFamily)
+                      ...(textSeal && mode === 'modern' && isSealScriptFont(decorations.stamp.fontFamily)
                         ? { fontFamily: '"Ma Shan Zheng", cursive' } : {}),
                     });
                   }}
