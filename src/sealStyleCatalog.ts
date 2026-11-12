@@ -23,8 +23,8 @@ export interface SealStyleDesignInfo {
 }
 
 export const SEAL_STYLE_DESIGN_INFO: Readonly<Record<SealStyleDesignId, SealStyleDesignInfo>> = {
-  'name-vermilion': { group: 'text', labelKey: 'stampPresetVermilion', sampleText: '李明之印' },
-  'name-white': { group: 'text', labelKey: 'stampPresetWhite', sampleText: '李明之印' },
+  'name-vermilion': { group: 'text', labelKey: 'stampPresetVermilion', sampleText: '诗情画意' },
+  'name-white': { group: 'text', labelKey: 'stampPresetWhite', sampleText: '诗情画意' },
   literati: { group: 'text', labelKey: 'stampPresetLiterati', sampleText: '清心' },
   studio: { group: 'text', labelKey: 'stampDesignStudio', sampleText: '书画之印' },
   auspicious: { group: 'text', labelKey: 'stampDesignAuspicious', sampleText: '如意' },
@@ -32,7 +32,7 @@ export const SEAL_STYLE_DESIGN_INFO: Readonly<Record<SealStyleDesignId, SealStyl
   graphic: { group: 'graphic', labelKey: 'stampDesignGraphic' },
   landscape: { group: 'graphic', labelKey: 'stampDesignLandscape' },
   blessing: { group: 'text', labelKey: 'stampDesignBlessing', sampleText: '吉祥' },
-  modern: { group: 'text', labelKey: 'stampPresetModern', sampleText: '雅' },
+  modern: { group: 'text', labelKey: 'stampPresetModern', sampleText: '亦' },
 };
 
 // Text cards set reproducible glyph defaults; graphic cards preserve hidden text tuning.

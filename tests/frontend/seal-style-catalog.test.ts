@@ -84,6 +84,15 @@ test('glyph slider customization clears exact text style, while legacy defaults 
   }
 });
 
+test('name and modern gallery examples use the requested neutral seal text', () => {
+  assert.equal(SEAL_STYLE_DESIGN_INFO['name-vermilion'].sampleText, '诗情画意');
+  assert.equal(SEAL_STYLE_DESIGN_INFO['name-white'].sampleText, '诗情画意');
+  assert.equal(SEAL_STYLE_DESIGN_INFO.modern.sampleText, '亦');
+  assert.equal(getSealStyleDesignPreview('name-vermilion').text, '诗情画意');
+  assert.equal(getSealStyleDesignPreview('name-white').text, '诗情画意');
+  assert.equal(getSealStyleDesignPreview('modern').text, '亦');
+});
+
 test('gallery sample text appears only in previews and opt-in examples, never style updates', () => {
   for (const id of SEAL_STYLE_DESIGN_IDS) {
     const info = SEAL_STYLE_DESIGN_INFO[id];
