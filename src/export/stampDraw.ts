@@ -133,7 +133,7 @@ function drawMotifStampBody(ctx: CanvasRenderingContext2D, stamp: StampConfig) {
   if (!isSealMotifId(stamp.motifId)) return;
   const { width, height } = getStampDimensions(stamp);
   const shortSide = Math.min(width, height);
-  const borderWidth = Math.min(shortSide * 0.2, Math.max(0.5, shortSide * 0.038));
+  const borderWidth = Math.min(shortSide * 0.2, Math.max(0.5, shortSide * 0.045));
   const inkColor = stamp.inkColor ?? STAMP_INK_COLOR;
   const isCarved = stamp.mode === 'baiwen'
     || (stamp.mode !== 'zhuwen' && stamp.colorScheme !== 'outline');
@@ -153,16 +153,15 @@ function drawMotifStampBody(ctx: CanvasRenderingContext2D, stamp: StampConfig) {
   ctx.save();
   drawStampShape(ctx, stamp, borderWidth * 0.75);
   ctx.clip();
-  ctx.globalCompositeOperation = isCarved ? 'destination-out' : 'source-over';
-  ctx.strokeStyle = isCarved ? '#000' : inkColor;
-  ctx.fillStyle = isCarved ? '#000' : inkColor;
 
-  // Keep the motif's proportions even inside a tall or wide seal.
-  // The additional oval inset leaves room near its curved boundary.
-  const side = Math.max(0, Math.min(width, height)
-    * (stamp.style === 'round' || stamp.style === 'oval' ? 0.67 : 0.77));
-  ctx.scale(side / 100, side / 100);
-  drawSealMotif(ctx, stamp.motifId);
+  // Keep the motif's proportions even inside a tall or wide seal. A carved
+  // pictorial seal fills its face: leave only a narrow channel inside the
+  // rim. Curved faces fit the motif's round silhouette (radius 50) instead.
+  const isCurved = stamp.style === 'round' || stamp.style === 'oval';
+  const margin = isCarved ? shortSide * 0.075 : borderWidth + shortSide * 0.045;
+  const scale = Math.max(0, shortSide / 2 - margin) / (isCurved ? 50 : 47);
+  ctx.scale(scale, scale);
+  drawSealMotif(ctx, stamp.motifId, { carved: isCarved, inkColor });
   ctx.restore();
 }
 
