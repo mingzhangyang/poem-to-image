@@ -12,6 +12,8 @@ import {
 } from '../../positioningRect';
 import type { LogoConfig } from '../../types';
 
+import { usePreviewPointerInteraction } from './previewInteraction';
+
 interface LogoOverlayProps {
   ariaLabel: string;
   frameRef: RefObject<HTMLDivElement | null>;
@@ -24,6 +26,7 @@ interface LogoOverlayProps {
 export const LogoOverlay: FC<LogoOverlayProps> = ({ ariaLabel, frameRef, logo, onLogoChange, onInteractionStart, onInteractionEnd }) => {
   const [livePosition, setLivePosition] = useState({ positionX: logo.positionX, positionY: logo.positionY });
   const isDraggingRef = useRef(false);
+  const beginPointerInteraction = usePreviewPointerInteraction(onInteractionStart, onInteractionEnd);
   const logoRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -35,54 +38,33 @@ export const LogoOverlay: FC<LogoOverlayProps> = ({ ariaLabel, frameRef, logo, o
   const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     const frameRect = frameRef.current ? getPreviewPositioningRect(frameRef.current) : null;
     const boxRect = event.currentTarget.getBoundingClientRect();
-
-    if (!frameRect || (event.pointerType === 'mouse' && event.button !== 0)) {
-      return;
-    }
+    if (!frameRect || (event.pointerType === 'mouse' && event.button !== 0)) return;
 
     event.preventDefault();
     event.stopPropagation();
-    onInteractionStart();
-    isDraggingRef.current = true;
-    const bounds = getPreviewDragBounds(frameRect, boxRect);
-    const pointerId = event.pointerId;
-
+    const startPosition = livePosition;
     const startX = event.clientX;
     const startY = event.clientY;
-    const startPosition = livePosition;
     const livePositionRef = { current: startPosition };
-
-    const handlePointerMove = (moveEvent: PointerEvent) => {
-      if (moveEvent.pointerId !== pointerId) {
-        return;
-      }
-
-      const nextPosition = movePreviewPosition(startPosition, {
-        x: moveEvent.clientX - startX,
-        y: moveEvent.clientY - startY,
-      }, frameRect, bounds);
-
-      livePositionRef.current = nextPosition;
-      setLivePosition(livePositionRef.current);
-    };
-
-    const handlePointerUp = (upEvent: PointerEvent) => {
-      if (upEvent.pointerId !== pointerId) {
-        return;
-      }
-
-      window.removeEventListener('pointermove', handlePointerMove);
-      window.removeEventListener('pointerup', handlePointerUp);
-      window.removeEventListener('pointercancel', handlePointerUp);
-
-      onLogoChange(livePositionRef.current);
-      isDraggingRef.current = false;
-      onInteractionEnd();
-    };
-
-    window.addEventListener('pointermove', handlePointerMove);
-    window.addEventListener('pointerup', handlePointerUp);
-    window.addEventListener('pointercancel', handlePointerUp);
+    const bounds = getPreviewDragBounds(frameRect, boxRect);
+    isDraggingRef.current = true;
+    beginPointerInteraction(event.pointerId, {
+      onMove: (moveEvent) => {
+        const nextPosition = movePreviewPosition(startPosition, {
+          x: moveEvent.clientX - startX, y: moveEvent.clientY - startY,
+        }, frameRect, bounds);
+        livePositionRef.current = nextPosition;
+        setLivePosition(nextPosition);
+      },
+      onCommit: () => {
+        isDraggingRef.current = false;
+        onLogoChange(livePositionRef.current);
+      },
+      onCancel: () => {
+        isDraggingRef.current = false;
+        setLivePosition(startPosition);
+      },
+    });
   };
 
   const handleKeyboardMove = (event: ReactKeyboardEvent<HTMLDivElement>) => {

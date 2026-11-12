@@ -16,6 +16,7 @@ import {
 import { createCanvasTextMeasurer, createTextLayout } from '../../textLayout';
 import type { CustomText } from '../../types';
 import { TextLayoutBlock } from './TextLayoutBlock';
+import { usePreviewPointerInteraction } from './previewInteraction';
 
 interface CustomTextItemsProps {
   ariaLabel: string;
@@ -65,6 +66,7 @@ const DraggableCustomTextItem: FC<DraggableCustomTextItemProps> = ({
   onInteractionEnd,
 }) => {
   const textBoxRef = useRef<HTMLDivElement>(null);
+  const beginPointerInteraction = usePreviewPointerInteraction(onInteractionStart, onInteractionEnd);
   const [livePosition, setLivePosition] = useState({ positionX: customText.positionX, positionY: customText.positionY });
   const [liveBoxWidth, setLiveBoxWidth] = useState<number | undefined>(customText.boxWidth);
   const isDraggingRef = useRef(false);
@@ -107,10 +109,7 @@ const DraggableCustomTextItem: FC<DraggableCustomTextItemProps> = ({
   const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     const frameRect = frameRef.current ? getPreviewPositioningRect(frameRef.current) : null;
     const boxRect = textBoxRef.current?.getBoundingClientRect();
-
-    if (!frameRect || !boxRect || (event.pointerType === 'mouse' && event.button !== 0)) {
-      return;
-    }
+    if (!frameRect || !boxRect || (event.pointerType === 'mouse' && event.button !== 0)) return;
 
     event.preventDefault();
     event.stopPropagation();
@@ -119,123 +118,69 @@ const DraggableCustomTextItem: FC<DraggableCustomTextItemProps> = ({
     const startX = event.clientX;
     const startY = event.clientY;
     const livePositionRef = { current: startPosition };
+    const bounds = getPreviewDragBounds(frameRect, boxRect);
     isDraggingRef.current = true;
     setIsDragging(true);
-    const bounds = getPreviewDragBounds(frameRect, boxRect);
-    const pointerId = event.pointerId;
-    onInteractionStart();
-
-    const handlePointerMove = (moveEvent: PointerEvent) => {
-      if (moveEvent.pointerId !== pointerId) {
-        return;
-      }
-
-      const nextPosition = movePreviewPosition(startPosition, {
-        x: moveEvent.clientX - startX,
-        y: moveEvent.clientY - startY,
-      }, frameRect, bounds);
-
-      livePositionRef.current = nextPosition;
-      setLivePosition(nextPosition);
-    };
-
-    const handlePointerUp = (upEvent: PointerEvent) => {
-      if (upEvent.pointerId !== pointerId) {
-        return;
-      }
-
-      isDraggingRef.current = false;
-      setIsDragging(false);
-      const textRect = textBoxRef.current?.getBoundingClientRect();
-      onCustomTextChange(
-        customText.id,
-        textRect
-          ? {
-              ...measurePreviewElement(frameRect, textRect),
-              boxWidth: liveBoxWidth,
-            }
-          : livePositionRef.current,
-      );
-      onInteractionEnd();
-      window.removeEventListener('pointermove', handlePointerMove);
-      window.removeEventListener('pointerup', handlePointerUp);
-      window.removeEventListener('pointercancel', handlePointerUp);
-    };
-
-    window.addEventListener('pointermove', handlePointerMove);
-    window.addEventListener('pointerup', handlePointerUp);
-    window.addEventListener('pointercancel', handlePointerUp);
+    beginPointerInteraction(event.pointerId, {
+      onMove: (moveEvent) => {
+        const nextPosition = movePreviewPosition(startPosition, {
+          x: moveEvent.clientX - startX, y: moveEvent.clientY - startY,
+        }, frameRect, bounds);
+        livePositionRef.current = nextPosition;
+        setLivePosition(nextPosition);
+      },
+      onCommit: () => {
+        isDraggingRef.current = false;
+        setIsDragging(false);
+        const textRect = textBoxRef.current?.getBoundingClientRect();
+        onCustomTextChange(customText.id, textRect
+          ? { ...measurePreviewElement(frameRect, textRect), boxWidth: liveBoxWidth }
+          : livePositionRef.current);
+      },
+      onCancel: () => {
+        isDraggingRef.current = false;
+        setIsDragging(false);
+        setLivePosition(startPosition);
+      },
+    });
   };
 
   const handleResizePointerDown = (side: 'left' | 'right', event: ReactPointerEvent<HTMLDivElement>) => {
     const frameRect = frameRef.current ? getPreviewPositioningRect(frameRef.current) : null;
     const boxRect = textBoxRef.current?.getBoundingClientRect();
-
-    if (!frameRect || !boxRect || (event.pointerType === 'mouse' && event.button !== 0)) {
-      return;
-    }
+    if (!frameRect || !boxRect || (event.pointerType === 'mouse' && event.button !== 0)) return;
 
     event.preventDefault();
     event.stopPropagation();
     onCustomTextSelect(customText.id);
-
     const startX = event.clientX;
-    const pointerId = event.pointerId;
-    const liveStateRef = {
-      current: {
-        positionX: livePosition.positionX,
-        positionY: livePosition.positionY,
-        boxWidth: liveBoxWidth,
-      },
-    };
-
+    const startPosition = livePosition;
+    const startBoxWidth = liveBoxWidth;
+    const liveStateRef = { current: { ...startPosition, boxWidth: startBoxWidth } };
     isResizingRef.current = true;
     setIsResizing(true);
-    onInteractionStart();
-
-    const handlePointerMove = (moveEvent: PointerEvent) => {
-      if (moveEvent.pointerId !== pointerId) {
-        return;
-      }
-
-      const { positionX: nextPositionX, boxWidth: nextBoxWidth } =
-        resizePreviewTextBox(side, frameRect, boxRect, moveEvent.clientX - startX);
-
-      liveStateRef.current = {
-        positionX: nextPositionX,
-        positionY: livePosition.positionY,
-        boxWidth: nextBoxWidth,
-      };
-      setLivePosition((current) => ({ ...current, positionX: nextPositionX }));
-      setLiveBoxWidth(nextBoxWidth);
-    };
-
-    const handlePointerUp = (upEvent: PointerEvent) => {
-      if (upEvent.pointerId !== pointerId) {
-        return;
-      }
-
-      isResizingRef.current = false;
-      setIsResizing(false);
-      const textRect = textBoxRef.current?.getBoundingClientRect();
-      onCustomTextChange(
-        customText.id,
-        textRect
-          ? {
-              ...measurePreviewElement(frameRect, textRect),
-              boxWidth: liveStateRef.current.boxWidth,
-            }
-          : liveStateRef.current,
-      );
-      onInteractionEnd();
-      window.removeEventListener('pointermove', handlePointerMove);
-      window.removeEventListener('pointerup', handlePointerUp);
-      window.removeEventListener('pointercancel', handlePointerUp);
-    };
-
-    window.addEventListener('pointermove', handlePointerMove);
-    window.addEventListener('pointerup', handlePointerUp);
-    window.addEventListener('pointercancel', handlePointerUp);
+    beginPointerInteraction(event.pointerId, {
+      onMove: (moveEvent) => {
+        const { positionX, boxWidth } = resizePreviewTextBox(side, frameRect, boxRect, moveEvent.clientX - startX);
+        liveStateRef.current = { ...startPosition, positionX, boxWidth };
+        setLivePosition((current) => ({ ...current, positionX }));
+        setLiveBoxWidth(boxWidth);
+      },
+      onCommit: () => {
+        isResizingRef.current = false;
+        setIsResizing(false);
+        const textRect = textBoxRef.current?.getBoundingClientRect();
+        onCustomTextChange(customText.id, textRect
+          ? { ...measurePreviewElement(frameRect, textRect), boxWidth: liveStateRef.current.boxWidth }
+          : liveStateRef.current);
+      },
+      onCancel: () => {
+        isResizingRef.current = false;
+        setIsResizing(false);
+        setLivePosition(startPosition);
+        setLiveBoxWidth(startBoxWidth);
+      },
+    });
   };
 
   const handleResizeDoubleClick = (event: ReactMouseEvent) => {

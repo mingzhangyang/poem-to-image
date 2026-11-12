@@ -16,11 +16,14 @@ import { isSealMotifId } from '../../sealMotifs';
 import { useFontLayoutRevision } from '../../hooks/useFontLayoutRevision';
 import type { StampConfig } from '../../types';
 
+import { usePreviewPointerInteraction } from './previewInteraction';
+
 interface StampOverlayProps {
   ariaLabel: string;
   frameRef: RefObject<HTMLDivElement | null>;
   stamp: StampConfig;
   effectiveScale: number;
+  isPinching?: boolean;
   onStampChange: (updates: Partial<StampConfig>) => void;
   onInteractionStart: () => void;
   onInteractionEnd: () => void;
@@ -36,11 +39,17 @@ function getFrameStyle(stamp: StampConfig): CSSProperties {
   };
 }
 
-export function StampOverlay({ ariaLabel, frameRef, stamp, effectiveScale, onStampChange, onInteractionStart, onInteractionEnd }: StampOverlayProps) {
+export function StampOverlay({ ariaLabel, frameRef, stamp, effectiveScale, isPinching = false, onStampChange, onInteractionStart, onInteractionEnd }: StampOverlayProps) {
   const [livePosition, setLivePosition] = useState({ positionX: stamp.positionX, positionY: stamp.positionY });
   const isDraggingRef = useRef(false);
+  const beginPointerInteraction = usePreviewPointerInteraction(onInteractionStart, onInteractionEnd);
   const stampRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  // Keep the backing bitmap stable during a pinch; CSS scales it temporarily.
+  const [rasterEffectiveScale, setRasterEffectiveScale] = useState(effectiveScale);
+  useEffect(() => {
+    if (!isPinching) setRasterEffectiveScale(effectiveScale);
+  }, [effectiveScale, isPinching]);
   const hasMotif = isSealMotifId(stamp.motifId);
   const fontRevision = useFontLayoutRevision(hasMotif ? '' : stamp.fontFamily,
     hasMotif ? '' : getStampCharacters(stamp.text).join(''));
@@ -73,7 +82,7 @@ export function StampOverlay({ ariaLabel, frameRef, stamp, effectiveScale, onSta
   const logicalHeight = height + STAMP_SHADOW_PADDING * 2;
   // Allocate bounded rectangular backing pixels before the first paint.
   const { widthPixels, heightPixels, scale: rasterScale } = getStampPreviewRasterDimensions(
-    stamp, effectiveScale, devicePixelRatio,
+    stamp, rasterEffectiveScale, devicePixelRatio,
   );
 
   useEffect(() => {
@@ -102,7 +111,7 @@ export function StampOverlay({ ariaLabel, frameRef, stamp, effectiveScale, onSta
       applyOpacity: false,
     });
     lastPaintKeyRef.current = paintKey;
-  }, [stamp, fontRevision, effectiveScale, devicePixelRatio, width, height, widthPixels, heightPixels, rasterScale]);
+  }, [stamp, fontRevision, devicePixelRatio, width, height, widthPixels, heightPixels, rasterScale]);
 
   useEffect(() => {
     if (!isDraggingRef.current) {
@@ -113,10 +122,7 @@ export function StampOverlay({ ariaLabel, frameRef, stamp, effectiveScale, onSta
   const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     const frameRect = frameRef.current ? getPreviewPositioningRect(frameRef.current) : null;
     const boxRect = event.currentTarget.getBoundingClientRect();
-
-    if (!frameRect || (event.pointerType === 'mouse' && event.button !== 0)) {
-      return;
-    }
+    if (!frameRect || (event.pointerType === 'mouse' && event.button !== 0)) return;
 
     event.preventDefault();
     event.stopPropagation();
@@ -124,45 +130,25 @@ export function StampOverlay({ ariaLabel, frameRef, stamp, effectiveScale, onSta
     const startX = event.clientX;
     const startY = event.clientY;
     const livePositionRef = { current: startPosition };
-    const pointerId = event.pointerId;
-    isDraggingRef.current = true;
     const bounds = getPreviewDragBounds(frameRect, boxRect);
-    onInteractionStart();
-
-    const finishInteraction = () => {
-      isDraggingRef.current = false;
-      onStampChange(livePositionRef.current);
-      onInteractionEnd();
-      window.removeEventListener('pointermove', handlePointerMove);
-      window.removeEventListener('pointerup', handlePointerUp);
-      window.removeEventListener('pointercancel', handlePointerUp);
-    };
-
-    const handlePointerMove = (moveEvent: PointerEvent) => {
-      if (moveEvent.pointerId !== pointerId) {
-        return;
-      }
-
-      const nextPosition = movePreviewPosition(startPosition, {
-        x: moveEvent.clientX - startX,
-        y: moveEvent.clientY - startY,
-      }, frameRect, bounds);
-
-      livePositionRef.current = nextPosition;
-      setLivePosition(nextPosition);
-    };
-
-    const handlePointerUp = (upEvent: PointerEvent) => {
-      if (upEvent.pointerId !== pointerId) {
-        return;
-      }
-
-      finishInteraction();
-    };
-
-    window.addEventListener('pointermove', handlePointerMove);
-    window.addEventListener('pointerup', handlePointerUp);
-    window.addEventListener('pointercancel', handlePointerUp);
+    isDraggingRef.current = true;
+    beginPointerInteraction(event.pointerId, {
+      onMove: (moveEvent) => {
+        const nextPosition = movePreviewPosition(startPosition, {
+          x: moveEvent.clientX - startX, y: moveEvent.clientY - startY,
+        }, frameRect, bounds);
+        livePositionRef.current = nextPosition;
+        setLivePosition(nextPosition);
+      },
+      onCommit: () => {
+        isDraggingRef.current = false;
+        onStampChange(livePositionRef.current);
+      },
+      onCancel: () => {
+        isDraggingRef.current = false;
+        setLivePosition(startPosition);
+      },
+    });
   };
 
   const handleKeyboardMove = (event: ReactKeyboardEvent<HTMLDivElement>) => {

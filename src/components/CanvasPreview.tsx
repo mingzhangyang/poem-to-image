@@ -7,6 +7,8 @@ import { BackgroundLayer } from './preview/BackgroundLayer';
 import { PoemContent } from './preview/PoemContent';
 import { TransparentGrid } from './preview/TransparentGrid';
 import { useDialogA11y } from '../hooks/useDialogA11y';
+import { createPreviewInteractionRegistry, PreviewInteractionContext } from './preview/previewInteraction';
+import { previewPinchZoom, previewPointerDistance } from './preview/previewPinch';
 
 const ZOOM_MIN = 0.7;
 const ZOOM_MAX = 2.0;
@@ -91,6 +93,8 @@ export function CanvasPreview({
   const panStartRef = useRef({ x: 0, y: 0 });
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDraggingPreview, setIsDraggingPreview] = useState(false);
+  const [isPinching, setIsPinching] = useState(false);
+  const [previewInteractions] = useState(createPreviewInteractionRegistry);
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const exportDialogRef = useRef<HTMLDivElement>(null);
@@ -101,12 +105,19 @@ export function CanvasPreview({
   // Refs for pinch-to-zoom
   const activePointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
   const pinchStartRef = useRef<{ distance: number; zoom: number } | null>(null);
+  const isPinchingRef = useRef(false);
+  const panPointerRef = useRef<number | null>(null);
+  const zoomFrameRef = useRef<number | null>(null);
+  const pendingZoomRef = useRef<number | null>(null);
 
   // Refs to keep callbacks fresh inside non-React event listeners
   const previewZoomRef = useRef(previewZoom);
   const onPreviewZoomChangeRef = useRef(onPreviewZoomChange);
   useEffect(() => { previewZoomRef.current = previewZoom; }, [previewZoom]);
   useEffect(() => { onPreviewZoomChangeRef.current = onPreviewZoomChange; }, [onPreviewZoomChange]);
+  useEffect(() => () => {
+    if (zoomFrameRef.current !== null) window.cancelAnimationFrame(zoomFrameRef.current);
+  }, []);
 
   const sharedTextShadow = textShadowEnabled
     ? `${textShadowOffsetX}px ${textShadowOffsetY}px ${textShadowBlur}px ${textShadowColor}`
@@ -214,75 +225,114 @@ export function CanvasPreview({
     onManageShares();
   };
 
-  const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (event.defaultPrevented) {
-      return;
+  const flushPendingZoom = () => {
+    if (zoomFrameRef.current !== null) {
+      window.cancelAnimationFrame(zoomFrameRef.current);
+      zoomFrameRef.current = null;
     }
+    const zoom = pendingZoomRef.current;
+    pendingZoomRef.current = null;
+    if (zoom !== null && Number.isFinite(zoom)) {
+      previewZoomRef.current = zoom;
+      onPreviewZoomChangeRef.current(zoom);
+    }
+  };
 
-    activePointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+  const queuePinchZoom = (zoom: number) => {
+    if (!Number.isFinite(zoom)) return;
+    pendingZoomRef.current = zoom;
+    if (zoomFrameRef.current !== null) return;
+    zoomFrameRef.current = window.requestAnimationFrame(() => {
+      zoomFrameRef.current = null;
+      flushPendingZoom();
+    });
+  };
 
-    // Two+ pointers → pinch-to-zoom mode
-    if (activePointersRef.current.size >= 2) {
+  // Capture touch starts before draggable children can stop propagation.
+  const handlePointerDownCapture = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType !== 'touch') return;
+    const pointers = activePointersRef.current;
+    pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (pointers.size < 2) return;
+
+    if (!isPinchingRef.current) {
+      isPinchingRef.current = true;
+      setIsPinching(true);
       setIsDraggingPreview(false);
-      const points = [...activePointersRef.current.values()];
-      const distance = Math.hypot(points[1].x - points[0].x, points[1].y - points[0].y);
-      pinchStartRef.current = { distance, zoom: previewZoomRef.current };
-      return;
+      panPointerRef.current = null;
+      previewInteractions.cancelAll();
+      const [first, second] = [...pointers.values()];
+      const distance = previewPointerDistance(first, second);
+      pinchStartRef.current = distance === null ? null : { distance, zoom: previewZoomRef.current };
+      // Keep both contacts within this viewport even if they started on children.
+      for (const pointerId of pointers.keys()) {
+        try { event.currentTarget.setPointerCapture(pointerId); } catch { /* Already cancelled by the browser. */ }
+      }
     }
+    // A second contact belongs to the pinch, not a new overlay edit.
+    event.stopPropagation();
+  };
 
-    if (!canPan || (event.pointerType === 'mouse' && event.button !== 0)) {
-      return;
-    }
-
+  const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.defaultPrevented || isPinchingRef.current || !canPan
+      || (event.pointerType === 'mouse' && event.button !== 0)) return;
     dragStartRef.current = { x: event.clientX, y: event.clientY };
     panStartRef.current = pan;
+    panPointerRef.current = event.pointerId;
     setIsDraggingPreview(true);
     event.currentTarget.setPointerCapture(event.pointerId);
   };
 
   const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (activePointersRef.current.has(event.pointerId)) {
-      activePointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    const pointers = activePointersRef.current;
+    if (event.pointerType === 'touch' && pointers.has(event.pointerId)) {
+      pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      if (isPinchingRef.current && pointers.size >= 2) {
+        const [first, second] = [...pointers.values()];
+        const distance = Math.hypot(second.x - first.x, second.y - first.y);
+        if (!Number.isFinite(distance)) return;
+        if (!pinchStartRef.current) {
+          if (distance >= 0.5) pinchStartRef.current = {
+            distance, zoom: pendingZoomRef.current ?? previewZoomRef.current,
+          };
+          return;
+        }
+        const zoom = previewPinchZoom(pinchStartRef.current, distance, ZOOM_MIN, ZOOM_MAX);
+        if (zoom !== null) queuePinchZoom(zoom);
+        return;
+      }
     }
 
-    // Pinch zoom
-    if (activePointersRef.current.size >= 2 && pinchStartRef.current) {
-      const points = [...activePointersRef.current.values()];
-      const currentDistance = Math.hypot(points[1].x - points[0].x, points[1].y - points[0].y);
-      const ratio = currentDistance / pinchStartRef.current.distance;
-      const newZoom = clamp(pinchStartRef.current.zoom * ratio, ZOOM_MIN, ZOOM_MAX);
-      onPreviewZoomChangeRef.current(newZoom);
-      return;
-    }
-
-    if (!isDraggingPreview) {
-      return;
-    }
-
-    const deltaX = event.clientX - dragStartRef.current.x;
-    const deltaY = event.clientY - dragStartRef.current.y;
-
+    if (panPointerRef.current !== event.pointerId) return;
     setPan({
-      x: clamp(panStartRef.current.x + deltaX, -maxPanX, maxPanX),
-      y: clamp(panStartRef.current.y + deltaY, -maxPanY, maxPanY),
+      x: clamp(panStartRef.current.x + event.clientX - dragStartRef.current.x, -maxPanX, maxPanX),
+      y: clamp(panStartRef.current.y + event.clientY - dragStartRef.current.y, -maxPanY, maxPanY),
     });
   };
 
-  const handlePointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
-    activePointersRef.current.delete(event.pointerId);
-
-    if (activePointersRef.current.size < 2) {
-      pinchStartRef.current = null;
+  const finishPointer = (event: React.PointerEvent<HTMLDivElement>) => {
+    const pointers = activePointersRef.current;
+    const wasTracked = pointers.delete(event.pointerId);
+    if (wasTracked && isPinchingRef.current) {
+      if (pointers.size >= 2) {
+        const [first, second] = [...pointers.values()];
+        const distance = previewPointerDistance(first, second);
+        pinchStartRef.current = distance === null ? null : {
+          distance, zoom: pendingZoomRef.current ?? previewZoomRef.current,
+        };
+      } else {
+        flushPendingZoom();
+        pinchStartRef.current = null;
+        isPinchingRef.current = false;
+        setIsPinching(false);
+      }
     }
-
-    if (!isDraggingPreview) {
-      return;
-    }
-
-    setIsDraggingPreview(false);
-
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
+    if (panPointerRef.current === event.pointerId) {
+      panPointerRef.current = null;
+      setIsDraggingPreview(false);
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
     }
   };
 
@@ -453,11 +503,14 @@ export function CanvasPreview({
         ref={viewportRef}
         className={`relative flex h-full w-full items-center justify-center overflow-hidden ${canPan ? (isDraggingPreview ? 'cursor-grabbing' : 'cursor-grab') : ''}`}
         style={{ touchAction: 'none' }}
+        onPointerDownCapture={handlePointerDownCapture}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp}
-        onLostPointerCapture={handlePointerUp}
+        onPointerUpCapture={finishPointer}
+        onPointerCancelCapture={finishPointer}
+        onLostPointerCapture={(event) => {
+          if (event.target === event.currentTarget) finishPointer(event);
+        }}
       >
         {canPan ? (
           <>
@@ -476,10 +529,10 @@ export function CanvasPreview({
         <div
           style={{
             transform: `translate(${pan.x}px, ${pan.y}px)`,
-            transition: isDraggingPreview ? 'none' : 'transform 0.2s ease-out',
+            transition: isDraggingPreview || isPinching ? 'none' : 'transform 0.2s ease-out',
           }}
         >
-          <div style={{ transform: `scale(${effectiveScale})`, transformOrigin: 'center', transition: isDraggingPreview ? 'none' : 'transform 0.2s ease-out' }}>
+          <div style={{ transform: `scale(${effectiveScale})`, transformOrigin: 'center', transition: isDraggingPreview || isPinching ? 'none' : 'transform 0.2s ease-out' }}>
             <div
               className="relative shadow-2xl flex items-center justify-center overflow-hidden"
               style={{
@@ -505,40 +558,43 @@ export function CanvasPreview({
                   loadingLabel={t('loadingBalance')}
                 />
 
-                <PoemContent
-                  poemFrameRef={poemFrameRef}
-                  poemTextRef={poemTextRef}
-                  t={t}
-                  poem={poem}
-                  poemStyle={poemStyle}
-                  fontFamily={fontFamily}
-                  fontSize={fontSize}
-                  textColor={textColor}
-                  writingMode={writingMode}
-                  lineHeight={lineHeight}
-                  letterSpacing={letterSpacing}
-                  columnCount={columns}
-                  columnGap={columnGap}
-                  sharedTextShadow={sharedTextShadow}
-                  showBorder={showBorder}
-                  borderStyle={borderStyle}
-                  borderColor={borderColor}
-                  borderWidth={borderWidth}
-                  showStamp={showStamp}
-                  stamp={stamp}
-                  effectiveScale={effectiveScale}
-                  customTexts={customTexts}
-                  logos={logos}
-                  signatures={signatures}
-                  poemPosition={poemPosition}
-                  onPoemPositionChange={onPoemPositionChange}
-                  onStampChange={onStampChange}
-                  onCustomTextChange={onCustomTextChange}
-                  onLogoChange={onLogoChange}
-                  onSignatureChange={onSignatureChange}
-                  onInteractionStart={onInteractionStart}
-                  onInteractionEnd={onInteractionEnd}
-                />
+                <PreviewInteractionContext.Provider value={previewInteractions}>
+                  <PoemContent
+                    poemFrameRef={poemFrameRef}
+                    poemTextRef={poemTextRef}
+                    t={t}
+                    poem={poem}
+                    poemStyle={poemStyle}
+                    fontFamily={fontFamily}
+                    fontSize={fontSize}
+                    textColor={textColor}
+                    writingMode={writingMode}
+                    lineHeight={lineHeight}
+                    letterSpacing={letterSpacing}
+                    columnCount={columns}
+                    columnGap={columnGap}
+                    sharedTextShadow={sharedTextShadow}
+                    showBorder={showBorder}
+                    borderStyle={borderStyle}
+                    borderColor={borderColor}
+                    borderWidth={borderWidth}
+                    showStamp={showStamp}
+                    stamp={stamp}
+                    effectiveScale={effectiveScale}
+                    isPinching={isPinching}
+                    customTexts={customTexts}
+                    logos={logos}
+                    signatures={signatures}
+                    poemPosition={poemPosition}
+                    onPoemPositionChange={onPoemPositionChange}
+                    onStampChange={onStampChange}
+                    onCustomTextChange={onCustomTextChange}
+                    onLogoChange={onLogoChange}
+                    onSignatureChange={onSignatureChange}
+                    onInteractionStart={onInteractionStart}
+                    onInteractionEnd={onInteractionEnd}
+                  />
+                </PreviewInteractionContext.Provider>
               </div>
             </div>
           </div>
