@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { drawStampImpression } from '../../export/stampDraw';
+import { SEAL_FONT_REGISTERED_EVENT } from '../../fontLoader';
 import {
   SEAL_STYLE_DESIGN_IDS, SEAL_STYLE_DESIGN_INFO,
   getActiveSealStyleDesign, getSealStyleDesignPreview,
@@ -41,10 +42,12 @@ function SealStyleThumbnail({ id }: { id: SealStyleDesignId }) {
     };
     paint();
     document.fonts?.addEventListener?.('loadingdone', paint);
+    document.addEventListener(SEAL_FONT_REGISTERED_EVENT, paint);
     void document.fonts?.ready.then(paint);
     return () => {
       cancelled = true;
       document.fonts?.removeEventListener?.('loadingdone', paint);
+      document.removeEventListener(SEAL_FONT_REGISTERED_EVENT, paint);
     };
   }, [preview]);
 
@@ -64,6 +67,7 @@ export interface SealStyleGalleryProps {
  * keeps the user's text and never writes gallery examples into the draft.
  */
 export function SealStyleGallery({ stamp, t, onSelect, onUseSampleText }: SealStyleGalleryProps) {
+  const headerRef = useRef<HTMLButtonElement>(null);
   const [filter, setFilter] = useState<LibraryFilter>('all');
   const [expanded, setExpanded] = useState(true);
   const activeDesign = getActiveSealStyleDesign(stamp);
@@ -80,6 +84,7 @@ export function SealStyleGallery({ stamp, t, onSelect, onUseSampleText }: SealSt
   return (
     <div className="space-y-2">
       <button
+        ref={headerRef}
         type="button"
         aria-expanded={expanded}
         onClick={() => setExpanded((previous) => !previous)}
@@ -119,8 +124,10 @@ export function SealStyleGallery({ stamp, t, onSelect, onUseSampleText }: SealSt
               aria-pressed={selected}
               onClick={() => {
                 onSelect(id);
-                // After choosing a design, reveal text/shape/ink controls without
-                // forcing the user past ten large cards every time they edit.
+                // Keep a stable keyboard target before the selected card unmounts.
+                // preventScroll avoids pulling pointer users back to the header.
+                headerRef.current?.focus({ preventScroll: true });
+                // Reveal text/shape/ink controls without forcing the user past ten cards.
                 setExpanded(false);
               }}
               className={'flex min-h-[112px] flex-col items-center justify-center gap-1 rounded-xl border p-1.5 ' +

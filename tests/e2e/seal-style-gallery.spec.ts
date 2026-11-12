@@ -102,6 +102,87 @@ test('motif gallery and advanced settings retain existing keyboard and text cont
   await expect(page.getByRole('combobox', { name: '印章字体' })).toBeVisible();
 });
 
+test('font registration after gallery mount repaints all existing thumbnails', async ({ page }, info) => {
+  test.skip(info.project.name === 'chromium-mobile', 'Desktop gallery; the compositor is shared');
+  // The loader's deferred FontFace registration is independently exercised in Node.
+  // This probes the mounted Canvas subscriber without depending on a remote CDN.
+  await page.addInitScript(() => {
+    const original = CanvasRenderingContext2D.prototype.clearRect;
+    const win = window as Window & { __sealThumbnailPaints: number };
+    win.__sealThumbnailPaints = 0;
+    CanvasRenderingContext2D.prototype.clearRect = function (
+      this: CanvasRenderingContext2D, ...args: [number, number, number, number]
+    ) {
+      if (this.canvas.width === 192 && this.canvas.height === 192) {
+        win.__sealThumbnailPaints++;
+      }
+      return original.apply(this, args);
+    };
+  });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: /^装饰与元素/ }).click();
+  await page.getByRole('checkbox', { name: '显示印章' }).check();
+  await expect(page.getByRole('group', { name: '中国印章样式库' }).locator('canvas')).toHaveCount(10);
+  const countPaints = () => page.evaluate(() =>
+    (window as Window & { __sealThumbnailPaints: number }).__sealThumbnailPaints);
+  await expect.poll(countPaints).toBeGreaterThanOrEqual(10);
+  const before = await countPaints();
+  await page.evaluate(async () => {
+    // Simulate a delayed seal font registration notification from fontLoader.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const { SEAL_FONT_REGISTERED_EVENT } = await import(/* @vite-ignore */ '/src/fontLoader.ts');
+    document.dispatchEvent(new Event(SEAL_FONT_REGISTERED_EVENT));
+  });
+  await expect.poll(countPaints).toBeGreaterThanOrEqual(before + 10);
+});
+
+test('glyph sliders clear the precise style selection after application', async ({ page }, info) => {
+  test.skip(info.project.name === 'chromium-mobile', 'Desktop editing flow');
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: /^装饰与元素/ }).click();
+  await page.getByRole('checkbox', { name: '显示印章' }).check();
+  const card = page.getByRole('button', { name: '斋馆印', exact: true });
+  const header = page.getByRole('button', { name: /^中国印章样式库/ });
+  await card.click();
+  await header.click();
+  await expect(card).toHaveAttribute('aria-pressed', 'true');
+  const glyphSize = page.getByRole('slider', { name: '印文字号' });
+  await glyphSize.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(glyphSize).toHaveValue('105');
+  await expect(card).toHaveAttribute('aria-pressed', 'false');
+  await card.click();
+  await header.click();
+  await expect(card).toHaveAttribute('aria-pressed', 'true');
+  const stroke = page.getByRole('slider', { name: '印文笔画粗细' });
+  await stroke.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(stroke).toHaveValue('0.5');
+  await expect(card).toHaveAttribute('aria-pressed', 'false');
+});
+
+test('keyboard card selection returns focus to a stable header and supports next Tab', async ({ page }, info) => {
+  test.skip(info.project.name === 'chromium-mobile', 'Desktop gallery keyboard controls');
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: /^装饰与元素/ }).click();
+  await page.getByRole('checkbox', { name: '显示印章' }).check();
+  const header = page.getByRole('button', { name: /^中国印章样式库/ });
+  await page.getByRole('button', { name: '斋馆印', exact: true }).focus();
+  await page.keyboard.press('Enter');
+  await expect(header).toHaveAttribute('aria-expanded', 'false');
+  await expect(header).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('button', { name: '使用示例印文', exact: true })).toBeFocused();
+
+  await header.click();
+  await page.getByRole('button', { name: '山水印', exact: true }).focus();
+  await page.keyboard.press('Space');
+  await expect(header).toHaveAttribute('aria-expanded', 'false');
+  await expect(header).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('combobox', { name: '印章模式' })).toBeFocused();
+});
+
 // Pixel-level smoke test for every gallery style; runs in all browser projects
 // even if mobile app navigation differs from desktop settings.
 test('all catalog designs render through the shared impression core', async ({ page }) => {

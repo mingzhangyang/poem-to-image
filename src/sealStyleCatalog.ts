@@ -1,6 +1,7 @@
 import type { TranslationKey } from './translations';
 import type { StampConfig } from './types';
 import { SEAL_FONT_STACK, getStampPresetUpdates } from './sealTypography';
+import { getStampTextScale, getStampTextStrokeWidthPct } from './stampRendering';
 
 /**
  * Eight traditional use cases, with separate Zhu/Bai name seals and a
@@ -34,6 +35,9 @@ export const SEAL_STYLE_DESIGN_INFO: Readonly<Record<SealStyleDesignId, SealStyl
   modern: { group: 'text', labelKey: 'stampPresetModern', sampleText: '雅' },
 };
 
+// Text cards set reproducible glyph defaults; graphic cards preserve hidden text tuning.
+const TEXT_GLYPH_DEFAULTS = { textScale: 1, textStrokeWidthPct: 0 } as const;
+
 const TRADITIONAL_INK = { inkColor: '#b33227', weathering: 18,
   textureStyle: 'natural' as const, rotation: 0 };
 
@@ -41,21 +45,21 @@ const TRADITIONAL_INK = { inkColor: '#b33227', weathering: 18,
 export function getSealStyleDesignUpdates(id: SealStyleDesignId): Partial<StampConfig> {
   switch (id) {
     case 'name-vermilion':
-      return { ...getStampPresetUpdates('vermillion-name'), motifId: undefined };
+      return { ...getStampPresetUpdates('vermillion-name'), ...TEXT_GLYPH_DEFAULTS, motifId: undefined };
     case 'name-white':
-      return { ...getStampPresetUpdates('white-name'), motifId: undefined };
+      return { ...getStampPresetUpdates('white-name'), ...TEXT_GLYPH_DEFAULTS, motifId: undefined };
     case 'literati':
-      return { ...getStampPresetUpdates('literati'), motifId: undefined };
+      return { ...getStampPresetUpdates('literati'), ...TEXT_GLYPH_DEFAULTS, motifId: undefined };
     case 'modern':
-      return { ...getStampPresetUpdates('modern-calligraphy'), motifId: undefined };
+      return { ...getStampPresetUpdates('modern-calligraphy'), ...TEXT_GLYPH_DEFAULTS, motifId: undefined };
     case 'studio':
-      return { ...TRADITIONAL_INK, mode: 'zhuwen', style: 'rect-vertical', shapeRatio: 0.58,
+      return { ...TRADITIONAL_INK, ...TEXT_GLYPH_DEFAULTS, mode: 'zhuwen', style: 'rect-vertical', shapeRatio: 0.58,
         colorScheme: 'outline', motifId: undefined, fontFamily: SEAL_FONT_STACK };
     case 'auspicious':
-      return { ...TRADITIONAL_INK, mode: 'baiwen', style: 'oval', shapeRatio: 0.68,
+      return { ...TRADITIONAL_INK, ...TEXT_GLYPH_DEFAULTS, mode: 'baiwen', style: 'oval', shapeRatio: 0.68,
         colorScheme: 'filled', motifId: undefined, fontFamily: SEAL_FONT_STACK };
     case 'collector':
-      return { ...TRADITIONAL_INK, mode: 'baiwen', style: 'rect-horizontal', shapeRatio: 0.82,
+      return { ...TRADITIONAL_INK, ...TEXT_GLYPH_DEFAULTS, mode: 'baiwen', style: 'rect-horizontal', shapeRatio: 0.82,
         colorScheme: 'filled', motifId: undefined, fontFamily: SEAL_FONT_STACK };
     case 'graphic':
       return { ...TRADITIONAL_INK, mode: 'zhuwen', style: 'round',
@@ -64,7 +68,7 @@ export function getSealStyleDesignUpdates(id: SealStyleDesignId): Partial<StampC
       return { ...TRADITIONAL_INK, mode: 'zhuwen', style: 'square',
         colorScheme: 'outline', motifId: 'landscape' };
     case 'blessing':
-      return { ...TRADITIONAL_INK, mode: 'baiwen', style: 'brush',
+      return { ...TRADITIONAL_INK, ...TEXT_GLYPH_DEFAULTS, mode: 'baiwen', style: 'brush',
         colorScheme: 'filled', motifId: undefined, fontFamily: SEAL_FONT_STACK };
   }
 }
@@ -75,8 +79,12 @@ export function getActiveSealStyleDesign(stamp: StampConfig): SealStyleDesignId 
     const updates = getSealStyleDesignUpdates(id);
     // A custom ink, font, ratio, or texture adjustment must not leave a
     // misleading "selected" badge on a gallery style card.
-    if (Object.entries(updates).every(([key, value]) =>
-      stamp[key as keyof StampConfig] === value)) {
+    if (Object.entries(updates).every(([key, value]) => {
+      // Older artwork omits these optional fields; undefined means 1 / 0.
+      if (key === 'textScale') return getStampTextScale(stamp) === value;
+      if (key === 'textStrokeWidthPct') return getStampTextStrokeWidthPct(stamp) === value;
+      return stamp[key as keyof StampConfig] === value;
+    })) {
       return id;
     }
   }

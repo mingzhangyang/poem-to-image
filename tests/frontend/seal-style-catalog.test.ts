@@ -59,6 +59,31 @@ test('customized artistic settings remove misleading selected card feedback', ()
   assert.equal(getActiveSealStyleDesign({ ...existing, mode: undefined }), null);
 });
 
+test('glyph slider customization clears exact text style, while legacy defaults stay compatible', () => {
+  for (const id of SEAL_STYLE_DESIGN_IDS) {
+    const updates = getSealStyleDesignUpdates(id);
+    const chosen: StampConfig = { ...existing, ...updates };
+    if (SEAL_STYLE_DESIGN_INFO[id].group === 'graphic') {
+      assert.equal('textScale' in updates, false, id);
+      assert.equal('textStrokeWidthPct' in updates, false, id);
+      assert.equal(chosen.textScale, existing.textScale, 'motifs must retain hidden text tuning');
+      assert.equal(chosen.textStrokeWidthPct, existing.textStrokeWidthPct);
+      assert.equal(getActiveSealStyleDesign(chosen), id);
+      continue;
+    }
+    assert.equal(chosen.textScale, 1, id);
+    assert.equal(chosen.textStrokeWidthPct, 0, id);
+    assert.equal(getActiveSealStyleDesign(chosen), id);
+    assert.equal(getActiveSealStyleDesign({ ...chosen, textScale: 1.05 }), null,
+      id + ': text size slider must clear the exact selection');
+    assert.equal(getActiveSealStyleDesign({ ...chosen, textStrokeWidthPct: 0.5 }), null,
+      id + ': stroke width slider must clear the exact selection');
+    assert.equal(getActiveSealStyleDesign({
+      ...chosen, textScale: undefined, textStrokeWidthPct: undefined,
+    }), id, 'legacy missing glyph settings are visually the same as defaults');
+  }
+});
+
 test('gallery sample text appears only in previews and opt-in examples, never style updates', () => {
   for (const id of SEAL_STYLE_DESIGN_IDS) {
     const info = SEAL_STYLE_DESIGN_INFO[id];

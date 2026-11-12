@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { ensureFontReady } from '../../src/fontLoader';
+import { ensureFontReady, SEAL_FONT_REGISTERED_EVENT } from '../../src/fontLoader';
 import {
   SEAL_FONT_FAMILY, SEAL_FONT_STACK, SEAL_FONT_URL,
   SMALL_SEAL_FONT_FAMILY, SMALL_SEAL_FONT_STACK, SMALL_SEAL_FONT_URL,
@@ -13,6 +13,11 @@ test('authentic seal scripts load their pinned fonts only on demand, once per fa
   const created: Array<{ family: string; source: string }> = [];
   const added: unknown[] = [];
   const requested: Array<{ face: string; text: string }> = [];
+  const registered: number[] = [];
+  const sealStarted = { notify: () => {} };
+  const sealLoadStarted = new Promise<void>((resolve) => { sealStarted.notify = resolve; });
+  const sealGate = { release: () => {} };
+  const sealLoadGate = new Promise<void>((resolve) => { sealGate.release = resolve; });
   globals.FontFace = class {
     family: string;
     source: string;
@@ -21,9 +26,15 @@ test('authentic seal scripts load their pinned fonts only on demand, once per fa
       this.source = source;
       created.push({ family, source });
     }
-    load() { return Promise.resolve(this); }
+    load() {
+      if (this.family === SEAL_FONT_FAMILY) {
+        sealStarted.notify();
+        return sealLoadGate.then(() => this);
+      }
+      return Promise.resolve(this);
+    }
   };
-  globals.document = {
+  const fakeDocument = Object.assign(new EventTarget(), {
     fonts: {
       add(face: unknown) { added.push(face); },
       load(face: string, text: string) {
@@ -32,18 +43,30 @@ test('authentic seal scripts load their pinned fonts only on demand, once per fa
       },
       ready: Promise.resolve(),
     },
-  };
+  });
+  fakeDocument.addEventListener(SEAL_FONT_REGISTERED_EVENT, () => {
+    registered.push(added.length);
+  });
+  globals.document = fakeDocument;
   try {
     await ensureFontReady('serif', '山');
     assert.equal(created.length, 0, 'legacy fonts must not trigger seal-script downloads');
-    await ensureFontReady(SEAL_FONT_STACK, '山水');
+    const pendingSeal = ensureFontReady(SEAL_FONT_STACK, '山水');
+    await sealLoadStarted;
+    assert.equal(added.length, 0, 'loaded faces are registered only after the load resolves');
+    assert.deepEqual(registered, [], 'no early repaint event before registration');
+    sealGate.release();
+    await pendingSeal;
+    assert.deepEqual(registered, [1], 'late registration signals mounted galleries');
     await ensureFontReady(SEAL_FONT_STACK, '人');
+    assert.deepEqual(registered, [1], 'reusing a font must not dispatch a duplicate signal');
     await ensureFontReady(SMALL_SEAL_FONT_STACK, '春');
     assert.deepEqual(created, [
       { family: SEAL_FONT_FAMILY, source: 'url("' + SEAL_FONT_URL + '")' },
       { family: SMALL_SEAL_FONT_FAMILY, source: 'url("' + SMALL_SEAL_FONT_URL + '")' },
     ]);
     assert.equal(added.length, 2);
+    assert.deepEqual(registered, [1, 2], 'both on-demand faces signal exactly once');
     assert.ok(requested.some((req) => req.face.includes(SEAL_FONT_FAMILY) && req.text === '山水'));
     assert.ok(requested.some((req) => req.face.includes(SMALL_SEAL_FONT_FAMILY) && req.text === '春'));
     assert.match(SEAL_FONT_URL, /@[0-9a-f]{40}\//);
