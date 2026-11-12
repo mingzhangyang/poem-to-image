@@ -123,7 +123,9 @@ test('cold-restored motif does not fetch the hidden seal-script font', async ({ 
 test('original vector motif stamps render stable Zhu/Bai images at 1x/2x/3x', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   const comparisons = await page.evaluate(async () => {
-    const { drawStampImpression } = await import(/* @vite-ignore */ '/src/export/stampDraw.ts');
+    const stampDrawModuleUrl = '/src/export/stampDraw.ts';
+    const { drawStampImpression } =
+      await import(/* @vite-ignore */ stampDrawModuleUrl) as typeof import('../../src/export/stampDraw');
     const render = (mode: 'zhuwen' | 'baiwen', ratio: number) => {
       const c = document.createElement('canvas');
       c.width = 190 * ratio;

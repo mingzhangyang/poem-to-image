@@ -130,7 +130,9 @@ test('font registration after gallery mount repaints all existing thumbnails', a
   await page.evaluate(async () => {
     // Simulate a delayed seal font registration notification from fontLoader.
     await new Promise((resolve) => setTimeout(resolve, 50));
-    const { SEAL_FONT_REGISTERED_EVENT } = await import(/* @vite-ignore */ '/src/fontLoader.ts');
+    const fontModuleUrl = '/src/fontLoader.ts';
+    const { SEAL_FONT_REGISTERED_EVENT } =
+      await import(/* @vite-ignore */ fontModuleUrl) as typeof import('../../src/fontLoader');
     document.dispatchEvent(new Event(SEAL_FONT_REGISTERED_EVENT));
   });
   await expect.poll(countPaints).toBeGreaterThanOrEqual(before + 10);
@@ -188,10 +190,12 @@ test('keyboard card selection returns focus to a stable header and supports next
 test('all catalog designs render through the shared impression core', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   const counts = await page.evaluate(async () => {
+    const catalogModuleUrl = '/src/sealStyleCatalog.ts';
+    const stampDrawModuleUrl = '/src/export/stampDraw.ts';
     const { SEAL_STYLE_DESIGN_IDS, getSealStyleDesignPreview } =
-      await import(/* @vite-ignore */ '/src/sealStyleCatalog.ts');
+      await import(/* @vite-ignore */ catalogModuleUrl) as typeof import('../../src/sealStyleCatalog');
     const { drawStampImpression } =
-      await import(/* @vite-ignore */ '/src/export/stampDraw.ts');
+      await import(/* @vite-ignore */ stampDrawModuleUrl) as typeof import('../../src/export/stampDraw');
     return SEAL_STYLE_DESIGN_IDS.map((id) => {
       const canvas = document.createElement('canvas');
       canvas.width = canvas.height = 144;
