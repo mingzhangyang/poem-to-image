@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { drawStampImpression } from '../../export/stampDraw';
-import { SEAL_FONT_REGISTERED_EVENT } from '../../fontLoader';
+import { SEAL_FONT_REGISTERED_EVENT, ensureFontLoaded } from '../../fontLoader';
+import { CNS_SEAL_FONT_STACK } from '../../sealTypography';
 import {
   SEAL_STYLE_DESIGN_IDS, SEAL_STYLE_DESIGN_INFO,
   getActiveSealStyleDesign, getSealStyleDesignPreview,
@@ -13,8 +14,8 @@ type LibraryFilter = 'all' | SealStyleDesignGroup;
 
 /**
  * Each card is a real miniature seal impression (not an emoji or a second
- * renderer). This does not request fonts, images or network resources; if a
- * user already selected a seal-script font, the browser may reuse it.
+ * renderer). The gallery reuses the chosen font when available, and
+ * the visible text gallery asks for the default face only on demand.
  */
 function SealStyleThumbnail({ id }: { id: SealStyleDesignId }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -28,8 +29,7 @@ function SealStyleThumbnail({ id }: { id: SealStyleDesignId }) {
     let cancelled = false;
     const paint = () => {
       if (cancelled) return;
-      // Never initiate a new font fetch on behalf of the sample previews.
-      // Repaint if the real text editor has since loaded a traditional face.
+      // The gallery loads its default face once, then this event repaints thumbnails.
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, 192, 192);
       ctx.setTransform(2, 0, 0, 2, 0, 0);
@@ -70,6 +70,10 @@ export function SealStyleGallery({ stamp, t, onSelect, onUseSampleText }: SealSt
   const headerRef = useRef<HTMLButtonElement>(null);
   const [filter, setFilter] = useState<LibraryFilter>('all');
   const [expanded, setExpanded] = useState(true);
+  // Load the one default traditional face only if a textual gallery is visible.
+  useEffect(() => {
+    if (expanded && filter !== 'graphic') ensureFontLoaded(CNS_SEAL_FONT_STACK);
+  }, [expanded, filter]);
   const activeDesign = getActiveSealStyleDesign(stamp);
   const activeInfo = activeDesign ? SEAL_STYLE_DESIGN_INFO[activeDesign] : null;
   const visibleIds = SEAL_STYLE_DESIGN_IDS.filter((id) =>

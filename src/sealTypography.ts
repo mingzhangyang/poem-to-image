@@ -15,12 +15,27 @@ export const SMALL_SEAL_FONT_STACK = '"InkPoem Xiaozhuan", "Noto Serif SC", seri
 export const SMALL_SEAL_FONT_URL =
   'https://cdn.jsdelivr.net/gh/lxgw/LxgwSeal@2b1d01195168110b9a8f3a8abaff844ff22fa716/TTF/LXGWSeal-Regular.ttf';
 
+/** Only newly introduced cmap-checked faces get the tighter optical layout. */
+export function usesCompactSealComposition(fontFamily: string | undefined): boolean {
+  return fontFamily === CNS_SEAL_FONT_STACK || fontFamily === CLERICAL_FONT_STACK
+    || fontFamily === JINWEN_FONT_STACK || fontFamily === CHONGXI_SEAL_FONT_STACK;
+}
+
 export function isSealScriptFont(fontFamily: string): boolean {
   return fontFamily.startsWith('"' + SEAL_FONT_FAMILY + '"')
-    || fontFamily.startsWith('"' + SMALL_SEAL_FONT_FAMILY + '"');
+    || fontFamily.startsWith('"' + SMALL_SEAL_FONT_FAMILY + '"')
+    || fontFamily === CNS_SEAL_FONT_STACK
+    || fontFamily === CHONGXI_SEAL_FONT_STACK
+    || fontFamily === JINWEN_FONT_STACK
+    || fontFamily === CLERICAL_FONT_STACK;
 }
 export const SEAL_FONT_URL =
   'https://cdn.jsdelivr.net/gh/SuperMate-Ai/JFZSKSealScript@a12bf04c0413da28e46cba3d16184ac91ad1bc96/fonts/JFZSKSealScript_V2.0.woff2';
+
+export const CNS_SEAL_FONT_STACK = '"InkPoem CNS Seal", "Noto Serif SC", serif';
+export const CHONGXI_SEAL_FONT_STACK = '"InkPoem Chongxi Seal", "Noto Serif SC", serif';
+export const JINWEN_FONT_STACK = '"InkPoem Chine-Culture Jinwen", "Noto Serif SC", serif';
+export const CLERICAL_FONT_STACK = '"InkPoem MOE Li", "Noto Serif SC", serif';
 
 export type StampVisualMode = NonNullable<StampConfig['mode']> | 'legacy';
 export type StampPresetId = 'vermillion-name' | 'white-name' | 'literati' | 'modern-calligraphy';
@@ -42,13 +57,13 @@ export function getStampPresetUpdates(preset: StampPresetId): Partial<StampConfi
   switch (preset) {
     case 'vermillion-name':
       return { mode: 'zhuwen', style: 'square', colorScheme: 'outline',
-        inkColor: '#bc2925', weathering: 18, textureStyle: 'natural', fontFamily: SEAL_FONT_STACK, rotation: 0 };
+        inkColor: '#bc2925', weathering: 18, textureStyle: 'natural', fontFamily: CNS_SEAL_FONT_STACK, rotation: 0 };
     case 'white-name':
       return { mode: 'baiwen', style: 'square', colorScheme: 'filled',
-        inkColor: '#bd2c25', weathering: 18, textureStyle: 'natural', fontFamily: SEAL_FONT_STACK, rotation: 0 };
+        inkColor: '#bd2c25', weathering: 18, textureStyle: 'natural', fontFamily: CNS_SEAL_FONT_STACK, rotation: 0 };
     case 'literati':
       return { mode: 'zhuwen', style: 'brush', colorScheme: 'outline',
-        inkColor: '#9e2924', weathering: 30, textureStyle: 'natural', fontFamily: SEAL_FONT_STACK, rotation: -5 };
+        inkColor: '#9e2924', weathering: 30, textureStyle: 'natural', fontFamily: CNS_SEAL_FONT_STACK, rotation: -5 };
     case 'modern-calligraphy':
       return { mode: 'modern', style: 'round', colorScheme: 'filled',
         inkColor: '#c82829', weathering: 25, textureStyle: 'classic', fontFamily: '"Ma Shan Zheng", cursive', rotation: -8 };
@@ -75,16 +90,18 @@ export interface TraditionalStampLayout {
  * Extended 5–8 character texts use right-to-left columns and top-to-bottom rows.
  */
 export function getTraditionalStampLayout(
-  stamp: Pick<StampConfig, 'size' | 'text'> & Partial<Pick<StampConfig, 'style' | 'shapeRatio'>>,
+  stamp: Pick<StampConfig, 'size' | 'text'> & Partial<Pick<StampConfig, 'style' | 'shapeRatio' | 'fontFamily'>>,
 ): TraditionalStampLayout {
   const characters = getStampCharacters(stamp.text);
   const count = characters.length;
   const size = Number.isFinite(stamp.size) && stamp.size > 0 ? stamp.size : 1;
   const style = stamp.style ?? 'square';
   const extended = isExtendedStampStyle(style);
+  const compact = usesCompactSealComposition(stamp.fontFamily);
   if (!extended && count <= 4) {
-    const usable = size * 0.76;
-    const gap = size * 0.055;
+    // Fill the face more confidently without flattening or stretching glyphs.
+    const usable = size * (compact ? 0.87 : 0.76);
+    const gap = size * (compact ? 0.019 : 0.055);
     const cols = count === 1 ? 1 : 2;
     const width = cols === 1 ? usable : (usable - gap) / 2;
     const borderWidth = Math.min(size * 0.2, Math.max(0.5, size * 0.038));
@@ -107,9 +124,9 @@ export function getTraditionalStampLayout(
   });
   const shortSide = Math.min(faceWidth, faceHeight);
   const borderWidth = Math.min(shortSide * 0.2, Math.max(0.5, shortSide * 0.038));
-  const gap = shortSide * 0.045;
-  const usableWidth = faceWidth * 0.75;
-  const usableHeight = faceHeight * 0.76;
+  const gap = shortSide * (compact ? 0.018 : 0.045);
+  const usableWidth = faceWidth * (compact ? 0.865 : 0.75);
+  const usableHeight = faceHeight * (compact ? 0.855 : 0.76);
   let columnCounts: number[];
   if ((style === 'rect-vertical' && count <= 6) || (style === 'oval' && count <= 4)) {
     columnCounts = [count]; // a calligraphic vertical line
@@ -157,6 +174,7 @@ export function fitTraditionalStampGlyph(
     { x: number; y: number; radiusX: number; radiusY: number },
   textScale = 1,
   strokeWidth = 0,
+  maxFillRatio = 0.88,
 ) {
   const left = Number.isFinite(bounds.actualBoundingBoxLeft) ? bounds.actualBoundingBoxLeft : 0;
   const right = Number.isFinite(bounds.actualBoundingBoxRight) ? bounds.actualBoundingBoxRight : 0;
@@ -168,7 +186,7 @@ export function fitTraditionalStampGlyph(
   // Reserve its full post-transform width rather than scaling it with the font.
   const safeStroke = Number.isFinite(strokeWidth) ? Math.max(0, strokeWidth) : 0;
   const sizeMultiplier = Number.isFinite(textScale) ? Math.min(1.1, Math.max(0.7, textScale)) : 1;
-  const fillRatio = 0.88 * sizeMultiplier;
+  const fillRatio = Math.min(0.95, Math.max(0.5, maxFillRatio)) * sizeMultiplier;
   let scale = Math.max(0, Math.min(
     sizeMultiplier,
     (slot.width * fillRatio - safeStroke) / glyphWidth,

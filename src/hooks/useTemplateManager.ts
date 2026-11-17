@@ -4,6 +4,7 @@ import { createAsyncIntentGate } from '../asyncIntentGate';
 import { createReusableTemplateParts, type EditorDocument } from '../editorDocument';
 import type { EditorTemplateParts, EditorTemplateSections } from '../editorCommands';
 import { resolveTemplateForLanguage } from '../templates';
+import { matchesTemplateCustomTexts } from '../templates/templateCustomTextMatching';
 import type { Language } from '../translations';
 import type {
   BorderStyle,
@@ -148,7 +149,8 @@ function matchesDecorations(
     decorations.stamp.size === d.stamp.size &&
     decorations.stamp.rotation === d.stamp.rotation &&
     decorations.stamp.opacity === d.stamp.opacity &&
-    decorations.customTexts.length === d.customTexts.length &&
+    // A text-box edit (including its font) must not be overwritten by localization.
+    matchesTemplateCustomTexts(decorations.customTexts, d.customTexts) &&
     // Preserve any user-edited signature during a language switch instead of
     // silently replacing it with the template's localized placeholder.
     decorations.signatures.length === (d.signatures?.length ?? 0) &&

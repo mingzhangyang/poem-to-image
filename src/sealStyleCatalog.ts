@@ -1,6 +1,6 @@
 import type { TranslationKey } from './translations';
 import type { StampConfig } from './types';
-import { SEAL_FONT_STACK, getStampPresetUpdates } from './sealTypography';
+import { CNS_SEAL_FONT_STACK, getStampPresetUpdates } from './sealTypography';
 import { getStampTextScale, getStampTextStrokeWidthPct } from './stampRendering';
 
 /**
@@ -23,12 +23,12 @@ export interface SealStyleDesignInfo {
 }
 
 export const SEAL_STYLE_DESIGN_INFO: Readonly<Record<SealStyleDesignId, SealStyleDesignInfo>> = {
-  'name-vermilion': { group: 'text', labelKey: 'stampPresetVermilion', sampleText: '诗情画意' },
-  'name-white': { group: 'text', labelKey: 'stampPresetWhite', sampleText: '诗情画意' },
+  'name-vermilion': { group: 'text', labelKey: 'stampPresetVermilion', sampleText: '詩情畫意' },
+  'name-white': { group: 'text', labelKey: 'stampPresetWhite', sampleText: '詩情畫意' },
   literati: { group: 'text', labelKey: 'stampPresetLiterati', sampleText: '清心' },
-  studio: { group: 'text', labelKey: 'stampDesignStudio', sampleText: '书画之印' },
+  studio: { group: 'text', labelKey: 'stampDesignStudio', sampleText: '書畫之印' },
   auspicious: { group: 'text', labelKey: 'stampDesignAuspicious', sampleText: '如意' },
-  collector: { group: 'text', labelKey: 'stampDesignCollector', sampleText: '书画珍藏' },
+  collector: { group: 'text', labelKey: 'stampDesignCollector', sampleText: '書畫珍藏' },
   graphic: { group: 'graphic', labelKey: 'stampDesignGraphic' },
   landscape: { group: 'graphic', labelKey: 'stampDesignLandscape' },
   blessing: { group: 'text', labelKey: 'stampDesignBlessing', sampleText: '吉祥' },
@@ -54,13 +54,13 @@ export function getSealStyleDesignUpdates(id: SealStyleDesignId): Partial<StampC
       return { ...getStampPresetUpdates('modern-calligraphy'), ...TEXT_GLYPH_DEFAULTS, motifId: undefined };
     case 'studio':
       return { ...TRADITIONAL_INK, ...TEXT_GLYPH_DEFAULTS, mode: 'zhuwen', style: 'rect-vertical', shapeRatio: 0.58,
-        colorScheme: 'outline', motifId: undefined, fontFamily: SEAL_FONT_STACK };
+        colorScheme: 'outline', motifId: undefined, fontFamily: CNS_SEAL_FONT_STACK };
     case 'auspicious':
       return { ...TRADITIONAL_INK, ...TEXT_GLYPH_DEFAULTS, mode: 'baiwen', style: 'oval', shapeRatio: 0.68,
-        colorScheme: 'filled', motifId: undefined, fontFamily: SEAL_FONT_STACK };
+        colorScheme: 'filled', motifId: undefined, fontFamily: CNS_SEAL_FONT_STACK };
     case 'collector':
       return { ...TRADITIONAL_INK, ...TEXT_GLYPH_DEFAULTS, mode: 'baiwen', style: 'rect-horizontal', shapeRatio: 0.82,
-        colorScheme: 'filled', motifId: undefined, fontFamily: SEAL_FONT_STACK };
+        colorScheme: 'filled', motifId: undefined, fontFamily: CNS_SEAL_FONT_STACK };
     case 'graphic':
       return { ...TRADITIONAL_INK, mode: 'zhuwen', style: 'round',
         colorScheme: 'outline', motifId: 'dragon' };
@@ -69,7 +69,7 @@ export function getSealStyleDesignUpdates(id: SealStyleDesignId): Partial<StampC
         colorScheme: 'outline', motifId: 'landscape' };
     case 'blessing':
       return { ...TRADITIONAL_INK, ...TEXT_GLYPH_DEFAULTS, mode: 'baiwen', style: 'brush',
-        colorScheme: 'filled', motifId: undefined, fontFamily: SEAL_FONT_STACK };
+        colorScheme: 'filled', motifId: undefined, fontFamily: CNS_SEAL_FONT_STACK };
   }
 }
 
@@ -104,7 +104,7 @@ export function getSealStyleDesignPreview(id: SealStyleDesignId): StampConfig {
     mode: 'zhuwen',
     colorScheme: 'outline',
     textureSeed: 0x4c3b2a10,
-    fontFamily: SEAL_FONT_STACK,
+    fontFamily: CNS_SEAL_FONT_STACK,
     positionX: 50,
     positionY: 50,
     ...updates,

@@ -1,4 +1,4 @@
-import { DEFAULT_STAMP_FONT } from '../fontOptions';
+import { LEGACY_TEMPLATE_STAMP_FONT } from '../fontOptions';
 import type { EditorTemplateDefinition } from '../types';
 
 type IllustratedOptions = Pick<EditorTemplateDefinition, 'id' | 'nameKey' | 'descriptionKey' | 'previewImage' | 'accentFrom' | 'accentTo'> & {
@@ -36,7 +36,7 @@ function illustrated(options: IllustratedOptions): EditorTemplateDefinition {
       showStamp: false,
       stamp: {
         text: '印', style: 'square', positionX: 82, positionY: 82, size: 56,
-        rotation: 0, opacity: 0.7, colorScheme: 'outline', fontFamily: DEFAULT_STAMP_FONT,
+        rotation: 0, opacity: 0.7, colorScheme: 'outline', fontFamily: LEGACY_TEMPLATE_STAMP_FONT,
       },
       poemPosition: { positionX: 50, positionY: poemY }, customTexts: [], logos: [],
     },

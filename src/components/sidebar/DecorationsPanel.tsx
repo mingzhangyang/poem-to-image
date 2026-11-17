@@ -1,6 +1,9 @@
 import { Plus, Stamp, Trash2, Upload, Text, TextCursorInput, ChevronUp, ChevronDown, ArrowUpToLine, ArrowDownToLine, PenLine } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { STAMP_FONT_OPTIONS } from '../../fontOptions';
+import { STAMP_FONT_OPTIONS, getAllFontOptions } from '../../fontOptions';
+import { getVerifiedSealFont } from '../../sealFontSources';
+import { replaceSealVariantAt } from '../../sealVariantChoices';
+import { useSealFontInspection } from '../../hooks/useSealFontInspection';
 import {
   getStampShapeRatio, getStampTextScale, getStampTextStrokeWidthPct,
   isExtendedStampStyle, limitStampText,
@@ -8,7 +11,7 @@ import {
 import { getNaturalSealSeed, nextNaturalSealSeed } from '../../naturalSealTexture';
 import { getLXGWUnlistedCharacters } from '../../lxgwSealCoverage';
 import {
-  isSealScriptFont, isTraditionalStamp, SEAL_FONT_STACK, SMALL_SEAL_FONT_STACK,
+  CNS_SEAL_FONT_STACK, isSealScriptFont, isTraditionalStamp, SMALL_SEAL_FONT_STACK,
 } from '../../sealTypography';
 import { SIGNATURE_FONTS } from '../../signatureRendering';
 import type { BorderStyle, DecorationsSectionProps, ExpandedSections, SignatureFlourish, StampStyle, TranslateFn } from '../../types';
@@ -79,6 +82,12 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
 
   const smallSealUnlisted = decorations.stamp.fontFamily === SMALL_SEAL_FONT_STACK
     ? getLXGWUnlistedCharacters(decorations.stamp.text) : [];
+  const verifiedFace = getVerifiedSealFont(decorations.stamp.fontFamily);
+  const inspected = useSealFontInspection(
+    decorations.stamp.fontFamily, decorations.stamp.text,
+    decorations.showStamp && decorations.stampSupported && !isSealMotifId(decorations.stamp.motifId),
+    true,
+  );
 
   const summaryParts = [
     decorations.showBorder ? t(BORDER_STYLE_LABELS[decorations.borderStyle]) : null,
@@ -238,7 +247,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                       ...(mode === 'zhuwen' ? { colorScheme: 'outline' as const } : {}),
                       ...(mode === 'baiwen' ? { colorScheme: 'filled' as const } : {}),
                       ...(textSeal && mode !== 'modern' && !isSealScriptFont(decorations.stamp.fontFamily)
-                        ? { fontFamily: SEAL_FONT_STACK } : {}),
+                        ? { fontFamily: CNS_SEAL_FONT_STACK } : {}),
                       ...(textSeal && mode === 'modern' && isSealScriptFont(decorations.stamp.fontFamily)
                         ? { fontFamily: '"Ma Shan Zheng", cursive' } : {}),
                     });
@@ -287,6 +296,30 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                 />
                 )}
               </div>
+              {!isSealMotifId(decorations.stamp.motifId) && verifiedFace && inspected.suggestions.length > 0 && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50/60 p-2 space-y-2"
+                  role="region" aria-label={t('stampVariantHeading')}>
+                  <p className="text-xs font-semibold text-amber-950">{t('stampVariantHeading')}</p>
+                  {inspected.suggestions.map((row) => (
+                    <div key={row.index} className="space-y-1 text-xs text-amber-950">
+                      <p>{row.index + 1}. {row.original} — {row.required ? t('stampVariantRequired') : t('stampVariantOptional')}</p>
+                      <div className="flex flex-wrap gap-1">
+                        {row.choices.map((choice) => (
+                          <button type="button" key={choice.character}
+                            className="rounded border border-amber-400 bg-white px-2 py-1 font-medium hover:bg-amber-100"
+                            onClick={() => {
+                              const next = replaceSealVariantAt(decorations.stamp.text, row.index, row.original, choice.character);
+                              if (next !== decorations.stamp.text) decorations.onStampChange({ text: next });
+                            }}>
+                            {row.original} → {choice.character}{choice.gloss ? ' (' + choice.gloss + ')' : ''}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                  <p className="text-[11px] text-amber-800">{t('stampVariantConfirmation')}</p>
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs text-(--app-accent-500) mb-1">{t('stampStyle')}</label>
@@ -484,14 +517,32 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                     </option>
                   ))}
                 </select>
-                {isSealScriptFont(decorations.stamp.fontFamily) && (
-                  <p className="mt-1 text-xs text-amber-700" role="note">{t('stampFontCoverageNote')}</p>
-                )}
-                {smallSealUnlisted.length > 0 && (
-                  <p className="mt-1 text-xs text-amber-700" role="note">
-                    {t('stampFontMissingNote')} {smallSealUnlisted.join('、')}
-                  </p>
-                )}
+                {verifiedFace ? (
+                  <div className="mt-1 text-xs" role="status" aria-live="polite">
+                    {inspected.status === 'checking' && <p className="text-(--app-accent-500)">{t('stampFontChecking')}</p>}
+                    {inspected.status === 'ready' && <p className="text-emerald-800">{t('stampFontVerified')}</p>}
+                    {inspected.status === 'missing' && (
+                      <p className="text-amber-800">{t('stampFontMissingVerified')} {inspected.missing.join('、')}</p>
+                    )}
+                    {inspected.status === 'error' && (
+                      <p className="text-red-700">{t('stampFontVerifyFailed')}</p>
+                    )}
+                    {(inspected.status === 'error') && (
+                      <button type="button" className="mt-1 underline" onClick={inspected.retry}>
+                        {t('stampFontRetry')}
+                      </button>
+                    )}
+                  </div>
+                ) : isSealScriptFont(decorations.stamp.fontFamily) ? (
+                  <>
+                    <p className="mt-1 text-xs text-amber-700" role="note">{t('stampFontCoverageNote')}</p>
+                    {smallSealUnlisted.length > 0 && (
+                      <p className="mt-1 text-xs text-amber-700" role="note">
+                        {t('stampFontMissingNote')} {smallSealUnlisted.join('、')}
+                      </p>
+                    )}
+                  </>
+                ) : null}
                 {STAMP_FONT_OPTIONS.find((f) => f.value === decorations.stamp.fontFamily)?.cjkOnly &&
                   /[a-zA-Z]/.test(decorations.stamp.text) && (
                   <p className="mt-1 text-xs text-amber-600">{t('stampFontCjkWarning')}</p>
@@ -651,6 +702,20 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
+                </div>
+                <div>
+                  <label className="block text-xs text-(--app-accent-500) mb-1">{t('fontFamily')}</label>
+                  <select className="app-select text-sm"
+                    aria-label={t('fontFamily') + ' · ' + customText.text}
+                    value={customText.fontFamily ?? ''}
+                    onChange={(event) => decorations.onCustomTextChange(customText.id, {
+                      fontFamily: event.target.value || undefined,
+                    })}>
+                    <option value="">{t('fontUseCard')}</option>
+                    {getAllFontOptions().map((font) => (
+                      <option key={font.value} value={font.value}>{font.label}</option>
+                    ))}
+                  </select>
                 </div>
                 <div className="flex items-center gap-2">
                   <input

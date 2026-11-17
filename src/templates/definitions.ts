@@ -1,4 +1,4 @@
-import { DEFAULT_STAMP_FONT } from '../fontOptions';
+import { LEGACY_TEMPLATE_STAMP_FONT } from '../fontOptions';
 import type { EditorTemplateDefinition } from '../types';
 import { illustratedTemplates } from './illustrated';
 
@@ -56,7 +56,7 @@ export const ALL_EDITOR_TEMPLATES: EditorTemplateDefinition[] = [
         rotation: -5,
         opacity: 0.78,
         colorScheme: 'outline' as const,
-        fontFamily: DEFAULT_STAMP_FONT,
+        fontFamily: LEGACY_TEMPLATE_STAMP_FONT,
       },
       poemPosition: {
         positionX: 50,
@@ -118,7 +118,7 @@ export const ALL_EDITOR_TEMPLATES: EditorTemplateDefinition[] = [
         rotation: -8,
         opacity: 0.82,
         colorScheme: 'filled' as const,
-        fontFamily: DEFAULT_STAMP_FONT,
+        fontFamily: LEGACY_TEMPLATE_STAMP_FONT,
       },
       poemPosition: {
         positionX: 50,
@@ -181,7 +181,7 @@ export const ALL_EDITOR_TEMPLATES: EditorTemplateDefinition[] = [
         opacity: 0.72,
         colorScheme: 'filled' as const,
         inkColor: '#a07828',
-        fontFamily: DEFAULT_STAMP_FONT,
+        fontFamily: LEGACY_TEMPLATE_STAMP_FONT,
       },
       poemPosition: {
         positionX: 50,
@@ -243,7 +243,7 @@ export const ALL_EDITOR_TEMPLATES: EditorTemplateDefinition[] = [
         rotation: -4,
         opacity: 0.74,
         colorScheme: 'outline' as const,
-        fontFamily: DEFAULT_STAMP_FONT,
+        fontFamily: LEGACY_TEMPLATE_STAMP_FONT,
       },
       poemPosition: {
         positionX: 50,
@@ -305,7 +305,7 @@ export const ALL_EDITOR_TEMPLATES: EditorTemplateDefinition[] = [
         opacity: 0.6,
         colorScheme: 'outline' as const,
         inkColor: '#AB605C',
-        fontFamily: DEFAULT_STAMP_FONT,
+        fontFamily: LEGACY_TEMPLATE_STAMP_FONT,
       },
       poemPosition: { positionX: 63, positionY: 46 },
       customTexts: [],
@@ -360,7 +360,7 @@ export const ALL_EDITOR_TEMPLATES: EditorTemplateDefinition[] = [
         rotation: -4,
         opacity: 0.72,
         colorScheme: 'filled' as const,
-        fontFamily: DEFAULT_STAMP_FONT,
+        fontFamily: LEGACY_TEMPLATE_STAMP_FONT,
       },
       poemPosition: {
         positionX: 50,
@@ -418,7 +418,7 @@ export const ALL_EDITOR_TEMPLATES: EditorTemplateDefinition[] = [
         rotation: -6,
         opacity: 0.78,
         colorScheme: 'filled' as const,
-        fontFamily: DEFAULT_STAMP_FONT,
+        fontFamily: LEGACY_TEMPLATE_STAMP_FONT,
       },
       poemPosition: {
         positionX: 50,
@@ -476,7 +476,7 @@ export const ALL_EDITOR_TEMPLATES: EditorTemplateDefinition[] = [
         rotation: -3,
         opacity: 0.76,
         colorScheme: 'filled' as const,
-        fontFamily: DEFAULT_STAMP_FONT,
+        fontFamily: LEGACY_TEMPLATE_STAMP_FONT,
       },
       poemPosition: {
         positionX: 50,
@@ -537,7 +537,7 @@ export const ALL_EDITOR_TEMPLATES: EditorTemplateDefinition[] = [
         rotation: 0,
         opacity: 0.84,
         colorScheme: 'outline' as const,
-        fontFamily: DEFAULT_STAMP_FONT,
+        fontFamily: LEGACY_TEMPLATE_STAMP_FONT,
       },
       poemPosition: {
         positionX: 52,
@@ -598,7 +598,7 @@ export const ALL_EDITOR_TEMPLATES: EditorTemplateDefinition[] = [
         rotation: -4,
         opacity: 0.74,
         colorScheme: 'filled' as const,
-        fontFamily: DEFAULT_STAMP_FONT,
+        fontFamily: LEGACY_TEMPLATE_STAMP_FONT,
       },
       poemPosition: {
         positionX: 50,
@@ -659,7 +659,7 @@ export const ALL_EDITOR_TEMPLATES: EditorTemplateDefinition[] = [
         rotation: -7,
         opacity: 0.78,
         colorScheme: 'filled' as const,
-        fontFamily: DEFAULT_STAMP_FONT,
+        fontFamily: LEGACY_TEMPLATE_STAMP_FONT,
       },
       poemPosition: {
         positionX: 50,
@@ -720,7 +720,7 @@ export const ALL_EDITOR_TEMPLATES: EditorTemplateDefinition[] = [
         rotation: 0,
         opacity: 0.85,
         colorScheme: 'outline' as const,
-        fontFamily: DEFAULT_STAMP_FONT,
+        fontFamily: LEGACY_TEMPLATE_STAMP_FONT,
       },
       poemPosition: {
         positionX: 52,
@@ -778,7 +778,7 @@ export const ALL_EDITOR_TEMPLATES: EditorTemplateDefinition[] = [
         rotation: -4,
         opacity: 0.72,
         colorScheme: 'filled' as const,
-        fontFamily: DEFAULT_STAMP_FONT,
+        fontFamily: LEGACY_TEMPLATE_STAMP_FONT,
       },
       poemPosition: {
         positionX: 50,
