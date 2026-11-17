@@ -11,14 +11,19 @@ editor or a physical-print fulfillment flow.
 
 ## Design invariants
 
-- All three use small, self-authored, same-origin SVG assets without scripts,
-  external image/font imports, or baked poem text. Poem/title/author/notes remain
-  editor layers and stay editable in every supported locale.
-- Background SVG and gallery preview have distinct URLs, sharing the same source
-  artwork. The preview shows the existing **live localized poem sample**.
-- The SVG canvas is 960 x 1200; `backgroundSize: stretch` preserves its postal
-  borders and corner details on any supported canvas preset, at the cost of
-  distortion on very wide aspect ratios.
+- All three retain their original self-authored, same-origin SVG masters
+  without scripts, external imports, or baked poem text. Saved drafts referring
+  to the original SVG URLs continue to work.
+- Each SVG now also has a 960 x 1200 WebP background (under 13 KB) and a
+  360 x 450 WebP gallery thumbnail (under 3 KB). New built-in selections use
+  WebP by default, and the original SVG backgrounds and previews remain in
+  the repository for compatibility and reuse.
+- WebP thumbnails have content-hashed filenames for cache invalidation; the
+  gallery still overlays a live, localized poem sample. Text/author/title/notes
+  stay editable and are not baked into the background.
+- The source canvas is 960 x 1200; backgroundSize: stretch keeps postal frames
+  and corner details visible on different editor aspect ratios, at the cost of
+  some distortion on very wide formats.
 - The built-in stamp toggle is off to avoid confusing the illustrated postal
   stamp with the separate Chinese text seal tool.
 - All eight locales include template names/descriptions and a dedicated

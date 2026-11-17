@@ -3,26 +3,26 @@ import type { EditorTemplateDefinition } from '../types';
 
 type PostcardOptions = Pick<EditorTemplateDefinition,
   'id' | 'nameKey' | 'descriptionKey' | 'accentFrom' | 'accentTo'> & {
-  previewHash: string;
+  previewWebpHash: string;
   paperColor: string;
   inkColor: string;
 };
 
-// Purely decorative same-origin SVG backgrounds; poem/title/author and optional
-// personal notes remain ordinary editable editor layers. Stretching keeps the
-// postage, border and corner botanicals visible at every canvas aspect ratio.
+// Original SVG masters remain available for existing saved drafts. New
+// gallery/editor selections use optimized WebP artwork and thumbnails.
+// Poem/title/author/notes remain independent editable editor layers.
 function postcard(options: PostcardOptions): EditorTemplateDefinition {
-  const { id, nameKey, descriptionKey, previewHash, accentFrom, accentTo, paperColor, inkColor } = options;
+  const { id, nameKey, descriptionKey, previewWebpHash, accentFrom, accentTo, paperColor, inkColor } = options;
   return {
     id, nameKey, descriptionKey, accentFrom, accentTo,
     seriesKey: 'templateSeriesPostcards',
     usesBackgroundImage: true,
-    previewImage: `/template-previews/${id}.${previewHash}.svg`,
+    previewImage: `/template-previews/${id}.${previewWebpHash}.webp`,
     background: {
       backgroundType: 'image',
       backgroundColor: paperColor,
       gradientColor1: paperColor, gradientColor2: paperColor, gradientDirection: 'to bottom',
-      backgroundImage: `/template-backgrounds/${id}.svg`,
+      backgroundImage: `/template-backgrounds/${id}.webp`,
       backgroundImageSource: 'template',
       backgroundSize: 'stretch', backgroundPosition: 'center',
       bgBrightness: 100, bgBlur: 0,
@@ -52,19 +52,19 @@ export const postcardTemplates: EditorTemplateDefinition[] = [
   postcard({
     id: 'postcard-vintage-travel', nameKey: 'templatePostcardVintageTravel',
     descriptionKey: 'templatePostcardVintageTravelDesc',
-    previewHash: '159b68e3', accentFrom: '#e8d4af', accentTo: '#66868b',
+    previewWebpHash: '4ec58605', accentFrom: '#e8d4af', accentTo: '#66868b',
     paperColor: '#f4e6cb', inkColor: '#443c32',
   }),
   postcard({
     id: 'postcard-poetry-minimal', nameKey: 'templatePostcardMinimalPoetry',
     descriptionKey: 'templatePostcardMinimalPoetryDesc',
-    previewHash: '12a92465', accentFrom: '#fffdf8', accentTo: '#a89882',
+    previewWebpHash: '66262f90', accentFrom: '#fffdf8', accentTo: '#a89882',
     paperColor: '#fcf8f1', inkColor: '#45423e',
   }),
   postcard({
     id: 'postcard-botanical', nameKey: 'templatePostcardBotanical',
     descriptionKey: 'templatePostcardBotanicalDesc',
-    previewHash: '6cbadd94', accentFrom: '#f6e5da', accentTo: '#7a9880',
+    previewWebpHash: '981cc5a2', accentFrom: '#f6e5da', accentTo: '#7a9880',
     paperColor: '#f9f0e3', inkColor: '#435348',
   }),
 ];
