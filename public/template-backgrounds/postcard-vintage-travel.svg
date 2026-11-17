@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="1200" viewBox="0 0 960 1200">
+<defs>
+  <linearGradient id="paper" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f8efd9"/><stop offset=".58" stop-color="#f4e6cb"/><stop offset="1" stop-color="#e9d5b4"/></linearGradient>
+  <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#b5c9bd"/><stop offset="1" stop-color="#688c91"/></linearGradient>
+  <pattern id="fibers" width="80" height="92" patternUnits="userSpaceOnUse"><path d="M8 14h5M53 39h7M22 77h4" stroke="#987b53" stroke-width="1" opacity=".16"/><circle cx="38" cy="18" r="1" fill="#987b53" opacity=".13"/><circle cx="69" cy="71" r="1.1" fill="#987b53" opacity=".12"/></pattern>
+</defs>
+<rect width="960" height="1200" fill="url(#paper)"/>
+<rect width="960" height="1200" fill="url(#fibers)"/>
+<path d="M0 0h960v54H0zM0 1152h960v48H0z" fill="#c5ae8a" opacity=".12"/>
+<rect x="36" y="40" width="888" height="1120" rx="3" fill="none" stroke="#947859" stroke-width="2.8" opacity=".67"/>
+<rect x="49" y="53" width="862" height="1094" fill="none" stroke="#baa07b" stroke-width="1.3" opacity=".52"/>
+<path d="M85 74h130M745 74h130M85 1125h128M747 1125h128" stroke="#a17c5b" stroke-width="2" opacity=".55"/>
+<!-- Hand-engraved postage vignette, deliberately free of text and numbers. -->
+<rect x="743" y="97" width="137" height="168" rx="2" fill="#e6ddbf" stroke="#876c51" stroke-width="3" stroke-dasharray="3 5"/>
+<rect x="754" y="109" width="115" height="144" fill="#d7d8c0" stroke="#9d8867" stroke-width="1.5"/>
+<path d="M764 204q23-16 48-3t48-4v44h-96z" fill="#a0b4aa"/>
+<path d="M763 210q32 7 52 0t46 0M764 221q29 7 52 0t44-1M769 230q23 4 42-1" fill="none" stroke="#637d7c" stroke-width="2.5" opacity=".7"/>
+<path d="M813 125v84M812 133l-29 55h59z" fill="#f1ead6" stroke="#526e70" stroke-width="3"/>
+<path d="M811 135l21 43h-21z" fill="#b08e75" opacity=".5"/>
+<path d="M788 210h52" stroke="#526e70" stroke-width="2.5"/>
+<g fill="none" stroke="#8b6a59" stroke-width="3" opacity=".45">
+  <circle cx="703" cy="190" r="56"/><circle cx="703" cy="190" r="44"/>
+  <path d="M552 151c55-18 97 18 158 0M552 168c55-18 97 18 158 0M552 185c55-18 97 18 158 0"/>
+</g>
+<g opacity=".68">
+  <path d="M55 948q150-36 283-2t290-12 278 8v212H55z" fill="#d8c9a8"/>
+  <path d="M56 999l130-94 91 86 112-113 145 113 98-78 104 90 171-70v221H56z" fill="#acb7a6"/>
+  <path d="M55 1036q118-28 241 0t250 0 362 0v118H55z" fill="url(#sea)"/>
+  <path d="M64 1072q67-10 128 1t129-1 134 0 152-1 163 0 139 0M70 1111q72-8 135 0t134 0 151-1 161 0 150 0" fill="none" stroke="#e0e5d8" stroke-width="3" opacity=".48"/>
+  <path d="M96 956l12-75 12 75M101 913h15M92 960h33" fill="none" stroke="#556d67" stroke-width="3"/>
+</g>
+<path d="M99 840h760" stroke="#947859" stroke-width="1.5" opacity=".25"/>
+</svg>

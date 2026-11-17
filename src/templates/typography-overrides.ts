@@ -15,6 +15,9 @@ const illustratedTypography: Partial<Record<Language, Partial<TemplateTypography
 
 export const templateTypographyOverrides: Partial<Record<EditorTemplateId, Partial<Record<Language, Partial<TemplateTypographyConfig>>>>> = {
   'bluebird-manuscript': illustratedTypography,
+  'postcard-vintage-travel': illustratedTypography,
+  'postcard-poetry-minimal': illustratedTypography,
+  'postcard-botanical': illustratedTypography,
   'blue-meadow-manuscript': illustratedTypography,
   'blue-butterfly-manuscript': illustratedTypography,
   'song-floral': illustratedTypography,

@@ -1,9 +1,11 @@
 import { LEGACY_TEMPLATE_STAMP_FONT } from '../fontOptions';
 import type { EditorTemplateDefinition } from '../types';
 import { illustratedTemplates } from './illustrated';
+import { postcardTemplates } from './postcards';
 
 export const ALL_EDITOR_TEMPLATES: EditorTemplateDefinition[] = [
   ...illustratedTemplates,
+  ...postcardTemplates,
   {
     id: 'parchment-scroll',
     nameKey: 'templateParchmentScroll',
