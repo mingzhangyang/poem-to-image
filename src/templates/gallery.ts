@@ -28,6 +28,12 @@ export const TEMPLATE_GALLERY_CATEGORIES: readonly TemplateGalleryCategory[] = [
   { key: 'templateCategoryPostcards', ids: [
     'postcard-vintage-travel', 'postcard-poetry-minimal', 'postcard-botanical',
   ] },
+  { key: 'templateCategoryPremiumPostcards', ids: [
+    'postcard-premium-europe',
+    'postcard-premium-botanical',
+    'postcard-premium-letter-collage',
+    'postcard-premium-seaside',
+  ] },
   { key: 'templateCategoryWorldLandscapes', ids: [
     'daffodil-lake', 'autumn-forked-path', 'dover-beach', 'scottish-moor',
     'coastal-lighthouse', 'provence-fields', 'new-england-autumn',

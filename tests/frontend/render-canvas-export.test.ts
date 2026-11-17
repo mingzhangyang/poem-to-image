@@ -97,6 +97,10 @@ class FakeImage {
   onload: (() => void) | null = null;
   onerror: (() => void) | null = null;
   set src(value: string) {
+    if (value.startsWith('/template-backgrounds/postcard-premium-')) {
+      this.naturalWidth = 960;
+      this.naturalHeight = 1200;
+    }
     requestedImages.push(value);
     queueMicrotask(() => this.onload?.());
   }
@@ -494,6 +498,28 @@ test('image background honors backgroundSize in the export', async () => {
   assert.ok(covered);
   const [, , , coverWidth, coverHeight] = covered!.args as number[];
   assert.deepEqual([coverWidth, coverHeight], [800, 800]);
+});
+
+test('premium postcards preserve aspect ratio in 16:9 preview and export', async () => {
+  const { resolveTemplateForLanguage } = await import('../../src/templates');
+  const { getTemplatePreviewStyle } = await import('../../src/templates/preview-style');
+  const template = resolveTemplateForLanguage('postcard-premium-europe', 'en');
+  assert.ok(template);
+  assert.equal(template.background.backgroundSize, 'cover');
+  assert.equal(getTemplatePreviewStyle(template).backgroundSize, 'cover');
+
+  const base = makeScene();
+  await renderCanvasExport({
+    ...base, canvasWidth: 1920, canvasHeight: 1080,
+    background: { ...base.background, ...template.background },
+  }, { skipPoem: true });
+
+  assert.ok(requestedImages.includes('/template-backgrounds/postcard-premium-europe.webp'));
+  const draw = mainTrace().find((operation) => operation.op === 'drawImage');
+  assert.ok(draw, 'premium postcard image must be drawn in the export');
+  const [x, y, width, height] = draw.args.slice(1) as number[];
+  assert.deepEqual([x, y, width, height], [0, -660, 1920, 2400]);
+  assert.equal(width / height, 960 / 1200, 'export must not stretch the artwork');
 });
 
 test('image export preserves a top- or bottom-anchored crop', async () => {
