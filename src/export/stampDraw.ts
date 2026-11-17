@@ -23,6 +23,7 @@ import {
   fitTraditionalStampGlyph, getTraditionalStampLayout, isTraditionalStamp, usesCompactSealComposition,
 } from '../sealTypography';
 import type { StampConfig } from '../types';
+import { composeWholeStampLayout, isWholeSealComposition } from '../sealWholeComposition';
 import type { CanvasExportScene } from './renderCanvasExport';
 
 interface Rect {
@@ -216,21 +217,35 @@ function drawTraditionalStampBody(ctx: CanvasRenderingContext2D, stamp: StampCon
   const isWhiteCharacters = stamp.mode === 'baiwen'
     || (stamp.mode !== 'zhuwen' && stamp.colorScheme !== 'outline');
   const glyphStrokeWidth = getStampTextStrokeWidth(stamp);
+  // Only explicitly opted-in stamps use the new whole-impression solver.
+  // Legacy stamps keep their exact prior Canvas command and placement path.
+  const wholeLayout = isWholeSealComposition(stamp) ? (() => {
+    ctx.save();
+    ctx.font = 'normal 100px ' + stamp.fontFamily;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const measured = getStampCharacters(stamp.text).map(char => ctx.measureText(char));
+    ctx.restore();
+    return composeWholeStampLayout(stamp, measured, glyphStrokeWidth);
+  })() : null;
+  const hasWholeLayout = !!wholeLayout
+    && wholeLayout.fits.length === getStampCharacters(stamp.text).length;
+  const edgeWidth = hasWholeLayout ? wholeLayout!.borderWidth : layout.borderWidth;
 
   ctx.save();
-  drawStampShape(ctx, stamp, isWhiteCharacters ? 0 : layout.borderWidth / 2);
+  drawStampShape(ctx, stamp, isWhiteCharacters ? 0 : edgeWidth / 2);
   if (isWhiteCharacters) {
     ctx.fillStyle = inkColor;
     ctx.fill();
   } else {
-    ctx.lineWidth = layout.borderWidth;
+    ctx.lineWidth = edgeWidth;
     ctx.strokeStyle = inkColor;
     ctx.stroke();
   }
   ctx.restore();
 
   ctx.save();
-  drawStampShape(ctx, stamp, layout.borderWidth * 0.75);
+  drawStampShape(ctx, stamp, edgeWidth * 0.75);
   ctx.clip();
   if (isWhiteCharacters) {
     ctx.globalCompositeOperation = 'destination-out';
@@ -247,36 +262,52 @@ function drawTraditionalStampBody(ctx: CanvasRenderingContext2D, stamp: StampCon
   // Match the round clipping path's inset; reserve a little extra breathing
   // room so measured corner strokes do not graze the circular border.
   const roundClipRadius = stamp.style === 'round'
-    ? Math.max(0, stamp.size / 2 - layout.borderWidth * 0.75 - stamp.size * 0.015)
+    ? Math.max(0, stamp.size / 2 - edgeWidth * 0.75 - stamp.size * 0.015)
     : null;
   const dimensions = getStampDimensions(stamp);
   const ovalClip = stamp.style === 'oval' ? {
-    radiusX: Math.max(0, dimensions.width / 2 - layout.borderWidth * 0.75 - dimensions.width * 0.015),
-    radiusY: Math.max(0, dimensions.height / 2 - layout.borderWidth * 0.75 - dimensions.height * 0.015),
+    radiusX: Math.max(0, dimensions.width / 2 - edgeWidth * 0.75 - dimensions.width * 0.015),
+    radiusY: Math.max(0, dimensions.height / 2 - edgeWidth * 0.75 - dimensions.height * 0.015),
   } : null;
-  for (const slot of layout.slots) {
-    ctx.font = 'normal ' + slot.fontSize + 'px ' + stamp.fontFamily;
-    const fit = fitTraditionalStampGlyph(
-      slot,
-      ctx.measureText(slot.character),
-      roundClipRadius !== null ? { x: slot.x, y: slot.y, radius: roundClipRadius }
-        : ovalClip ? { x: slot.x, y: slot.y, ...ovalClip } : undefined,
-      getStampTextScale(stamp),
-      glyphStrokeWidth,
-      usesCompactSealComposition(stamp.fontFamily) ? 0.94 : 0.88,
-    );
-    if (fit.scale <= 0) continue; // No drawable glyph fits inside the ink/clip budget.
-    ctx.save();
-    ctx.translate(slot.x, slot.y);
-    ctx.scale(fit.scale, fit.scale);
-    if (glyphStrokeWidth > 0) {
-      // Canvas scales lineWidth with its transform. Counteract glyph fitting
-      // so the stroke slider always means a percentage of the seal, not the glyph.
-      ctx.lineWidth = glyphStrokeWidth / fit.scale;
-      ctx.strokeText(slot.character, fit.offsetX, fit.offsetY);
+  if (hasWholeLayout) {
+    ctx.font = 'normal 100px ' + stamp.fontFamily;
+    for (const fit of wholeLayout!.fits) {
+      if (fit.scale <= 0) continue;
+      ctx.save();
+      ctx.translate(fit.x, fit.y);
+      ctx.scale(fit.scale, fit.scale);
+      if (glyphStrokeWidth > 0) {
+        ctx.lineWidth = glyphStrokeWidth / fit.scale;
+        ctx.strokeText(fit.character, 0, 0);
+      }
+      ctx.fillText(fit.character, 0, 0);
+      ctx.restore();
     }
-    ctx.fillText(slot.character, fit.offsetX, fit.offsetY);
-    ctx.restore();
+  } else {
+    for (const slot of layout.slots) {
+      ctx.font = 'normal ' + slot.fontSize + 'px ' + stamp.fontFamily;
+      const fit = fitTraditionalStampGlyph(
+        slot,
+        ctx.measureText(slot.character),
+        roundClipRadius !== null ? { x: slot.x, y: slot.y, radius: roundClipRadius }
+          : ovalClip ? { x: slot.x, y: slot.y, ...ovalClip } : undefined,
+        getStampTextScale(stamp),
+        glyphStrokeWidth,
+        usesCompactSealComposition(stamp.fontFamily) ? 0.94 : 0.88,
+      );
+      if (fit.scale <= 0) continue; // No drawable glyph fits inside the ink/clip budget.
+      ctx.save();
+      ctx.translate(slot.x, slot.y);
+      ctx.scale(fit.scale, fit.scale);
+      if (glyphStrokeWidth > 0) {
+        // Canvas scales lineWidth with its transform. Counteract glyph fitting
+        // so the stroke slider always means a percentage of the seal, not the glyph.
+        ctx.lineWidth = glyphStrokeWidth / fit.scale;
+        ctx.strokeText(slot.character, fit.offsetX, fit.offsetY);
+      }
+      ctx.fillText(slot.character, fit.offsetX, fit.offsetY);
+      ctx.restore();
+    }
   }
   ctx.restore();
 }

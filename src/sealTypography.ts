@@ -37,6 +37,12 @@ export const CHONGXI_SEAL_FONT_STACK = '"InkPoem Chongxi Seal", "Noto Serif SC",
 export const JINWEN_FONT_STACK = '"InkPoem Chine-Culture Jinwen", "Noto Serif SC", serif';
 export const CLERICAL_FONT_STACK = '"InkPoem MOE Li", "Noto Serif SC", serif';
 
+// A separate pure measured-ink solver; existing fixed-cell exports remain stable.
+export {
+  composeWholeStampLayout, getCompositionTightness, getWholeSealColumnChoices,
+  isWholeSealComposition,
+} from './sealWholeComposition';
+
 export type StampVisualMode = NonNullable<StampConfig['mode']> | 'legacy';
 export type StampPresetId = 'vermillion-name' | 'white-name' | 'literati' | 'modern-calligraphy';
 
@@ -57,13 +63,16 @@ export function getStampPresetUpdates(preset: StampPresetId): Partial<StampConfi
   switch (preset) {
     case 'vermillion-name':
       return { mode: 'zhuwen', style: 'square', colorScheme: 'outline',
-        inkColor: '#bc2925', weathering: 18, textureStyle: 'natural', fontFamily: CNS_SEAL_FONT_STACK, rotation: 0 };
+        inkColor: '#bc2925', weathering: 18, textureStyle: 'natural', fontFamily: CNS_SEAL_FONT_STACK, compositionMode: 'whole',
+        compositionTightness: 70, compositionVariant: 0, rotation: 0 };
     case 'white-name':
       return { mode: 'baiwen', style: 'square', colorScheme: 'filled',
-        inkColor: '#bd2c25', weathering: 18, textureStyle: 'natural', fontFamily: CNS_SEAL_FONT_STACK, rotation: 0 };
+        inkColor: '#bd2c25', weathering: 18, textureStyle: 'natural', fontFamily: CNS_SEAL_FONT_STACK, compositionMode: 'whole',
+        compositionTightness: 70, compositionVariant: 0, rotation: 0 };
     case 'literati':
       return { mode: 'zhuwen', style: 'brush', colorScheme: 'outline',
-        inkColor: '#9e2924', weathering: 30, textureStyle: 'natural', fontFamily: CNS_SEAL_FONT_STACK, rotation: -5 };
+        inkColor: '#9e2924', weathering: 30, textureStyle: 'natural', fontFamily: CNS_SEAL_FONT_STACK, compositionMode: 'whole',
+        compositionTightness: 70, compositionVariant: 0, rotation: -5 };
     case 'modern-calligraphy':
       return { mode: 'modern', style: 'round', colorScheme: 'filled',
         inkColor: '#c82829', weathering: 25, textureStyle: 'classic', fontFamily: '"Ma Shan Zheng", cursive', rotation: -8 };

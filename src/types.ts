@@ -172,6 +172,12 @@ export interface StampConfig {
   motifId?: SealMotifId;
   /** Optional: missing means legacy visual rules for all saved artworks/templates. */
   mode?: 'zhuwen' | 'baiwen' | 'modern';
+  /** Optional: absent preserves previously saved fixed-cell composition exactly. */
+  compositionMode?: 'legacy' | 'whole' | 'name';
+  /** 0–100; only active in whole/name modes; missing means 70%. */
+  compositionTightness?: number;
+  /** Rank among deterministic whole-seal candidate topologies: 0 recommended, 1/2 alternatives. */
+  compositionVariant?: 0 | 1 | 2;
   colorScheme?: 'outline' | 'filled';
   inkColor?: string;
   weathering?: number;

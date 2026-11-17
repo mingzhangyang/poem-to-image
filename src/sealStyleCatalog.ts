@@ -38,6 +38,8 @@ export const SEAL_STYLE_DESIGN_INFO: Readonly<Record<SealStyleDesignId, SealStyl
 // Text cards set reproducible glyph defaults; graphic cards preserve hidden text tuning.
 const TEXT_GLYPH_DEFAULTS = { textScale: 1, textStrokeWidthPct: 0 } as const;
 
+const WHOLE_SEAL = { compositionMode: 'whole' as const, compositionTightness: 70,
+  compositionVariant: 0 as const };
 const TRADITIONAL_INK = { inkColor: '#b33227', weathering: 18,
   textureStyle: 'natural' as const, rotation: 0 };
 
@@ -53,13 +55,13 @@ export function getSealStyleDesignUpdates(id: SealStyleDesignId): Partial<StampC
     case 'modern':
       return { ...getStampPresetUpdates('modern-calligraphy'), ...TEXT_GLYPH_DEFAULTS, motifId: undefined };
     case 'studio':
-      return { ...TRADITIONAL_INK, ...TEXT_GLYPH_DEFAULTS, mode: 'zhuwen', style: 'rect-vertical', shapeRatio: 0.58,
+      return { ...TRADITIONAL_INK, ...TEXT_GLYPH_DEFAULTS, ...WHOLE_SEAL, mode: 'zhuwen', style: 'rect-vertical', shapeRatio: 0.58,
         colorScheme: 'outline', motifId: undefined, fontFamily: CNS_SEAL_FONT_STACK };
     case 'auspicious':
-      return { ...TRADITIONAL_INK, ...TEXT_GLYPH_DEFAULTS, mode: 'baiwen', style: 'oval', shapeRatio: 0.68,
+      return { ...TRADITIONAL_INK, ...TEXT_GLYPH_DEFAULTS, ...WHOLE_SEAL, mode: 'baiwen', style: 'oval', shapeRatio: 0.68,
         colorScheme: 'filled', motifId: undefined, fontFamily: CNS_SEAL_FONT_STACK };
     case 'collector':
-      return { ...TRADITIONAL_INK, ...TEXT_GLYPH_DEFAULTS, mode: 'baiwen', style: 'rect-horizontal', shapeRatio: 0.82,
+      return { ...TRADITIONAL_INK, ...TEXT_GLYPH_DEFAULTS, ...WHOLE_SEAL, mode: 'baiwen', style: 'rect-horizontal', shapeRatio: 0.82,
         colorScheme: 'filled', motifId: undefined, fontFamily: CNS_SEAL_FONT_STACK };
     case 'graphic':
       return { ...TRADITIONAL_INK, mode: 'zhuwen', style: 'round',
@@ -68,7 +70,7 @@ export function getSealStyleDesignUpdates(id: SealStyleDesignId): Partial<StampC
       return { ...TRADITIONAL_INK, mode: 'zhuwen', style: 'square',
         colorScheme: 'outline', motifId: 'landscape' };
     case 'blessing':
-      return { ...TRADITIONAL_INK, ...TEXT_GLYPH_DEFAULTS, mode: 'baiwen', style: 'brush',
+      return { ...TRADITIONAL_INK, ...TEXT_GLYPH_DEFAULTS, ...WHOLE_SEAL, mode: 'baiwen', style: 'brush',
         colorScheme: 'filled', motifId: undefined, fontFamily: CNS_SEAL_FONT_STACK };
   }
 }

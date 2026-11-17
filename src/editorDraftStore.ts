@@ -260,6 +260,17 @@ function isDraftState(value: unknown): value is EditorDraftState {
     || !optionalField(stamp, 'textScale', 'number')
     || !optionalField(stamp, 'textStrokeWidthPct', 'number')
     || !optionalField(stamp, 'shapeRatio', 'number')
+    || (stamp.compositionMode !== undefined
+      && stamp.compositionMode !== 'legacy'
+      && stamp.compositionMode !== 'whole'
+      && stamp.compositionMode !== 'name')
+    || (stamp.compositionTightness !== undefined
+      && (typeof stamp.compositionTightness !== 'number'
+        || !Number.isFinite(stamp.compositionTightness)
+        || stamp.compositionTightness < 0 || stamp.compositionTightness > 100))
+    || (stamp.compositionVariant !== undefined
+      && (stamp.compositionVariant !== 0
+        && stamp.compositionVariant !== 1 && stamp.compositionVariant !== 2))
     || (stamp.motifId !== undefined && !isSealMotifId(stamp.motifId))
     || (stamp.textureStyle !== undefined && stamp.textureStyle !== 'classic' && stamp.textureStyle !== 'natural')
     || (stamp.textureSeed !== undefined && (typeof stamp.textureSeed !== 'number'

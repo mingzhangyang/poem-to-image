@@ -133,6 +133,10 @@ function matchesDecorations(
     // A user-chosen seal mode, face, ink, weathering or font makes these
     // decorations custom; switching UI language must not reapply the stamp.
     decorations.stamp.mode === d.stamp.mode &&
+    // A manually chosen optical layout must survive language switching.
+    decorations.stamp.compositionMode === d.stamp.compositionMode &&
+    decorations.stamp.compositionTightness === d.stamp.compositionTightness &&
+    decorations.stamp.compositionVariant === d.stamp.compositionVariant &&
     decorations.stamp.colorScheme === d.stamp.colorScheme &&
     decorations.stamp.inkColor === d.stamp.inkColor &&
     decorations.stamp.weathering === d.stamp.weathering &&

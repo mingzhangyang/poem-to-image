@@ -5,13 +5,14 @@ import { getVerifiedSealFont } from '../../sealFontSources';
 import { replaceSealVariantAt } from '../../sealVariantChoices';
 import { useSealFontInspection } from '../../hooks/useSealFontInspection';
 import {
-  getStampShapeRatio, getStampTextScale, getStampTextStrokeWidthPct,
+  getStampCharacters, getStampShapeRatio, getStampTextScale, getStampTextStrokeWidthPct,
   isExtendedStampStyle, limitStampText,
 } from '../../stampRendering';
 import { getNaturalSealSeed, nextNaturalSealSeed } from '../../naturalSealTexture';
 import { getLXGWUnlistedCharacters } from '../../lxgwSealCoverage';
 import {
   CNS_SEAL_FONT_STACK, isSealScriptFont, isTraditionalStamp, SMALL_SEAL_FONT_STACK,
+  getCompositionTightness, getWholeSealColumnChoices,
 } from '../../sealTypography';
 import { SIGNATURE_FONTS } from '../../signatureRendering';
 import type { BorderStyle, DecorationsSectionProps, ExpandedSections, SignatureFlourish, StampStyle, TranslateFn } from '../../types';
@@ -80,6 +81,18 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
     }
   }, [decorations.stamp.text]);
 
+  const wholeVariantCount = Math.min(3, getWholeSealColumnChoices(decorations.stamp).length);
+  const activeWholeVariant = Math.min(decorations.stamp.compositionVariant ?? 0,
+    wholeVariantCount - 1);
+  const applyStampText = (text: string) => {
+    const next = limitStampText(text);
+    const leaveName = decorations.stamp.compositionMode === 'name'
+      && getStampCharacters(next).length !== 3;
+    decorations.onStampChange({
+      text: next,
+      ...(leaveName ? { compositionMode: 'whole' as const, compositionVariant: 0 as const } : {}),
+    });
+  };
   const smallSealUnlisted = decorations.stamp.fontFamily === SMALL_SEAL_FONT_STACK
     ? getLXGWUnlistedCharacters(decorations.stamp.text) : [];
   const verifiedFace = getVerifiedSealFont(decorations.stamp.fontFamily);
@@ -230,7 +243,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                   // The selected design changes visual defaults, never identity.
                   textureSeed: getNaturalSealSeed(decorations.stamp),
                 })}
-                onUseSampleText={(text) => decorations.onStampChange({ text: limitStampText(text) })}
+                onUseSampleText={applyStampText}
               />
 
               <div>
@@ -281,7 +294,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                       : limitStampText(event.target.value);
                     setStampInputText(newValue);
                     if (!isComposingRef.current) {
-                      decorations.onStampChange({ text: newValue });
+                      applyStampText(newValue);
                     }
                   }}
                   onCompositionStart={() => { isComposingRef.current = true; }}
@@ -289,7 +302,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                     isComposingRef.current = false;
                     const finalValue = limitStampText((event.target as HTMLInputElement).value);
                     setStampInputText(finalValue);
-                    decorations.onStampChange({ text: finalValue });
+                    applyStampText(finalValue);
                   }}
                   className="app-input col-span-2 text-sm text-center"
                   placeholder={t('stampText')}
@@ -337,6 +350,75 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                   <option value="oval">{t('stampStyleOval')}</option>
                 </select>
               </div>
+
+              {!isSealMotifId(decorations.stamp.motifId) && isTraditionalStamp(decorations.stamp) && (
+                <div className="space-y-2 rounded-lg border border-[rgba(34,48,52,0.12)] p-2.5">
+                  <label className="block text-xs font-semibold text-(--app-accent-700)">
+                    {t('stampComposition')}
+                  </label>
+                  <select
+                    className="app-select text-sm"
+                    aria-label={t('stampComposition')}
+                    value={decorations.stamp.compositionMode ?? 'legacy'}
+                    onChange={(event) => decorations.onStampChange({
+                      compositionMode: event.target.value as 'legacy' | 'whole' | 'name',
+                    })}
+                  >
+                    <option value="legacy">{t('stampCompositionClassic')}</option>
+                    <option value="whole">{t('stampCompositionWhole')}</option>
+                    {(getStampCharacters(decorations.stamp.text).length === 3 ||
+                      decorations.stamp.compositionMode === 'name') && (
+                      <option value="name">{t('stampCompositionName')}</option>
+                    )}
+                  </select>
+                  {decorations.stamp.compositionMode === 'whole' &&
+                    wholeVariantCount > 1 && (
+                      <div className="space-y-1">
+                        <label className="block text-xs text-(--app-accent-500)">
+                          {t('stampCompositionVariant')}
+                        </label>
+                        <div className="flex gap-1" role="group" aria-label={t('stampCompositionVariant')}>
+                          {(['stampCompositionVariantA', 'stampCompositionVariantB', 'stampCompositionVariantC'] as const)
+                            .slice(0, wholeVariantCount).map((label, index) => (
+                              <button type="button" key={label}
+                                aria-pressed={activeWholeVariant === index}
+                                onClick={() => decorations.onStampChange({ compositionVariant: index as 0 | 1 | 2 })}
+                                className={'flex-1 rounded border px-2 py-1.5 text-xs font-medium ' +
+                                  (activeWholeVariant === index
+                                    ? 'border-(--app-accent-700) bg-(--app-accent-700) text-white'
+                                    : 'border-(--app-accent-200) bg-white text-(--app-accent-700)')}>
+                                {t(label)}
+                              </button>
+                            ))}
+                        </div>
+                      </div>
+                    )}
+                  {decorations.stamp.compositionMode === 'name' && (
+                    <p className="text-[11px] text-(--app-accent-500)" role="note">
+                      {t('stampCompositionNameHint')}
+                    </p>
+                  )}
+                  {(decorations.stamp.compositionMode === 'whole' ||
+                    decorations.stamp.compositionMode === 'name') && (
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-xs text-(--app-accent-500)">
+                        <span>{t('stampCompositionTightness')}</span>
+                        <span>{Math.round(getCompositionTightness(decorations.stamp))}%</span>
+                      </div>
+                      <input
+                        type="range" min="0" max="100" step="5"
+                        className="app-range app-range-warm"
+                        aria-label={t('stampCompositionTightness')}
+                        aria-valuetext={String(Math.round(getCompositionTightness(decorations.stamp))) + '%'}
+                        value={getCompositionTightness(decorations.stamp)}
+                        onChange={(event) => decorations.onStampChange({
+                          compositionTightness: Number(event.target.value),
+                        })}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
 
               {isExtendedStampStyle(decorations.stamp.style) && (
                 <div className="space-y-2">
