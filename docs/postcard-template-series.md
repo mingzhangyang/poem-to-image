@@ -24,8 +24,10 @@ The gallery now has two genuinely different visual offerings:
   and notes remain fully editable overlays; they are never baked into image.
 - Uses existing gallery, typography, save/draft restore, and PNG/JPEG/WebP
   exporter paths with no new service, API calls, or image-generation credits.
-- `backgroundSize: stretch` retains the corners on portrait cards; wide
-  landscape card sizes may distort the images rather than crop them.
+- `backgroundSize: cover` preserves artwork proportions on every canvas size.
+  The source 4:5 compositions remain intact on 4:5 canvases; incompatible
+  ratios (notably 16:9) center-crop rather than distort architecture, seals,
+  or flowers. Use a 4:5 canvas when all postcard corners must remain visible.
 - Avoid extra Chinese stamp over preprinted postal elements (`showStamp: false`).
 - A dedicated premium category is localized in all eight supported languages;
   CJK vertical and Latin horizontal verse layouts reuse existing presets.

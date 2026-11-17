@@ -24,7 +24,7 @@ function premiumPostcard(options: PremiumPostcardOptions): EditorTemplateDefinit
       gradientColor1: paperColor, gradientColor2: paperColor, gradientDirection: 'to bottom',
       backgroundImage: `/template-backgrounds/${id}.webp`,
       backgroundImageSource: 'template',
-      backgroundSize: 'stretch', backgroundPosition: 'center',
+      backgroundSize: 'cover', backgroundPosition: 'center',
       bgBrightness: 100, bgBlur: 0,
     },
     typography: {

@@ -36,8 +36,8 @@ test('four premium postcards belong to their own localized gallery group', async
       assert.equal(item.decorations.showBorder, false);
       assert.deepEqual(item.decorations.customTexts, []);
       assert.equal(item.background.backgroundImageSource, 'template');
-      assert.equal(item.background.backgroundSize, 'stretch');
-      assert.equal(getTemplatePreviewStyle(item).backgroundSize, '100% 100%');
+      assert.equal(item.background.backgroundSize, 'cover');
+      assert.equal(getTemplatePreviewStyle(item).backgroundSize, 'cover');
     }
   }
 });

@@ -43,7 +43,7 @@ test('premium gallery assets load, poem stays editable, selection restores and e
   await expect.poll(() => page.evaluate(() => {
     const draft = JSON.parse(localStorage.getItem('inkpoem.editor-state.v1') || 'null');
     return [draft?.background?.backgroundImage, draft?.background?.backgroundSize];
-  })).toEqual([cards[0][1], 'stretch']);
+  })).toEqual([cards[0][1], 'cover']);
 
   if (mobile) {
     const drawer = page.getByRole('dialog', { name: 'Templates', exact: true });
@@ -57,7 +57,7 @@ test('premium gallery assets load, poem stays editable, selection restores and e
 
   await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(page.locator('[data-export-layer="background"]').first())
-    .toHaveCSS('background-size', '100% 100%');
+    .toHaveCSS('background-size', 'cover');
   await expect.poll(() => page.evaluate(() => {
     const draft = JSON.parse(localStorage.getItem('inkpoem.editor-state.v1') || 'null');
     return [draft?.background?.backgroundImage, draft?.poem?.body];
