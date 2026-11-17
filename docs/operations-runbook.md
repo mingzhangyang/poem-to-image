@@ -33,6 +33,8 @@ The root `wrangler.jsonc` is the production configuration. Never point staging c
    npm run deploy
    ```
 
+`audit:production` is a hard gate. `audit:full` may acknowledge only the dev-only exceptions in `scripts/audit-full-policy.mjs`. As of 2026-11-17 the sole exception is `GHSA-fc5q-39xc-vjpf` (`picomatch <=4.0.7`): the newest published release is still inside that range, `npm audit fix --force` cannot install a patched version, and the package is reachable only through Vite and Vitest. Owner: mingzhangyang. Remove the exception by 2026-12-17, or sooner if picomatch publishes a release outside the range.
+
 For staging, use the same commands with `--config wrangler.staging.jsonc`. Staging must use Clerk and Stripe test keys and its own D1 database.
 
 ## Billing reconciliation

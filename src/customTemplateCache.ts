@@ -1,4 +1,5 @@
 import { DEFAULT_POEM_STYLE, normalizeUserCustomTemplate } from './poemStyle';
+import { isValidStampGlyphEditList } from './sealGlyphEditing';
 import type { UserCustomTemplate } from './types';
 
 /**
@@ -76,10 +77,11 @@ function isPositioned(value: unknown): boolean {
 function isStamp(value: unknown): boolean {
   return isRecord(value)
     && hasStrings(value, ['text', 'fontFamily'])
-    && isOneOf(value.style, ['square', 'round', 'brush'])
+    && isOneOf(value.style, ['square', 'round', 'brush', 'rect-vertical', 'rect-horizontal', 'oval'])
     && hasNumbers(value, ['positionX', 'positionY', 'size', 'rotation', 'opacity'])
     && (value.colorScheme === undefined || isOneOf(value.colorScheme, ['outline', 'filled']))
     && optionalString(value.inkColor) && optionalNumber(value.weathering)
+    && (value.glyphEdits === undefined || isValidStampGlyphEditList(value.glyphEdits))
     && (value.textureStyle === undefined || isOneOf(value.textureStyle, ['classic', 'natural']))
     && (value.textureSeed === undefined
       || (typeof value.textureSeed === 'number'

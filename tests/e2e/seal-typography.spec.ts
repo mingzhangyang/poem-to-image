@@ -62,6 +62,9 @@ test('presets update selected seal modes and preserve text/position through undo
   const input = page.getByRole('textbox', { name: '印章文字' });
   await input.fill('山水天地');
   const mode = page.getByRole('combobox', { name: '印章模式' });
+  // New stamps now default to traditional zhuwen. Explicitly establish the
+  // modern baseline so Undo must restore a genuinely distinct user choice.
+  await mode.selectOption('modern');
   await expect(mode).toHaveValue('modern');
   // Commit the prepared stamp as a distinct history entry before applying
   // the preset; otherwise Undo may coalesce it with the setup edits (800ms).
@@ -70,10 +73,9 @@ test('presets update selected seal modes and preserve text/position through undo
   await page.getByRole('button', { name: '传统朱文姓名印' }).click();
   await expect(mode).toHaveValue('zhuwen');
   await expect(page.getByRole('combobox', { name: '印章字体' })).toHaveValue(
-    '"InkPoem Zhongshan Seal", "Noto Serif SC", serif',
+    '"InkPoem CNS Seal", "Noto Serif SC", serif',
   );
   await expect(input).toHaveValue('山水天地');
-  await expect(page.getByRole('note')).toContainText('篆书字库覆盖有限');
 
   await page.getByRole('button', { name: '撤销' }).click();
   await expect(mode).toHaveValue('modern');

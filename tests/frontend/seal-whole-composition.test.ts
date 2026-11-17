@@ -130,3 +130,73 @@ test('solver is deterministic across repaint and handles malformed metrics', () 
   assert.ok(bad.fits.every(f=>Number.isFinite(f.scale)));
   assert.ok(solve({...shared,size:0}).fits.every(f=>Number.isFinite(f.scale)));
 });
+
+
+test('explicit per-glyph width/height and offsets affect only the selected glyph', () => {
+  const s={...shared,text:'印',compositionTightness:0};
+  const old=solve(s);
+  const edited=solve({
+    ...s,glyphEdits:[{index:0,character:'印',offsetX:3,offsetY:-4,
+      widthPct:115,heightPct:85,locked:true}],
+  });
+  assert.equal(old.fits.length,1);
+  assert.equal(edited.fits.length,1);
+  assert.equal(edited.fits[0].scale,old.fits[0].scale);
+  assert.ok((edited.fits[0].scaleX??0)>(edited.fits[0].scaleY??Infinity));
+  assert.notEqual((old.fits[0].ink.left+old.fits[0].ink.right)/2,
+    (edited.fits[0].ink.left+edited.fits[0].ink.right)/2);
+  assert.notEqual((old.fits[0].ink.top+old.fits[0].ink.bottom)/2,
+    (edited.fits[0].ink.top+edited.fits[0].ink.bottom)/2);
+  validateInk(s,edited);
+});
+
+test('edited whole seals retain no-overlap and painted bounds in all six shapes', () => {
+  const shapes:StampStyle[]=['square','round','brush','rect-vertical','rect-horizontal','oval'];
+  for(const style of shapes) for(const mode of ['zhuwen','baiwen'] as const){
+    const s={...shared,style,mode,text:'詩情畫意山水天地',shapeRatio:0.6,
+      glyphEdits:[
+        {index:0,character:'詩',offsetX:-20,offsetY:-20,widthPct:130,heightPct:125,locked:true},
+        {index:1,character:'情',offsetX:20,offsetY:20,widthPct:130,heightPct:130,locked:false},
+        {index:2,character:'畫',offsetX:6,offsetY:0,widthPct:70,heightPct:110,locked:false},
+      ],
+    };
+    const result=solve(s,3.5);
+    assert.equal(result.fits.length,8,style+' '+mode);
+    validateInk(s,result);
+  }
+});
+
+test('unmodified historic compositions produce identical fits even with empty edit list', () => {
+  const old=solve(shared);
+  const empty=solve({...shared,glyphEdits:[]});
+  assert.deepEqual(empty,old);
+  const edited=solve({...shared,glyphEdits:[
+    {index:1,character:'情',offsetX:5,offsetY:0,widthPct:100,heightPct:100,locked:false},
+  ]});
+  assert.deepEqual(edited.groups,old.groups);
+  assert.equal(edited.fits[0].x,old.fits[0].x);
+  assert.equal(edited.fits[2].y,old.fits[2].y);
+});
+
+test('locked edits do not change deterministic plans or candidate ranks', () => {
+  const e={index:0,character:'詩',offsetX:12,offsetY:-10,widthPct:120,
+    heightPct:90,locked:true};
+  for(const variant of [0,1,2] as const){
+    const s={...shared,compositionVariant:variant,glyphEdits:[e]};
+    const a=solve(s,2);
+    const b=solve({...s},2);
+    assert.deepEqual(a,b);
+    assert.deepEqual(a.groups,solve({...s,glyphEdits:[]},2).groups);
+    validateInk(s,a);
+  }
+});
+
+
+test('locking an untouched glyph never changes its pixels or optical layout', () => {
+  const baseline=solve(shared,1.5);
+  const locked=solve({...shared,glyphEdits:[
+    {index:0,character:'詩',offsetX:0,offsetY:0,
+      widthPct:100,heightPct:100,locked:true},
+  ]},1.5);
+  assert.deepEqual(locked,baseline);
+});

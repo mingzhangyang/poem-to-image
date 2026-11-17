@@ -71,7 +71,10 @@ test('cold-restored motif does not fetch the hidden seal-script font', async ({ 
   await page.getByRole('button', { name: /^装饰与元素/ }).click();
   await page.getByRole('checkbox', { name: '显示印章' }).check();
   await page.getByRole('button', { name: '传统朱文姓名印' }).click();
+  // The preset now defaults to verified CNS Seal. Explicitly choose the legacy
+  // Zhongshan face to exercise cold restoration of a hidden, on-demand font.
   const originalFont = '"InkPoem Zhongshan Seal", "Noto Serif SC", serif';
+  await page.getByRole('combobox', { name: '印章字体' }).selectOption(originalFont);
   await expect(page.getByRole('combobox', { name: '印章字体' })).toHaveValue(originalFont);
   await page.getByRole('button', { name: '山水', exact: true }).click();
   // The Modern transition must not overwrite the text font while it is hidden.

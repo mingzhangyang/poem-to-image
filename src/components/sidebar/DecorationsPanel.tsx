@@ -2,6 +2,8 @@ import { Plus, Stamp, Trash2, Upload, Text, TextCursorInput, ChevronUp, ChevronD
 import { useEffect, useRef, useState } from 'react';
 import { STAMP_FONT_OPTIONS, getAllFontOptions } from '../../fontOptions';
 import { getVerifiedSealFont } from '../../sealFontSources';
+import { reconcileStampGlyphEdits } from '../../sealGlyphEditing';
+import { SealGlyphFineEditor } from './SealGlyphFineEditor';
 import { replaceSealVariantAt } from '../../sealVariantChoices';
 import { useSealFontInspection } from '../../hooks/useSealFontInspection';
 import {
@@ -90,6 +92,9 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
       && getStampCharacters(next).length !== 3;
     decorations.onStampChange({
       text: next,
+      ...(decorations.stamp.glyphEdits
+        ? { glyphEdits: reconcileStampGlyphEdits(decorations.stamp.text, next, decorations.stamp.glyphEdits) }
+        : {}),
       ...(leaveName ? { compositionMode: 'whole' as const, compositionVariant: 0 as const } : {}),
     });
   };
@@ -322,7 +327,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                             className="rounded border border-amber-400 bg-white px-2 py-1 font-medium hover:bg-amber-100"
                             onClick={() => {
                               const next = replaceSealVariantAt(decorations.stamp.text, row.index, row.original, choice.character);
-                              if (next !== decorations.stamp.text) decorations.onStampChange({ text: next });
+                              if (next !== decorations.stamp.text) applyStampText(next);
                             }}>
                             {row.original} → {choice.character}{choice.gloss ? ' (' + choice.gloss + ')' : ''}
                           </button>
@@ -418,6 +423,14 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
                     </div>
                   )}
                 </div>
+              )}
+
+              {!isSealMotifId(decorations.stamp.motifId) && isTraditionalStamp(decorations.stamp) && (
+                <SealGlyphFineEditor
+                  stamp={decorations.stamp}
+                  t={t}
+                  onChange={decorations.onStampChange}
+                />
               )}
 
               {isExtendedStampStyle(decorations.stamp.style) && (

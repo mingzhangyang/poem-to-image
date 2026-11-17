@@ -556,3 +556,55 @@ test('whole-seal composition preserves white-character carving and omits guides'
     assert.equal(ops.filter(op=>op.method==='lineTo').length,0);
   });
 });
+
+
+test('editing a single glyph changes only its scale axes while sharing 1x/3x logical painting', () => {
+  const traces: RecordOp[][]=[];
+  for(const ratio of [1,3]){
+    withCanvas(created=>{
+      drawStampImpression(new RecordingContext() as unknown as CanvasRenderingContext2D,{
+        ...stamp,text:'印',mode:'zhuwen',weathering:0,compositionMode:'whole',
+        compositionTightness:0,
+        glyphEdits:[{index:0,character:'印',offsetX:4,offsetY:-3,
+          widthPct:115,heightPct:85,locked:true}],
+      },{pixelScale:ratio});
+      const ops=created[0].context.ops;
+      const scales=ops.filter(op=>op.method==='scale');
+      assert.equal(scales.length,2,'one raster backing scale and one independently edited glyph');
+      assert.notEqual(scales[1].args[0],scales[1].args[1],'manual width/height ratios are different');
+      assert.equal(ops.filter(op=>op.method==='fillText').length,1);
+      const rasterScaleIndex=ops.findIndex(op=>op.method==='scale');
+      traces.push(ops.filter((_,i)=>i!==rasterScaleIndex));
+    });
+  }
+  assert.deepEqual(traces[0],traces[1]);
+});
+
+test('no fine edits preserves previous whole-seal command stream pixel for pixel', () => {
+  const traces:RecordOp[][]=[];
+  for(const glyphEdits of [undefined,[]]){
+    withCanvas(created=>{
+      drawStampImpression(new RecordingContext() as unknown as CanvasRenderingContext2D,{
+        ...stamp,text:'山水天地',mode:'baiwen',compositionMode:'whole',weathering:0,
+        glyphEdits,
+      });
+      traces.push(created[0].context.ops);
+    });
+  }
+  assert.deepEqual(traces[0],traces[1]);
+});
+
+test('stroke-inclusive manual glyph scales preserve Baiwen isolated carving', () => {
+  withCanvas(created=>{
+    drawStampImpression(new RecordingContext() as unknown as CanvasRenderingContext2D,{
+      ...stamp,text:'印章',mode:'baiwen',compositionMode:'whole',
+      textStrokeWidthPct:3,weathering:0,
+      glyphEdits:[{index:0,character:'印',offsetX:-2,offsetY:0,
+        widthPct:125,heightPct:85,locked:true}],
+    });
+    const ops=created[0].context.ops;
+    assert.equal(ops.filter(op=>op.method==='fillText').length,2);
+    assert.ok(ops.some(op=>op.method==='composite' && op.args[0]==='destination-out'));
+    assert.equal(ops.filter(op=>op.method==='strokeText').length,2);
+  });
+});

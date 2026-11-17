@@ -2,6 +2,7 @@ import {
   getStampCanvasRadii, getStampCharacters, getStampDimensions, getStampTextScale,
 } from './stampRendering';
 import type { StampConfig } from './types';
+import { getActiveStampGlyphEdits } from './sealGlyphEditing';
 
 /** Measured in Canvas with textAlign=center and textBaseline=middle. */
 export interface WholeStampGlyphMetrics {
@@ -23,8 +24,11 @@ export interface WholeStampFit {
   /** Canvas text anchor, with the ink visually centered at the target. */
   x: number;
   y: number;
-  /** One uniform scale: glyph proportions never stretch independently. */
+  /** Uniform baseline, retained unchanged unless an explicit glyph edit exists. */
   scale: number;
+  /** Opt-in, independently scaled axes for manual glyph-width/height tuning. */
+  scaleX?: number;
+  scaleY?: number;
   ink: WholeStampInkBox;
 }
 export interface WholeStampLayout {
@@ -39,7 +43,7 @@ export interface WholeStampLayout {
 }
 type CompositionStamp = Pick<StampConfig,
   'text' | 'style' | 'size' | 'shapeRatio' | 'mode' | 'compositionMode'
-  | 'compositionTightness' | 'compositionVariant' | 'textScale'>;
+  | 'compositionTightness' | 'compositionVariant' | 'textScale' | 'glyphEdits'>;
 
 const clamp = (value: number, low: number, high: number) =>
   Math.min(high, Math.max(low, value));
@@ -251,6 +255,74 @@ export function composeWholeStampLayout(
   const fill = Math.min(0.98, (0.76 + tightness * 0.0018) * getStampTextScale(stamp));
   const result = arrange(bestGroups, maximum * fill, gap);
   if (!result.valid || result.fits.some(f => !(f.scale > 0))) return blank();
-  return { fits: result.fits, groups: bestGroups, gap, borderWidth,
-    paintedArea: result.paintedArea, variant };
+
+  // Apply per-glyph overrides *after* determining the shared automatic
+  // topology. A locked override takes priority over unlocked neighbors.
+  // Every candidate is projected inside the same true seal boundary, and
+  // its stroke-inclusive ink box must not intersect the other glyphs.
+  const fits = [...result.fits];
+  const edits = getActiveStampGlyphEdits(stamp).sort((a,b) =>
+    Number(b.locked) - Number(a.locked) || a.index - b.index);
+  const clearance = shortSide * 0.004;
+  for (const edit of edits) {
+    // A lock with untouched defaults must never alter the painted output.
+    if (edit.offsetX === 0 && edit.offsetY === 0
+        && edit.widthPct === 100 && edit.heightPct === 100) continue;
+    const origin = result.fits[edit.index];
+    const measured = metrics[edit.index];
+    if (!origin || !measured) continue;
+    const baseCx = (origin.ink.left + origin.ink.right) / 2;
+    const baseCy = (origin.ink.top + origin.ink.bottom) / 2;
+    const positionAt = (fraction: number): WholeStampFit => {
+      const scaleX = origin.scale * (1 + (edit.widthPct / 100 - 1) * fraction);
+      const scaleY = origin.scale * (1 + (edit.heightPct / 100 - 1) * fraction);
+      const small = Math.min(scaleX, scaleY);
+      // Canvas stroking after an anisotropic scale is not isotropic. Reserve
+      // the larger painted extent on each axis rather than clipping strokes.
+      const paintedX = stroke * scaleX / small;
+      const paintedY = stroke * scaleY / small;
+      const boxWidth = measured.width * scaleX + paintedX;
+      const boxHeight = measured.height * scaleY + paintedY;
+      const centerX = baseCx + edit.offsetX * width * fraction / 100;
+      const centerY = baseCy + edit.offsetY * height * fraction / 100;
+      return {
+        character: origin.character,
+        x: centerX - measured.centerX * scaleX,
+        y: centerY - measured.centerY * scaleY,
+        scale: origin.scale, scaleX, scaleY,
+        ink: {
+          left: centerX - boxWidth / 2, right: centerX + boxWidth / 2,
+          top: centerY - boxHeight / 2, bottom: centerY + boxHeight / 2,
+        },
+      };
+    };
+    const safe = (fit: WholeStampFit) => {
+      const box = fit.ink;
+      const enclosed = [box.left,box.right].every(x =>
+        [box.top,box.bottom].every(y => inside(x,y)));
+      if (!enclosed) return false;
+      return fits.every((other,index) => {
+        if (index === edit.index) return true;
+        const b = other.ink;
+        return box.right + clearance <= b.left || b.right + clearance <= box.left
+          || box.bottom + clearance <= b.top || b.bottom + clearance <= box.top;
+      });
+    };
+    const desired = positionAt(1);
+    if (safe(desired)) {
+      fits[edit.index] = desired;
+    } else {
+      let low = 0, high = 1;
+      for (let iteration = 0; iteration < 24; iteration++) {
+        const mid = (low + high) / 2;
+        if (safe(positionAt(mid))) low = mid;
+        else high = mid;
+      }
+      // Preserve the exact baseline when a requested edit is infeasible.
+      if (low > 1e-5) fits[edit.index] = positionAt(low);
+    }
+  }
+  const paintedArea = fits.reduce((total,fit) =>
+    total + (fit.ink.right - fit.ink.left) * (fit.ink.bottom - fit.ink.top),0);
+  return { fits, groups: bestGroups, gap, borderWidth, paintedArea, variant };
 }

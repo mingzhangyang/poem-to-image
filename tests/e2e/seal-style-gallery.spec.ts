@@ -67,7 +67,8 @@ test('style selection preserves user text, shape identity and placement until ex
   await expect(page.getByRole('button', { name: '斋馆印', exact: true }))
     .toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('button', { name: '使用示例印文', exact: true }).click();
-  await expect(page.getByRole('textbox', { name: '印章文字' })).toHaveValue('书画之印');
+  // The editorial sample is traditional-script text (see sealStyleCatalog).
+  await expect(page.getByRole('textbox', { name: '印章文字' })).toHaveValue('書畫之印');
 });
 
 test('motif gallery and advanced settings retain existing keyboard and text controls', async ({ page }, info) => {

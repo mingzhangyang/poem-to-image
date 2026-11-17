@@ -1,4 +1,5 @@
 import { isSealMotifId } from './sealMotifs';
+import { isValidStampGlyphEditList } from './sealGlyphEditing';
 import type {
   PoemContentData,
   PoemLayerStyle,
@@ -271,6 +272,7 @@ function isDraftState(value: unknown): value is EditorDraftState {
     || (stamp.compositionVariant !== undefined
       && (stamp.compositionVariant !== 0
         && stamp.compositionVariant !== 1 && stamp.compositionVariant !== 2))
+    || (stamp.glyphEdits !== undefined && !isValidStampGlyphEditList(stamp.glyphEdits))
     || (stamp.motifId !== undefined && !isSealMotifId(stamp.motifId))
     || (stamp.textureStyle !== undefined && stamp.textureStyle !== 'classic' && stamp.textureStyle !== 'natural')
     || (stamp.textureSeed !== undefined && (typeof stamp.textureSeed !== 'number'

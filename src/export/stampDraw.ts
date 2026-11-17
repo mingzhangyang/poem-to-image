@@ -273,11 +273,14 @@ function drawTraditionalStampBody(ctx: CanvasRenderingContext2D, stamp: StampCon
     ctx.font = 'normal 100px ' + stamp.fontFamily;
     for (const fit of wholeLayout!.fits) {
       if (fit.scale <= 0) continue;
+      const sx = fit.scaleX ?? fit.scale;
+      const sy = fit.scaleY ?? fit.scale;
       ctx.save();
       ctx.translate(fit.x, fit.y);
-      ctx.scale(fit.scale, fit.scale);
+      ctx.scale(sx, sy);
       if (glyphStrokeWidth > 0) {
-        ctx.lineWidth = glyphStrokeWidth / fit.scale;
+        // Match stroke-inclusive ink bounds in the per-glyph collision solver.
+        ctx.lineWidth = glyphStrokeWidth / Math.min(sx, sy);
         ctx.strokeText(fit.character, 0, 0);
       }
       ctx.fillText(fit.character, 0, 0);

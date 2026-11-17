@@ -19,7 +19,7 @@ import {
   renameCloudTemplate,
   type TemplateRequestOwner,
 } from '../../src/customTemplateApi';
-import type { UserCustomTemplate } from '../../src/types';
+import type { StampGlyphEdit, StampStyle, UserCustomTemplate } from '../../src/types';
 import { DEFAULT_POEM_STYLE, resolveAuthorPlacement } from '../../src/poemStyle';
 import { executeEditorCommand } from '../../src/editorCommands';
 
@@ -50,6 +50,25 @@ function fixture(id: string): UserCustomTemplate {
       logos: [], customTexts: [],
     },
     poemStyle: { ...DEFAULT_POEM_STYLE },
+  };
+}
+
+
+function templateWithSealStyle(style: StampStyle, glyphEdits?: StampGlyphEdit[]): UserCustomTemplate {
+  const base = fixture('seal-' + style);
+  return {
+    ...base,
+    decorations: {
+      ...base.decorations,
+      showStamp: true,
+      stamp: {
+        ...base.decorations.stamp,
+        text: '詩印',
+        style,
+        compositionMode: 'whole',
+        ...(glyphEdits === undefined ? {} : { glyphEdits }),
+      },
+    },
   };
 }
 
@@ -249,6 +268,100 @@ test('stamp texture fields preserve legacy templates and reject malformed persis
     withStamp({ textureSeed: Infinity }),
   ]) {
     assert.throws(() => parseCloudTemplateList({ templates: [malformed] }), /INVALID_TEMPLATE_LIST/);
+  }
+});
+
+
+test('all six seal styles round-trip edited glyphs through cloud save, reload and guest cache', async () => {
+  const styles: StampStyle[] = ['square', 'round', 'brush', 'rect-vertical', 'rect-horizontal', 'oval'];
+  const edits: StampGlyphEdit[] = [{
+    index: 0, character: '詩', offsetX: 8, offsetY: -4,
+    widthPct: 115, heightPct: 90, locked: true,
+  }];
+  const server: UserCustomTemplate[] = [fixture('pre-existing')];
+  const original = globalThis.fetch;
+  try {
+    globalThis.fetch = async (_input, init) => {
+      if (init?.method === 'POST') {
+        const payload = JSON.parse(String(init.body)) as Omit<UserCustomTemplate, 'id' | 'createdAt'>;
+        const saved: UserCustomTemplate = {
+          ...payload,
+          id: 'cloud-' + payload.decorations.stamp.style,
+          createdAt: 456,
+        };
+        server.push(saved);
+        return Response.json(saved, { status: 201 });
+      }
+      if (init?.method === 'GET') return Response.json({ templates: server });
+      throw new Error('Unexpected template request');
+    };
+
+    for (const style of styles) {
+      const draft = templateWithSealStyle(style, edits);
+      const payload: Omit<UserCustomTemplate, 'id' | 'createdAt'> = {
+        name: draft.name,
+        accentFrom: draft.accentFrom,
+        accentTo: draft.accentTo,
+        background: draft.background,
+        typography: draft.typography,
+        decorations: draft.decorations,
+        poemStyle: draft.poemStyle,
+      };
+      const saved = await createCloudTemplate(payload, owner());
+      assert.equal(saved.id, 'cloud-' + style, 'POST response must parse successfully');
+      assert.equal(saved.decorations.stamp.style, style);
+      assert.deepEqual(saved.decorations.stamp.glyphEdits, edits);
+    }
+
+    const loaded = await fetchCloudTemplates(owner());
+    assert.deepEqual(loaded.map((item) => item.id), server.map((item) => item.id),
+      'one edited seal must not invalidate the full cloud template list');
+    assert.deepEqual(loaded.slice(1).map((item) => item.decorations.stamp.glyphEdits),
+      styles.map(() => edits));
+
+    const local = storage();
+    writeTemplateCache('guest', loaded, local);
+    assert.deepEqual(readTemplateCache('guest', local), loaded);
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test('custom seal templates preserve legacy fields and reject malformed glyph edits', () => {
+  const styles: StampStyle[] = ['square', 'round', 'brush', 'rect-vertical', 'rect-horizontal', 'oval'];
+  for (const style of styles) {
+    const old = templateWithSealStyle(style);
+    assert.equal(parseCloudTemplateList({ templates: [old] })[0].decorations.stamp.style, style);
+    assert.deepEqual(parseCloudTemplateList({ templates: [templateWithSealStyle(style, [])] })[0]
+      .decorations.stamp.glyphEdits, []);
+  }
+
+  const valid: StampGlyphEdit = {
+    index: 0, character: '詩', offsetX: 0, offsetY: 0,
+    widthPct: 100, heightPct: 100, locked: false,
+  };
+  const invalid: unknown[] = [
+    null,
+    {},
+    'broken',
+    [{ ...valid, index: 8 }],
+    [{ ...valid, offsetX: 21 }],
+    [{ ...valid, widthPct: Number.POSITIVE_INFINITY }],
+    [{ ...valid, locked: 'true' }],
+    [valid, { ...valid }],
+    Array.from({ length: 9 }, (_, index) => ({ ...valid, index })),
+  ];
+  for (const glyphEdits of invalid) {
+    const base = templateWithSealStyle('oval');
+    const malformed = {
+      ...base,
+      decorations: {
+        ...base.decorations,
+        stamp: { ...base.decorations.stamp, glyphEdits },
+      },
+    };
+    assert.throws(() => parseCloudTemplateList({ templates: [fixture('good'), malformed] }),
+      /INVALID_TEMPLATE_LIST/);
   }
 });
 

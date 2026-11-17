@@ -20,7 +20,7 @@
     "test:e2e": "playwright test",
     "verify": "npm run cf:typegen && npm run typecheck && npm run lint && npm test && npm run build && npm run verify:build",
     "audit:production": "npm audit --omit=dev --audit-level=high",
-    "audit:full": "npm audit --audit-level=high",
+    "audit:full": "node --import tsx scripts/audit-full.mjs",
     "deploy:dry-run": "npm run build && wrangler deploy --dry-run",
     "prebuild": "node scripts/sync-inkpoem-seal-fonts.mjs",
     "fonts:sync": "node scripts/sync-inkpoem-seal-fonts.mjs"
