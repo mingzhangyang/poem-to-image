@@ -5,11 +5,13 @@ import { matchesTemplateCustomTexts } from '../../src/templates/templateCustomTe
 import { CNS_SEAL_FONT_STACK } from '../../src/sealTypography';
 
 test('unmodified localized template text boxes can change from zh-CN to zh-TW', () => {
-  const cn = resolveTemplateForLanguage('ink-wash', 'zh-CN');
-  const tw = resolveTemplateForLanguage('ink-wash', 'zh-TW');
+  const cn = resolveTemplateForLanguage('japanese-magazine', 'zh-CN');
+  const tw = resolveTemplateForLanguage('japanese-magazine', 'zh-TW');
   assert.ok(cn && tw);
-  assert.equal(cn.decorations.customTexts[0].text, '题签');
-  assert.equal(tw.decorations.customTexts[0].text, '題簽');
+  assert.equal(cn.decorations.customTexts[0].text, '刊首');
+  assert.equal(cn.decorations.customTexts[0].id, 'mag-cn-tag');
+  assert.equal(tw.decorations.customTexts[0].id, 'mag-tw-tag');
+  assert.notDeepEqual(cn.decorations.customTexts, tw.decorations.customTexts);
   const editorTexts = cn.decorations.customTexts.map((text, index) => ({
     ...text, zIndex: text.zIndex ?? index,
   }));
@@ -17,7 +19,7 @@ test('unmodified localized template text boxes can change from zh-CN to zh-TW', 
 });
 
 test('an edited font prevents localization from replacing a custom text box', () => {
-  const cn = resolveTemplateForLanguage('ink-wash', 'zh-CN');
+  const cn = resolveTemplateForLanguage('japanese-magazine', 'zh-CN');
   assert.ok(cn);
   const edited = cn.decorations.customTexts.map((text) => ({
     ...text, fontFamily: CNS_SEAL_FONT_STACK,
@@ -26,7 +28,7 @@ test('an edited font prevents localization from replacing a custom text box', ()
 });
 
 test('other text-box edits and structural edits also prevent accidental replacement', () => {
-  const cn = resolveTemplateForLanguage('ink-wash', 'zh-CN');
+  const cn = resolveTemplateForLanguage('japanese-magazine', 'zh-CN');
   assert.ok(cn);
   const initial = cn.decorations.customTexts;
   for (const edit of [
