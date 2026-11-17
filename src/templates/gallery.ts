@@ -25,6 +25,9 @@ export const TEMPLATE_GALLERY_CATEGORIES: readonly TemplateGalleryCategory[] = [
     'indigo-washi', 'auspicious-clouds', 'tudor-rose', 'illuminated-manuscript',
     'wax-sealed-letter', 'gothic-rose-window', 'greek-laurel', 'old-library',
   ] },
+  { key: 'templateCategoryPostcards', ids: [
+    'postcard-vintage-travel', 'postcard-poetry-minimal', 'postcard-botanical',
+  ] },
   { key: 'templateCategoryWorldLandscapes', ids: [
     'daffodil-lake', 'autumn-forked-path', 'dover-beach', 'scottish-moor',
     'coastal-lighthouse', 'provence-fields', 'new-england-autumn',

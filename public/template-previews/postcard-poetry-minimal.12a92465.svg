@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="1200" viewBox="0 0 960 1200">
+<defs>
+  <linearGradient id="ivory" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fffdf8"/><stop offset="1" stop-color="#f7efe3"/></linearGradient>
+  <pattern id="linen" width="60" height="60" patternUnits="userSpaceOnUse"><path d="M0 16h60M0 44h60M18 0v60M46 0v60" stroke="#b4a38c" opacity=".065" stroke-width=".7"/></pattern>
+</defs>
+<rect width="960" height="1200" fill="url(#ivory)"/>
+<rect width="960" height="1200" fill="url(#linen)"/>
+<rect x="42" y="45" width="876" height="1110" rx="4" fill="none" stroke="#bcb19c" stroke-width="2"/>
+<rect x="56" y="59" width="848" height="1082" fill="none" stroke="#ddd2bd" stroke-width="1"/>
+<!-- Tiny abstract postal emblem; all words remain editable in the poem layer. -->
+<rect x="771" y="97" width="97" height="118" fill="#f7f2e7" stroke="#b4a38e" stroke-width="2" stroke-dasharray="2 4"/>
+<rect x="783" y="110" width="73" height="91" fill="none" stroke="#c5b39c"/>
+<path d="M803 174q17-41 33-44-1 37-33 44z" fill="#a5b8a8" opacity=".65"/>
+<path d="M801 182q8-28 31-48" fill="none" stroke="#879f8d" stroke-width="2.4"/>
+<circle cx="819" cy="179" r="3" fill="#af9985"/>
+<g fill="none" stroke="#c1ad95" stroke-width="1.5" opacity=".7">
+  <path d="M98 166h172M98 174h75M690 105h45"/>
+  <circle cx="114" cy="124" r="13"/><circle cx="114" cy="124" r="6"/>
+  <path d="M114 105v-12M114 143v12M95 124H83M133 124h12"/>
+</g>
+<path d="M116 979h728" stroke="#b8aa93" stroke-width="1.5" opacity=".56"/>
+<path d="M116 993h728" stroke="#d4c4ab" stroke-width="1"/>
+<circle cx="480" cy="1065" r="21" fill="none" stroke="#b7a48b" stroke-width="1.4"/>
+<path d="M465 1065h30M480 1050v30" stroke="#b7a48b" stroke-width="1" opacity=".7"/>
+<path d="M106 1072h190M664 1072h190" stroke="#cab9a2" stroke-width="1.3"/>
+<g fill="none" stroke="#ac9b85" opacity=".6" stroke-width="2"><path d="M82 90v72M82 90h62M878 1032v79M878 1111h-71"/></g>
+</svg>
