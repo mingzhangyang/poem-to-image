@@ -122,6 +122,9 @@ export function useDecorationsConfig({
     style: 'square',
     // New Chinese text seals use real verified Xiaozhuan; existing drafts keep legacy mode.
     mode: 'zhuwen',
+    compositionMode: 'whole',
+    compositionTightness: 70,
+    compositionVariant: 0,
     colorScheme: 'outline',
     inkColor: '#c82829',
     weathering: 50,

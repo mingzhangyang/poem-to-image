@@ -511,3 +511,48 @@ test('unknown motif IDs fall back to the historical lettering path', () => {
   });
   assert.deepEqual(traces[1], traces[0]);
 });
+
+
+test('whole-seal layout shares identical logical placements at 1x and 3x exports', () => {
+  const traces: RecordOp[][] = [];
+  for (const ratio of [1, 3]) {
+    withCanvas((created) => {
+      drawStampImpression(new RecordingContext() as unknown as CanvasRenderingContext2D, {
+        ...stamp, text: '山水天地', mode:'zhuwen', fontFamily:'serif', weathering:0,
+        compositionMode:'whole', compositionVariant:1, compositionTightness:85,
+      }, { pixelScale:ratio });
+      const ink = created[0].context.ops;
+      assert.equal(ink.filter(op=>op.method==='fillText').length,4);
+      assert.equal(ink.filter(op=>op.method==='scale').length,5);
+      const firstRasterScale = ink.findIndex(op=>op.method==='scale');
+      traces.push(ink.filter((_,i)=>i!==firstRasterScale));
+    });
+  }
+  assert.deepEqual(traces[0],traces[1], 'only the first backing-pixel scale may vary');
+});
+
+test('missing/explicit legacy composition retain identical stamp drawing commands', () => {
+  const traces: RecordOp[][]=[];
+  for (const compositionMode of [undefined,'legacy' as const]) {
+    withCanvas((created)=>{
+      drawStampImpression(new RecordingContext() as unknown as CanvasRenderingContext2D, {
+        ...stamp, text:'山水天地', mode:'baiwen', weathering:0,compositionMode,
+      });
+      traces.push(created[0].context.ops);
+    });
+  }
+  assert.deepEqual(traces[0],traces[1]);
+});
+
+test('whole-seal composition preserves white-character carving and omits guides', () => {
+  withCanvas((created)=>{
+    drawStampImpression(new RecordingContext() as unknown as CanvasRenderingContext2D, {
+      ...stamp,text:'詩情畫意',mode:'baiwen',weathering:0,compositionMode:'whole',
+      compositionTightness:100,
+    });
+    const ops=created[0].context.ops;
+    assert.equal(ops.filter(op=>op.method==='fillText').length,4);
+    assert.ok(ops.some(op=>op.method==='composite'&&op.args[0]==='destination-out'));
+    assert.equal(ops.filter(op=>op.method==='lineTo').length,0);
+  });
+});

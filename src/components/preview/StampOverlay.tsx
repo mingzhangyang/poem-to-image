@@ -100,6 +100,7 @@ export function StampOverlay({ ariaLabel, frameRef, stamp, effectiveScale, isPin
       stamp.text, stamp.motifId, stamp.style, stamp.size, stamp.fontFamily, stamp.mode,
       stamp.colorScheme, stamp.inkColor, stamp.weathering,
       stamp.textScale, stamp.textStrokeWidthPct, stamp.shapeRatio,
+      stamp.compositionMode, stamp.compositionTightness, stamp.compositionVariant,
       stamp.textureStyle, stamp.textureSeed, widthPixels, heightPixels, rasterScale, fontRevision,
     ]);
     if (lastPaintKeyRef.current === paintKey) return;
