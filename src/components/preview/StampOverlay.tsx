@@ -12,6 +12,8 @@ import {
   STAMP_SHADOW_PADDING,
 } from '../../stampRendering';
 import { drawStampImpression } from '../../export/stampDraw';
+import { getVerifiedSealFont } from '../../sealFontSources';
+import { useSealFontInspection } from '../../hooks/useSealFontInspection';
 import { isSealMotifId } from '../../sealMotifs';
 import { useFontLayoutRevision } from '../../hooks/useFontLayoutRevision';
 import type { StampConfig } from '../../types';
@@ -51,6 +53,8 @@ export function StampOverlay({ ariaLabel, frameRef, stamp, effectiveScale, isPin
     if (!isPinching) setRasterEffectiveScale(effectiveScale);
   }, [effectiveScale, isPinching]);
   const hasMotif = isSealMotifId(stamp.motifId);
+  const verifiedFace = getVerifiedSealFont(stamp.fontFamily);
+  const fontInspection = useSealFontInspection(stamp.fontFamily, stamp.text, !hasMotif);
   const fontRevision = useFontLayoutRevision(hasMotif ? '' : stamp.fontFamily,
     hasMotif ? '' : getStampCharacters(stamp.text).join(''));
   const lastPaintKeyRef = useRef<string | null>(null);
@@ -196,8 +200,15 @@ export function StampOverlay({ ariaLabel, frameRef, stamp, effectiveScale, isPin
             top: -STAMP_SHADOW_PADDING,
             width: logicalWidth,
             height: logicalHeight,
+            opacity: verifiedFace && fontInspection.status !== 'ready' ? 0.2 : 1,
           }}
         />
+        {verifiedFace && (fontInspection.status === 'missing' || fontInspection.status === 'error') && (
+          <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-white/75 text-[10px] font-semibold text-red-800"
+            role="status" aria-label="Seal glyphs are unverified">
+            {fontInspection.status === 'missing' ? '缺字' : '字体验证失败'}
+          </span>
+        )}
       </div>
     </div>
   );

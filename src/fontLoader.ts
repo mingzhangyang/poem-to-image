@@ -1,6 +1,7 @@
 import {
   SEAL_FONT_FAMILY, SEAL_FONT_URL, SMALL_SEAL_FONT_FAMILY, SMALL_SEAL_FONT_URL,
 } from './sealTypography';
+import { getVerifiedSealFont } from './sealFontSources';
 
 /** Emitted only after a manually loaded seal face has joined document.fonts. */
 export const SEAL_FONT_REGISTERED_EVENT = 'inkpoem:seal-font-registered';
@@ -81,6 +82,13 @@ function loadFontStylesheet(fontValue: string | undefined | null): Promise<void>
   const existing = pendingStylesheets.get(family);
   if (existing) return existing;
 
+  const verified = getVerifiedSealFont(fontValue);
+  if (verified) {
+    const promise = loadSealScriptFont(verified.family, verified.url);
+    pendingStylesheets.set(family, promise);
+    void promise.catch(() => pendingStylesheets.delete(family));
+    return promise;
+  }
   if (family === SEAL_FONT_FAMILY || family === SMALL_SEAL_FONT_FAMILY) {
     const promise = loadSealScriptFont(
       family,

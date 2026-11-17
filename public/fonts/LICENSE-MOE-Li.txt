@@ -1,0 +1,13 @@
+教育部隸書 MOE Clerical
+=======================
+
+原文件：隸書字型檔 Version 3.0（目前收录国字 4,808 字）
+来源：教育部语文成果入口网
+https://language.moe.gov.tw/material/info?m=9fe3fb11-c3d5-41f2-b029-6d18a2c2fd0d
+文件：https://language.moe.gov.tw/001/Upload/Files/site_content/M0001/MoeLI-3.0.zip
+
+授权：创用 CC「姓名标示-禁止改作」3.0 台湾版。
+如需引用，请标示「中华民国教育部」。
+
+本应用原样分发该字体，不改字形、不裁字、不转换格式。
+不得把本字体的码位覆盖说成逐字已经历史考证。

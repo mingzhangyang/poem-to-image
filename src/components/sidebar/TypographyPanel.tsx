@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AlignCenter, AlignLeft, AlignRight, ChevronDown, ChevronRight, LayoutTemplate, Text, TextCursorInput } from 'lucide-react';
 import { getOtherFontOptions, getRecommendedFontOptions } from '../../fontOptions';
+import { getVerifiedSealFont } from '../../sealFontSources';
 import type { Language } from '../../translations';
 import type { ExpandedSections, TextAlign, TranslateFn, TypographySectionProps, WritingMode } from '../../types';
 import { ControlSection } from '../ControlSection';
@@ -69,6 +70,9 @@ export function TypographyPanel({ language, t, expanded, onToggle, typography }:
               ))}
             </optgroup>
           </select>
+          {getVerifiedSealFont(typography.fontFamily) && (
+            <p className="mt-1 text-xs text-amber-700" role="note">{t('fontHistoricalCoverageHint')}</p>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-3">

@@ -1,6 +1,9 @@
 import type { Language } from './translations';
 import type { EditorTemplateId } from './types';
-import { SEAL_FONT_STACK, SMALL_SEAL_FONT_STACK } from './sealTypography';
+import {
+  SEAL_FONT_STACK, SMALL_SEAL_FONT_STACK, CNS_SEAL_FONT_STACK,
+  CHONGXI_SEAL_FONT_STACK, JINWEN_FONT_STACK, CLERICAL_FONT_STACK,
+} from './sealTypography';
 
 export interface FontOption {
   value: string;
@@ -8,6 +11,12 @@ export interface FontOption {
 }
 
 const FONT_OPTIONS: FontOption[] = [
+  { value: CNS_SEAL_FONT_STACK, label: '全字库说文解字 · 小篆（按需加载）' },
+  { value: CLERICAL_FONT_STACK, label: '教育部隶书（按需加载）' },
+  { value: JINWEN_FONT_STACK, label: 'Chine-Culture · 金文（按需加载）' },
+  { value: CHONGXI_SEAL_FONT_STACK, label: '崇羲篆体（按需加载）' },
+  { value: SEAL_FONT_STACK, label: '敬峰中山王篆 · 战国篆书' },
+  { value: SMALL_SEAL_FONT_STACK, label: '霞鹜篆书 · 小篆' },
   { value: '"LXGW WenKai Screen", "Noto Serif SC", serif', label: '霞鹜文楷 (清晰手写 · 本地字体)' },
   { value: '"ZCOOL KuaiLe", cursive', label: '站酷快乐体 (趣味手写 · 本地字体)' },
   { value: '"Noto Serif SC", serif', label: 'Noto Serif SC (中文衬线)' },
@@ -57,6 +66,7 @@ const LANGUAGE_RECOMMENDED_FONTS: Record<Language, string[]> = {
     '"Space Mono", monospace',
   ],
   'zh-CN': [
+    CNS_SEAL_FONT_STACK, CLERICAL_FONT_STACK, JINWEN_FONT_STACK, CHONGXI_SEAL_FONT_STACK,
     '"LXGW WenKai Screen", "Noto Serif SC", serif',
     '"ZCOOL KuaiLe", cursive',
     '"Noto Serif SC", serif',
@@ -67,6 +77,7 @@ const LANGUAGE_RECOMMENDED_FONTS: Record<Language, string[]> = {
     '"ZCOOL QingKe HuangYou", cursive',
   ],
   'zh-TW': [
+    CNS_SEAL_FONT_STACK, CLERICAL_FONT_STACK, JINWEN_FONT_STACK, CHONGXI_SEAL_FONT_STACK,
     '"Noto Serif TC", serif',
     '"Noto Sans TC", sans-serif',
     '"Noto Serif SC", serif',
@@ -316,6 +327,10 @@ export interface StampFontOption {
 }
 
 export const STAMP_FONT_OPTIONS: StampFontOption[] = [
+  { value: CNS_SEAL_FONT_STACK, label: '推荐 · 全字库说文解字（小篆）', cjkOnly: true },
+  { value: CLERICAL_FONT_STACK, label: '教育部隶书 · 汉印风格', cjkOnly: true },
+  { value: JINWEN_FONT_STACK, label: 'Chine-Culture 金文 · 青铜文字', cjkOnly: true },
+  { value: CHONGXI_SEAL_FONT_STACK, label: '崇羲篆体 · 扩展小篆（较大文件）', cjkOnly: true },
   { value: SEAL_FONT_STACK, label: '敬峰中山王篆 · 战国篆书（有限字库）', cjkOnly: true },
   { value: SMALL_SEAL_FONT_STACK, label: '霞鹜篆书 · 小篆（试验字库，缺字较多）', cjkOnly: true },
   { value: '"Ma Shan Zheng", cursive', label: 'Ma Shan Zheng (楷书)', cjkOnly: true },
@@ -325,7 +340,8 @@ export const STAMP_FONT_OPTIONS: StampFontOption[] = [
   { value: '"Long Cang", cursive', label: 'Long Cang (行草)', cjkOnly: true },
 ];
 
-export const DEFAULT_STAMP_FONT = '"Ma Shan Zheng", cursive';
+/** Used only when creating a new stamp; saved artwork and templates retain their own faces. */
+export const DEFAULT_STAMP_FONT = CNS_SEAL_FONT_STACK;
 
 export function getDefaultFontForLanguage(language: Language) {
   return LANGUAGE_DEFAULT_FONTS[language];
@@ -335,6 +351,11 @@ export function getRecommendedFontOptions(language: Language) {
   const recommendedFonts = new Set(LANGUAGE_RECOMMENDED_FONTS[language]);
 
   return FONT_OPTIONS.filter((option) => recommendedFonts.has(option.value));
+}
+
+/** Shared by the global card font picker and independently styled text boxes. */
+export function getAllFontOptions(): readonly FontOption[] {
+  return FONT_OPTIONS;
 }
 
 export function getOtherFontOptions(language: Language) {

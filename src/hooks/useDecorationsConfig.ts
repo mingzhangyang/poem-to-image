@@ -120,7 +120,9 @@ export function useDecorationsConfig({
     textureStyle: 'natural',
     textureSeed: getNaturalSealSeed({ text: getDefaultStampTextForLanguage(language) }),
     style: 'square',
-    colorScheme: 'filled',
+    // New Chinese text seals use real verified Xiaozhuan; existing drafts keep legacy mode.
+    mode: 'zhuwen',
+    colorScheme: 'outline',
     inkColor: '#c82829',
     weathering: 50,
     positionX: 80,

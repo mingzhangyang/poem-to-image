@@ -1,5 +1,7 @@
 import { createStructuredPoemLayout, getPlainPoemText } from '../poemContent';
 import { ensureFontReady } from '../fontLoader';
+import { assertVerifiedSealGlyphs } from '../sealFontCoverage';
+import { getVerifiedSealFont } from '../sealFontSources';
 import { getStampCharacters } from '../stampRendering';
 import { isSealMotifId } from '../sealMotifs';
 import { getCanvasPositioningRect, getCanvasTextOrigin, positionToCanvasPoint } from '../positioningRect';
@@ -238,14 +240,14 @@ function drawCustomText(
           ? Math.max(1, (frameRect.width * customText.boxWidth) / 100)
           : undefined,
     },
-    createCanvasTextMeasurer(scene.typography.fontFamily, customText.fontSize, ctx),
+    createCanvasTextMeasurer(customText.fontFamily || scene.typography.fontFamily, customText.fontSize, ctx),
   );
 
   ctx.save();
   ctx.translate(translateX, translateY);
   ctx.rotate((customText.rotation * Math.PI) / 180);
   ctx.fillStyle = customText.color;
-  ctx.font = `${customText.fontSize}px ${scene.typography.fontFamily}`;
+  ctx.font = `${customText.fontSize}px ${customText.fontFamily || scene.typography.fontFamily}`;
   applyTextShadow(ctx, scene.typography);
   ctx.textAlign = layout.writingMode === 'vertical-rl' ? 'center' : 'left';
   ctx.textBaseline = layout.writingMode === 'vertical-rl' ? 'middle' : 'top';
@@ -336,7 +338,12 @@ export async function renderCanvasExport(inputScene: CanvasExportScene, options:
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Failed to create export canvas');
 
-  if (scene.decorations.signatures.length > 0) await ensureSignatureFontsLoaded();
+  if (scene.decorations.signatures.length > 0) {
+    await ensureSignatureFontsLoaded();
+    await Promise.all(scene.decorations.signatures
+      .filter(sig => getVerifiedSealFont(sig.font))
+      .map(sig => ensureFontReady('"' + sig.font + '", serif', sig.text)));
+  }
   // Wait for the CSS and the unicode-range font subsets used by this *exact*
   // poem, including custom text and stamp. A stylesheet-in-flight is not
   // covered by document.fonts.ready on its own.
@@ -345,10 +352,15 @@ export async function renderCanvasExport(inputScene: CanvasExportScene, options:
     ...scene.decorations.customTexts.map((item) => item.text),
   ].join('\n');
   await ensureFontReady(scene.typography.fontFamily, primaryText);
+  await Promise.all(scene.decorations.customTexts
+    .filter(item => item.fontFamily && item.fontFamily !== scene.typography.fontFamily)
+    .map(item => ensureFontReady(item.fontFamily, item.text)));
   if (scene.decorations.showStamp && !isSealMotifId(scene.decorations.stamp.motifId)) {
     // Graphic seals require no font network access. Text seals preload only
     // the glyphs actually drawn, including the '印' empty-text fallback.
-    await ensureFontReady(scene.decorations.stamp.fontFamily, getStampCharacters(scene.decorations.stamp.text).join(''));
+    const sealText = getStampCharacters(scene.decorations.stamp.text).join('');
+    await assertVerifiedSealGlyphs(scene.decorations.stamp.fontFamily, sealText);
+    await ensureFontReady(scene.decorations.stamp.fontFamily, sealText);
   }
   if ('fonts' in document) await document.fonts.ready;
 

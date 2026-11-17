@@ -73,7 +73,8 @@ const DraggableCustomTextItem: FC<DraggableCustomTextItemProps> = ({
   const isResizingRef = useRef(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
-  const fontRevision = useFontLayoutRevision(fontFamily, customText.text);
+  const effectiveFont = customText.fontFamily || fontFamily;
+  const fontRevision = useFontLayoutRevision(effectiveFont, customText.text);
   const textLayout = useMemo(() => createTextLayout(
     {
       text: customText.text || ' ',
@@ -88,10 +89,10 @@ const DraggableCustomTextItem: FC<DraggableCustomTextItemProps> = ({
         ? Math.max(1, (frameWidth * liveBoxWidth) / 100)
         : undefined,
     },
-    createCanvasTextMeasurer(fontFamily, customText.fontSize),
+    createCanvasTextMeasurer(effectiveFont, customText.fontSize),
   ), [
     customText.text, customText.writingMode, customText.fontSize,
-    lineHeight, letterSpacing, liveBoxWidth, frameWidth, fontFamily, fontRevision,
+    lineHeight, letterSpacing, liveBoxWidth, frameWidth, effectiveFont, fontRevision,
   ]);
 
   useEffect(() => {
@@ -339,7 +340,7 @@ const DraggableCustomTextItem: FC<DraggableCustomTextItemProps> = ({
         >
           <TextLayoutBlock
             layout={textLayout}
-            fontFamily={fontFamily}
+            fontFamily={effectiveFont}
             fontSize={customText.fontSize}
             color={customText.color}
             letterSpacing={letterSpacing}

@@ -1,4 +1,5 @@
 import type { SignatureConfig } from './types';
+import { VERIFIED_SEAL_FONTS } from './sealFontSources';
 
 export const SIGNATURE_FONTS = [
   { value: 'Great Vibes', label: 'Elegant' },
@@ -13,6 +14,7 @@ export const SIGNATURE_FONTS = [
   { value: 'Yellowtail', label: 'Bold Script' },
   { value: 'Homemade Apple', label: 'Cursive' },
   { value: 'Allura', label: 'Stylized' },
+  ...VERIFIED_SEAL_FONTS.map(face => ({ value: face.family, label: face.label })),
 ];
 
 export const DEFAULT_SIGNATURE_FONT = SIGNATURE_FONTS[0].value;

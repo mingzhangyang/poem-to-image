@@ -1,0 +1,7 @@
+全字庫說文解字 TrueType 字型（原始檔 ebas927.ttf，未修改）
+來源：數位發展部，CNS11643中文標準交換碼全字庫網站，https://www.cns11643.gov.tw。
+下載與說明：https://www.cns11643.gov.tw/downloadList.jsp?ID=2&ID2=20
+授權聲明：https://www.cns11643.gov.tw/pageView.jsp?ID=59&la=0&lang=tw
+本產品選用「政府資料開放授權條款－第1版」：https://data.gov.tw/license
+來源資料不保證完整或無誤；不表示原提供機關對本產品背書。
+字型 SHA-256: e8501dc9747190936a222576c9b0b6f918ff335afa5696c3fda3acba1a9574e2

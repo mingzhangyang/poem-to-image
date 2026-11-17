@@ -11,6 +11,8 @@ import {
   isArrowDirection, movePreviewPosition, nudgePreviewPosition,
 } from '../../positioningRect';
 import { drawSignatureToCanvas, ensureSignatureFontsLoaded, getSignatureCanvasSize } from '../../signatureRendering';
+import { ensureFontReady } from '../../fontLoader';
+import { getVerifiedSealFont } from '../../sealFontSources';
 import type { SignatureConfig } from '../../types';
 
 import { usePreviewPointerInteraction } from './previewInteraction';
@@ -69,6 +71,9 @@ export const SignatureOverlay: FC<SignatureOverlayProps> = ({
     paint();
 
     void ensureSignatureFontsLoaded().then(async () => {
+      if (getVerifiedSealFont(signature.font)) {
+        await ensureFontReady('"' + signature.font + '", serif', signature.text);
+      }
       // document.fonts.ready alone does not fetch a stylesheet that was never
       // installed; request the face used by this particular signature.
       if ('fonts' in document) {

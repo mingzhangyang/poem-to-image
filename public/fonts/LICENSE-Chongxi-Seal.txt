@@ -1,0 +1,13 @@
+崇羲篆體 Chongxi Seal
+=====================
+
+原文件：chongxi_seal.otf（2022/06/26，版本 1.00）
+来源：中央研究院「小學堂」https://xiaoxue.iis.sinica.edu.tw/chongxi/
+授权页：https://xiaoxue.iis.sinica.edu.tw/chongxi/copyright.htm
+
+授权：创用 CC 姓名标示-禁止改作 3.0 台湾及其后版本
+（CC BY-ND 3.0 TW or later）。
+
+本应用原样分发该字体，不改字形、不裁字、不转换格式。
+使用时须表彰原作者：王心怡、季旭昇、庄德明、谢清俊（中央研究院小学堂）。
+不得把本字体的码位覆盖说成逐字已经历史考证。

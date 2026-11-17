@@ -19,7 +19,9 @@ import { positionToCanvasPoint } from '../positioningRect';
 import { drawNaturalSealImpression } from '../naturalSealDraw';
 import { getNaturalSealEdgePoint } from '../naturalSealTexture';
 import { drawSealMotif, isSealMotifId } from '../sealMotifs';
-import { fitTraditionalStampGlyph, getTraditionalStampLayout, isTraditionalStamp } from '../sealTypography';
+import {
+  fitTraditionalStampGlyph, getTraditionalStampLayout, isTraditionalStamp, usesCompactSealComposition,
+} from '../sealTypography';
 import type { StampConfig } from '../types';
 import type { CanvasExportScene } from './renderCanvasExport';
 
@@ -261,6 +263,7 @@ function drawTraditionalStampBody(ctx: CanvasRenderingContext2D, stamp: StampCon
         : ovalClip ? { x: slot.x, y: slot.y, ...ovalClip } : undefined,
       getStampTextScale(stamp),
       glyphStrokeWidth,
+      usesCompactSealComposition(stamp.fontFamily) ? 0.94 : 0.88,
     );
     if (fit.scale <= 0) continue; // No drawable glyph fits inside the ink/clip budget.
     ctx.save();

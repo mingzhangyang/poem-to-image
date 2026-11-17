@@ -98,6 +98,8 @@ export type ExportScale = 1 | 2 | 3;
 export type ExportFormat = 'png' | 'jpg' | 'webp';
 
 export interface CustomText {
+  /** Optional per-box override; missing retains the card-wide font. */
+  fontFamily?: string;
   id: string;
   text: string;
   fontSize: number;
