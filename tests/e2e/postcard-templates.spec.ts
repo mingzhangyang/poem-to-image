@@ -2,11 +2,11 @@ import { readFile } from 'node:fs/promises';
 import { expect, test, type Page } from '@playwright/test';
 
 
-const postcardBackground = '/template-backgrounds/postcard-vintage-travel.webp';
+const postcardBackground = '/template-backgrounds/postcard-vintage-travel.svg';
 const editedVerse = 'A blue tide meets the page\nAn ink boat follows home';
 
-// Compare the downloaded PNG with its selected WebP background, not just a file signature.
-// The exporter draws a 10% black wash over that background layer.
+// Compare the downloaded PNG with the SVG itself, not just the file signature.
+// The SVG is the only background layer; the exporter adds a 10% black wash.
 async function inspectPostcardPixels(page: Page, png: Buffer) {
   return page.evaluate(async ({ pngBase64, svgUrl }) => {
     const load = async (src: string) => {
@@ -16,7 +16,7 @@ async function inspectPostcardPixels(page: Page, png: Buffer) {
       return image;
     };
     const exported = await load('data:image/png;base64,' + pngBase64);
-    const background = await load(svgUrl);
+    const svg = await load(svgUrl);
     // Normalize both images to the artwork's native 960x1200 dimensions.
     const width = 960;
     const height = 1200;
@@ -28,7 +28,7 @@ async function inspectPostcardPixels(page: Page, png: Buffer) {
     ctx.drawImage(exported, 0, 0, width, height);
     const actual = ctx.getImageData(0, 0, width, height).data;
     ctx.clearRect(0, 0, width, height);
-    ctx.drawImage(background, 0, 0, width, height);
+    ctx.drawImage(svg, 0, 0, width, height);
     ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
     ctx.fillRect(0, 0, width, height);
     const backgroundOnly = ctx.getImageData(0, 0, width, height).data;
@@ -97,7 +97,7 @@ test('postcard gallery artwork loads and the edited postcard survives reload and
 
   await library.getByRole('button', { name: /Vintage Travel Postcard/ }).click();
   await expect(library).toBeHidden();
-  const expected = '/template-backgrounds/postcard-vintage-travel.webp';
+  const expected = '/template-backgrounds/postcard-vintage-travel.svg';
   await expect.poll(() => page.evaluate(() => {
     const draft = JSON.parse(localStorage.getItem('inkpoem.editor-state.v1') || 'null');
     return [draft?.background?.backgroundImage, draft?.background?.backgroundSize];

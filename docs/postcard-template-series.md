@@ -1,44 +1,47 @@
-# Poetic postcard templates
+# Postcards — SVG classics and original WebP collector's series
 
-Three one-sided postcard **artwork** presets, not a two-sided address/mailing
-editor or a physical-print fulfillment flow.
+The gallery now has two genuinely different visual offerings:
 
-| ID | Visual direction | Ink |
+- **Poetic Postcards / 诗意明信片 (SVG):** The existing three vector
+  templates (`postcard-vintage-travel`, `postcard-poetry-minimal`,
+  `postcard-botanical`) remain unchanged, including their original SVG
+  preview URLs and draft-compatible background URLs.
+- **Premium Postcards / 精品明信片 (WebP):** Four distinct original
+  image-generated backgrounds — not copies of the SVG designs.
+
+| ID | English name | Composition |
 | --- | --- | --- |
-| `postcard-vintage-travel` | Worn ivory paper, abstract stamp/postmark, distant coastline at the foot | Warm charcoal |
-| `postcard-poetry-minimal` | Fine postal rules, quiet ivory whitespace, understated emblem | Graphite |
-| `postcard-botanical` | Watercolor botanical corners with small stamp engraving | Dark sage |
+| `postcard-premium-europe` | European Travel Postcard | Old maps, postmarks, Mediterranean waterfront |
+| `postcard-premium-botanical` | Botanical Watercolor Postcard | Watercolor wildflowers and textured paper |
+| `postcard-premium-letter-collage` | Epistolary Collage Postcard | Antique stationery layers, brass clips and wax seal |
+| `postcard-premium-seaside` | Seaside Holiday Postcard | Coastal light, olive leaves, beach linen and shell |
 
 ## Design invariants
 
-- All three retain their original self-authored, same-origin SVG masters
-  without scripts, external imports, or baked poem text. Saved drafts referring
-  to the original SVG URLs continue to work.
-- Each SVG now also has a 960 x 1200 WebP background (under 13 KB) and a
-  360 x 450 WebP gallery thumbnail (under 3 KB). New built-in selections use
-  WebP by default, and the original SVG backgrounds and previews remain in
-  the repository for compatibility and reuse.
-- WebP thumbnails have content-hashed filenames for cache invalidation; the
-  gallery still overlays a live, localized poem sample. Text/author/title/notes
-  stay editable and are not baked into the background.
-- The source canvas is 960 x 1200; backgroundSize: stretch keeps postal frames
-  and corner details visible on different editor aspect ratios, at the cost of
-  some distortion on very wide formats.
-- The built-in stamp toggle is off to avoid confusing the illustrated postal
-  stamp with the separate Chinese text seal tool.
-- All eight locales include template names/descriptions and a dedicated
-  Postcards gallery category and series label. Chinese/Japanese vertical poetry
-  continues to use the existing illustrated typography presets.
+- Four authentic image-generated **960 × 1200 WebP** backgrounds, each with a
+  smaller **360 × 450 content-hashed WebP** gallery thumbnail.
+- Artwork intentionally leaves the center blank. The poem, title, author,
+  and notes remain fully editable overlays; they are never baked into image.
+- Uses existing gallery, typography, save/draft restore, and PNG/JPEG/WebP
+  exporter paths with no new service, API calls, or image-generation credits.
+- `backgroundSize: stretch` retains the corners on portrait cards; wide
+  landscape card sizes may distort the images rather than crop them.
+- Avoid extra Chinese stamp over preprinted postal elements (`showStamp: false`).
+- A dedicated premium category is localized in all eight supported languages;
+  CJK vertical and Latin horizontal verse layouts reuse existing presets.
+- Remove the redundant SVG-to-WebP copies proposed in PR #38; keep the
+  original vector files and SVG defaults for legacy drafts and consistency.
 
-## Verification
+## Local-only verification
 
 - `npm run typecheck`
 - `npm run lint`
-- `npm run test:unit` (postcard asset/category/font/localization tests included)
-- `npx playwright test tests/e2e/postcard-templates.spec.ts` to check the
-  gallery, image decode, restore, and actual browser PNG export.
-- Visually inspect short and long poems in English and Chinese on a mobile
-  portrait canvas and a landscape canvas, and compare editor vs exported image.
+- `npm run test:unit` (premium classification, 8 locales, WebP signatures,
+  dimensions, content-hashed previews, unique backgrounds, SVG preservation)
+- `npx playwright test tests/e2e/premium-postcards.spec.ts tests/e2e/postcard-templates.spec.ts`
+  (gallery image loading, selected background persistence, editable poem and PNG export)
+- Manually preview a short and long verse in Chinese/English, portrait/landscape,
+  and compare editor/export appearance before merging.
 
-The first version intentionally does not add postal addresses, a reverse side,
-bleed/crop marks, paid printing, or postage purchasing.
+This phase adds *one-sided artwork templates*, not printed cards, mailing
+addresses, postage purchases, or fulfillment.

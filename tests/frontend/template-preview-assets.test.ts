@@ -5,7 +5,9 @@ import test from 'node:test';
 import { ALL_EDITOR_TEMPLATES } from '../../src/templates/definitions';
 
 const MAX_PREVIEW_BYTES = 100_000;
-const MAX_TOTAL_PREVIEW_BYTES = 1_000_000;
+// Four high-detail premium thumbnails add ~56 KB to the SVG gallery.
+const MAX_TOTAL_PREVIEW_BYTES = 1_100_000;
+const SVG_POSTCARDS = new Set(['postcard-vintage-travel', 'postcard-poetry-minimal', 'postcard-botanical']);
 
 test('image-backed templates use bounded preview-specific assets', async () => {
   const imageTemplates = ALL_EDITOR_TEMPLATES.filter((template) => template.usesBackgroundImage);
@@ -14,7 +16,12 @@ test('image-backed templates use bounded preview-specific assets', async () => {
   for (const template of imageTemplates) {
     assert.ok(template.previewImage, `${template.id} is missing previewImage`);
     assert.notEqual(template.previewImage, template.background.backgroundImage);
-    assert.match(template.previewImage, /^\/template-previews\/.+\.[a-f0-9]{8}\.webp$/);
+    assert.match(
+      template.previewImage,
+      SVG_POSTCARDS.has(template.id)
+        ? /^\/template-previews\/postcard-.+\.[a-f0-9]{8}\.svg$/
+        : /^\/template-previews\/.+\.[a-f0-9]{8}\.webp$/,
+    );
 
     const filePath = path.join(process.cwd(), 'public', template.previewImage.slice(1));
     const file = await stat(filePath);
@@ -25,7 +32,7 @@ test('image-backed templates use bounded preview-specific assets', async () => {
   assert.ok(totalBytes <= MAX_TOTAL_PREVIEW_BYTES, `template previews total ${totalBytes} bytes`);
 });
 
-test('built-in image backgrounds use WebP while old draft URLs remain available', async () => {
+test('built-in image backgrounds use WebP or self-contained postcard SVGs while old draft URLs remain available', async () => {
   const legacyNames = [
     'mountain-waterfall-generated', 'sunrise-sea', 'neon-city', 'ink-pine-mist-generated',
     'parchment-scroll-generated', 'wax-sealed-letter-generated',
@@ -35,7 +42,12 @@ test('built-in image backgrounds use WebP while old draft URLs remain available'
   for (const template of ALL_EDITOR_TEMPLATES.filter((item) => item.usesBackgroundImage)) {
     const image = template.background.backgroundImage;
     assert.ok(image, `${template.id} is missing a background`);
-    assert.match(image, /^\/template-backgrounds\/.+\.webp$/);
+    assert.match(
+      image,
+      SVG_POSTCARDS.has(template.id)
+        ? /^\/template-backgrounds\/postcard-.+\.svg$/
+        : /^\/template-backgrounds\/.+\.webp$/,
+    );
     assert.ok((await stat(path.join(process.cwd(), 'public', image.slice(1)))).size > 0);
   }
 
