@@ -163,6 +163,18 @@ export interface SignatureConfig {
   zIndex?: number;
 }
 
+/** Per-character adjustments relative to an automatically composed seal.
+ * Coordinates use percentage points of its complete width/height. */
+export interface StampGlyphEdit {
+  index: number;
+  character: string;
+  offsetX: number; // -20..20
+  offsetY: number; // -20..20
+  widthPct: number; // 70..130
+  heightPct: number; // 70..130
+  locked: boolean; // Locks adjustment fields; composition still reflows.
+}
+
 export interface StampConfig {
   text: string;
   style: StampStyle;
@@ -178,6 +190,8 @@ export interface StampConfig {
   compositionTightness?: number;
   /** Rank among deterministic whole-seal candidate topologies: 0 recommended, 1/2 alternatives. */
   compositionVariant?: 0 | 1 | 2;
+  /** Optional for new whole-seal editors; absent preserves prior output. */
+  glyphEdits?: StampGlyphEdit[];
   colorScheme?: 'outline' | 'filled';
   inkColor?: string;
   weathering?: number;

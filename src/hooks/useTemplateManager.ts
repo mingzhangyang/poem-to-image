@@ -137,6 +137,8 @@ function matchesDecorations(
     decorations.stamp.compositionMode === d.stamp.compositionMode &&
     decorations.stamp.compositionTightness === d.stamp.compositionTightness &&
     decorations.stamp.compositionVariant === d.stamp.compositionVariant &&
+    // Per-character edits are document-specific and must not be localized away.
+    JSON.stringify(decorations.stamp.glyphEdits ?? []) === JSON.stringify(d.stamp.glyphEdits ?? []) &&
     decorations.stamp.colorScheme === d.stamp.colorScheme &&
     decorations.stamp.inkColor === d.stamp.inkColor &&
     decorations.stamp.weathering === d.stamp.weathering &&

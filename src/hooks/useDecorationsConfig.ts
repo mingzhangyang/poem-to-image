@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { DEFAULT_STAMP_FONT } from '../fontOptions';
 import { getNaturalSealSeed } from '../naturalSealTexture';
 import { getDefaultStampTextForLanguage } from '../stampDefaults';
+import { reconcileStampGlyphEdits } from '../sealGlyphEditing';
 import { DEFAULT_SIGNATURE_FONT } from '../signatureRendering';
 import { mergePositionUpdate } from '../positioningRect';
 import type { Language } from '../translations';
@@ -173,7 +174,12 @@ export function useDecorationsConfig({
     const previousDefaultText = getDefaultStampTextForLanguage(previousLanguage);
     const nextDefaultText = getDefaultStampTextForLanguage(language);
 
-    setStamp((prev) => (prev.text === previousDefaultText ? { ...prev, text: nextDefaultText } : prev));
+    setStamp((prev) => (prev.text === previousDefaultText
+      ? { ...prev, text: nextDefaultText,
+        ...(prev.glyphEdits ? {
+          glyphEdits: reconcileStampGlyphEdits(prev.text, nextDefaultText, prev.glyphEdits),
+        } : {}) }
+      : prev));
     previousLanguageRef.current = language;
   }, [language]);
 
@@ -270,7 +276,17 @@ export function useDecorationsConfig({
   };
 
   const updateStamp = (updates: Partial<StampConfig>) => {
-    setStamp((prev) => ({ ...prev, ...updates }));
+    setStamp((prev) => ({
+      ...prev,
+      ...updates,
+      // Any text change reconciles character-bound edits unless the caller
+      // already supplied the exact edited list in this single atomic update.
+      ...(typeof updates.text === 'string' && updates.text !== prev.text
+        && !Object.prototype.hasOwnProperty.call(updates, 'glyphEdits')
+        && prev.glyphEdits
+        ? { glyphEdits: reconcileStampGlyphEdits(prev.text, updates.text, prev.glyphEdits) }
+        : {}),
+    }));
   };
 
   const updatePoemPosition = (updates: Partial<PositionedElement>) => {

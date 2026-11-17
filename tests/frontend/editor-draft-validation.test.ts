@@ -95,6 +95,24 @@ async function loadStoredRecord(record: unknown) {
 test('draft hydration retains legacy texture compatibility and rejects corrupt present fields', async () => {
   const cases: Array<{ name: string; fields: Record<string, unknown>; valid: boolean }> = [
     { name: 'legacy fields absent', fields: {}, valid: true },
+    { name: 'empty fine edits', fields: { glyphEdits: [] }, valid: true },
+    { name: 'locked glyph adjustment', fields: { glyphEdits: [{
+      index: 0, character: '印', offsetX: -5, offsetY: 3,
+      widthPct: 115, heightPct: 90, locked: true,
+    }] }, valid: true },
+    { name: 'missing glyph width', fields: { glyphEdits: [{
+      index: 0, character: '印', offsetX: 0, offsetY: 0, heightPct: 100, locked: false,
+    }] }, valid: false },
+    { name: 'bad glyph offset', fields: { glyphEdits: [{
+      index: 0, character: '印', offsetX: 250, offsetY: 0,
+      widthPct: 100, heightPct: 100, locked: false,
+    }] }, valid: false },
+    { name: 'duplicate glyph index', fields: { glyphEdits: [
+      { index: 0, character: '印', offsetX: 0, offsetY: 0, widthPct: 100, heightPct: 100, locked: false },
+      { index: 0, character: '印', offsetX: 1, offsetY: 0, widthPct: 100, heightPct: 100, locked: false },
+    ] }, valid: false },
+    { name: 'wrong glyph edits type', fields: { glyphEdits: {} }, valid: false },
+    { name: 'null glyph edits', fields: { glyphEdits: null }, valid: false },
     { name: 'explicit classic composition', fields: { compositionMode: 'legacy' }, valid: true },
     { name: 'whole composition', fields: { compositionMode: 'whole', compositionTightness: 70,
       compositionVariant: 0 }, valid: true },
