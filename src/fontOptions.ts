@@ -343,6 +343,9 @@ export const STAMP_FONT_OPTIONS: StampFontOption[] = [
 /** Used only when creating a new stamp; saved artwork and templates retain their own faces. */
 export const DEFAULT_STAMP_FONT = CNS_SEAL_FONT_STACK;
 
+/** Stable face for built-in templates authored before historical seal fonts were added. */
+export const LEGACY_TEMPLATE_STAMP_FONT = '"Ma Shan Zheng", cursive';
+
 export function getDefaultFontForLanguage(language: Language) {
   return LANGUAGE_DEFAULT_FONTS[language];
 }

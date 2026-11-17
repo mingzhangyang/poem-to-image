@@ -1,11 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { DEFAULT_STAMP_FONT, getAllFontOptions, getDefaultFontForLanguage } from '../../src/fontOptions';
+import { readFileSync } from 'node:fs';
+import { DEFAULT_STAMP_FONT, LEGACY_TEMPLATE_STAMP_FONT, getAllFontOptions, getDefaultFontForLanguage } from '../../src/fontOptions';
 import {
   CNS_SEAL_FONT_STACK, CLERICAL_FONT_STACK, CHONGXI_SEAL_FONT_STACK, JINWEN_FONT_STACK,
   SEAL_FONT_STACK, getStampPresetUpdates, getTraditionalStampLayout, isSealScriptFont,
 } from '../../src/sealTypography';
 import { getSealStyleDesignUpdates } from '../../src/sealStyleCatalog';
+import { ALL_EDITOR_TEMPLATES, resolveTemplateForLanguage } from '../../src/templates';
+import { LANGUAGES } from '../../src/translations';
 import { getVerifiedSealFont } from '../../src/sealFontSources';
 import { inspectUnicodeCmap, missingVerifiedGlyphs } from '../../src/sealFontCoverage';
 import { parseSealVariantTable, planSealVariantRows, replaceSealVariantAt } from '../../src/sealVariantChoices';
@@ -79,4 +82,26 @@ test('binary cmap detects missing simplified code points and keeps individual va
   assert.equal(replaceSealVariantAt('诗诗', 1, '诗', '詩'), '诗詩');
   assert.equal(replaceSealVariantAt('诗诗', 1, '詩', '詩'), '诗诗'); // stale async update
   assert.throws(() => inspectUnicodeCmap(new ArrayBuffer(8)), /Invalid font length/);
+});
+
+test('existing built-in templates retain their original stamp face and mode in every language', () => {
+  assert.equal(LEGACY_TEMPLATE_STAMP_FONT, '"Ma Shan Zheng", cursive');
+  assert.notEqual(DEFAULT_STAMP_FONT, LEGACY_TEMPLATE_STAMP_FONT);
+  for (const definition of ALL_EDITOR_TEMPLATES) {
+    for (const language of LANGUAGES) {
+      const localized = resolveTemplateForLanguage(definition.id, language);
+      assert.ok(localized, `${definition.id} / ${language}`);
+      assert.equal(localized.decorations.stamp.fontFamily, LEGACY_TEMPLATE_STAMP_FONT, `${definition.id} / ${language}`);
+      assert.equal(localized.decorations.stamp.mode, definition.decorations.stamp.mode, `${definition.id} / ${language}`);
+    }
+  }
+});
+
+test('local dev does not download historical fonts while production builds still sync them', () => {
+  const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')) as {
+    scripts: Record<string, string>;
+  };
+  assert.equal(pkg.scripts.predev, undefined);
+  assert.equal(pkg.scripts.prebuild, 'node scripts/sync-inkpoem-seal-fonts.mjs');
+  assert.equal(pkg.scripts['fonts:sync'], pkg.scripts.prebuild);
 });

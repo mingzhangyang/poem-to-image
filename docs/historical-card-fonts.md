@@ -14,8 +14,11 @@ own independent font choice.
 CNS, MOE Li, Chine-Culture Jinwen and Chongxi Seal load by `FontFace` only
 when selected. They are never eagerly bundled into the JavaScript. The
 `fonts:sync` script fetches pinned original binaries into `public/fonts` at
-development/build time and validates size and SHA-256 before publishing them as
-same-origin static assets. This increases build-time and deployment size:
+production build time and validates size and SHA-256 before publishing them as
+same-origin static assets. `npm run dev` does not run `fonts:sync`, so Vite can
+start offline; historical faces still require an explicit `npm run fonts:sync`
+before local previews use them. `prebuild` retains strict asset verification.
+This increases build-time and deployment size:
 Chongxi ~21 MB, CNS ~10 MB, MOE Li ~5 MB, Jinwen ~0.7 MB.
 
 **The same card can include several fonts:** the renderer waits for the global
