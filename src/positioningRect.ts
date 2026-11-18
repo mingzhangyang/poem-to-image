@@ -29,12 +29,19 @@ export interface RelativePosition {
 
 export type ArrowDirection = 'ArrowLeft' | 'ArrowRight' | 'ArrowUp' | 'ArrowDown';
 
-// Track the actual layout extents on each font-readiness revision. Unrelated
-// position updates must not invalidate measured text origins.
+// A measured export origin is valid only for the text box dimensions at
+// measurement time, regardless of whether a new font finished loading.
 export interface FontLayoutMeasurement {
   revision: number;
   width: number;
   height: number;
+}
+
+export function didTextBoxDimensionsChange(
+  previous: Pick<FontLayoutMeasurement, 'width' | 'height'>,
+  current: Pick<FontLayoutMeasurement, 'width' | 'height'>,
+): boolean {
+  return previous.width !== current.width || previous.height !== current.height;
 }
 
 export function didFontReadyChangeTextBox(
@@ -42,7 +49,7 @@ export function didFontReadyChangeTextBox(
   current: FontLayoutMeasurement,
 ): boolean {
   return previous.revision !== current.revision
-    && (previous.width !== current.width || previous.height !== current.height);
+    && didTextBoxDimensionsChange(previous, current);
 }
 
 export function isArrowDirection(key: string): key is ArrowDirection {

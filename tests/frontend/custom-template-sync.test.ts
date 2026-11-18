@@ -118,6 +118,73 @@ test('independent accounts keep isolated caches with stable keys', () => {
   assert.deepEqual(readTemplateCache('guest', local).map((item) => item.id), ['anonymous']);
 });
 
+test('numeric section weights survive cloud save/reload and scoped guest cache', async () => {
+  const base = fixture('weighted');
+  const weighted: UserCustomTemplate = {
+    ...base,
+    typography: { ...base.typography, fontWeight: 500 },
+    poemStyle: {
+      ...DEFAULT_POEM_STYLE,
+      titleFontWeight: 700,
+      bodyFontWeight: 500,
+      authorFontWeight: 400,
+      sourceFontWeight: 'inherit',
+    },
+  };
+  const local = storage();
+  writeTemplateCache('guest', [weighted], local);
+  assert.deepEqual(readTemplateCache('guest', local)[0].poemStyle, weighted.poemStyle);
+
+  const cloud: UserCustomTemplate[] = [fixture('previously-saved')];
+  const originalFetch = globalThis.fetch;
+  try {
+    globalThis.fetch = async (_input, init) => {
+      if (init?.method === 'POST') {
+        const payload = JSON.parse(String(init.body)) as Omit<UserCustomTemplate, 'id' | 'createdAt'>;
+        const saved = { ...payload, id: 'cloud-weighted', createdAt: 456 };
+        cloud.push(saved);
+        return Response.json(saved, { status: 201 });
+      }
+      if (init?.method === 'GET') return Response.json({ templates: cloud });
+      throw new Error('Unexpected template request');
+    };
+
+    const saved = await createCloudTemplate({
+      name: weighted.name,
+      accentFrom: weighted.accentFrom,
+      accentTo: weighted.accentTo,
+      background: weighted.background,
+      typography: weighted.typography,
+      decorations: weighted.decorations,
+      poemStyle: weighted.poemStyle,
+    }, owner());
+    assert.deepEqual(saved.poemStyle, weighted.poemStyle, 'POST response retains numeric weights');
+    assert.equal(saved.typography.fontWeight, 500);
+
+    const loaded = await fetchCloudTemplates(owner());
+    assert.deepEqual(loaded.map((template) => template.id), ['previously-saved', 'cloud-weighted']);
+    assert.deepEqual(loaded[1].poemStyle, weighted.poemStyle, 'GET keeps the whole template list readable');
+    writeTemplateCache('account:user_a', loaded, local);
+    assert.deepEqual(readTemplateCache('account:user_a', local)[1].poemStyle, weighted.poemStyle);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  // Accept omitted legacy keys, but not malformed or unsupported overrides.
+  const legacyStyle = { ...weighted.poemStyle };
+  delete legacyStyle.titleFontWeight;
+  assert.equal(parseCloudTemplateList({ templates: [{ ...weighted, poemStyle: legacyStyle }] })[0].poemStyle.titleFontWeight, 'inherit');
+  for (const key of ['titleFontWeight', 'bodyFontWeight', 'authorFontWeight', 'sourceFontWeight'] as const) {
+    for (const invalid of [600, 0, '700', null, Number.NaN]) {
+      assert.throws(
+        () => parseCloudTemplateList({ templates: [{ ...weighted, poemStyle: { ...weighted.poemStyle, [key]: invalid } }] }),
+        /INVALID_TEMPLATE_LIST/,
+        `${key} must reject ${String(invalid)}`,
+      );
+    }
+  }
+});
+
 test('malformed scoped or cloud data is rejected instead of silently treated as an empty list', () => {
   const local = storage();
   local.setItem(templateCacheKey('guest'), '{not-json');

@@ -164,9 +164,15 @@ function isPoemStyle(value: unknown): boolean {
   if (!isRecord(value)) return false;
   const alignKeys = ['titleAlign', 'bodyAlign', 'authorAlign', 'sourceAlign'];
   const earlyPlacements = ['before-body', 'after-body'];
+  const fontWeightKeys = ['titleFontWeight', 'bodyFontWeight', 'authorFontWeight', 'sourceFontWeight'];
   return Object.entries(DEFAULT_POEM_STYLE).every(([key, fallback]) => {
     const field = value[key];
     if (field === undefined) return true;
+    // Section weights can inherit or override the base with a numeric weight.
+    // They are not limited to the string type of the default ('inherit').
+    if (fontWeightKeys.includes(key)) {
+      return field === 'inherit' || field === 400 || field === 500 || field === 700;
+    }
     if (alignKeys.includes(key)) return isOneOf(field, ['left', 'center', 'right']);
     if (key === 'titlePlacement') return isOneOf(field, earlyPlacements);
     if (key === 'authorPlacement') return isOneOf(field, [...earlyPlacements, 'auto']);
