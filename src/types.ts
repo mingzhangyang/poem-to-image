@@ -9,6 +9,8 @@ export type BackgroundType = 'solid' | 'paper' | 'gradient' | 'transparent' | 'i
 export type BackgroundImageSource = 'template' | 'upload' | 'ai' | null;
 export type WritingMode = 'horizontal-tb' | 'vertical-rl';
 export type TextAlign = 'left' | 'center' | 'right';
+/** Multi-weight font faces available in the typography picker. */
+export type FontWeight = 400 | 500 | 700;
 export type BorderStyle =
   | 'solid'
   | 'dashed'
@@ -237,6 +239,8 @@ export interface TemplateBackgroundConfig {
 export interface TemplateTypographyConfig {
   fontFamily: string;
   fontSize: number;
+  /** Optional on disk: legacy artwork defaults to regular 400. */
+  fontWeight?: FontWeight;
   textColor: string;
   textAlign: TextAlign;
   writingMode: WritingMode;
@@ -342,6 +346,8 @@ export type PoemSectionPlacement = 'before-body' | 'after-body' | 'after-author'
 
 export interface PoemLayerStyle {
   titleScale: number;
+  /** Inherits global poem weight until explicitly overridden. */
+  titleFontWeight?: FontWeight | 'inherit';
   titleOpacity: number;
   titleLineHeight: number;
   titleLetterSpacing: number;
@@ -350,10 +356,14 @@ export interface PoemLayerStyle {
   titlePlacement: Exclude<PoemSectionPlacement, 'after-author'>;
   /** Multiplier of the global base font size; 1 preserves legacy body text. */
   bodyScale: number;
+  /** Inherits global poem weight until explicitly overridden. */
+  bodyFontWeight?: FontWeight | 'inherit';
   bodyLineHeight: number;
   bodyLetterSpacing: number;
   bodyAlign: TextAlign;
   authorScale: number;
+  /** Inherits global poem weight until explicitly overridden. */
+  authorFontWeight?: FontWeight | 'inherit';
   authorOpacity: number;
   authorLineHeight: number;
   authorLetterSpacing: number;
@@ -362,6 +372,8 @@ export interface PoemLayerStyle {
   /** Auto: horizontal before-body; vertical beside the title when present, else after-body. */
   authorPlacement: 'auto' | Exclude<PoemSectionPlacement, 'after-author'>;
   sourceScale: number;
+  /** Inherits global poem weight until explicitly overridden. */
+  sourceFontWeight?: FontWeight | 'inherit';
   sourceOpacity: number;
   sourceLineHeight: number;
   sourceLetterSpacing: number;
@@ -423,6 +435,7 @@ export interface BackgroundSectionProps {
 export interface TypographySectionProps {
   fontFamily: string;
   fontSize: number;
+  fontWeight: FontWeight;
   textColor: string;
   textAlign: TextAlign;
   writingMode: WritingMode;
@@ -438,6 +451,7 @@ export interface TypographySectionProps {
   textShadowOffsetX: number;
   onFontFamilyChange: (value: string) => void;
   onFontSizeChange: (value: number) => void;
+  onFontWeightChange: (value: FontWeight) => void;
   onTextColorChange: (value: string) => void;
   onTextAlignChange: (value: TextAlign) => void;
   onWritingModeChange: (value: WritingMode) => void;
@@ -535,6 +549,7 @@ export interface CanvasPreviewProps {
   bgBlur: number;
   fontFamily: string;
   fontSize: number;
+  fontWeight: FontWeight;
   textColor: string;
   writingMode: WritingMode;
   padding: number;

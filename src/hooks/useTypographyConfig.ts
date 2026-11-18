@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { getDefaultFontForLanguage } from '../fontOptions';
+import { getFontWeight } from '../poemStyle';
 import type { Language } from '../translations';
 import type { TemplateTypographyConfig, TypographySectionProps } from '../types';
 
@@ -10,6 +11,7 @@ type TypographyConfigResult = TypographySectionProps & {
 export function useTypographyConfig(language: Language, initialDraft?: TemplateTypographyConfig): TypographyConfigResult {
   const [fontFamily, setFontFamily] = useState(() => initialDraft?.fontFamily ?? getDefaultFontForLanguage(language));
   const [fontSize, setFontSize] = useState(() => initialDraft?.fontSize ?? 32);
+  const [fontWeight, setFontWeight] = useState(() => getFontWeight(initialDraft?.fontWeight));
   const [textColor, setTextColor] = useState(() => initialDraft?.textColor ?? '#1e293b');
   const [textAlign, setTextAlign] = useState(() => initialDraft?.textAlign ?? 'center');
   const [writingMode, setWritingMode] = useState(() => initialDraft?.writingMode ?? 'horizontal-tb');
@@ -37,6 +39,7 @@ export function useTypographyConfig(language: Language, initialDraft?: TemplateT
   const applyTypographyTemplate = (template: TemplateTypographyConfig) => {
     setFontFamily(template.fontFamily);
     setFontSize(template.fontSize);
+    setFontWeight(getFontWeight(template.fontWeight));
     setTextColor(template.textColor);
     setTextAlign(template.textAlign);
     setWritingMode(template.writingMode);
@@ -55,6 +58,7 @@ export function useTypographyConfig(language: Language, initialDraft?: TemplateT
   return {
     fontFamily,
     fontSize,
+    fontWeight,
     textColor,
     textAlign,
     writingMode,
@@ -70,6 +74,7 @@ export function useTypographyConfig(language: Language, initialDraft?: TemplateT
     textShadowOffsetX,
     onFontFamilyChange: setFontFamily,
     onFontSizeChange: setFontSize,
+    onFontWeightChange: setFontWeight,
     onTextColorChange: setTextColor,
     onTextAlignChange: setTextAlign,
     onWritingModeChange: setWritingMode,

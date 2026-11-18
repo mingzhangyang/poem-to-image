@@ -18,12 +18,13 @@ import {
 import { useElementSize } from '../../hooks/useElementSize';
 import { useFontLayoutRevision } from '../../hooks/useFontLayoutRevision';
 import { createStructuredPoemLayout, getPlainPoemText } from '../../poemContent';
+import { getPoemFontWeights } from '../../poemStyle';
 import {
   didFontReadyChangeTextBox, getKeyboardDragBounds, getPreviewDragBounds, getPreviewPositioningRect,
   isArrowDirection, measurePreviewElement, movePreviewPosition,
   nudgePreviewPosition, resizePreviewTextBox, resizePreviewTextBoxByKeyboard,
 } from '../../positioningRect';
-import type { BorderStyle, CustomText, LogoConfig, PoemContentData, PoemLayerStyle, PositionedElement, SignatureConfig, StampConfig, TranslateFn, WritingMode } from '../../types';
+import type { FontWeight, BorderStyle, CustomText, LogoConfig, PoemContentData, PoemLayerStyle, PositionedElement, SignatureConfig, StampConfig, TranslateFn, WritingMode } from '../../types';
 import { CustomTextItems } from './CustomTextItems';
 import { LogoOverlay } from './LogoOverlay';
 import { SignatureOverlay } from './SignatureOverlay';
@@ -39,6 +40,7 @@ interface PoemContentProps {
   poemStyle: PoemLayerStyle;
   fontFamily: string;
   fontSize: number;
+  fontWeight: FontWeight;
   textColor: string;
   writingMode: WritingMode;
   lineHeight: number;
@@ -75,6 +77,7 @@ export function PoemContent({
   poemStyle,
   fontFamily,
   fontSize,
+  fontWeight,
   textColor,
   writingMode,
   lineHeight,
@@ -139,7 +142,7 @@ export function PoemContent({
     return undefined;
   }, [writingMode, liveBoxWidth, frameSize.width]);
   const poemPlaceholder = t('poemPlaceholder');
-  const fontRevision = useFontLayoutRevision(fontFamily, getPlainPoemText(poem));
+  const fontRevision = useFontLayoutRevision(fontFamily, getPlainPoemText(poem), getPoemFontWeights(poemStyle, fontWeight));
   const poemLayout = useMemo(
     () => createStructuredPoemLayout({
       poem,
@@ -148,6 +151,7 @@ export function PoemContent({
       writingMode,
       fontFamily,
       fontSize,
+      fontWeight,
       columns: columnCount,
       columnGap,
       wrapWidth: poemWrapWidth,
@@ -159,6 +163,7 @@ export function PoemContent({
       writingMode,
       fontFamily,
       fontSize,
+      fontWeight,
       columnCount,
       columnGap,
       poemWrapWidth,
@@ -513,6 +518,7 @@ export function PoemContent({
                     layout={section.layout}
                     fontFamily={fontFamily}
                     fontSize={section.fontSize}
+                    fontWeight={section.fontWeight}
                     color={textColor}
                     letterSpacing={section.letterSpacing}
                     lineHeight={section.lineHeight}

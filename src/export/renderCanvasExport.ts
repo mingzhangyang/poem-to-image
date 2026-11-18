@@ -1,4 +1,5 @@
 import { createStructuredPoemLayout, getPlainPoemText } from '../poemContent';
+import { getFontWeight, getPoemFontWeights } from '../poemStyle';
 import { ensureFontReady } from '../fontLoader';
 import { assertVerifiedSealGlyphs } from '../sealFontCoverage';
 import { getVerifiedSealFont } from '../sealFontSources';
@@ -45,6 +46,7 @@ export interface CanvasExportTypography {
   poemStyle: PoemLayerStyle;
   fontFamily: string;
   fontSize: number;
+  fontWeight?: number;
   textColor: string;
   textAlign: TextAlign;
   writingMode: WritingMode;
@@ -189,6 +191,7 @@ function drawStructuredPoem(ctx: CanvasRenderingContext2D, scene: CanvasExportSc
     writingMode: typography.writingMode,
     fontFamily: typography.fontFamily,
     fontSize: typography.fontSize,
+    fontWeight: getFontWeight(typography.fontWeight),
     columns: typography.columns,
     columnGap: typography.columnGap,
     wrapWidth:
@@ -197,7 +200,7 @@ function drawStructuredPoem(ctx: CanvasRenderingContext2D, scene: CanvasExportSc
         : typography.writingMode === 'horizontal-tb'
           ? frameRect.width
           : undefined,
-    measurerFactory: (fontFamily, size) => createCanvasTextMeasurer(fontFamily, size, ctx),
+    measurerFactory: (fontFamily, size, weight) => createCanvasTextMeasurer(fontFamily, size, ctx, weight),
   });
   const { x: startX, y: startY } =
     getCanvasTextOrigin(frameRect, typography.poemPosition, poemLayout);
@@ -208,7 +211,9 @@ function drawStructuredPoem(ctx: CanvasRenderingContext2D, scene: CanvasExportSc
     ctx.save();
     ctx.globalAlpha = section.opacity;
     ctx.fillStyle = typography.textColor;
-    ctx.font = `${section.fontSize}px ${typography.fontFamily}`;
+    ctx.font = section.fontWeight === 400
+      ? `${section.fontSize}px ${typography.fontFamily}`
+      : `${section.fontWeight} ${section.fontSize}px ${typography.fontFamily}`;
     ctx.textAlign = section.layout.writingMode === 'vertical-rl' ? 'center' : 'left';
     ctx.textBaseline = section.layout.writingMode === 'vertical-rl' ? 'middle' : 'top';
     drawTextLayout(ctx, section.layout, section.letterSpacing, startX + section.x, startY + section.y);
@@ -351,7 +356,8 @@ export async function renderCanvasExport(inputScene: CanvasExportScene, options:
     getPlainPoemText(scene.typography.poem),
     ...scene.decorations.customTexts.map((item) => item.text),
   ].join('\n');
-  await ensureFontReady(scene.typography.fontFamily, primaryText);
+  await Promise.all(getPoemFontWeights(scene.typography.poemStyle, getFontWeight(scene.typography.fontWeight))
+    .map((weight) => ensureFontReady(scene.typography.fontFamily, primaryText, weight)));
   await Promise.all(scene.decorations.customTexts
     .filter(item => item.fontFamily && item.fontFamily !== scene.typography.fontFamily)
     .map(item => ensureFontReady(item.fontFamily, item.text)));

@@ -28,6 +28,7 @@ const ACTIVE_TEMPLATE_STORAGE_KEY = 'poem-to-image.active-template';
 interface TypographyState {
   fontFamily: string;
   fontSize: number;
+  fontWeight?: number;
   textColor: string;
   textAlign: TextAlign;
   writingMode: WritingMode;
@@ -94,6 +95,7 @@ function matchesTypography(
   return (
     typography.fontFamily === t.fontFamily &&
     typography.fontSize === t.fontSize &&
+    (typography.fontWeight ?? 400) === (t.fontWeight ?? 400) &&
     typography.textColor === t.textColor &&
     typography.textAlign === t.textAlign &&
     typography.writingMode === t.writingMode &&

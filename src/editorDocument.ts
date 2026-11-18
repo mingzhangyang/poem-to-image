@@ -1,4 +1,5 @@
 import type { EditorDraftState } from './editorDraftStore';
+import { getFontWeight } from './poemStyle';
 import type { CanvasExportScene } from './export/renderCanvasExport';
 import type {
   BackgroundType,
@@ -60,6 +61,7 @@ export function createEditorDocument({
     typography: {
       fontFamily: typography.fontFamily,
       fontSize: typography.fontSize,
+      fontWeight: getFontWeight(typography.fontWeight),
       textColor: typography.textColor,
       textAlign: typography.textAlign,
       writingMode: typography.writingMode,
