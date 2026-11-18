@@ -27,8 +27,6 @@ export const TEMPLATE_GALLERY_CATEGORIES: readonly TemplateGalleryCategory[] = [
   ] },
   { key: 'templateCategoryPostcards', ids: [
     'postcard-vintage-travel', 'postcard-poetry-minimal', 'postcard-botanical',
-  ] },
-  { key: 'templateCategoryPremiumPostcards', ids: [
     'postcard-premium-europe',
     'postcard-premium-botanical',
     'postcard-premium-letter-collage',

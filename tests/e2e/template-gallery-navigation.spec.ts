@@ -28,6 +28,11 @@ test('categories and search narrow the gallery and selecting a template still ap
   let library = await openLibrary(page);
   const filters = library.getByRole('group', { name: 'Template categories' });
   await expect(filters.getByRole('button', { name: `All ${allCount}` })).toHaveAttribute('aria-pressed', 'true');
+  await expect(filters.getByRole('button', { name: /Premium Postcards/ })).toHaveCount(0);
+  await filters.getByRole('button', { name: `Postcards ${categoryCounts.get('templateCategoryPostcards')}` }).click();
+  await expect(library.getByRole('status')).toHaveText('Results: 7');
+  await expect(library.getByRole('button', { name: /Poetry Postcard/ })).toHaveCount(1);
+  await expect(library.getByRole('button', { name: /European Travel Postcard/ })).toHaveCount(1);
   await filters.getByRole('button', { name: `Chinese Landscapes ${categoryCounts.get('templateCategoryChineseScenes')}` }).click();
   await expect(library.getByRole('status')).toHaveText(`Results: ${categoryCounts.get('templateCategoryChineseScenes')}`);
   await expect(library.getByRole('button', { name: /Lone Fisherman/ })).toHaveCount(1);

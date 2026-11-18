@@ -14,6 +14,14 @@ test('every featured template belongs to exactly one navigable category', async 
   assert.equal(groups.length, TEMPLATE_GALLERY_CATEGORIES.length);
   assert.ok(groups.every(({ items }) => items.length > 0));
   assert.equal(groups.flatMap(({ items }) => items).length, editorTemplates.length);
+  const postcards = groups.find(({ key }) => key === 'templateCategoryPostcards');
+  assert.ok(postcards);
+  assert.deepEqual(postcards.items.map(({ id }) => id), [
+    'postcard-vintage-travel', 'postcard-poetry-minimal', 'postcard-botanical',
+    'postcard-premium-europe', 'postcard-premium-botanical',
+    'postcard-premium-letter-collage', 'postcard-premium-seaside',
+  ]);
+  assert.equal(groups.some(({ key }) => key === 'templateCategoryPremiumPostcards'), false);
   for (const language of LANGUAGES) {
     const translations = await loadTranslations(language);
     for (const group of groups) assert.ok(translations[group.key], `${language}: ${group.key}`);
