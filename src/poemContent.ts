@@ -1,11 +1,12 @@
 import { createCanvasTextMeasurer, createTextLayout, type TextLayoutMeasurer, type TextLayoutResult, type VerticalTextLayoutItem } from './textLayout';
-import { getBodyFontScale, resolveAuthorPlacement } from './poemStyle';
-import type { PoemContentData, PoemLayerStyle, TextAlign, WritingMode } from './types';
+import { getBodyFontScale, resolveAuthorPlacement, resolvePoemFontWeight } from './poemStyle';
+import type { FontWeight, PoemContentData, PoemLayerStyle, TextAlign, WritingMode } from './types';
 
 export interface StructuredPoemSectionLayout {
   key: 'title' | 'body' | 'author' | 'sourceNote';
   layout: TextLayoutResult;
   fontSize: number;
+  fontWeight: FontWeight;
   lineHeight: number;
   letterSpacing: number;
   opacity: number;
@@ -27,16 +28,18 @@ interface CreateStructuredPoemLayoutParams {
   writingMode: WritingMode;
   fontFamily: string;
   fontSize: number;
+  fontWeight?: FontWeight;
   columns: number;
   columnGap: number;
   wrapWidth?: number;
-  measurerFactory?: (fontFamily: string, fontSize: number) => TextLayoutMeasurer;
+  measurerFactory?: (fontFamily: string, fontSize: number, fontWeight: FontWeight) => TextLayoutMeasurer;
 }
 
 interface BaseSectionSpec {
   key: 'title' | 'body' | 'author' | 'sourceNote';
   text: string;
   fontSize: number;
+  fontWeight: FontWeight;
   lineHeight: number;
   letterSpacing: number;
   opacity: number;
@@ -66,6 +69,7 @@ function createSectionSpecs(
   placeholder: string,
   writingMode: WritingMode,
   fontSize: number,
+  fontWeight: FontWeight,
 ) {
   const title = poem.title.trim();
   const author = poem.author.trim();
@@ -79,6 +83,7 @@ function createSectionSpecs(
     key: 'title' as const,
     text: title,
     fontSize: roundFontSize(fontSize * titleScale * poemStyle.titleScale),
+    fontWeight: resolvePoemFontWeight(poemStyle.titleFontWeight, fontWeight),
     lineHeight: poemStyle.titleLineHeight,
     letterSpacing: poemStyle.titleLetterSpacing,
     opacity: Math.max(0, Math.min(1, poemStyle.titleOpacity)),
@@ -91,6 +96,7 @@ function createSectionSpecs(
     // Independent relative size, using the same structured layout in preview
     // and export. Old drafts without bodyScale keep their original font size.
     fontSize: roundFontSize(fontSize * getBodyFontScale(poemStyle)),
+    fontWeight: resolvePoemFontWeight(poemStyle.bodyFontWeight, fontWeight),
     lineHeight: poemStyle.bodyLineHeight,
     letterSpacing: poemStyle.bodyLetterSpacing,
     opacity: body ? 1 : 0.72,
@@ -101,6 +107,7 @@ function createSectionSpecs(
     key: 'author' as const,
     text: author,
     fontSize: roundFontSize(fontSize * metaScale * poemStyle.authorScale),
+    fontWeight: resolvePoemFontWeight(poemStyle.authorFontWeight, fontWeight),
     lineHeight: poemStyle.authorLineHeight,
     letterSpacing: poemStyle.authorLetterSpacing,
     opacity: Math.max(0, Math.min(1, 0.82 * poemStyle.authorOpacity)),
@@ -111,6 +118,7 @@ function createSectionSpecs(
     key: 'sourceNote' as const,
     text: sourceNote,
     fontSize: roundFontSize(fontSize * (metaScale - 0.04) * poemStyle.sourceScale),
+    fontWeight: resolvePoemFontWeight(poemStyle.sourceFontWeight, fontWeight),
     lineHeight: poemStyle.sourceLineHeight,
     letterSpacing: poemStyle.sourceLetterSpacing,
     opacity: Math.max(0, Math.min(1, 0.68 * poemStyle.sourceOpacity)),
@@ -282,12 +290,13 @@ export function createStructuredPoemLayout({
   writingMode,
   fontFamily,
   fontSize,
+  fontWeight = 400,
   columns,
   columnGap,
   wrapWidth,
   measurerFactory,
 }: CreateStructuredPoemLayoutParams): StructuredPoemLayout {
-  const sections = createSectionSpecs(poem, poemStyle, placeholder, writingMode, fontSize).map((section) => {
+  const sections = createSectionSpecs(poem, poemStyle, placeholder, writingMode, fontSize, fontWeight).map((section) => {
     const layout = createTextLayout(
       {
         text: section.text,
@@ -305,8 +314,8 @@ export function createStructuredPoemLayout({
             : undefined,
       },
       measurerFactory
-        ? measurerFactory(fontFamily, section.fontSize)
-        : createCanvasTextMeasurer(fontFamily, section.fontSize),
+        ? measurerFactory(fontFamily, section.fontSize, section.fontWeight)
+        : createCanvasTextMeasurer(fontFamily, section.fontSize, undefined, section.fontWeight),
     );
 
     return {

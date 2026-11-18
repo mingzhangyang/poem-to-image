@@ -136,10 +136,11 @@ export function ensureFontLoaded(fontValue: string | undefined | null): void {
  * subset is still loading. Load the *actual text* used by the artwork so a
  * copy/share/export always renders the same face as the preview.
  */
-export async function ensureFontReady(fontValue: string | undefined | null, text: string): Promise<void> {
+export async function ensureFontReady(fontValue: string | undefined | null, text: string, fontWeight = 400): Promise<void> {
   if (!fontValue || typeof document === 'undefined' || typeof document.fonts?.load !== 'function') return;
   const family = familyNameFromValue(fontValue);
   await loadFontStylesheet(fontValue);
-  await document.fonts.load(`20px "${family}"`, text.trim() || '诗');
+  const descriptor = fontWeight === 400 ? `20px "${family}"` : `${fontWeight} 20px "${family}"`;
+  await document.fonts.load(descriptor, text.trim() || '诗');
   await document.fonts.ready;
 }

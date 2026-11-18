@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import { AlignCenter, AlignLeft, AlignRight, BookOpenText, LoaderCircle, SlidersHorizontal, X } from 'lucide-react';
-import type { ContentSectionProps, PoemLayerStyle, PoemSectionPlacement, TextAlign, TranslateFn } from '../types';
+import type { ContentSectionProps, FontWeight, PoemLayerStyle, PoemSectionPlacement, TextAlign, TranslateFn } from '../types';
 import { useDialogA11y } from '../hooks/useDialogA11y';
 
 interface PoemEditorModalProps {
@@ -15,6 +15,7 @@ interface PoemEditorModalProps {
 interface LayerControlCardProps {
   title: string;
   scale?: number;
+  fontWeight?: FontWeight | 'inherit';
   opacity?: number;
   lineHeight?: number;
   letterSpacing?: number;
@@ -22,6 +23,7 @@ interface LayerControlCardProps {
   align?: TextAlign;
   placement?: PoemSectionPlacement | 'auto';
   onScaleChange?: (value: number) => void;
+  onFontWeightChange?: (value: FontWeight | 'inherit') => void;
   onOpacityChange?: (value: number) => void;
   onLineHeightChange?: (value: number) => void;
   onLetterSpacingChange?: (value: number) => void;
@@ -35,6 +37,7 @@ interface LayerControlCardProps {
 function LayerControlCard({
   title,
   scale,
+  fontWeight,
   opacity,
   lineHeight,
   letterSpacing,
@@ -42,6 +45,7 @@ function LayerControlCard({
   align,
   placement,
   onScaleChange,
+  onFontWeightChange,
   onOpacityChange,
   onLineHeightChange,
   onLetterSpacingChange,
@@ -82,6 +86,24 @@ function LayerControlCard({
               onChange={(event) => onScaleChange(Number(event.target.value) / 100)}
               className="app-range"
             />
+          </div>
+        ) : null}
+
+        {fontWeight !== undefined && onFontWeightChange ? (
+          <div>
+            <label htmlFor={`${controlId}-font-weight`} className="mb-1 block text-xs text-(--app-accent-600)">{t('fontWeight')}</label>
+            <select
+              id={`${controlId}-font-weight`}
+              aria-label={`${title}: ${t('fontWeight')}`}
+              value={fontWeight}
+              onChange={(event) => onFontWeightChange(event.target.value === 'inherit' ? 'inherit' : Number(event.target.value) as FontWeight)}
+              className="app-select text-sm"
+            >
+              <option value="inherit">{t('weightInherit')}</option>
+              <option value={400}>{t('weightRegular')} (400)</option>
+              <option value={500}>{t('weightMedium')} (500)</option>
+              <option value={700}>{t('weightBold')} (700)</option>
+            </select>
           </div>
         ) : null}
 
@@ -442,8 +464,10 @@ export function PoemEditorModal({ isOpen, onClose, t, content }: PoemEditorModal
                 <LayerControlCard
                   title={t('poemTitle')}
                   scale={content.poemStyle.titleScale}
+                  fontWeight={content.poemStyle.titleFontWeight ?? 'inherit'}
                   opacity={content.poemStyle.titleOpacity}
                   onScaleChange={(value) => content.onPoemStyleChange({ titleScale: value })}
+                  onFontWeightChange={(value) => content.onPoemStyleChange({ titleFontWeight: value })}
                   onOpacityChange={(value) => content.onPoemStyleChange({ titleOpacity: value })}
                   lineHeight={content.poemStyle.titleLineHeight}
                   letterSpacing={content.poemStyle.titleLetterSpacing}
@@ -462,7 +486,9 @@ export function PoemEditorModal({ isOpen, onClose, t, content }: PoemEditorModal
                 <LayerControlCard
                   title={t('poemBody')}
                   scale={content.poemStyle.bodyScale}
+                  fontWeight={content.poemStyle.bodyFontWeight ?? 'inherit'}
                   onScaleChange={(value) => content.onPoemStyleChange({ bodyScale: value })}
+                  onFontWeightChange={(value) => content.onPoemStyleChange({ bodyFontWeight: value })}
                   lineHeight={content.poemStyle.bodyLineHeight}
                   letterSpacing={content.poemStyle.bodyLetterSpacing}
                   align={content.poemStyle.bodyAlign}
@@ -475,8 +501,10 @@ export function PoemEditorModal({ isOpen, onClose, t, content }: PoemEditorModal
                 <LayerControlCard
                   title={t('poemAuthor')}
                   scale={content.poemStyle.authorScale}
+                  fontWeight={content.poemStyle.authorFontWeight ?? 'inherit'}
                   opacity={content.poemStyle.authorOpacity}
                   onScaleChange={(value) => content.onPoemStyleChange({ authorScale: value })}
+                  onFontWeightChange={(value) => content.onPoemStyleChange({ authorFontWeight: value })}
                   onOpacityChange={(value) => content.onPoemStyleChange({ authorOpacity: value })}
                   lineHeight={content.poemStyle.authorLineHeight}
                   letterSpacing={content.poemStyle.authorLetterSpacing}
@@ -495,6 +523,7 @@ export function PoemEditorModal({ isOpen, onClose, t, content }: PoemEditorModal
                 <LayerControlCard
                   title={t('poemSource')}
                   scale={content.poemStyle.sourceScale}
+                  fontWeight={content.poemStyle.sourceFontWeight ?? 'inherit'}
                   opacity={content.poemStyle.sourceOpacity}
                   lineHeight={content.poemStyle.sourceLineHeight}
                   letterSpacing={content.poemStyle.sourceLetterSpacing}
@@ -502,6 +531,7 @@ export function PoemEditorModal({ isOpen, onClose, t, content }: PoemEditorModal
                   align={content.poemStyle.sourceAlign}
                   placement={content.poemStyle.sourcePlacement}
                   onScaleChange={(value) => content.onPoemStyleChange({ sourceScale: value })}
+                  onFontWeightChange={(value) => content.onPoemStyleChange({ sourceFontWeight: value })}
                   onOpacityChange={(value) => content.onPoemStyleChange({ sourceOpacity: value })}
                   onLineHeightChange={(value) => content.onPoemStyleChange({ sourceLineHeight: value })}
                   onLetterSpacingChange={(value) => content.onPoemStyleChange({ sourceLetterSpacing: value })}

@@ -3,7 +3,7 @@ import { AlignCenter, AlignLeft, AlignRight, ChevronDown, ChevronRight, LayoutTe
 import { getOtherFontOptions, getRecommendedFontOptions } from '../../fontOptions';
 import { getVerifiedSealFont } from '../../sealFontSources';
 import type { Language } from '../../translations';
-import type { ExpandedSections, TextAlign, TranslateFn, TypographySectionProps, WritingMode } from '../../types';
+import type { ExpandedSections, FontWeight, TextAlign, TranslateFn, TypographySectionProps, WritingMode } from '../../types';
 import { ControlSection } from '../ControlSection';
 
 interface TypographyPanelProps {
@@ -73,6 +73,21 @@ export function TypographyPanel({ language, t, expanded, onToggle, typography }:
           {getVerifiedSealFont(typography.fontFamily) && (
             <p className="mt-1 text-xs text-amber-700" role="note">{t('fontHistoricalCoverageHint')}</p>
           )}
+        </div>
+
+        <div>
+          <label htmlFor="poem-global-font-weight" className="block text-xs text-(--app-accent-500) mb-1">{t('fontWeight')}</label>
+          <select
+            id="poem-global-font-weight"
+            aria-label={t('fontWeight')}
+            value={typography.fontWeight}
+            onChange={(event) => typography.onFontWeightChange(Number(event.target.value) as FontWeight)}
+            className="app-select text-sm"
+          >
+            <option value={400}>{t('weightRegular')} (400)</option>
+            <option value={500}>{t('weightMedium')} (500)</option>
+            <option value={700}>{t('weightBold')} (700)</option>
+          </select>
         </div>
 
         <div className="grid grid-cols-2 gap-3">

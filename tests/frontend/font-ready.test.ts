@@ -33,3 +33,25 @@ test('Canvas export waits for selected text glyphs rather than just document.fon
     else g.document = originalDocument;
   }
 });
+
+test('font readiness requests the selected heavier face', async () => {
+  const g = globalThis as Record<string, unknown>;
+  const previous = g.document;
+  const requests: Array<{ face: string; text: string }> = [];
+  g.document = {
+    fonts: {
+      ready: Promise.resolve(),
+      load(face: string, text: string) {
+        requests.push({ face, text });
+        return Promise.resolve([]);
+      },
+    },
+  };
+  try {
+    await ensureFontReady('serif', 'Ink', 700);
+    assert.deepEqual(requests, [{ face: '700 20px "serif"', text: 'Ink' }]);
+  } finally {
+    if (previous === undefined) delete g.document;
+    else g.document = previous;
+  }
+});

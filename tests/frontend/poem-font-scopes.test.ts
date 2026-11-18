@@ -64,3 +64,42 @@ test('body size persists in layer style projection and can be reset', () => {
   assert.equal(normalizePoemLayerStyle({ bodyScale: -20 }).bodyScale, 0.7);
   assert.equal(calculateSizes(32, { ...DEFAULT_POEM_STYLE, bodyScale: Number.NaN }).body, 32);
 });
+
+test('global font weight and per-section overrides are used in text measurements', () => {
+  for (const mode of ['horizontal-tb', 'vertical-rl'] as const) {
+    const measured: number[] = [];
+    const style = normalizePoemLayerStyle({
+      titleFontWeight: 700,
+      authorFontWeight: 400,
+      bodyFontWeight: 'inherit',
+    });
+    const layout = createStructuredPoemLayout({
+      poem, poemStyle: style, placeholder: '', writingMode: mode,
+      fontFamily: 'serif', fontSize: 32, fontWeight: 500,
+      columns: 1, columnGap: 0, wrapWidth: 500,
+      measurerFactory: (_, px, weight) => {
+        measured.push(weight);
+        return {
+          measureText: (text) => {
+            const width = Array.from(text).length * px * (weight === 700 ? 0.75 : 0.6);
+            return {
+              width,
+              actualBoundingBoxLeft: 0,
+              actualBoundingBoxRight: width,
+              actualBoundingBoxAscent: px * 0.8,
+              actualBoundingBoxDescent: px * 0.2,
+            };
+          },
+        };
+      },
+    });
+    const weights = Object.fromEntries(layout.sections.map((section) => [section.key, section.fontWeight]));
+    assert.deepEqual(weights, { title: 700, author: 400, body: 500, sourceNote: 500 });
+    assert.deepEqual(measured, layout.sections.map((section) => section.fontWeight));
+  }
+  assert.equal(isSamePoemLayerStyle(DEFAULT_POEM_STYLE, { ...DEFAULT_POEM_STYLE, titleFontWeight: 700 }), false);
+  assert.equal(normalizePoemLayerStyle({ titleFontWeight: 900 as never }).titleFontWeight, 'inherit');
+  const legacy: Partial<PoemLayerStyle> = { ...DEFAULT_POEM_STYLE };
+  delete legacy.titleFontWeight;
+  assert.equal(normalizePoemLayerStyle(legacy).titleFontWeight, 'inherit');
+});

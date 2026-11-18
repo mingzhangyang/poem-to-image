@@ -6,6 +6,7 @@ interface TextLayoutBlockProps {
   layout: TextLayoutResult;
   fontFamily: string;
   fontSize: number;
+  fontWeight?: number;
   color: string;
   letterSpacing: number;
   lineHeight: number;
@@ -13,12 +14,13 @@ interface TextLayoutBlockProps {
 }
 
 export const TextLayoutBlock = forwardRef<HTMLDivElement, TextLayoutBlockProps>(function TextLayoutBlock(
-  { layout, fontFamily, fontSize, color, letterSpacing, lineHeight, textShadow },
+  { layout, fontFamily, fontSize, fontWeight = 400, color, letterSpacing, lineHeight, textShadow },
   ref,
 ) {
   const sharedTextStyle: CSSProperties = {
     fontFamily,
     fontSize: `${fontSize}px`,
+    fontWeight,
     color,
     letterSpacing: `${letterSpacing}px`,
     lineHeight,
@@ -55,6 +57,7 @@ export const TextLayoutBlock = forwardRef<HTMLDivElement, TextLayoutBlockProps>(
               style={{
                 fontFamily,
                 fontSize: `${fontSize}px`,
+                fontWeight,
                 fill: color,
                 letterSpacing: `${letterSpacing}px`,
                 textShadow,

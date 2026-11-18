@@ -33,6 +33,7 @@ export function CanvasPreview({
   bgBlur,
   fontFamily,
   fontSize,
+  fontWeight,
   textColor,
   writingMode,
   padding,
@@ -567,6 +568,7 @@ export function CanvasPreview({
                     poemStyle={poemStyle}
                     fontFamily={fontFamily}
                     fontSize={fontSize}
+                    fontWeight={fontWeight}
                     textColor={textColor}
                     writingMode={writingMode}
                     lineHeight={lineHeight}

@@ -46,7 +46,7 @@ class RecordingContext {
   fillRect(...a: number[]) { this.record('fillRect', ...a); }
   strokeRect(...a: number[]) { this.record('strokeRect', ...a); }
   clearRect(...a: number[]) { this.record('clearRect', ...a); }
-  fillText(text: string, x: number, y: number) { this.record('fillText', text, x, y); }
+  fillText(text: string, x: number, y: number) { this.record('fillText', text, x, y, this.font); }
   drawImage(...a: unknown[]) { this.record('drawImage', ...a); }
 
   createPattern(image: unknown, repetition: string) {
@@ -579,4 +579,29 @@ test('Canvas export places text and image overlays at the shared inset-border ce
     'custom text center must use the shared positioning rectangle');
   assert.ok(translations.some((op) => op.args[0] === 426 && op.args[1] === 224),
     'logo center must use the same positioned rectangle');
+});
+
+test('export draws poem sections at independent selected font weights', async () => {
+  const base = makeScene();
+  await renderCanvasExport({
+    ...base,
+    typography: {
+      ...base.typography,
+      poem: { title: 'TITLE', body: 'BODY', author: 'AUTHOR', sourceNote: 'SOURCE' },
+      fontWeight: 500,
+      poemStyle: {
+        ...base.typography.poemStyle,
+        titleFontWeight: 700,
+        bodyFontWeight: 'inherit',
+        authorFontWeight: 400,
+        sourceFontWeight: 'inherit',
+      },
+    },
+  });
+  const draws = mainTrace().filter((op) => op.op === 'fillText');
+  const fontOf = (text: string) => String(draws.find((op) => op.args[0] === text)?.args[3]);
+  assert.match(fontOf('TITLE'), /^700 /);
+  assert.match(fontOf('BODY'), /^500 /);
+  assert.match(fontOf('AUTHOR'), /^[0-9]+px /);
+  assert.match(fontOf('SOURCE'), /^500 /);
 });

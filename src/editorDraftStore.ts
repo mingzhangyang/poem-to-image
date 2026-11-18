@@ -208,6 +208,13 @@ function optionalField(value: Record<string, unknown>, key: string, type: 'strin
     : typeof entry === 'number' && Number.isFinite(entry));
 }
 
+function isOptionalFontWeight(value: unknown): boolean {
+  return value === undefined || value === 400 || value === 500 || value === 700;
+}
+function isOptionalLayerWeight(value: unknown): boolean {
+  return value === 'inherit' || isOptionalFontWeight(value);
+}
+
 function hasValidAssetReference(value: unknown): boolean {
   // draft-asset: with no ID cannot be resolved, so never mount it as an image.
   return typeof value !== 'string' || !value.startsWith(ASSET_PREFIX)
@@ -225,7 +232,9 @@ function isDraftState(value: unknown): value is EditorDraftState {
       'authorLetterSpacing', 'authorBodyGap', 'sourceScale', 'sourceOpacity', 'sourceLineHeight',
       'sourceLetterSpacing', 'sourceGap'])
     // Optional for drafts written before per-layer body sizing was added.
-    || !optionalField(poemStyle, 'bodyScale', 'number')) return false;
+    || !optionalField(poemStyle, 'bodyScale', 'number')
+    || !['titleFontWeight', 'bodyFontWeight', 'authorFontWeight', 'sourceFontWeight']
+      .every((field) => isOptionalLayerWeight(poemStyle[field]))) return false;
   if (!hasFields(value, [], ['canvasWidth', 'canvasHeight'])
     || !optionalField(value, 'presetSize', 'string')) return false;
   if (!hasFields(background,
@@ -243,7 +252,8 @@ function isDraftState(value: unknown): value is EditorDraftState {
     ['fontFamily', 'textColor', 'textAlign', 'writingMode', 'textShadowColor'],
     ['fontSize', 'padding', 'lineHeight', 'letterSpacing', 'columns', 'columnGap',
       'textShadowBlur', 'textShadowOffsetY', 'textShadowOffsetX'],
-    ['textShadowEnabled'])) return false;
+    ['textShadowEnabled'])
+    || !isOptionalFontWeight(typography.fontWeight)) return false;
   if (!hasFields(decorations, ['borderStyle'], [], ['showBorder', 'showStamp'])
     || !optionalField(decorations, 'borderColor', 'string')
     || !optionalField(decorations, 'borderWidth', 'number')

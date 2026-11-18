@@ -9,12 +9,13 @@ import { ensureFontReady } from '../fontLoader';
  * Changes are coalesced, and a late response from a previous font/text pair
  * may not remeasure the newer editor scene.
  */
-export function useFontLayoutRevision(fontFamily: string, text: string): number {
+export function useFontLayoutRevision(fontFamily: string, text: string, fontWeights: readonly number[] = [400]): number {
   const [revision, setRevision] = useState(0);
+  const weightsKey = [...new Set(fontWeights)].sort((a, b) => a - b).join(',');
   useEffect(() => {
     let cancelled = false;
     const timeout = window.setTimeout(() => {
-      void ensureFontReady(fontFamily, text).then(() => {
+      void Promise.all(weightsKey.split(',').map((weight) => ensureFontReady(fontFamily, text, Number(weight)))).then(() => {
         if (!cancelled) setRevision((previous) => previous + 1);
       }).catch(() => {
         // Keep the usable fallback preview if fonts are blocked/offline.
@@ -25,6 +26,6 @@ export function useFontLayoutRevision(fontFamily: string, text: string): number 
       cancelled = true;
       window.clearTimeout(timeout);
     };
-  }, [fontFamily, text]);
+  }, [fontFamily, text, weightsKey]);
   return revision;
 }

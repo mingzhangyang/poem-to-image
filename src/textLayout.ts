@@ -84,9 +84,10 @@ export function createCanvasTextMeasurer(
   fontFamily: string,
   fontSize: number,
   context?: CanvasRenderingContext2D | null,
+  fontWeight = 400,
 ): TextLayoutMeasurer {
   const canvasContext = context ?? document.createElement('canvas').getContext('2d');
-  const font = `${fontSize}px ${fontFamily}`;
+  const font = fontWeight === 400 ? `${fontSize}px ${fontFamily}` : `${fontWeight} ${fontSize}px ${fontFamily}`;
 
   if (!canvasContext) {
     return {
