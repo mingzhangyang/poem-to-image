@@ -15,11 +15,13 @@ const ids = [
   'postcard-premium-seaside',
 ] as const;
 
-test('four premium postcards belong to their own localized gallery group', async () => {
-  const group = groupGalleryTemplates(editorTemplates)
-    .find(({ key }) => key === 'templateCategoryPremiumPostcards');
+test('four premium postcards share a localized gallery group with SVG postcards', async () => {
+  const groups = groupGalleryTemplates(editorTemplates);
+  const group = groups.find(({ key }) => key === 'templateCategoryPostcards');
   assert.ok(group);
-  assert.deepEqual(group.items.map(({ id }) => id), [...ids]);
+  assert.equal(group.items.length, 7);
+  assert.deepEqual(group.items.slice(3).map(({ id }) => id), [...ids]);
+  assert.equal(groups.some(({ key }) => key === 'templateCategoryPremiumPostcards'), false);
   for (const language of LANGUAGES) {
     const copy = await loadTranslations(language);
     assert.ok(copy.templateCategoryPremiumPostcards);

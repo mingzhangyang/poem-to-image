@@ -2,6 +2,8 @@
 
 The gallery's broad navigation categories are configured in `src/templates/gallery.ts`. They are separate from the existing `seriesKey`: the original series still appears on the card and remains searchable. Template IDs, definitions and saved drafts do not change when a template is recategorized.
 
+Postcards are one navigation category (three SVG and four premium WebP designs). Their original series badges remain distinct.
+
 When adding a featured template:
 
 1. Register it as usual in the template definitions and curated gallery list.

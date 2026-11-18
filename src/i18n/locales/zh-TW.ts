@@ -51,7 +51,7 @@ const zhTW: TranslationMessages = {
     templateCategoryChineseScenes: "國風詩境",
     templateCategoryBotanical: "花鳥植物",
     templateCategoryManuscripts: "手稿與藝術",
-    templateCategoryPostcards: "詩意明信片",
+    templateCategoryPostcards: "明信片",
     templateCategoryPremiumPostcards: "精品明信片",
     templateCategoryWorldLandscapes: "世界風景",
     templateCategoryFaith: "信仰主題",

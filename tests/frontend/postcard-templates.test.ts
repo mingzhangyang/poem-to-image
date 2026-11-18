@@ -13,11 +13,12 @@ const ids = [
   'postcard-botanical',
 ] as const;
 
-test('all three postcards are featured exactly once in their own category', async () => {
+test('all three SVG postcards share a gallery category with premium postcards', async () => {
   const group = groupGalleryTemplates(editorTemplates)
     .find(({ key }) => key === 'templateCategoryPostcards');
   assert.ok(group);
-  assert.deepEqual(group.items.map(({ id }) => id), [...ids]);
+  assert.equal(group.items.length, 7);
+  assert.deepEqual(group.items.slice(0, ids.length).map(({ id }) => id), [...ids]);
 
   for (const language of LANGUAGES) {
     const copy = await loadTranslations(language);
