@@ -1,5 +1,5 @@
 import { getStampTextScale, getStampTextStrokeWidth } from '../stampRendering';
-import { useEffect, type CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import type { Language } from '../translations';
 import type { EditorTemplateDefinition } from '../types';
 import { getTemplatePreviewStyle } from '../templates/preview-style';
@@ -74,7 +74,12 @@ export function TemplatePreview({
     if (showInlineStamp) ensureFontLoaded(template.decorations.stamp.fontFamily);
   }, [showInlineStamp, template.decorations.stamp.fontFamily]);
 
-  const previewImage = showLiveClassicPreview ? undefined : template.previewImage;
+  // A thumbnail that fails to load (for example, a tab running a bundle older
+  // than the carried-over files) falls back to the template's own background
+  // style instead of leaving an empty card.
+  const [failedPreviewImage, setFailedPreviewImage] = useState<string | null>(null);
+  const candidatePreviewImage = showLiveClassicPreview ? undefined : template.previewImage;
+  const previewImage = candidatePreviewImage !== failedPreviewImage ? candidatePreviewImage : undefined;
   const objectFit = template.background.backgroundSize === 'stretch'
     ? 'fill'
     : (template.background.backgroundSize ?? 'cover');
@@ -90,6 +95,7 @@ export function TemplatePreview({
           alt=""
           loading="lazy"
           decoding="async"
+          onError={() => setFailedPreviewImage(previewImage)}
           className="h-full w-full"
           style={{
             objectFit,

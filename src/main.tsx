@@ -3,7 +3,10 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { NoAuthProvider } from './context/auth';
 import { ToastProvider } from './components/ToastProvider';
+import { installStaleBundleRecovery } from './staleBundleRecovery';
 import './index.css';
+
+installStaleBundleRecovery();
 
 const App = lazy(async () => ({ default: (await import('./App.tsx')).default }));
 const ClerkProvider = lazy(async () => ({ default: (await import('@clerk/react')).ClerkProvider }));
