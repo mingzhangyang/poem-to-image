@@ -51,6 +51,15 @@ for (const rule of requiredHeaderRules) {
   invariant(headers.includes(rule), `dist/_headers is missing: ${rule}`);
 }
 
+// Rules for one path are merged with /*, so hashed paths must detach the
+// inherited revalidating Cache-Control or browsers receive both values.
+for (const hashedPath of ['/assets/*', '/template-previews/*']) {
+  invariant(
+    headers.includes(`${hashedPath}\n  ! Cache-Control\n`),
+    `dist/_headers must detach the inherited Cache-Control for ${hashedPath} ("! Cache-Control").`,
+  );
+}
+
 const eagerJavaScript = new Set(
   [...indexHtml.matchAll(/(?:src|href)="(\/assets\/[^"?]+\.js)"/g)].map((match) => match[1]),
 );
