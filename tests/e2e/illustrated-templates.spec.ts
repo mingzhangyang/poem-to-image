@@ -122,3 +122,17 @@ test('the Bethlehem artwork applies light text and survives a reload', async ({ 
   await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(page.locator('[data-export-layer="background"]').first()).toHaveCSS('background-position', '50% 50%');
 });
+
+test('a thumbnail that fails to load falls back to the template background', async ({ page }) => {
+  // After a deploy, a missing hashed file is answered with index.html.
+  await page.route('**/template-previews/song-floral.*.webp', async (route) => {
+    await route.fulfill({ contentType: 'text/html', body: '<!doctype html><title>InkPoem</title>' });
+  });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  const library = await openLibrary(page);
+  const card = library.getByRole('button', { name: /Song Floral/ });
+  await card.scrollIntoViewIfNeeded();
+  const artwork = card.getByTestId('template-gallery-artwork');
+  await expect(artwork.locator('img[src*="/template-previews/song-floral."]')).toHaveCount(0);
+  await expect(artwork.locator('[style*="/template-backgrounds/song-floral.webp"]')).toHaveCount(1);
+});

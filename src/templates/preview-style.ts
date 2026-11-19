@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
 import type { EditorTemplateDefinition } from '../types';
 import { paperPreviewStyle } from '../paperStyles';
+import { migrateLegacyTemplateBackground } from '../backgroundImageSource';
 
 export function getTemplatePreviewStyle(
   template: Pick<EditorTemplateDefinition, 'background'>,
@@ -9,7 +10,7 @@ export function getTemplatePreviewStyle(
 
   if (background.backgroundType === 'image' && background.backgroundImage) {
     return {
-      backgroundImage: `url(${background.backgroundImage})`,
+      backgroundImage: `url(${migrateLegacyTemplateBackground(background.backgroundImage)})`,
       backgroundSize: background.backgroundSize === 'stretch' ? '100% 100%' : (background.backgroundSize ?? 'cover'),
       backgroundPosition: background.backgroundPosition ?? 'center',
     };

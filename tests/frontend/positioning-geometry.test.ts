@@ -17,6 +17,7 @@ import {
   positionToCanvasPoint,
   resizePreviewTextBox,
   resizePreviewTextBoxByKeyboard,
+  type FontLayoutMeasurement,
 } from '../../src/positioningRect';
 
 test('preview content rectangle scales CSS border widths with the visual transform', () => {
@@ -169,14 +170,15 @@ test('drag then already-loaded section/global weight reflow keeps Canvas export 
     left: 250, right: 350, top: 130, bottom: 180,
   });
   const canvasFrame = { x: 50, y: 25, width: 1000, height: 500 };
-  const before = { revision: 7, width: 200, height: 100 };
+  const before: FontLayoutMeasurement = { revision: 7, width: 200, height: 100 };
   assert.deepEqual(getCanvasTextOrigin(canvasFrame, dragged, before), { x: 350, y: 125 });
 
   // Both changes can rewrap near a line break with no font loading event.
-  for (const [kind, next] of [
+  const reflows: ReadonlyArray<readonly [string, FontLayoutMeasurement]> = [
     ['section weight', { revision: 7, width: 260, height: 130 }],
     ['global weight', { revision: 7, width: 240, height: 160 }],
-  ] as const) {
+  ];
+  for (const [kind, next] of reflows) {
     assert.equal(didFontReadyChangeTextBox(before, next), false, kind);
     assert.equal(didTextBoxDimensionsChange(before, next), true, kind);
     const position = mergePositionUpdate(dragged, { exportLeft: undefined, exportTop: undefined });
@@ -189,7 +191,8 @@ test('drag then already-loaded section/global weight reflow keeps Canvas export 
       `${kind} would be misaligned if the old measured anchors were kept`);
   }
 
-  assert.equal(didTextBoxDimensionsChange(before, { revision: 8, width: 200, height: 100 }), false,
+  const fontReadyOnly: FontLayoutMeasurement = { revision: 8, width: 200, height: 100 };
+  assert.equal(didTextBoxDimensionsChange(before, fontReadyOnly), false,
     'font readiness without layout change should preserve a valid anchor');
 });
 

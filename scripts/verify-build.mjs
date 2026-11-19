@@ -2,6 +2,7 @@ import { gzipSync } from 'node:zlib';
 import { readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { stdout } from 'node:process';
+import { previewBudgets } from './asset-budgets.mjs';
 
 const projectRoot = path.resolve(import.meta.dirname, '..');
 const distDir = path.join(projectRoot, 'dist');
@@ -12,8 +13,6 @@ const previewDir = path.join(distDir, 'template-previews');
 const limits = {
   initialJavaScriptGzip: 210 * 1024,
   initialCssGzip: 20 * 1024,
-  previewFile: 100 * 1024,
-  previewTotal: 1000 * 1024,
 };
 
 function invariant(condition, message) {
@@ -52,6 +51,15 @@ for (const rule of requiredHeaderRules) {
   invariant(headers.includes(rule), `dist/_headers is missing: ${rule}`);
 }
 
+// Rules for one path are merged with /*, so hashed paths must detach the
+// inherited revalidating Cache-Control or browsers receive both values.
+for (const hashedPath of ['/assets/*', '/template-previews/*']) {
+  invariant(
+    headers.includes(`${hashedPath}\n  ! Cache-Control\n`),
+    `dist/_headers must detach the inherited Cache-Control for ${hashedPath} ("! Cache-Control").`,
+  );
+}
+
 const eagerJavaScript = new Set(
   [...indexHtml.matchAll(/(?:src|href)="(\/assets\/[^"?]+\.js)"/g)].map((match) => match[1]),
 );
@@ -86,20 +94,22 @@ const previewSizes = await Promise.all(
 );
 for (const preview of previewSizes) {
   invariant(
-    preview.size <= limits.previewFile,
-    `${preview.name} is ${formatKiB(preview.size)}; per-preview budget is ${formatKiB(limits.previewFile)}.`,
+    preview.size <= previewBudgets.maxFileBytes,
+    `${preview.name} is ${formatKiB(preview.size)}; per-preview budget is ${formatKiB(previewBudgets.maxFileBytes)}.`,
   );
 }
 
 const previewTotal = previewSizes.reduce((total, preview) => total + preview.size, 0);
+const previewAverage = previewTotal / previewSizes.length;
 invariant(
-  previewTotal <= limits.previewTotal,
-  `Template previews total ${formatKiB(previewTotal)}; budget is ${formatKiB(limits.previewTotal)}.`,
+  previewAverage <= previewBudgets.maxAverageBytes,
+  `Template previews average ${formatKiB(previewAverage)}; budget is ${formatKiB(previewBudgets.maxAverageBytes)}.`,
 );
 
 stdout.write(`${[
   `Initial JavaScript: ${formatKiB(initialJavaScriptGzip)} gzip / ${formatKiB(limits.initialJavaScriptGzip)}`,
   `Initial CSS: ${formatKiB(initialCssGzip)} gzip / ${formatKiB(limits.initialCssGzip)}`,
-  `Template previews: ${previewFiles.length} files, ${formatKiB(previewTotal)} / ${formatKiB(limits.previewTotal)}`,
+  `Template previews: ${previewFiles.length} files, ${formatKiB(previewTotal)} total, `
+    + `${formatKiB(previewAverage)} average / ${formatKiB(previewBudgets.maxAverageBytes)}`,
   'Security and immutable-cache header rules: present',
 ].join('\n')}\n`);

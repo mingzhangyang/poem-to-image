@@ -2,11 +2,10 @@ import assert from 'node:assert/strict';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
 import test from 'node:test';
+import { previewBudgets } from '../../scripts/asset-budgets.mjs';
+import { migrateLegacyTemplateBackground } from '../../src/backgroundImageSource';
 import { ALL_EDITOR_TEMPLATES } from '../../src/templates/definitions';
 
-const MAX_PREVIEW_BYTES = 100_000;
-// Four high-detail premium thumbnails add ~56 KB to the SVG gallery.
-const MAX_TOTAL_PREVIEW_BYTES = 1_100_000;
 const SVG_BACKGROUNDS = new Set(['postcard-vintage-travel', 'postcard-poetry-minimal', 'postcard-botanical', 'listening-to-rain']);
 
 test('image-backed templates use bounded preview-specific assets', async () => {
@@ -25,14 +24,15 @@ test('image-backed templates use bounded preview-specific assets', async () => {
 
     const filePath = path.join(process.cwd(), 'public', template.previewImage.slice(1));
     const file = await stat(filePath);
-    assert.ok(file.size <= MAX_PREVIEW_BYTES, `${template.id} preview is ${file.size} bytes`);
+    assert.ok(file.size <= previewBudgets.maxFileBytes, `${template.id} preview is ${file.size} bytes`);
     totalBytes += file.size;
   }
 
-  assert.ok(totalBytes <= MAX_TOTAL_PREVIEW_BYTES, `template previews total ${totalBytes} bytes`);
+  const averageBytes = totalBytes / imageTemplates.length;
+  assert.ok(averageBytes <= previewBudgets.maxAverageBytes, `template previews average ${Math.round(averageBytes)} bytes`);
 });
 
-test('built-in image backgrounds use WebP or self-contained postcard SVGs while old draft URLs remain available', async () => {
+test('built-in image backgrounds use WebP or self-contained postcard SVGs while old draft URLs migrate to WebP', async () => {
   const legacyNames = [
     'mountain-waterfall-generated', 'sunrise-sea', 'neon-city', 'ink-pine-mist-generated',
     'parchment-scroll-generated', 'wax-sealed-letter-generated',
@@ -52,8 +52,8 @@ test('built-in image backgrounds use WebP or self-contained postcard SVGs while 
   }
 
   for (const name of legacyNames) {
-    const original = path.join(process.cwd(), 'public', 'template-backgrounds', `${name}.png`);
-    const optimized = path.join(process.cwd(), 'public', 'template-backgrounds', `${name}.webp`);
-    assert.ok((await stat(optimized)).size < (await stat(original)).size, name);
+    const migrated = migrateLegacyTemplateBackground(`/template-backgrounds/${name}.png`);
+    assert.equal(migrated, `/template-backgrounds/${name}.webp`, name);
+    assert.ok((await stat(path.join(process.cwd(), 'public', migrated.slice(1)))).size > 0, name);
   }
 });

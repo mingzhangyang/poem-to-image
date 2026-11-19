@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { blockingFindings, DEV_ONLY_AUDIT_EXCEPTIONS } from '../../scripts/audit-full-policy.ts';
+import { blockingFindings, DEV_ONLY_AUDIT_EXCEPTIONS, isCompletedAuditReport } from '../../scripts/audit-full-policy.ts';
 
 const picomatch = {
   severity: 'high',
@@ -62,4 +62,16 @@ test('the picomatch exception expires on its removal date', () => {
   const result = blockingFindings(report, { today: '2026-12-17' });
   assert.equal(result.blocking.length, 5);
   assert.ok(result.blocking.every((finding) => finding.expired.includes('GHSA-fc5q-39xc-vjpf')));
+});
+
+test('moderate-only reports pass while failed audits are detected', () => {
+  const moderateOnly = {
+    vulnerabilities: { minimatch: report.vulnerabilities.minimatch },
+    metadata: { vulnerabilities: { info: 0, low: 0, moderate: 1, high: 0, critical: 0, total: 1 } },
+  };
+  assert.equal(isCompletedAuditReport(moderateOnly), true);
+  assert.deepEqual(blockingFindings(moderateOnly, { today: '2026-11-17' }).blocking, []);
+
+  assert.equal(isCompletedAuditReport({ error: { code: 'ENOTFOUND', summary: 'request failed' } }), false);
+  assert.equal(isCompletedAuditReport({}), false);
 });

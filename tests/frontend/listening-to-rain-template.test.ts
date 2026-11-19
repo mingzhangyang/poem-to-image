@@ -43,6 +43,6 @@ test('artwork is a local, image-generated, text-free raster wrapped in self-cont
     assert.match(content, /<svg[^>]+viewBox="0 0 960 1200"/);
     assert.match(content, /<image[^>]+data:image\/webp;base64,/);
     assert.doesNotMatch(content, /<(?:script|foreignObject|text)\b/i);
-    assert.doesNotMatch(content, /(?:href|src)\s*=\s*['\"]https?:\/\//i);
+    assert.doesNotMatch(content, /(?:href|src)\s*=\s*['"]https?:\/\//i);
   }
 });

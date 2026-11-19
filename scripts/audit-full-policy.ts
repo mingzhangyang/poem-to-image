@@ -22,6 +22,20 @@ export interface AuditVulnerability {
 
 export interface AuditReport {
   vulnerabilities?: Record<string, AuditVulnerability>;
+  metadata?: { vulnerabilities?: Record<string, number> };
+  error?: unknown;
+}
+
+/**
+ * `npm audit` exits non-zero whenever any advisory exists, including
+ * moderate ones, so its exit status cannot tell a failed audit from a
+ * completed one. A completed audit returns a report with vulnerability
+ * metadata and no `error`.
+ */
+export function isCompletedAuditReport(report: AuditReport): boolean {
+  return report.error === undefined
+    && typeof report.vulnerabilities === 'object' && report.vulnerabilities !== null
+    && typeof report.metadata?.vulnerabilities === 'object' && report.metadata.vulnerabilities !== null;
 }
 
 export interface BlockingFinding {
