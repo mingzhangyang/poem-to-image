@@ -4,7 +4,7 @@ These are the active raster backgrounds used by curated templates. Earlier Pexel
 
 ## Active images
 
-The built-in templates use optimized WebP images. Their original PNG files remain available for previously saved drafts that reference those URLs.
+The built-in templates use optimized WebP images. Their original PNG files have been removed; saved drafts and custom templates that still reference the old `.png` URLs are rewritten to the WebP files by `migrateLegacyTemplateBackground` in `src/backgroundImageSource.ts`.
 
 1. `mountain-waterfall-generated.webp`
 - Used by `mountain-mist-photo`.
