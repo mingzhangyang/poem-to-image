@@ -27,6 +27,18 @@ const PREVIEW_VERSES: Record<Language, string> = {
   de: 'Leises Licht\nstille Worte',
 };
 
+// Preview text is poetry-specific, but never part of the static artwork.
+const RAIN_PREVIEW_VERSES: Record<Language, string> = {
+  'zh-CN': '少年听雨\n而今听雨',
+  'zh-TW': '少年聽雨\n而今聽雨',
+  ja: '雨を聴く\n三つの時',
+  ko: '세월 속의 비\n고요한 밤',
+  en: 'Rain through time\nThree quiet ages',
+  es: 'La lluvia recuerda\nlos años',
+  fr: 'La pluie retient\nles années',
+  de: 'Der Regen erinnert\nsich an Jahre',
+};
+
 function getPreviewTextShadow(template: TemplatePreviewProps['template']): string | undefined {
   const type = template.typography;
   if (!type.textShadowEnabled) return undefined;
@@ -106,7 +118,7 @@ export function TemplatePreview({
             textShadow: getPreviewTextShadow(template),
           }}
         >
-          {PREVIEW_VERSES[language]}
+          {template.id === 'listening-to-rain' ? RAIN_PREVIEW_VERSES[language] : PREVIEW_VERSES[language]}
         </div>
       ) : null}
       {showInlineStamp ? (

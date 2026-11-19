@@ -45,6 +45,8 @@ const fr: TranslationMessages = {
     templatePremiumLetterCollageDesc: "Papiers superposés, pince en laiton et sceau de cire racontent un souvenir.",
     templatePremiumSeaside: "Carte postale de vacances en bord de mer",
     templatePremiumSeasideDesc: "Feuilles d'olivier baignées de soleil et rivage lumineux pour des vers d'été.",
+    templateListeningToRain: "Écouter la pluie · Trois âges",
+    templateListeningToRainDesc: "Une tour éclairée, une barque solitaire et un ermitage racontent trois âges sous la pluie.",
     templateIlluminatedManuscript: "Manuscrit Enluminé",
     templateIlluminatedManuscriptDesc: "Motifs dorés et cadre ornemental pour des vers solennels et cérémoniels.",
     templateSeriesBlueManuscripts: "Manuscrits botaniques bleus",

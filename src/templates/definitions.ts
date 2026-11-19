@@ -3,11 +3,13 @@ import type { EditorTemplateDefinition } from '../types';
 import { illustratedTemplates } from './illustrated';
 import { postcardTemplates } from './postcards';
 import { premiumPostcardTemplates } from './premium-postcards';
+import { listeningToRainTemplates } from './listening-to-rain';
 
 export const ALL_EDITOR_TEMPLATES: EditorTemplateDefinition[] = [
   ...illustratedTemplates,
   ...postcardTemplates,
   ...premiumPostcardTemplates,
+  ...listeningToRainTemplates,
   {
     id: 'parchment-scroll',
     nameKey: 'templateParchmentScroll',

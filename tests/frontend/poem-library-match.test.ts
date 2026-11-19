@@ -24,6 +24,18 @@ test('findBestPoemMatch prefers locale-specific variant when available', () => {
   assert.equal(suggestion?.title, '靜夜思');
 });
 
+test('recognizes both variants of Jiang Jies Listening to Rain', () => {
+  const simplified = findBestPoemMatch('少年听雨歌楼上', 'zh-CN');
+  const traditional = findBestPoemMatch('少年聽雨歌樓上', 'zh-TW');
+  assert.equal(simplified?.id, 'zhcn-yumeiren-tingyu');
+  assert.equal(traditional?.id, 'zhtw-yumeiren-tingyu');
+  assert.equal(simplified?.author, '蒋捷');
+  assert.equal(traditional?.author, '蔣捷');
+  assert.equal(simplified?.body.split('\n').length, 8);
+  assert.equal(traditional?.body.split('\n').length, 8);
+  assert.match(simplified?.body ?? '', /一任阶前，点滴到天明/);
+});
+
 test('findBestPoemMatch returns null for very short inputs', () => {
   const suggestion = findBestPoemMatch('月光', 'zh-CN');
 

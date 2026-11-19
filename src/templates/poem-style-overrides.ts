@@ -70,6 +70,16 @@ export const templatePoemStyleOverrides: Partial<Record<EditorTemplateId, Partia
   'bamboo-brush': illustratedPoemStyles,
   'chrysanthemum-brush': illustratedPoemStyles,
   'western-pass': illustratedPoemStyles,
+  'listening-to-rain': {
+    'zh-CN': { titleScale: 1.12, titleBodyGap: 26, bodyLineHeight: 1.72, bodyLetterSpacing: 3, authorScale: 0.8, authorBodyGap: 18, sourceScale: 0.68 },
+    'zh-TW': { titleScale: 1.12, titleBodyGap: 26, bodyLineHeight: 1.72, bodyLetterSpacing: 3, authorScale: 0.8, authorBodyGap: 18, sourceScale: 0.68 },
+    ja: { titleScale: 1.12, titleBodyGap: 26, bodyLineHeight: 1.75, bodyLetterSpacing: 3, authorScale: 0.8, authorBodyGap: 18, sourceScale: 0.68 },
+    ko: { titleScale: 1.1, titleBodyGap: 28, bodyLineHeight: 1.8, bodyLetterSpacing: 0, authorScale: 0.84 },
+    en: { titleScale: 1.1, titleBodyGap: 28, bodyLineHeight: 1.8, bodyLetterSpacing: 0, authorScale: 0.84 },
+    es: { titleScale: 1.1, titleBodyGap: 28, bodyLineHeight: 1.8, bodyLetterSpacing: 0, authorScale: 0.84 },
+    fr: { titleScale: 1.1, titleBodyGap: 28, bodyLineHeight: 1.8, bodyLetterSpacing: 0, authorScale: 0.84 },
+    de: { titleScale: 1.1, titleBodyGap: 28, bodyLineHeight: 1.8, bodyLetterSpacing: 0, authorScale: 0.84 },
+  },
   'ink-wash': {
     'zh-CN': {
       titleScale: 1.35,

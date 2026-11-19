@@ -62,6 +62,7 @@ const CURATED_EDITOR_TEMPLATE_IDS: EditorTemplateId[] = [
   'bamboo-brush',
   'chrysanthemum-brush',
   'western-pass',
+  'listening-to-rain',
   'postcard-vintage-travel',
   'postcard-poetry-minimal',
   'postcard-botanical',

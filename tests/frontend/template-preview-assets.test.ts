@@ -7,7 +7,7 @@ import { ALL_EDITOR_TEMPLATES } from '../../src/templates/definitions';
 const MAX_PREVIEW_BYTES = 100_000;
 // Four high-detail premium thumbnails add ~56 KB to the SVG gallery.
 const MAX_TOTAL_PREVIEW_BYTES = 1_100_000;
-const SVG_POSTCARDS = new Set(['postcard-vintage-travel', 'postcard-poetry-minimal', 'postcard-botanical']);
+const SVG_BACKGROUNDS = new Set(['postcard-vintage-travel', 'postcard-poetry-minimal', 'postcard-botanical', 'listening-to-rain']);
 
 test('image-backed templates use bounded preview-specific assets', async () => {
   const imageTemplates = ALL_EDITOR_TEMPLATES.filter((template) => template.usesBackgroundImage);
@@ -18,8 +18,8 @@ test('image-backed templates use bounded preview-specific assets', async () => {
     assert.notEqual(template.previewImage, template.background.backgroundImage);
     assert.match(
       template.previewImage,
-      SVG_POSTCARDS.has(template.id)
-        ? /^\/template-previews\/postcard-.+\.[a-f0-9]{8}\.svg$/
+      SVG_BACKGROUNDS.has(template.id)
+        ? /^\/template-previews\/[a-z0-9-]+\.[a-f0-9]{8}\.svg$/
         : /^\/template-previews\/.+\.[a-f0-9]{8}\.webp$/,
     );
 
@@ -44,8 +44,8 @@ test('built-in image backgrounds use WebP or self-contained postcard SVGs while 
     assert.ok(image, `${template.id} is missing a background`);
     assert.match(
       image,
-      SVG_POSTCARDS.has(template.id)
-        ? /^\/template-backgrounds\/postcard-.+\.svg$/
+      SVG_BACKGROUNDS.has(template.id)
+        ? /^\/template-backgrounds\/[a-z0-9-]+\.svg$/
         : /^\/template-backgrounds\/.+\.webp$/,
     );
     assert.ok((await stat(path.join(process.cwd(), 'public', image.slice(1)))).size > 0);

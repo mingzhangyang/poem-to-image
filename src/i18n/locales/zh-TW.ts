@@ -45,6 +45,8 @@ const zhTW: TranslationMessages = {
     templatePremiumLetterCollageDesc: "手工信紙層疊、古銅夾和暖紅蠟封，收藏私密的舊日故事。",
     templatePremiumSeaside: "海岸假日明信片",
     templatePremiumSeasideDesc: "斑駁樹影與澄澈海岸，柔光裡留下安靜的夏日詩句。",
+    templateListeningToRain: "三聽雨 · 虞美人",
+    templateListeningToRainDesc: "紅燭歌樓、江上孤舟、僧廬聽雨：三段人生在同一場雨裡相遇。",
     templateIlluminatedManuscript: "金飾手抄本",
     templateIlluminatedManuscriptDesc: "金色裝飾與華麗邊框結合，適合莊重、儀式感強的詩文。",
     templateSeriesBlueManuscripts: "青藍花鳥手抄本",

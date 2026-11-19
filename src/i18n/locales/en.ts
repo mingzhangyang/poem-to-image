@@ -53,6 +53,8 @@ const en = {
     templatePremiumLetterCollageDesc: "Layered handmade letter paper, antique clips and a warm wax seal for intimate poems.",
     templatePremiumSeaside: "Seaside Holiday Postcard",
     templatePremiumSeasideDesc: "Sun-dappled olive leaves and a luminous Mediterranean shore for quiet summer poetry.",
+    templateListeningToRain: "Listening to Rain · Three Ages",
+    templateListeningToRainDesc: "A candlelit song tower, lonely riverboat and rainy monk's hut recall three stages of a Song-dynasty life.",
     templateIlluminatedManuscript: "Illuminated Manuscript",
     templateIlluminatedManuscriptDesc: "Gilded manuscript motifs and ornate framing for solemn, ceremonial verse.",
     templateSeriesBlueManuscripts: "Blue Botanical Manuscripts",

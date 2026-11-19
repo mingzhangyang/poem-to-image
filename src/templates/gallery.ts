@@ -13,7 +13,7 @@ export const TEMPLATE_GALLERY_CATEGORIES: readonly TemplateGalleryCategory[] = [
   { key: 'templateCategoryChineseScenes', ids: [
     'blue-green-landscape', 'lone-fisherman', 'tower-reaching-stars', 'chrysanthemum-south-mountain',
     'great-river-east', 'willow-breeze', 'grassland-breeze', 'pine-snow', 'sunset-afterglow',
-    'moonlit-landscape', 'pastoral-homestead', 'western-pass',
+    'moonlit-landscape', 'pastoral-homestead', 'western-pass', 'listening-to-rain',
   ] },
   { key: 'templateCategoryBotanical', ids: [
     'song-floral', 'botanical-specimen', 'peach-blossom', 'plum-blossom', 'orchid-grace',
