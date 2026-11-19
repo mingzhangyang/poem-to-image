@@ -16,7 +16,7 @@ export const ALL_EDITOR_TEMPLATES: EditorTemplateDefinition[] = [
     descriptionKey: 'templateParchmentScrollDesc',
     seriesKey: 'templateSeriesClassic',
     usesBackgroundImage: true,
-    previewImage: '/template-previews/parchment-scroll-generated.c880ec04.webp',
+    previewImage: '/template-previews/parchment-scroll-generated.c4097eef.webp',
     accentFrom: '#d6b57c',
     accentTo: '#7b5532',
     background: {
@@ -78,7 +78,7 @@ export const ALL_EDITOR_TEMPLATES: EditorTemplateDefinition[] = [
     descriptionKey: 'templateWaxSealedLetterDesc',
     seriesKey: 'templateSeriesClassic',
     usesBackgroundImage: true,
-    previewImage: '/template-previews/wax-sealed-letter-generated.aa438a8e.webp',
+    previewImage: '/template-previews/wax-sealed-letter-generated.d5f626d9.webp',
     accentFrom: '#b15a4d',
     accentTo: '#5b2f2a',
     background: {
