@@ -1,5 +1,7 @@
 # InkPoem 差异化功能路线图
 
+> **Archived 2026-11-19.** Week-by-week feature roadmap from May 2026; its schedule has passed and its checkboxes are no longer accurate (paper textures, for example, have shipped but are unchecked). Kept for the product reasoning and competitive analysis.
+
 > 核心策略：让 InkPoem 成为"懂诗"的创作工具，而不是"能放文字的画图工具"。
 > Google Drawings、Paint、Photoshop 什么都能做，但不理解内容。InkPoem 理解诗。
 

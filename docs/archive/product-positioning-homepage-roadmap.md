@@ -1,5 +1,7 @@
 # InkPoem 产品定位、首页差异化卖点与 6 周路线图
 
+> **Archived 2026-11-19.** Positioning, homepage messaging and a six-week roadmap from May 2026; the schedule has passed. Kept for the positioning and copy it records.
+
 ## 产品定位
 
 ### 定位一句话
