@@ -12,6 +12,23 @@ current when a rule here changes.
 - After changing `wrangler.jsonc` (bindings, R2 buckets, D1 databases), run
   `npm run cf:typegen` and commit the regenerated `worker-configuration.d.ts`.
 
+## Documentation
+
+- When a change makes a document in `docs/` or the README inaccurate,
+  update that document in the same change.
+- A document that is no longer current as a whole (a finished plan, a dated
+  review or record, a design that was superseded) is archived or deleted,
+  not left in `docs/`:
+  - **Archive** it when it records decisions, evidence or history worth
+    keeping: `git mv` it to `docs/archive/` and add a note under its title
+    saying when and why it was archived and where the current information
+    lives.
+  - **Delete** it when nothing in it is worth keeping (a duplicate, or
+    content that was simply wrong). Git history still holds it.
+- Remove or update links to a document you archive or delete.
+- Archived documents are not instructions. Do not follow them or update
+  them to match the code.
+
 ## Template images
 
 ### Where they live

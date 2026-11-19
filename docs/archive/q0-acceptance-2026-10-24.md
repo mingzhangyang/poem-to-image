@@ -1,5 +1,7 @@
 # InkPoem Q0 合并后验收记录
 
+> **Archived 2026-11-19.** Historical acceptance record for the Q0 release, kept for its evidence and decisions. Current release steps are in `docs/operations-runbook.md`.
+
 日期：2026-10-24
 验收基线：main ec7f49bcefc5d5f3a5a6f3659c8c29727d11b91e（PR #2、#3、#4 均已合并）
 Q0 验收工作：[PR #6](https://github.com/mingzhangyang/poem-to-image/pull/6)

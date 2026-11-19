@@ -1,5 +1,7 @@
 # AI 生图付费实现清单
 
+> **Archived 2026-11-19.** Pre-implementation plan; billing has shipped and the code has diverged from it (for example, it names `src/hooks/useAuth.ts` and `worker/stripe.ts`, which do not exist). The implementation lives in `worker/billing.ts`, `worker/auth.ts` and `worker/schema.sql`.
+
 ## 目标
 
 为 AI 生图能力增加可控的商业化链路，支持：

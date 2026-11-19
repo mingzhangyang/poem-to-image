@@ -1,5 +1,7 @@
 # Photo template readability: phase-one source audit (2026-11-04)
 
+> **Archived 2026-11-19.** Point-in-time audit; the preset values it lists are out of date (Ink Pine Mist, for example, now uses 88% brightness with dark green ink). See `src/templates/definitions.ts` for current values.
+
 This is a **source-based audit**, not a completed desktop/mobile visual test.
 
 | Preset | Brightness | Text ink | Existing shadow |

@@ -1,5 +1,7 @@
 # Template gallery curation — 2026-11-04
 
+> **Archived 2026-11-19.** Point-in-time curation notes; the featured gallery has since been rebuilt (62 templates). The current list is `CURATED_EDITOR_TEMPLATE_IDS` in `src/templates/index.ts`, and navigation is described in `docs/template-gallery-navigation.md`.
+
 ## Featured gallery (9 templates based on main)
 
 Temporarily exclude the following from the featured gallery, **not** from
