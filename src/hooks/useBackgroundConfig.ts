@@ -3,7 +3,7 @@ import type { ChangeEvent, CSSProperties } from 'react';
 import { logError } from '../logger';
 import { discardDraftAssetRegistration, registerDraftAssetObjectUrl } from '../editorDraftStore';
 import type { AiProvider, BackgroundImageSource, BackgroundType, TemplateBackgroundConfig, TranslateFn } from '../types';
-import { inferBackgroundImageSource } from '../backgroundImageSource';
+import { inferBackgroundImageSource, migrateLegacyTemplateBackground } from '../backgroundImageSource';
 import { getPaperStyle, paperPreviewStyle, type PaperId } from '../paperStyles';
 import { nextAsyncAccountOwner } from '../asyncIntentGate';
 import { useAiBackground } from './useAiBackground';
@@ -49,7 +49,7 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getTok
   // An image remains part of the editable draft when Solid/Paper is selected.
   // Keep its hydrated URL (and provenance) so undo, switching back to Image,
   // and asset-lease adoption work even while the image is not displayed.
-  const [backgroundImage, setBackgroundImage] = useState<string | null>(() => initialDraft?.backgroundImage ?? null);
+  const [backgroundImage, setBackgroundImage] = useState<string | null>(() => migrateLegacyTemplateBackground(initialDraft?.backgroundImage) ?? null);
   const [backgroundImageSource, setBackgroundImageSource] = useState<BackgroundImageSource>(() => {
     const url = initialDraft?.backgroundImage;
     return url ? (initialDraft?.backgroundImageSource ?? inferBackgroundImageSource(url)) : null;
@@ -257,7 +257,7 @@ export function useBackgroundConfig({ text, canvasWidth, canvasHeight, t, getTok
     setGradientDirection(template.gradientDirection);
     setBgBrightness(template.bgBrightness);
     setBgBlur(template.bgBlur);
-    const imageUrl = template.backgroundType === 'image' ? (template.backgroundImage ?? null) : null;
+    const imageUrl = template.backgroundType === 'image' ? (migrateLegacyTemplateBackground(template.backgroundImage) ?? null) : null;
     updateBackgroundImage(imageUrl);
     setBackgroundImageSource(imageUrl ? (template.backgroundImageSource ?? inferBackgroundImageSource(imageUrl)) : null);
     setBackgroundSize(template.backgroundSize ?? 'cover');
