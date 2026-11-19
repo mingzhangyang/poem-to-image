@@ -45,6 +45,8 @@ const de: TranslationMessages = {
     templatePremiumLetterCollageDesc: "Geschichtete Briefe, Messingklammern und ein rotes Wachssiegel erzählen von Erinnerungen.",
     templatePremiumSeaside: "Postkarte vom Urlaub am Meer",
     templatePremiumSeasideDesc: "Sonnige Olivenblätter und ein leuchtender Strand rahmen sommerliche Gedichte.",
+    templateListeningToRain: "Dem Regen lauschen · Drei Lebensalter",
+    templateListeningToRainDesc: "Ein erleuchteter Turm, ein einsames Boot und eine Klause erzählen von drei Lebensaltern im Regen.",
     templateIlluminatedManuscript: "Illuminiertes Manuskript",
     templateIlluminatedManuscriptDesc: "Goldene Ornamente und reich verzierter Rahmen für feierliche, zeremonielle Verse.",
     templateSeriesBlueManuscripts: "Blaue botanische Manuskripte",

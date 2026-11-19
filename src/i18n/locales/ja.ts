@@ -45,6 +45,8 @@ const ja: TranslationMessages = {
     templatePremiumLetterCollageDesc: "重ねた手紙、真鍮の留め具、深紅の封蝋が物語を伝えます。",
     templatePremiumSeaside: "海辺の休日のポストカード",
     templatePremiumSeasideDesc: "木漏れ日と地中海の波が静かな夏の詩を引き立てます。",
+    templateListeningToRain: "雨を聴く・三つの時",
+    templateListeningToRainDesc: "赤い帳の歌楼、川の小舟、雨の僧房。人生の三つの時を重ねる水墨画。",
     templateIlluminatedManuscript: "装飾写本",
     templateIlluminatedManuscriptDesc: "金彩モチーフと装飾フレームで、荘厳で儀式的な詩の雰囲気を演出します。",
     templateSeriesBlueManuscripts: "藍の植物写本",

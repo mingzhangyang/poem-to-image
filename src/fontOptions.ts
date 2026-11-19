@@ -185,6 +185,7 @@ const TEMPLATE_FONTS: Record<EditorTemplateId, Record<Language, string>> = {
   'bamboo-brush': ILLUSTRATED_SERIF_FONTS,
   'chrysanthemum-brush': ILLUSTRATED_SERIF_FONTS,
   'western-pass': ILLUSTRATED_SERIF_FONTS,
+  'listening-to-rain': ILLUSTRATED_SERIF_FONTS,
   'ink-wash': {
     en: '"Cormorant Garamond", serif',
     'zh-CN': '"LXGW WenKai Screen", "Noto Serif SC", serif',

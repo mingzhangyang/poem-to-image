@@ -45,6 +45,8 @@ const es: TranslationMessages = {
     templatePremiumLetterCollageDesc: "Papeles superpuestos, clips de latón y lacre cálido evocan recuerdos.",
     templatePremiumSeaside: "Postal de vacaciones junto al mar",
     templatePremiumSeasideDesc: "Olivos al sol y una costa luminosa acompañan versos veraniegos.",
+    templateListeningToRain: "Escuchar la lluvia · Tres edades",
+    templateListeningToRainDesc: "Un pabellón iluminado, una barca solitaria y una ermita evocan tres etapas de la vida bajo la lluvia.",
     templateIlluminatedManuscript: "Manuscrito Iluminado",
     templateIlluminatedManuscriptDesc: "Motivos dorados y marco ornamental para versos solemnes y ceremoniales.",
     templateSeriesBlueManuscripts: "Manuscritos botánicos azules",

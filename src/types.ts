@@ -82,6 +82,7 @@ export type EditorTemplateId =
   | 'bamboo-brush'
   | 'chrysanthemum-brush'
   | 'western-pass'
+  | 'listening-to-rain'
   | 'modern-minimal'
   | 'cyberpunk'
   | 'japanese-magazine'

@@ -45,6 +45,8 @@ const ko: TranslationMessages = {
     templatePremiumLetterCollageDesc: "겹친 편지지, 황동 클립과 붉은 밀랍 인장이 추억을 품습니다.",
     templatePremiumSeaside: "해변 휴일 엽서",
     templatePremiumSeasideDesc: "햇살 어린 올리브 잎과 반짝이는 바닷가에 여름의 시를 담습니다.",
+    templateListeningToRain: "빗소리와 세 시절",
+    templateListeningToRainDesc: "붉은 장막의 누각, 강 위의 외로운 배, 빗속의 암자가 인생의 세 시절을 잇습니다.",
     templateIlluminatedManuscript: "장식 사본",
     templateIlluminatedManuscriptDesc: "금빛 장식과 화려한 프레임으로 엄숙하고 의식적인 시 분위기를 만듭니다.",
     templateSeriesBlueManuscripts: "푸른 식물 필사본",

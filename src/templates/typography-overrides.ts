@@ -71,6 +71,16 @@ export const templateTypographyOverrides: Partial<Record<EditorTemplateId, Parti
   'bamboo-brush': illustratedTypography,
   'chrysanthemum-brush': illustratedTypography,
   'western-pass': illustratedTypography,
+  'listening-to-rain': {
+    'zh-CN': { writingMode: 'vertical-rl', fontSize: 32, padding: 90, lineHeight: 1.72, letterSpacing: 3 },
+    'zh-TW': { writingMode: 'vertical-rl', fontSize: 32, padding: 90, lineHeight: 1.72, letterSpacing: 3 },
+    ja: { writingMode: 'vertical-rl', fontSize: 31, padding: 90, lineHeight: 1.75, letterSpacing: 3 },
+    ko: { writingMode: 'horizontal-tb', fontSize: 31, padding: 92, lineHeight: 1.8, letterSpacing: 0 },
+    en: { writingMode: 'horizontal-tb', fontSize: 31, padding: 92, lineHeight: 1.8, letterSpacing: 0 },
+    es: { writingMode: 'horizontal-tb', fontSize: 31, padding: 92, lineHeight: 1.8, letterSpacing: 0 },
+    fr: { writingMode: 'horizontal-tb', fontSize: 31, padding: 92, lineHeight: 1.8, letterSpacing: 0 },
+    de: { writingMode: 'horizontal-tb', fontSize: 31, padding: 92, lineHeight: 1.8, letterSpacing: 0 },
+  },
   'ink-wash': {
     'zh-CN': {
       writingMode: 'vertical-rl',
