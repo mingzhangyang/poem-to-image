@@ -74,8 +74,8 @@ export function TemplatePreview({
     if (showInlineStamp) ensureFontLoaded(template.decorations.stamp.fontFamily);
   }, [showInlineStamp, template.decorations.stamp.fontFamily]);
 
-  // A thumbnail that fails to load (for example, a tab running a bundle older
-  // than the carried-over files) falls back to the template's own background
+  // A thumbnail that fails to load (for example, in a tab running a bundle
+  // older than the deployment) falls back to the template's own background
   // style instead of leaving an empty card.
   const [failedPreviewImage, setFailedPreviewImage] = useState<string | null>(null);
   const candidatePreviewImage = showLiveClassicPreview ? undefined : template.previewImage;

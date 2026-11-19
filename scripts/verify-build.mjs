@@ -3,7 +3,6 @@ import { readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { stdout } from 'node:process';
 import { previewBudgets } from './asset-budgets.mjs';
-import { MANIFEST_FILE } from './asset-carryover.mjs';
 
 const projectRoot = path.resolve(import.meta.dirname, '..');
 const distDir = path.join(projectRoot, 'dist');
@@ -78,18 +77,7 @@ invariant(
   `Initial CSS is ${formatKiB(initialCssGzip)} gzip; budget is ${formatKiB(limits.initialCssGzip)}.`,
 );
 
-// After `npm run deploy`, dist also holds previews carried over from the
-// previous deployment; budgets apply only to the current build.
-let retiredPaths = new Set();
-try {
-  const manifest = JSON.parse(await readFile(path.join(distDir, MANIFEST_FILE), 'utf8'));
-  retiredPaths = new Set(Object.keys(manifest.retired ?? {}));
-} catch {
-  // No manifest: a plain build without carried-over files.
-}
-
-const previewFiles = (await readdir(previewDir))
-  .filter((name) => name.endsWith('.webp') && !retiredPaths.has(`/template-previews/${name}`));
+const previewFiles = (await readdir(previewDir)).filter((name) => name.endsWith('.webp'));
 invariant(previewFiles.length > 0, 'No WebP template previews were emitted.');
 
 const previewSizes = await Promise.all(

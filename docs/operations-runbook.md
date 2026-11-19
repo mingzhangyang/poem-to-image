@@ -33,11 +33,11 @@ The root `wrangler.jsonc` is the production configuration. Never point staging c
    npm run deploy
    ```
 
-   Always deploy with `npm run deploy`, not a bare `wrangler deploy`. Between the build and the upload it runs `scripts/carry-over-assets.mjs`, which reads `/asset-manifest.json` from the live site and re-ships hashed files under `/assets/` and `/template-previews/` that the new build dropped, for 30 days after they leave the build. Tabs still running an older bundle can then load their lazy chunks and thumbnails; without this, a missing file is answered with `index.html`. The script fails the deploy if the live manifest or a retired file cannot be fetched. Set `ASSET_CARRYOVER_ALLOW_MISSING=1` only when that is expected: the first deploy with this script, or a deliberate deploy without carry-over. Tabs older than the window recover on their own: a failed chunk load reloads the page once, and a missing thumbnail falls back to the template background.
+   A deploy serves only the new build's static assets, and a missing path is answered with `index.html`. Tabs still running the previous bundle recover on the client: a failed lazy chunk reloads the page once, and a missing template thumbnail falls back to the template background.
 
 `audit:production` is a hard gate. `audit:full` fails on high or critical findings (moderate and low findings are reported but do not fail it) and when `npm audit` does not complete; it may acknowledge only the dev-only exceptions in `scripts/audit-full-policy.ts`. The sole exception is `GHSA-fc5q-39xc-vjpf` (`picomatch <=4.0.7`): the newest published release is still inside that range, `npm audit fix --force` cannot install a patched version, and the package is reachable only through Vite and Vitest. Owner: mingzhangyang. Remove the exception by 2026-12-17, or sooner if picomatch publishes a release outside the range. As of 2026-11-19 `npm audit` no longer reports this advisory, so the exception currently matches nothing; it stays until its removal date in case the advisory returns.
 
-For staging, use the same commands with `--config wrangler.staging.jsonc`, and set `ASSET_CARRYOVER_ORIGIN` to the staging URL so files are carried over from staging rather than production. Staging must use Clerk and Stripe test keys and its own D1 database.
+For staging, use the same commands with `--config wrangler.staging.jsonc`. Staging must use Clerk and Stripe test keys and its own D1 database.
 
 ## Billing reconciliation
 

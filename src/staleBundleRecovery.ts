@@ -1,12 +1,11 @@
 /**
  * Recover a tab whose bundle predates the current deployment.
  *
- * Deploys carry retired hashed files over for a retention window
- * (scripts/carry-over-assets.mjs), but a tab left open longer than that can
- * still request a lazy chunk that is gone. Vite reports that as
- * `vite:preloadError`; reloading picks up the current bundle. The editor's
- * pagehide/beforeunload handlers save the draft or ask before leaving, so a
- * reload does not silently drop edits.
+ * A deploy serves only the new build, so a tab opened before it can request a
+ * lazy chunk that is gone (Workers Static Assets answers with index.html).
+ * Vite reports that as `vite:preloadError`; reloading picks up the current
+ * bundle. The editor's pagehide/beforeunload handlers save the draft or ask
+ * before leaving, so a reload does not silently drop edits.
  */
 export const RELOAD_MARKER_KEY = 'inkpoem.staleBundleReloadAt';
 export const RELOAD_COOLDOWN_MS = 60_000;

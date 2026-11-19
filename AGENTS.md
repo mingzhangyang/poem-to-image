@@ -12,13 +12,6 @@ current when a rule here changes.
 - After changing `wrangler.jsonc` (bindings, R2 buckets, D1 databases), run
   `npm run cf:typegen` and commit the regenerated `worker-configuration.d.ts`.
 
-## Deploying
-
-- Deploy only with `npm run deploy`. A bare `wrangler deploy` skips the asset
-  carry-over and breaks lazy chunks and thumbnails for open tabs.
-- Keep the carry-over planning logic in `scripts/asset-carryover.mjs` pure and
-  covered by `tests/frontend/asset-carryover.test.ts`.
-
 ## Documentation
 
 - When a change makes a document in `docs/` or the README inaccurate,
@@ -80,10 +73,10 @@ current when a rule here changes.
 - Whenever a preview's bytes change, rename it with its new hash and update
   every reference. Never overwrite a file under an existing hashed name.
 - Remove superseded hashed files in the same change; do not keep them in
-  `public/`. `npm run deploy` carries files under `/assets/` and
-  `/template-previews/` that left the build over from the live site for 30
-  days (`scripts/carry-over-assets.mjs`), so tabs running an older bundle
-  still find them.
+  `public/` for old tabs. A deploy serves only the new build, and tabs still
+  running an older bundle recover on the client: a failed lazy chunk reloads
+  the page once (`src/staleBundleRecovery.ts`), and a thumbnail that fails to
+  load falls back to the template background (`TemplatePreview`).
 
 ### Removing or renaming a background
 
