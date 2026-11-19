@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { blockingFindings, DEV_ONLY_AUDIT_EXCEPTIONS } from './audit-full-policy.ts';
+import { blockingFindings, DEV_ONLY_AUDIT_EXCEPTIONS, isCompletedAuditReport } from './audit-full-policy.ts';
 
 const result = spawnSync('npm', ['audit', '--json'], {
   encoding: 'utf8',
@@ -17,6 +17,12 @@ try {
 } catch {
   console.error(result.stderr || result.stdout);
   console.error('npm audit did not return JSON');
+  process.exit(result.status || 1);
+}
+
+if (!isCompletedAuditReport(report)) {
+  console.error(result.stderr || JSON.stringify(report.error ?? report));
+  console.error('npm audit did not complete');
   process.exit(result.status || 1);
 }
 
@@ -40,7 +46,5 @@ if (blocking.length > 0) {
   process.exit(1);
 }
 
-if (result.status !== 0 && acknowledged.length === 0) {
-  console.error(result.stderr || 'npm audit failed');
-  process.exit(result.status || 1);
-}
+const counts = report.metadata.vulnerabilities;
+console.log(`No blocking high or critical findings (moderate: ${counts.moderate ?? 0}, low: ${counts.low ?? 0}).`);
