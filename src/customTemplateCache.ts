@@ -103,6 +103,9 @@ function isLogo(value: unknown): boolean {
   return isRecord(value)
     && hasStrings(value, ['id', 'imageUrl'])
     && hasNumbers(value, ['positionX', 'positionY', 'size', 'rotation', 'opacity'])
+    && optionalString(value.ornamentId)
+    && (value.aboveText === undefined || typeof value.aboveText === 'boolean')
+    && (value.flipped === undefined || typeof value.flipped === 'boolean')
     && optionalNumber(value.zIndex) && optionalNumber(value.exportLeft)
     && optionalNumber(value.exportTop);
 }

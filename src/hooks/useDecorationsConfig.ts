@@ -5,91 +5,10 @@ import { getDefaultStampTextForLanguage } from '../stampDefaults';
 import { reconcileStampGlyphEdits } from '../sealGlyphEditing';
 import { DEFAULT_SIGNATURE_FONT } from '../signatureRendering';
 import { mergePositionUpdate } from '../positioningRect';
+import { getNextLayerIndex, moveLayer, normalizeDecorationLayers } from '../decorationLayers';
+import type { LayerDirection } from '../decorationLayers';
 import type { Language } from '../translations';
 import type { BorderStyle, CustomText, LogoConfig, PositionedElement, SignatureConfig, StampConfig, TemplateDecorationsConfig, TranslateFn, WritingMode } from '../types';
-
-type LayerDirection = 'up' | 'down' | 'top' | 'bottom';
-type LayerKind = 'customText' | 'logo';
-
-function buildOrderedLayers(customTexts: CustomText[], logos: LogoConfig[]) {
-  return [
-    ...customTexts.map((item, index) => ({
-      id: item.id,
-      kind: 'customText' as const,
-      zIndex: item.zIndex ?? index,
-      order: index,
-    })),
-    ...logos.map((item, index) => ({
-      id: item.id,
-      kind: 'logo' as const,
-      zIndex: item.zIndex ?? customTexts.length + index,
-      order: customTexts.length + index,
-    })),
-  ].sort((left, right) => (left.zIndex - right.zIndex) || (left.order - right.order));
-}
-
-function normalizeDecorationLayers(customTexts: CustomText[], logos: LogoConfig[]) {
-  const layerMap = new Map(
-    buildOrderedLayers(customTexts, logos).map((item, index) => [`${item.kind}:${item.id}`, index]),
-  );
-
-  return {
-    customTexts: customTexts.map((item) => ({
-      ...item,
-      zIndex: layerMap.get(`customText:${item.id}`) ?? 0,
-    })),
-    logos: logos.map((item) => ({
-      ...item,
-      zIndex: layerMap.get(`logo:${item.id}`) ?? 0,
-    })),
-  };
-}
-
-function getNextLayerIndex(customTexts: CustomText[], logos: LogoConfig[]) {
-  const orderedLayers = buildOrderedLayers(customTexts, logos);
-  return orderedLayers.length === 0 ? 0 : orderedLayers[orderedLayers.length - 1].zIndex + 1;
-}
-
-function moveLayer(
-  customTexts: CustomText[],
-  logos: LogoConfig[],
-  targetKind: LayerKind,
-  targetId: string,
-  direction: LayerDirection,
-) {
-  const orderedLayers = buildOrderedLayers(customTexts, logos);
-  const currentIndex = orderedLayers.findIndex((item) => item.kind === targetKind && item.id === targetId);
-
-  if (currentIndex === -1) {
-    return normalizeDecorationLayers(customTexts, logos);
-  }
-
-  const reordered = [...orderedLayers];
-  const [target] = reordered.splice(currentIndex, 1);
-
-  if (direction === 'top') {
-    reordered.push(target);
-  } else if (direction === 'bottom') {
-    reordered.unshift(target);
-  } else if (direction === 'up') {
-    reordered.splice(Math.min(reordered.length, currentIndex + 1), 0, target);
-  } else {
-    reordered.splice(Math.max(0, currentIndex - 1), 0, target);
-  }
-
-  const layerMap = new Map(reordered.map((item, index) => [`${item.kind}:${item.id}`, index]));
-
-  return {
-    customTexts: customTexts.map((item) => ({
-      ...item,
-      zIndex: layerMap.get(`customText:${item.id}`) ?? item.zIndex ?? 0,
-    })),
-    logos: logos.map((item) => ({
-      ...item,
-      zIndex: layerMap.get(`logo:${item.id}`) ?? item.zIndex ?? 0,
-    })),
-  };
-}
 
 interface UseDecorationsConfigParams {
   language: Language;
