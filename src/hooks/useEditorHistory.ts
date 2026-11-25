@@ -90,7 +90,17 @@ export function useEditorHistory({ document, restoreDocument }: UseEditorHistory
       return;
     }
     if (observedRef.current === document) return;
+    const previous = observedRef.current;
     observedRef.current = document;
+    if (previous.decorations.logos !== document.decorations.logos
+      && previous.decorations.logos.filter(item => item.ornamentId).length
+        !== document.decorations.logos.filter(item => item.ornamentId).length) {
+      // Each click adds or removes one layer, even during a burst of clicks.
+      flushPending();
+      pushSnapshot(document);
+      refreshAssetReferences();
+      return;
+    }
     if (isDeepEqual(document, getCurrentSnapshot())) {
       // Reverted edits should stop being pending immediately, not after 800ms.
       clearPending();

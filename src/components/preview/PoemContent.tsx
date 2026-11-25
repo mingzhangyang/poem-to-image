@@ -558,9 +558,11 @@ export function PoemContent({
         onInteractionEnd={onInteractionEnd}
       />
 
-      {logos.map((logo) => (
+      {[...logos].sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0)).map((logo) => (
         <LogoOverlay
-          ariaLabel={t('logoElement')}
+          ariaLabel={logo.ornamentId ?? t('logoElement')}
+          sizeLabel={t('size')}
+          effectiveScale={effectiveScale}
           key={logo.id}
           frameRef={poemFrameRef}
           logo={logo}

@@ -21,3 +21,4 @@ screenshot*.png
 # Original licensed font binaries are verified and fetched by fonts:sync.
 public/fonts/*.ttf
 public/fonts/*.otf
+/public/ornaments/thumbs/

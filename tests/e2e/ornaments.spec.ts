@@ -1,0 +1,135 @@
+import { readDraft } from './helpers/readDraft';
+import sharp from 'sharp';
+import { test, expect } from '@playwright/test';
+
+test('filters, places, restores and exports an ornament', async ({ page }) => {
+  await page.route('**/api/billing/packages', route => route.fulfill({ json: { packages: [] } }));
+  await page.addInitScript(() => {
+    Reflect.deleteProperty(window, 'showSaveFilePicker');
+    localStorage.setItem('poem-to-image.onboarding-dismissed', 'true');
+    localStorage.setItem('poem-to-image.language', 'en');
+  });
+  const originals: string[] = [];
+  page.on('request', request => {
+    if (/\/ornaments\/[^/]+\.(png|webp)$/.test(request.url())) originals.push(request.url());
+  });
+  await page.goto('/');
+  const button = (name: string) => page.getByRole('button', { name, exact: true });
+  await button('Ornaments').click();
+  await button('Autumn').click();
+  await expect(button('Chrysanthemum')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Birds' })).toHaveCount(0);
+  expect(originals).toEqual([]);
+  await button('Chrysanthemum').click();
+  await page.getByRole('slider', { name: 'Rotation' }).fill('15');
+  await page.getByRole('slider', { name: 'Opacity' }).fill('0.72');
+  await button('Move above text').click();
+  await button('Bottom right').click();
+  const images = page.locator('img[alt="chrysanthemum"]');
+  await expect(images).toHaveCount(1);
+  if ((page.viewportSize()?.width ?? 0) >= 1024) {
+    const layer = images.first().locator('..');
+    await layer.hover();
+    const grip = layer.getByRole('button', { name: 'Size' }).last();
+    const initialWidth = await layer.evaluate(el => el.clientWidth);
+    const box = (await grip.boundingBox())!;
+    const x = box.x + box.width / 2;
+    const y = box.y + box.height / 2;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x + 6, y + 6, { steps: 4 });
+    await page.mouse.up();
+    await expect.poll(() => layer.evaluate(el => el.clientWidth)).toBeGreaterThan(initialWidth);
+    const center = (await layer.boundingBox())!;
+    await page.mouse.move(center.x + center.width / 2, center.y + center.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(center.x, center.y, { steps: 5 });
+    await page.mouse.up();
+    await expect.poll(async () => (await layer.boundingBox())!.x).toBeLessThan(center.x - 2);
+    await button('Bottom right').click();
+  }
+  await button('Flip horizontally').click();
+  await button('Duplicate').click();
+  await button('Duplicate').click();
+  const reminder = page.getByText('A little goes a long way. Let the poem lead.');
+  await expect(reminder).toBeVisible();
+  await button('Duplicate').click();
+  await button('Duplicate').click();
+  await expect(page.getByText('Several ornaments may draw attention away from the poem.')).toBeVisible();
+  await button('Delete').click();
+  await button('Delete').click();
+  await button('Delete').click();
+  await expect(reminder).toHaveCount(0);
+  await button('Undo').click();
+  await expect(images).toHaveCount(3);
+  await button('Redo').click();
+  await expect(images).toHaveCount(2);
+  await page.reload();
+  await expect(images).toHaveCount(2);
+  await expect(images.first()).toHaveCSS('transform', 'matrix(-1, 0, 0, 1, 0, 0)');
+  if ((page.viewportSize()?.width ?? 0) >= 1024) {
+    await page.getByRole('button', { name: /^Typography/ }).click();
+    await page.getByRole('combobox', { name: 'Font Family' }).selectOption('system-ui, sans-serif');
+    const artwork = page.locator('[data-artwork-canvas]');
+    const canvasBox = (await artwork.boundingBox())!;
+    const flowerBox = (await images.first().boundingBox())!;
+    const preview = await images.first().screenshot();
+    await button('Export Image').click();
+    const downloading = page.waitForEvent('download');
+    await page.getByRole('dialog').getByRole('button', {name: 'Save Image', exact: true}).click();
+    const download = await downloading;
+    expect(download.suggestedFilename()).toMatch(/\.png$/);
+    const exported = sharp((await download.path())!);
+    const { width, height } = await exported.metadata();
+    expect([width, height]).toEqual([2160, 2700]);
+    const scale = width / canvasBox.width;
+    const exportedRegion = exported.extract({
+      left: Math.round((flowerBox.x - canvasBox.x) * scale),
+      top: Math.round((flowerBox.y - canvasBox.y) * scale),
+      width: Math.round(flowerBox.width * scale),
+      height: Math.round(flowerBox.height * scale),
+    });
+    const samples = await Promise.all([sharp(preview), exportedRegion].map(image =>
+      image.resize(32, 32).removeAlpha().raw().toBuffer()));
+    const deviation = samples[0].reduce((sum, value, i) => sum + Math.abs(value - samples[1][i]), 0);
+    expect(deviation / samples[0].length).toBeLessThan(5);
+
+    await page.getByRole('button', { name: /^Templates/ }).click();
+    await page.getByRole('button', { name: /^More \(/ }).click();
+    await page.getByRole('dialog', { name: 'Built-in Templates' }).getByRole('button', { name: /Song Floral/ }).click();
+    await expect(images).toHaveCount(2);
+    const backgroundSection = page.getByRole('button', { name: /^Background/ });
+    if (await backgroundSection.getAttribute('aria-expanded') !== 'true') await backgroundSection.click();
+    await button('Solid').click();
+    await expect(images).toHaveCount(2);
+    await button('Image').click();
+    const paper = await sharp({ create: { width: 16, height: 16, channels: 3, background: '#eee7d4' } }).png().toBuffer();
+    await page.getByLabel('Upload Image').setInputFiles({
+      name: 'paper.png', mimeType: 'image/png', buffer: paper,
+    });
+    const background = page.locator('[data-export-layer="background"]').first();
+    await expect(background).toHaveCSS('background-image', /blob:/);
+    await expect.poll(async () => (await readDraft(page))?.scene.background.backgroundImage).toMatch(/^draft-asset:/);
+    await page.reload();
+    await expect(background).toHaveCSS('background-image', /blob:/);
+    await expect(images).toHaveCount(2);
+  }
+});
+
+test('exports a Chinese autumn chrysanthemum card within 30 seconds', async ({ page, isMobile }) => {
+  await page.addInitScript(() => {
+    Reflect.deleteProperty(window, 'showSaveFilePicker');
+    localStorage.setItem('poem-to-image.onboarding-dismissed', 'true');
+    localStorage.setItem('poem-to-image.language', 'zh-CN');
+  });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  const button = (name: string | RegExp) => page.getByRole('button', { name, exact: true });
+  await button('装饰').click();
+  await button('秋意').click();
+  await button(/菊/).click();
+  await button('右下').click();
+  await button(isMobile ? '导出' : '导出图片').click();
+  const downloading = page.waitForEvent('download');
+  await page.getByRole('dialog').getByRole('button', { name: '保存图片' }).click();
+  expect((await downloading).suggestedFilename()).toMatch(/\.png$/);
+});

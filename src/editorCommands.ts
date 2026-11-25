@@ -36,7 +36,7 @@ export interface EditorCommandTargets {
   setPresetSize: (value: string) => void;
   applyBackground: (value: TemplateBackgroundConfig) => void;
   applyTypography: (value: TemplateTypographyConfig) => void;
-  applyDecorations: (value: TemplateDecorationsConfig) => void;
+  applyDecorations: (value: TemplateDecorationsConfig, preserveOrnaments?: boolean) => void;
 }
 
 /**
@@ -67,7 +67,7 @@ export function executeEditorCommand(command: EditorCommand, targets: EditorComm
       const { template, sections } = command;
       if (sections?.background !== false) targets.applyBackground(template.background);
       if (sections?.typography !== false) targets.applyTypography(template.typography);
-      if (sections?.decorations !== false) targets.applyDecorations(template.decorations);
+      if (sections?.decorations !== false) targets.applyDecorations(template.decorations, true);
       if (sections?.poemStyle !== false) targets.setPoemStyle(normalizePoemLayerStyle(template.poemStyle));
       return;
     }

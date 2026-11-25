@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { OrnamentSelection } from '../../ornaments/selection';
+import { useContext, useEffect, useRef, useState } from 'react';
 import type {
   CSSProperties,
   KeyboardEvent as ReactKeyboardEvent,
@@ -16,6 +17,8 @@ import { usePreviewPointerInteraction } from './previewInteraction';
 
 interface LogoOverlayProps {
   ariaLabel: string;
+  sizeLabel: string;
+  effectiveScale: number;
   frameRef: RefObject<HTMLDivElement | null>;
   logo: LogoConfig;
   onLogoChange: (updates: Partial<LogoConfig>) => void;
@@ -23,8 +26,10 @@ interface LogoOverlayProps {
   onInteractionEnd: () => void;
 }
 
-export const LogoOverlay: FC<LogoOverlayProps> = ({ ariaLabel, frameRef, logo, onLogoChange, onInteractionStart, onInteractionEnd }) => {
+export const LogoOverlay: FC<LogoOverlayProps> = ({ ariaLabel, sizeLabel, effectiveScale, frameRef, logo, onLogoChange, onInteractionStart, onInteractionEnd }) => {
   const [livePosition, setLivePosition] = useState({ positionX: logo.positionX, positionY: logo.positionY });
+  const [resizingTo, setResizingTo] = useState<number | null>(null);
+  const [, selectOrnament] = useContext(OrnamentSelection);
   const isDraggingRef = useRef(false);
   const beginPointerInteraction = usePreviewPointerInteraction(onInteractionStart, onInteractionEnd);
   const logoRef = useRef<HTMLDivElement>(null);
@@ -42,6 +47,7 @@ export const LogoOverlay: FC<LogoOverlayProps> = ({ ariaLabel, frameRef, logo, o
 
     event.preventDefault();
     event.stopPropagation();
+    if (logo.ornamentId) selectOrnament(logo.id);
     const startPosition = livePosition;
     const startX = event.clientX;
     const startY = event.clientY;
@@ -82,19 +88,43 @@ export const LogoOverlay: FC<LogoOverlayProps> = ({ ariaLabel, frameRef, logo, o
     onLogoChange(nextPosition);
   };
 
+  function handleResize(event: ReactPointerEvent<HTMLButtonElement>) {
+    if (!logoRef.current || event.button !== 0) return;
+    event.stopPropagation();
+    event.preventDefault();
+    selectOrnament(logo.id);
+    const rect = logoRef.current.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const radius = (x: number, y: number) => Math.hypot(x - centerX, y - centerY);
+    const initialRadius = Math.max(1, radius(event.clientX, event.clientY));
+    let size = logo.size;
+    beginPointerInteraction(event.pointerId, {
+      onMove: move => {
+        size = Math.max(12, logo.size * radius(move.clientX, move.clientY) / initialRadius);
+        setResizingTo(size);
+      },
+      onCommit: () => {
+        onLogoChange({ size });
+        setResizingTo(null);
+      },
+      onCancel: () => setResizingTo(null),
+    });
+  }
+
   const style: CSSProperties = {
     position: 'absolute',
     left: `${livePosition.positionX}%`,
     top: `${livePosition.positionY}%`,
-    transform: 'translate(-50%, -50%)',
-    width: `${logo.size}px`,
-    height: `${logo.size}px`,
-    opacity: logo.opacity,
+    transform: logo.ornamentId ? `translate(-50%, -50%) rotate(${logo.rotation}deg)` : 'translate(-50%, -50%)',
+    width: `${resizingTo ?? logo.size}px`,
+    height: `${resizingTo ?? logo.size}px`,
+    opacity: logo.ornamentId ? undefined : logo.opacity,
     transformOrigin: 'center',
-    rotate: `${logo.rotation}deg`,
+    rotate: logo.ornamentId ? undefined : `${logo.rotation}deg`,
     cursor: 'grab',
     userSelect: 'none',
-    zIndex: (logo.zIndex ?? 0) + 20,
+    zIndex: logo.ornamentId ? (logo.aboveText ? 2147483647 : 1) : (logo.zIndex ?? 0) + 20,
   };
 
   return (
@@ -105,14 +135,29 @@ export const LogoOverlay: FC<LogoOverlayProps> = ({ ariaLabel, frameRef, logo, o
       onKeyDown={handleKeyboardMove}
       tabIndex={0}
       aria-label={ariaLabel}
-      className="absolute touch-none select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(20, 169, 155,0.45)]"
+      className="group absolute touch-none select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(20, 169, 155,0.45)]"
     >
       <img
         src={logo.imageUrl}
-        alt="Logo"
+        alt={logo.ornamentId ?? "Logo"}
+        style={{ opacity: logo.ornamentId ? logo.opacity : undefined, transform: logo.flipped ? "scaleX(-1)" : undefined }}
         className="w-full h-full object-contain"
         draggable={false}
       />
+      {logo.ornamentId && ['-top-1 -left-1', '-top-1 -right-1', '-bottom-1 -left-1', '-bottom-1 -right-1'].map(corner => <button
+        key={corner}
+        aria-label={sizeLabel}
+        className={`absolute ${corner} h-4 w-4 rounded-full border bg-white opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 cursor-nwse-resize`}
+        style={{ scale: 1 / effectiveScale }}
+        onPointerDown={handleResize}
+        onKeyDown={event => {
+          if (!isArrowDirection(event.key)) return;
+          event.preventDefault();
+          event.stopPropagation();
+          const direction = event.key === 'ArrowUp' || event.key === 'ArrowRight' ? 1 : -1;
+          onLogoChange({ size: Math.max(12, logo.size + direction * (event.shiftKey ? 10 : 1)) });
+        }}
+      />)}
     </div>
   );
 }

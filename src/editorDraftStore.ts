@@ -202,10 +202,9 @@ function hasFields(
     && booleans.every((key) => typeof value[key] === 'boolean');
 }
 
-function optionalField(value: Record<string, unknown>, key: string, type: 'string' | 'number'): boolean {
+function optionalField(value: Record<string, unknown>, key: string, type: 'string' | 'number' | 'boolean'): boolean {
   const entry = value[key];
-  return entry === undefined || (type === 'string' ? typeof entry === 'string'
-    : typeof entry === 'number' && Number.isFinite(entry));
+  return entry === undefined || (typeof entry === type && (type !== 'number' || Number.isFinite(entry)));
 }
 
 function isOptionalFontWeight(value: unknown): boolean {
@@ -296,6 +295,9 @@ function isDraftState(value: unknown): value is EditorDraftState {
   if (!decorations.logos.every((item: unknown) => hasFields(item, ['id', 'imageUrl'],
     ['positionX', 'positionY', 'size', 'rotation', 'opacity'])
     && hasValidAssetReference(item.imageUrl)
+    && optionalField(item, 'ornamentId', 'string')
+    && optionalField(item, 'aboveText', 'boolean')
+    && optionalField(item, 'flipped', 'boolean')
     && ['zIndex', 'exportLeft', 'exportTop'].every((key) => optionalField(item, key, 'number')))) return false;
   return (decorations.signatures ?? []).every((item: unknown) => hasFields(item,
     ['id', 'text', 'font', 'color', 'flourish'],

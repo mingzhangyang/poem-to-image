@@ -291,3 +291,11 @@ body {
 		scroll-behavior: auto !important;
 	}
 }
+
+@media (width < 64rem) {
+  .mobile-ornament-panel ~ section.order-1 {
+    height: 60dvh;
+    min-height: 0;
+    padding-bottom: 1rem;
+  }
+}

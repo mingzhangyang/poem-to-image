@@ -111,7 +111,7 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
     decorations.showBorder ? t(BORDER_STYLE_LABELS[decorations.borderStyle]) : null,
     decorations.showStamp && decorations.stampSupported ? t('showStamp') : null,
     `${decorations.customTexts.length} ${t('customTexts')}`,
-    `${decorations.logos.length} ${t('logos')}`,
+    `${decorations.logos.filter(item => !item.ornamentId).length} ${t('logos')}`,
     decorations.signatures.length > 0 ? `${decorations.signatures.length} ${t('signatures')}` : null,
   ].filter(Boolean);
 
@@ -912,10 +912,10 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
           </div>
         ) : null}
 
-        {decorations.logos.length > 0 ? (
+        {decorations.logos.filter(item => !item.ornamentId).length > 0 ? (
           <div className="space-y-3">
             <div className="text-xs font-medium text-(--app-accent-500) uppercase tracking-wider">{t('logos')}</div>
-            {decorations.logos.map((logo) => (
+            {decorations.logos.filter(item => !item.ornamentId).map((logo) => (
               <div key={logo.id} className="app-soft-surface p-3 rounded-lg space-y-2">
                 <div className="flex items-center gap-2">
                   <img

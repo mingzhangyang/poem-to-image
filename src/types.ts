@@ -126,6 +126,9 @@ export interface CustomText {
 }
 
 export interface LogoConfig {
+  ornamentId?: string;
+  aboveText?: boolean;
+  flipped?: boolean;
   id: string;
   imageUrl: string;
   positionX: number;
@@ -469,6 +472,9 @@ export interface TypographySectionProps {
 }
 
 export interface DecorationsSectionProps {
+  language: string;
+  getFrameSize: () => {width: number; height: number};
+  onAddOrnament: (imageUrl: string, options: Partial<LogoConfig>) => string;
   showBorder: boolean;
   borderStyle: BorderStyle;
   borderColor: string;

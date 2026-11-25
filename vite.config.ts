@@ -1,3 +1,4 @@
+import { generateOrnamentThumbnails } from './scripts/ornament-thumbnails.mjs';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
@@ -5,6 +6,15 @@ import {defineConfig} from 'vite';
 
 export default defineConfig({
   plugins: [
+    {
+      name: 'ornament-thumbnails',
+      buildStart: generateOrnamentThumbnails,
+      async handleHotUpdate({ file }) {
+        if (file.endsWith('/src/ornaments/manifest.json') || /\/public\/ornaments\/[^/]+\.(png|webp)$/i.test(file)) {
+          await generateOrnamentThumbnails();
+        }
+      },
+    },
     react(),
     tailwindcss(),
   ],

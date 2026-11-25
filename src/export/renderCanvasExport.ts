@@ -268,7 +268,11 @@ async function drawLogo(ctx: CanvasRenderingContext2D, logo: LogoConfig, frameRe
   ctx.translate(centerX, centerY);
   ctx.rotate((logo.rotation * Math.PI) / 180);
   ctx.globalAlpha = logo.opacity;
-  ctx.drawImage(image, -logo.size / 2, -logo.size / 2, logo.size, logo.size);
+  if (logo.flipped) ctx.scale(-1, 1);
+  const scale = logo.size / Math.max(image.naturalWidth, image.naturalHeight);
+  const width = logo.ornamentId ? image.naturalWidth * scale : logo.size;
+  const height = logo.ornamentId ? image.naturalHeight * scale : logo.size;
+  ctx.drawImage(image, -width / 2, -height / 2, width, height);
   ctx.restore();
 }
 
@@ -385,20 +389,32 @@ export async function renderCanvasExport(inputScene: CanvasExportScene, options:
     drawBorder(ctx, contentRect, scene.decorations.borderStyle, scene.decorations.borderColor, scene.decorations.borderWidth);
   }
 
+  const layers = getOrderedDecorationLayers(scene);
+  for (const layer of layers) {
+    if (layer.kind === 'logo' && layer.item.ornamentId && !layer.item.aboveText) {
+      await drawLogo(ctx, layer.item, positioningRect);
+    }
+  }
   if (!options.skipPoem) drawStructuredPoem(ctx, scene, positioningRect);
 
   if (scene.decorations.showStamp) drawStamp(ctx, scene, positioningRect);
 
-  for (const layer of getOrderedDecorationLayers(scene)) {
+  for (const layer of layers) {
     if (layer.kind === 'customText') {
       drawCustomText(ctx, layer.item, scene, positioningRect);
-    } else {
+    } else if (!layer.item.ornamentId) {
       await drawLogo(ctx, layer.item, positioningRect);
     }
   }
 
   for (const sig of scene.decorations.signatures) {
     drawSignatureElement(ctx, sig, positioningRect);
+  }
+
+  for (const layer of layers) {
+    if (layer.kind === 'logo' && layer.item.ornamentId && layer.item.aboveText) {
+      await drawLogo(ctx, layer.item, positioningRect);
+    }
   }
 
   return canvas;

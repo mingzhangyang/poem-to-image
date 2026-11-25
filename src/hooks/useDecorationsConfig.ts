@@ -209,19 +209,21 @@ export function useDecorationsConfig({
     setCustomTexts((prev) => prev.filter((customText) => customText.id !== id));
   };
 
-  const addLogo = (imageUrl: string) => {
+  const addLogo = (imageUrl: string, options: Partial<LogoConfig> = {}) => {
     const nextLogo: LogoConfig = {
-      id: Date.now().toString(),
       imageUrl,
       positionX: 50,
       positionY: 50,
       size: 100,
       rotation: 0,
       opacity: 1,
+      ...options,
       zIndex: getNextLayerIndex(customTextsRef.current, logosRef.current),
+      id: crypto.randomUUID(),
     };
 
     setLogos((prev) => [...prev, nextLogo]);
+    return nextLogo.id;
   };
 
   const updateLogo = (id: string, updates: Partial<LogoConfig>) => {
@@ -301,8 +303,11 @@ export function useDecorationsConfig({
     }));
   };
 
-  const applyDecorationsTemplate = (template: TemplateDecorationsConfig) => {
-    const normalized = normalizeDecorationLayers(template.customTexts, template.logos || []);
+  const applyDecorationsTemplate = (template: TemplateDecorationsConfig, preserveOrnaments = false) => {
+    const placed = preserveOrnaments ? logosRef.current.filter(item => item.ornamentId) : [];
+    const placedIds = new Set(placed.map(item => item.id));
+    const incoming = (template.logos ?? []).filter(item => !placedIds.has(item.id));
+    const normalized = normalizeDecorationLayers(template.customTexts, [...incoming, ...placed]);
     setShowBorder(template.showBorder);
     setBorderStyle(template.borderStyle);
     setBorderColor(template.borderColor ?? textColor);
