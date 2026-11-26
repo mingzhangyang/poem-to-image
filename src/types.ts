@@ -547,6 +547,7 @@ export interface CanvasPreviewProps {
   poemFrameRef: RefObject<HTMLDivElement | null>;
   poemTextRef: RefObject<HTMLDivElement | null>;
   t: TranslateFn;
+  language: Language;
   poem: PoemContentData;
   poemStyle: PoemLayerStyle;
   backgroundType: BackgroundType;

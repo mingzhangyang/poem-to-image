@@ -29,7 +29,8 @@ interface LogoOverlayProps {
 export const LogoOverlay: FC<LogoOverlayProps> = ({ ariaLabel, sizeLabel, effectiveScale, frameRef, logo, onLogoChange, onInteractionStart, onInteractionEnd }) => {
   const [livePosition, setLivePosition] = useState({ positionX: logo.positionX, positionY: logo.positionY });
   const [resizingTo, setResizingTo] = useState<number | null>(null);
-  const [, selectOrnament] = useContext(OrnamentSelection);
+  const [selectedOrnamentId, selectOrnament] = useContext(OrnamentSelection);
+  const isSelected = Boolean(logo.ornamentId) && selectedOrnamentId === logo.id;
   const isDraggingRef = useRef(false);
   const beginPointerInteraction = usePreviewPointerInteraction(onInteractionStart, onInteractionEnd);
   const logoRef = useRef<HTMLDivElement>(null);
@@ -133,21 +134,26 @@ export const LogoOverlay: FC<LogoOverlayProps> = ({ ariaLabel, sizeLabel, effect
       style={style}
       onPointerDown={handlePointerDown}
       onKeyDown={handleKeyboardMove}
+      onFocus={() => { if (logo.ornamentId) selectOrnament(logo.id); }}
       tabIndex={0}
       aria-label={ariaLabel}
       className="group absolute touch-none select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(20, 169, 155,0.45)]"
     >
       <img
         src={logo.imageUrl}
-        alt={logo.ornamentId ?? "Logo"}
+        alt={logo.ornamentId ? ariaLabel : "Logo"}
         style={{ opacity: logo.ornamentId ? logo.opacity : undefined, transform: logo.flipped ? "scaleX(-1)" : undefined }}
         className="w-full h-full object-contain"
         draggable={false}
       />
-      {logo.ornamentId && ['-top-1 -left-1', '-top-1 -right-1', '-bottom-1 -left-1', '-bottom-1 -right-1'].map(corner => <button
+      {logo.ornamentId && ['-top-1 -left-1', '-top-1 -right-1', '-bottom-1 -left-1', '-bottom-1 -right-1'].map((corner, index, corners) => <button
         key={corner}
         aria-label={sizeLabel}
-        className={`absolute ${corner} h-4 w-4 rounded-full border bg-white opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 cursor-nwse-resize`}
+        // One keyboard stop per ornament; the other corners are pointer-only.
+        tabIndex={index === corners.length - 1 ? 0 : -1}
+        aria-hidden={index === corners.length - 1 ? undefined : true}
+        // Hidden handles must not catch touches meant to drag the ornament.
+        className={`absolute ${corner} h-4 w-4 rounded-full border bg-white cursor-nwse-resize ${isSelected ? 'opacity-100' : 'pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100'}`}
         style={{ scale: 1 / effectiveScale }}
         onPointerDown={handleResize}
         onKeyDown={event => {

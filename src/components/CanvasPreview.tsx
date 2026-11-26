@@ -24,6 +24,7 @@ export function CanvasPreview({
   poemFrameRef,
   poemTextRef,
   t,
+  language,
   poem,
   poemStyle,
   backgroundType,
@@ -565,6 +566,7 @@ export function CanvasPreview({
                     poemFrameRef={poemFrameRef}
                     poemTextRef={poemTextRef}
                     t={t}
+                    language={language}
                     poem={poem}
                     poemStyle={poemStyle}
                     fontFamily={fontFamily}

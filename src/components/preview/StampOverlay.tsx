@@ -179,6 +179,9 @@ export function StampOverlay({ ariaLabel, frameRef, stamp, effectiveScale, isPin
         left: `${livePosition.positionX}%`,
         top: `${livePosition.positionY}%`,
         transform: 'translate(-50%, -50%)',
+        // Export paints below-text ornaments (1), the poem (10), then the
+        // stamp, then custom text and logos (20+); keep the preview in step.
+        zIndex: 15,
       }}
     >
       <div

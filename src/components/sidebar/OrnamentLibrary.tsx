@@ -1,10 +1,9 @@
 import { OrnamentSelection } from '../../ornaments/selection';
 import { useContext, useState } from 'react';
 import manifest from '../../ornaments/manifest.json';
+import { ORNAMENT_CATEGORIES as categories, ORNAMENT_MOODS as moods } from '../../ornaments/taxonomy';
 import type { DecorationsSectionProps, LogoConfig } from '../../types';
 
-const moods: Record<string, string> = { 全部: 'All', 清雅: 'Serenity', 春意: 'Spring', 秋意: 'Autumn', 隐逸: 'Retreat', 思乡: 'Homesickness', 喜庆: 'Celebration', 孤寂: 'Solitude' };
-const categories: Record<string, string> = { 花木: 'Botanicals', 山水: 'Landscapes', 禽鸟: 'Birds', 器物: 'Objects', 景舍: 'Dwellings', 纹样: 'Patterns' };
 const anchors = { tl: ['左上', 'Top left'], tr: ['右上', 'Top right'], bl: ['左下', 'Bottom left'], br: ['右下', 'Bottom right'], bc: ['底部居中', 'Bottom center'] };
 const chip = 'rounded-full border border-stone-200 px-2.5 py-1 text-xs text-stone-700 hover:border-stone-400 aria-pressed:bg-(--app-accent-700) aria-pressed:text-white';
 

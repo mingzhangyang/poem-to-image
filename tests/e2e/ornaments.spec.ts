@@ -25,7 +25,7 @@ test('filters, places, restores and exports an ornament', async ({ page }) => {
   await page.getByRole('slider', { name: 'Opacity' }).fill('0.72');
   await button('Move above text').click();
   await button('Bottom right').click();
-  const images = page.locator('img[alt="chrysanthemum"]');
+  const images = page.locator('img[alt="Chrysanthemum"]');
   await expect(images).toHaveCount(1);
   if ((page.viewportSize()?.width ?? 0) >= 1024) {
     const layer = images.first().locator('..');
@@ -117,6 +117,8 @@ test('filters, places, restores and exports an ornament', async ({ page }) => {
 });
 
 test('exports a Chinese autumn chrysanthemum card within 30 seconds', async ({ page, isMobile }) => {
+  test.setTimeout(30_000);
+  await page.route('**/api/billing/packages', route => route.fulfill({ json: { packages: [] } }));
   await page.addInitScript(() => {
     Reflect.deleteProperty(window, 'showSaveFilePicker');
     localStorage.setItem('poem-to-image.onboarding-dismissed', 'true');
