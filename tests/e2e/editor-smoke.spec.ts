@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { openPanel, panelSummary } from './helpers/sidebarNavigation';
 
 test.beforeEach(async ({ page }) => {
   await page.route('**/api/billing/packages', async (route) => {
@@ -55,11 +56,7 @@ test('uses thumbnails until an image template is applied', async ({ page }) => {
   });
 
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  if ((page.viewportSize()?.width ?? 0) < 1024) {
-    await page.getByRole('button', { name: 'Templates', exact: true }).click();
-  } else {
-    await page.getByRole('button', { name: /^Templates/ }).click();
-  }
+  await openPanel(page, 'Templates');
 
   await page.getByRole('button', { name: /^More \(/ }).click();
   const library = page.getByRole('dialog', { name: 'Built-in Templates' });
@@ -80,7 +77,7 @@ test('keeps drawer controls and a readable canvas at the tablet breakpoint', asy
   await page.setViewportSize({ width: 768, height: 1024 });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
 
-  await expect(page.getByRole('button', { name: 'Settings' })).toBeVisible();
+  await expect(page.locator('#mobile-dock').getByRole('button', { name: 'More', exact: true })).toBeVisible();
   await expect(page.locator('aside').last()).toBeHidden();
 
   const scaleLabel = page.getByText(/^\d+%$/).first();
@@ -212,7 +209,7 @@ test('uses the slider value as the preview zoom readout', async ({ page }) => {
 test('undo and reload preserve the canvas preset identity', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /^Canvas Size/ }).click();
+  await openPanel(page, 'Size');
   const presets = page.getByRole('combobox', { name: 'Preset Sizes' });
   await presets.selectOption('wechat-moments-long');
   await page.waitForTimeout(950);
@@ -221,20 +218,20 @@ test('undo and reload preserve the canvas preset identity', async ({ page }) => 
   await page.getByRole('button', { name: 'Undo' }).click();
   await expect(presets).toHaveValue('wechat-moments-long');
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /^Canvas Size/ }).click();
+  await openPanel(page, 'Size');
   await expect(page.getByRole('combobox', { name: 'Preset Sizes' })).toHaveValue('wechat-moments-long');
 });
 
 test('restores a legacy ratio preset identity after reload', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /^Canvas Size/ }).click();
+  await openPanel(page, 'Size');
   const presets = page.getByRole('combobox', { name: 'Preset Sizes' });
   await presets.selectOption('1080x1350');
   await expect(presets).toHaveValue('1080x1350');
   await page.waitForTimeout(950);
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /^Canvas Size/ }).click();
+  await openPanel(page, 'Size');
   await expect(page.getByRole('combobox', { name: 'Preset Sizes' })).toHaveValue('1080x1350');
 });
 
@@ -312,12 +309,13 @@ test('downloads a named PNG for an untitled poem when clipboard is unavailable',
 test('preserves a customized template font and solid background after reload', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /^Templates/ }).click();
+  await openPanel(page, 'Templates');
   await page.getByRole('button', { name: /^More \(/ }).click();
   const library = page.getByRole('dialog', { name: 'Built-in Templates' });
   await library.getByRole('button', { name: /Song Floral/ }).click();
 
-  const backgroundSection = page.getByRole('button', { name: /^Background/ });
+  await openPanel(page, 'Background');
+  const backgroundSection = panelSummary(page, 'Background');
   await expect(backgroundSection).toContainText('Templates');
   await expect(backgroundSection).not.toContainText('Upload Image');
   await expect.poll(() => page.evaluate(() => {
@@ -327,11 +325,11 @@ test('preserves a customized template font and solid background after reload', a
 
   // Template image and its origin both survive a reload.
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await expect(page.getByRole('button', { name: /^Background/ })).toContainText('Templates');
+  await expect(panelSummary(page, 'Background')).toContainText('Templates');
 
-  await page.getByRole('button', { name: /^Background/ }).click();
+  await openPanel(page, 'Background');
   await page.getByRole('button', { name: 'Solid', exact: true }).click();
-  await page.getByRole('button', { name: /^Typography/ }).click();
+  await openPanel(page, 'Typography');
   const font = page.getByRole('combobox', { name: 'Font Family' });
   await font.selectOption('"Playfair Display", serif');
 
@@ -341,9 +339,10 @@ test('preserves a customized template font and solid background after reload', a
   })).toEqual(['solid', '"Playfair Display", serif']);
 
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await expect(page.getByRole('button', { name: /^Background/ })).toContainText('Solid');
-  await expect(page.getByRole('button', { name: /^Typography/ })).toContainText('Playfair Display');
-  await page.getByRole('button', { name: /^Typography/ }).click();
+  await openPanel(page, 'Background');
+  await expect(panelSummary(page, 'Background')).toContainText('Solid');
+  await openPanel(page, 'Typography');
+  await expect(panelSummary(page, 'Typography')).toContainText('Playfair Display');
   await expect(page.getByRole('combobox', { name: 'Font Family' })).toHaveValue('"Playfair Display", serif');
 });
 
@@ -395,11 +394,12 @@ test('body text gets an independent relative size and base size is clearly globa
   test.skip(testInfo.project.name === 'chromium-mobile', 'Desktop controls; mobile tab coverage is separate');
   await page.setViewportSize({ width: 1440, height: 960 });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /^Typography/ }).click();
+  await openPanel(page, 'Typography');
   const baseSize = page.getByRole('slider', { name: 'Base Font Size' });
   await expect(baseSize).toHaveValue('32');
   await expect(page.getByText(/Changes title, body, author and source together/)).toBeVisible();
 
+  await openPanel(page, 'Content');
   await page.getByRole('button', { name: 'Open Editor' }).click();
   const editor = page.getByRole('dialog', { name: 'Poem Editor' });
   const bodySize = editor.getByRole('slider', { name: 'Body: Relative Font Size' });
@@ -413,6 +413,7 @@ test('body text gets an independent relative size and base size is clearly globa
   await expect(titleSize).toHaveValue('100');
   await editor.getByRole('button', { name: 'Done' }).click();
 
+  await openPanel(page, 'Typography');
   await baseSize.focus();
   await baseSize.press('ArrowRight');
   await expect(baseSize).toHaveValue('33');
@@ -422,6 +423,7 @@ test('body text gets an independent relative size and base size is clearly globa
   })).toEqual([33, 1.6, 1]);
 
   await page.reload({ waitUntil: 'domcontentloaded' });
+  await openPanel(page, 'Content');
   await page.getByRole('button', { name: 'Open Editor' }).click();
   const restored = page.getByRole('dialog', { name: 'Poem Editor' });
   await expect(restored.getByRole('slider', { name: 'Body: Relative Font Size' })).toHaveValue('160');

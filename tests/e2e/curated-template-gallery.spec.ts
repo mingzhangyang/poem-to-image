@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { openPanel } from './helpers/sidebarNavigation';
 
 test.beforeEach(async ({ page }) => {
   await page.route('**/api/billing/packages', async (route) => {
@@ -16,11 +17,7 @@ test('featured template gallery shows sample poetry and excludes legacy entries'
   // should request Cormorant Garamond used by the illustrated samples.
   const sampleFontStylesheet = page.locator('link[data-editor-font="Cormorant Garamond"]');
   await expect(sampleFontStylesheet).toHaveCount(0);
-  if ((page.viewportSize()?.width ?? 0) < 1024) {
-    await page.getByRole('button', { name: 'Templates', exact: true }).click();
-  } else {
-    await page.getByRole('button', { name: /^Templates/ }).click();
-  }
+  await openPanel(page, 'Templates');
   await page.getByRole('button', { name: /^More \(/ }).click();
   const library = page.getByRole('dialog', { name: 'Built-in Templates' });
   await expect(sampleFontStylesheet).toHaveCount(1);
@@ -42,11 +39,7 @@ test('an existing legacy template can still be recovered and shown as selected',
     localStorage.setItem('poem-to-image.active-template', 'bamboo-scroll');
   });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  if ((page.viewportSize()?.width ?? 0) < 1024) {
-    await page.getByRole('button', { name: 'Templates', exact: true }).click();
-  } else {
-    await page.getByRole('button', { name: /^Templates/ }).click();
-  }
+  await openPanel(page, 'Templates');
   const legacy = page.getByRole('button', { name: /^Bamboo Scroll/ });
   await expect(legacy).toBeVisible();
   await expect(legacy).toHaveAttribute('aria-pressed', 'true');

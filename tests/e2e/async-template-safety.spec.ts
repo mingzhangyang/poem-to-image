@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { openPanel } from './helpers/sidebarNavigation';
 
 test.use({ viewport: { width: 1440, height: 900 } });
 
@@ -50,7 +51,7 @@ async function seedLegacyGuestTemplate(page: Page) {
 test('an unscoped legacy template stays untouched until explicit guest import', async ({ page }) => {
   await seedLegacyGuestTemplate(page);
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /^Templates/ }).click();
+  await openPanel(page, 'Templates');
   await expect(page.getByText('Legacy Guest Template', { exact: true })).toHaveCount(0);
   await expect(page.getByText('Older templates were stored without an account identity', { exact: false })).toBeVisible();
 
@@ -63,7 +64,7 @@ test('an unscoped legacy template stays untouched until explicit guest import', 
   expect(await page.evaluate(() => localStorage.getItem('poem-to-image.custom-templates'))).not.toBeNull();
 
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /^Templates/ }).click();
+  await openPanel(page, 'Templates');
   await expect(page.getByText('Legacy Guest Template', { exact: true })).toBeVisible();
 });
 
@@ -79,7 +80,7 @@ test('a background selection made during slow upload transcoding stays selected'
   });
 
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /^Background/ }).click();
+  await openPanel(page, 'Background');
   await page.getByRole('button', { name: 'Image', exact: true }).click();
   // Large *valid* SVG forces image processing without allocating a huge bitmap.
   const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64">'
@@ -112,7 +113,7 @@ test('guest import protects an unsaved template after localStorage quota failure
   });
 
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /^Templates/ }).click();
+  await openPanel(page, 'Templates');
   await page.getByRole('button', { name: 'Save as Template' }).click();
   await page.getByPlaceholder('Template name...').fill('Unsaved Guest Template');
   await page.getByRole('button', { name: 'Save', exact: true }).click();

@@ -150,14 +150,11 @@ export interface PositionedElement {
   boxWidth?: number;
 }
 
-export interface ExpandedSections {
-  canvasSize: boolean;
-  templates: boolean;
-  content: boolean;
-  background: boolean;
-  typography: boolean;
-  decorations: boolean;
-}
+/** A control panel; each one is a desktop rail tab and a mobile destination. */
+export type SidebarPanel = 'templates' | 'canvasSize' | 'content' | 'typography' | 'background' | 'decorations';
+
+/** What the desktop sidebar shows next to its navigation rail. */
+export type DesktopSidebarView = SidebarPanel | 'settings';
 
 export interface SignatureConfig {
   id: string;
@@ -512,9 +509,8 @@ export interface SidebarProps {
   language: Language;
   onLanguageChange: (value: Language) => void;
   t: TranslateFn;
-  expandedSections: ExpandedSections;
-  onToggleSection: (section: keyof ExpandedSections) => void;
-  onExpandSection: (section: keyof ExpandedSections) => void;
+  desktopView: DesktopSidebarView;
+  onDesktopViewChange: (view: DesktopSidebarView) => void;
   templates: TemplateSectionProps;
   canvas: CanvasSizeSectionProps;
   content: ContentSectionProps;
@@ -643,10 +639,7 @@ export interface BillingSectionProps {
 export interface ControlSectionProps {
   title: string;
   icon: ReactNode;
-  expanded: boolean;
-  onToggle: () => void;
   summary?: string;
-  highlighted?: boolean;
   action?: ReactNode;
   children: ReactNode;
   /** Optional per-section accent color (CSS value), e.g. 'var(--app-cat-templates)'. */

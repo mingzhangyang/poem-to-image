@@ -1,15 +1,13 @@
 import { readDraft } from './helpers/readDraft';
 import sharp from 'sharp';
 import { test, expect, type Page } from '@playwright/test';
+import { isDesktopLayout, openPanel } from './helpers/sidebarNavigation';
 
-/** Opens the ornament gallery inside the Decorations panel (in the Style drawer on mobile). */
-async function openOrnaments(page: Page, labels: { style: string; decorations: string; ornaments: string }) {
-  const isMobile = (page.viewportSize()?.width ?? 0) < 1024;
-  if (isMobile) await page.getByRole('button', { name: labels.style, exact: true }).click();
-  const section = page.getByRole('button', { name: new RegExp(`^${labels.decorations}`) });
-  if (await section.getAttribute('aria-expanded') !== 'true') await section.click();
+/** Opens the ornament gallery inside the Decorations panel (a drawer on mobile). */
+async function openOrnaments(page: Page, labels: { decorations: string; ornaments: string }) {
+  await openPanel(page, labels.decorations);
   await page.getByRole('button', { name: new RegExp(`^${labels.ornaments}`) }).click();
-  return isMobile;
+  return !isDesktopLayout(page);
 }
 
 test('filters, places, restores and exports an ornament', async ({ page }) => {
@@ -25,7 +23,7 @@ test('filters, places, restores and exports an ornament', async ({ page }) => {
   });
   await page.goto('/');
   const button = (name: string) => page.getByRole('button', { name, exact: true });
-  const isMobile = await openOrnaments(page, { style: 'Style', decorations: 'Decorations & Elements', ornaments: 'Ornaments' });
+  const isMobile = await openOrnaments(page, { decorations: 'Decor', ornaments: 'Ornaments' });
   await button('Autumn').click();
   await expect(button('Chrysanthemum')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Birds' })).toHaveCount(0);
@@ -80,7 +78,7 @@ test('filters, places, restores and exports an ornament', async ({ page }) => {
   await expect(images).toHaveCount(2);
   await expect(images.first()).toHaveCSS('transform', 'matrix(-1, 0, 0, 1, 0, 0)');
   if ((page.viewportSize()?.width ?? 0) >= 1024) {
-    await page.getByRole('button', { name: /^Typography/ }).click();
+    await openPanel(page, 'Typography');
     await page.getByRole('combobox', { name: 'Font Family' }).selectOption('system-ui, sans-serif');
     const artwork = page.locator('[data-artwork-canvas]');
     const canvasBox = (await artwork.boundingBox())!;
@@ -106,12 +104,11 @@ test('filters, places, restores and exports an ornament', async ({ page }) => {
     const deviation = samples[0].reduce((sum, value, i) => sum + Math.abs(value - samples[1][i]), 0);
     expect(deviation / samples[0].length).toBeLessThan(5);
 
-    await page.getByRole('button', { name: /^Templates/ }).click();
+    await openPanel(page, 'Templates');
     await page.getByRole('button', { name: /^More \(/ }).click();
     await page.getByRole('dialog', { name: 'Built-in Templates' }).getByRole('button', { name: /Song Floral/ }).click();
     await expect(images).toHaveCount(2);
-    const backgroundSection = page.getByRole('button', { name: /^Background/ });
-    if (await backgroundSection.getAttribute('aria-expanded') !== 'true') await backgroundSection.click();
+    await openPanel(page, 'Background');
     await button('Solid').click();
     await expect(images).toHaveCount(2);
     await button('Image').click();
@@ -138,7 +135,7 @@ test('exports a Chinese autumn chrysanthemum card within 30 seconds', async ({ p
   });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   const button = (name: string | RegExp) => page.getByRole('button', { name, exact: true });
-  await openOrnaments(page, { style: '样式', decorations: '装饰与元素', ornaments: '装饰图案' });
+  await openOrnaments(page, { decorations: '装饰', ornaments: '装饰图案' });
   await button('秋意').click();
   await button(/菊/).click();
   await button('右下').click();

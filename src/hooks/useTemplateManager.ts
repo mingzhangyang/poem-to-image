@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { DEFAULT_POEM_STYLE, isSamePoemLayerStyle } from '../poemStyle';
 import { createAsyncIntentGate } from '../asyncIntentGate';
 import { createReusableTemplateParts, type EditorDocument } from '../editorDocument';
@@ -6,11 +6,11 @@ import type { EditorTemplateParts, EditorTemplateSections } from '../editorComma
 import { resolveTemplateForLanguage } from '../templates';
 import { matchesTemplateCustomTexts } from '../templates/templateCustomTextMatching';
 import type { Language } from '../translations';
+import type { ShowPanel } from './useSidebarNavigation';
 import type {
   BorderStyle,
   CustomText,
   EditorTemplateId,
-  ExpandedSections,
   LogoConfig,
   PoemLayerStyle,
   StampConfig,
@@ -24,6 +24,7 @@ import type {
 } from '../types';
 
 const ACTIVE_TEMPLATE_STORAGE_KEY = 'poem-to-image.active-template';
+
 
 interface TypographyState {
   fontFamily: string;
@@ -80,7 +81,8 @@ interface UseTemplateManagerParams {
   poemStyle: PoemLayerStyle;
   editorDocument: EditorDocument;
   applyEditorTemplate: (template: EditorTemplateParts, sections?: EditorTemplateSections) => void;
-  setExpandedSections: Dispatch<SetStateAction<ExpandedSections>>;
+  /** Shows a sidebar panel on the user's behalf. */
+  showPanel: ShowPanel;
   customTemplates: CustomTemplatesState;
 }
 
@@ -188,7 +190,7 @@ export function useTemplateManager({
   poemStyle,
   editorDocument,
   applyEditorTemplate,
-  setExpandedSections,
+  showPanel,
   customTemplates,
 }: UseTemplateManagerParams) {
   const [activeTemplateId, setActiveTemplateId] = useState<EditorTemplateId | null>(null);
@@ -200,7 +202,7 @@ export function useTemplateManager({
   // ── Apply built-in template ───────────────────────────────────────────────
 
   const applyTemplateById = useCallback(
-    (templateId: EditorTemplateId, options?: { expandSections?: boolean }): boolean => {
+    (templateId: EditorTemplateId, options?: { revealPanel?: boolean }): boolean => {
       const template = resolveTemplateForLanguage(templateId, language);
       if (!template) return false;
 
@@ -212,19 +214,13 @@ export function useTemplateManager({
       });
       setActiveTemplateId(templateId);
 
-      if (options?.expandSections ?? true) {
-        setExpandedSections((prev) => ({
-          ...prev,
-          templates: true,
-          background: true,
-          typography: true,
-          decorations: true,
-        }));
+      if (options?.revealPanel ?? true) {
+        showPanel('templates');
       }
 
       return true;
     },
-    [language, applyEditorTemplate, setExpandedSections],
+    [language, applyEditorTemplate, showPanel],
   );
 
   // ── Public handlers ───────────────────────────────────────────────────────
@@ -251,15 +247,9 @@ export function useTemplateManager({
       });
       customTemplates.applyCustomTemplate(id);
       setActiveTemplateId(null);
-      setExpandedSections((prev) => ({
-        ...prev,
-        templates: true,
-        background: true,
-        typography: true,
-        decorations: true,
-      }));
+      showPanel('templates');
     },
-    [applyEditorTemplate, customTemplates, setExpandedSections],
+    [applyEditorTemplate, customTemplates, showPanel],
   );
 
   const handleSaveCustomTemplate = useCallback(

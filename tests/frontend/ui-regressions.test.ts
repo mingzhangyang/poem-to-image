@@ -77,6 +77,10 @@ test('critical files do not include hardcoded CJK labels', () => {
     'src/components/sidebar/SignatureList.tsx',
     'src/components/sidebar/OrnamentLibrary.tsx',
     'src/components/Sidebar.tsx',
+    'src/components/sidebar/SidebarRail.tsx',
+    'src/components/sidebar/SidebarHeader.tsx',
+    'src/components/sidebar/panelGroups.ts',
+    'src/hooks/useSidebarNavigation.ts',
     'src/App.tsx',
   ];
   const hanRegex = /\p{Script=Han}/u;
@@ -95,18 +99,46 @@ test('editor purchase flow surfaces checkout errors via toast', () => {
 });
 
 test('desktop and mobile paper selectors both receive the editor language', () => {
-  // Sidebar.tsx defines each panel once and lists it for desktop and mobile.
+  // Sidebar.tsx defines each panel once; the desktop rail and the mobile
+  // drawer both show the groups declared in panelGroups.ts.
   const sidebar = readRepoFile('src/components/Sidebar.tsx');
   const instances = [...sidebar.matchAll(/<BackgroundPanel\b([\s\S]*?)\/>/g)];
   assert.equal(instances.length, 1, 'the paper selector should be defined once for desktop and mobile');
   assert.match(instances[0][1], /\blanguage=\{language\}/, 'paper swatch labels need the current language');
 
-  const desktopPanels = sidebar.match(/const DESKTOP_PANELS\b[^=]*=\s*\[([^\]]*)\]/);
-  assert.ok(desktopPanels, 'desktop panel list should be declared');
-  assert.match(desktopPanels[1], /'background'/, 'desktop sidebar must show the paper selector');
-  const stylePanels = sidebar.match(/\bstyle:\s*\{\s*panels:\s*\[([^\]]*)\]/);
-  assert.ok(stylePanels, 'mobile style group should be declared');
-  assert.match(stylePanels[1], /'background'/, 'mobile style drawer must show the paper selector');
+  const groups = readRepoFile('src/components/sidebar/panelGroups.ts');
+  assert.match(groups, /\n\s*background:\s*\{[^}]*icon:/, 'the paper selector must have its own panel group');
+  const groupOrder = groups.match(/const PANEL_GROUP_ORDER\b[^=]*=\s*\[([^\]]*)\]/);
+  assert.ok(groupOrder, 'panel order should be declared');
+  assert.match(groupOrder[1], /'background'/, 'the paper selector must be reachable from the rail and the mobile menus');
+  // Both layouts render panels from the shared definition.
+  assert.match(sidebar, /<SidebarRail\b/, 'desktop sidebar must render the navigation rail');
+  assert.match(sidebar, /renderGroup\(desktopView\)/, 'desktop panel area must show the active panel');
+  assert.match(sidebar, /\[\.\.\.PANEL_GROUP_ORDER, 'export', 'settings'\]/, 'mobile dock and More menu must list every panel');
+});
+
+test('mobile dock pins four destinations and lists the rest under More', () => {
+  const sidebar = readRepoFile('src/components/Sidebar.tsx');
+  const dock = sidebar.match(/const MOBILE_DOCK\b[^=]*=\s*\[([^\]]*)\]/);
+  assert.ok(dock, 'mobile dock should be declared as data');
+  assert.equal(dock[1].split(',').filter((item) => item.trim()).length, 4, 'the dock pins four destinations next to More');
+  assert.match(sidebar, /MOBILE_DESTINATIONS\.filter\(\(destination\) => !MOBILE_DOCK\.includes\(destination\)\)/);
+  assert.match(sidebar, /t\('quickMore'\)/);
+});
+
+test('desktop navigation rail is an accessible vertical tab list', () => {
+  const rail = readRepoFile('src/components/sidebar/SidebarRail.tsx');
+  const sidebar = readRepoFile('src/components/Sidebar.tsx');
+  assert.match(rail, /role="tablist"/);
+  assert.match(rail, /aria-orientation="vertical"/);
+  assert.match(rail, /aria-label=\{t\('controlsNavigation'\)\}/);
+  assert.match(rail, /role="tab"/);
+  assert.match(rail, /aria-selected=/);
+  assert.match(rail, /aria-controls=/);
+  assert.match(rail, /tabIndex=\{selected \? 0 : -1\}/);
+  for (const key of ['ArrowDown', 'ArrowUp', 'Home', 'End']) assert.match(rail, new RegExp(key));
+  assert.match(sidebar, /role="tabpanel"/);
+  assert.match(sidebar, /aria-labelledby=\{getRailLabelId\(desktopView\)\}/);
 });
 
 test('the selected LXGW WenKai family is defined by its local CSS', () => {

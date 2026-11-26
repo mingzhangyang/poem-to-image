@@ -4,7 +4,7 @@ import type { Language, TranslationKey } from '../../translations';
 import { PAPER_STYLES, paperPreviewStyle } from '../../paperStyles';
 import { GRADIENT_PRESETS, SOLID_COLOR_PRESET_GROUPS } from '../../backgroundPresets';
 import { CREDIT_COST } from '../../types';
-import type { AiProvider, BackgroundType, BackgroundSectionProps, ExpandedSections, TranslateFn } from '../../types';
+import type { AiProvider, BackgroundType, BackgroundSectionProps, TranslateFn } from '../../types';
 import { ControlSection } from '../ControlSection';
 import { MAX_AI_PROMPT_LENGTH } from '../../hooks/useAiBackground';
 import { useAppAuth } from '../../context/auth';
@@ -48,13 +48,11 @@ const PROMPT_SUGGESTIONS = [
 interface BackgroundPanelProps {
   t: TranslateFn;
   language: Language;
-  expanded: ExpandedSections['background'];
-  onToggle: () => void;
   background: BackgroundSectionProps;
   balance: number | null;
 }
 
-export function BackgroundPanel({ t, language, expanded, onToggle, background, balance }: BackgroundPanelProps) {
+export function BackgroundPanel({ t, language, background, balance }: BackgroundPanelProps) {
   const { isSignedIn } = useAppAuth();
   const [isPromptHelpOpen, setIsPromptHelpOpen] = useState(false);
   const hasImageAdjustments = background.bgBrightness !== 100 || background.bgBlur !== 0;
@@ -99,8 +97,6 @@ export function BackgroundPanel({ t, language, expanded, onToggle, background, b
       title={t('background')}
       icon={<Palette className="w-4 h-4" />}
       tint="var(--app-cat-background)"
-      expanded={expanded}
-      onToggle={onToggle}
       summary={summary}
     >
       <div className="space-y-4">

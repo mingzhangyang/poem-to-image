@@ -1,4 +1,3 @@
-import { Settings } from 'lucide-react';
 import type { TranslateFn } from '../../types';
 import { useAppAuth } from '../../context/auth';
 import { Logo } from '../logo';
@@ -6,12 +5,10 @@ import { Logo } from '../logo';
 interface SidebarHeaderProps {
   t: TranslateFn;
   isSheet?: boolean;
-  isSettingsOpen?: boolean;
-  onSettingsToggle?: () => void;
   balance?: number | null;
 }
 
-export function SidebarHeader({ t, isSheet = false, isSettingsOpen = false, onSettingsToggle, balance }: SidebarHeaderProps) {
+export function SidebarHeader({ t, isSheet = false, balance }: SidebarHeaderProps) {
   const { isSignedIn } = useAppAuth();
 
   return (
@@ -36,22 +33,6 @@ export function SidebarHeader({ t, isSheet = false, isSettingsOpen = false, onSe
           </p>
         )}
       </div>
-
-      {/* Gear icon — desktop sidebar only (not in mobile drawer) */}
-      {!isSheet && onSettingsToggle && (
-        <button
-          type="button"
-          onClick={onSettingsToggle}
-          aria-label={t('settings')}
-          className={`shrink-0 mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-full border transition-colors ${
-            isSettingsOpen
-              ? 'border-(--app-accent-200) bg-(--app-accent-50) text-(--app-accent-600)'
-              : 'border-[rgba(34,48,52,0.08)] bg-[rgba(255,253,249,0.8)] text-(--app-accent-500) hover:bg-(--app-accent-50) hover:text-(--app-accent-700)'
-          }`}
-        >
-          <Settings className="w-4 h-4" />
-        </button>
-      )}
     </div>
   );
 }

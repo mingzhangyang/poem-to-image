@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { expect, test, type Page } from '@playwright/test';
+import { openPanel } from './helpers/sidebarNavigation';
 
 
 const postcardBackground = '/template-backgrounds/postcard-vintage-travel.svg';
@@ -79,10 +80,7 @@ test('postcard gallery artwork loads and the edited postcard survives reload and
   test.setTimeout(120_000);
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   const isMobile = (page.viewportSize()?.width ?? 0) < 1024;
-  const templatesButton = page.getByRole('button', {
-    name: isMobile ? 'Templates' : /^Templates/, exact: isMobile,
-  });
-  if (await templatesButton.getAttribute('aria-expanded') !== 'true') await templatesButton.click();
+  await openPanel(page, 'Templates');
   await page.getByRole('button', { name: /^More \(/ }).click();
   const library = page.getByRole('dialog', { name: 'Built-in Templates' });
 
@@ -108,8 +106,8 @@ test('postcard gallery artwork loads and the edited postcard survives reload and
     const drawer = page.getByRole('dialog', { name: 'Templates', exact: true });
     await drawer.getByRole('button', { name: 'Close controls', exact: true }).click();
     await expect(drawer).toBeHidden();
-    await page.getByRole('button', { name: 'Content', exact: true }).click();
   }
+  await openPanel(page, 'Content');
   await page.getByRole('button', { name: 'Open Editor' }).click();
   const editor = page.getByRole('dialog', { name: 'Poem Editor' });
   await editor.locator('#poem-editor-title-input').fill('');

@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { openPanel } from './helpers/sidebarNavigation';
 
 test.beforeEach(async ({ page }) => {
   await page.route('**/api/billing/packages', async (route) => {
@@ -13,7 +14,7 @@ test.beforeEach(async ({ page }) => {
 test('style cards render genuine previews and offer functional category filters', async ({ page }, info) => {
   test.skip(info.project.name === 'chromium-mobile', 'Desktop control panel; shared renderer is covered below');
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /^装饰与元素/ }).click();
+  await openPanel(page, '装饰');
   await page.getByRole('checkbox', { name: '显示印章' }).check();
   const group = page.getByRole('group', { name: '中国印章样式库' });
   const filters = page.getByRole('group', { name: '筛选印章样式' });
@@ -43,7 +44,7 @@ test('style cards render genuine previews and offer functional category filters'
 test('style selection preserves user text, shape identity and placement until example explicitly requested', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name === 'chromium-mobile', 'Desktop editing flow; Canvas core shared');
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /^装饰与元素/ }).click();
+  await openPanel(page, '装饰');
   await page.getByRole('checkbox', { name: '显示印章' }).check();
   const text = page.getByRole('textbox', { name: '印章文字' });
   await text.fill('澄怀观道');
@@ -62,7 +63,7 @@ test('style selection preserves user text, shape identity and placement until ex
   })).toEqual(['澄怀观道', 'rect-vertical', 0.58, undefined]);
 
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /^装饰与元素/ }).click();
+  await openPanel(page, '装饰');
   await expect(page.getByRole('textbox', { name: '印章文字' })).toHaveValue('澄怀观道');
   await expect(page.getByRole('button', { name: '斋馆印', exact: true }))
     .toHaveAttribute('aria-pressed', 'true');
@@ -74,7 +75,7 @@ test('style selection preserves user text, shape identity and placement until ex
 test('motif gallery and advanced settings retain existing keyboard and text controls', async ({ page }, info) => {
   test.skip(info.project.name === 'chromium-mobile', 'Desktop settings flow');
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /^装饰与元素/ }).click();
+  await openPanel(page, '装饰');
   await page.getByRole('checkbox', { name: '显示印章' }).check();
   await page.getByRole('textbox', { name: '印章文字' }).fill('李明之印');
 
@@ -121,7 +122,7 @@ test('font registration after gallery mount repaints all existing thumbnails', a
     };
   });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /^装饰与元素/ }).click();
+  await openPanel(page, '装饰');
   await page.getByRole('checkbox', { name: '显示印章' }).check();
   await expect(page.getByRole('group', { name: '中国印章样式库' }).locator('canvas')).toHaveCount(10);
   const countPaints = () => page.evaluate(() =>
@@ -142,7 +143,7 @@ test('font registration after gallery mount repaints all existing thumbnails', a
 test('glyph sliders clear the precise style selection after application', async ({ page }, info) => {
   test.skip(info.project.name === 'chromium-mobile', 'Desktop editing flow');
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /^装饰与元素/ }).click();
+  await openPanel(page, '装饰');
   await page.getByRole('checkbox', { name: '显示印章' }).check();
   const card = page.getByRole('button', { name: '斋馆印', exact: true });
   const header = page.getByRole('button', { name: /^中国印章样式库/ });
@@ -167,7 +168,7 @@ test('glyph sliders clear the precise style selection after application', async 
 test('keyboard card selection returns focus to a stable header and supports next Tab', async ({ page }, info) => {
   test.skip(info.project.name === 'chromium-mobile', 'Desktop gallery keyboard controls');
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /^装饰与元素/ }).click();
+  await openPanel(page, '装饰');
   await page.getByRole('checkbox', { name: '显示印章' }).check();
   const header = page.getByRole('button', { name: /^中国印章样式库/ });
   await page.getByRole('button', { name: '斋馆印', exact: true }).focus();

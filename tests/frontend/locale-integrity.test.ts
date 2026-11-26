@@ -24,7 +24,7 @@ const allowedEnglishMatches: Record<keyof typeof locales, ReadonlySet<string>> =
     'exportTargetStory', 'exportQualityStandard', 'exportQualityUltraHd', 'contact', 'signatureColor',
   ]),
   fr: new Set([
-    'appTitle', 'templateCyberpunk', 'stylePanelTitle', 'bgTransparent', 'bgImage', 'horizontal',
+    'appTitle', 'templateCyberpunk', 'bgTransparent', 'bgImage', 'horizontal',
     'vertical', 'borderDouble', 'borderFractal', 'logos', 'imageShort', 'horiz', 'vert', 'angle',
     'exportFormatPng', 'exportFormatJpg', 'exportFormatWebp', 'exportTargetStory',
     'exportQualityStandard', 'exportQualityUltraHd', 'contact', 'signatures', 'addSignature',

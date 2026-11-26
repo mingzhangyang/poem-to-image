@@ -11,7 +11,6 @@ import type {
   CustomText,
   DecorationsSectionProps,
   TemplateSectionProps,
-  ExpandedSections,
   SidebarProps,
   TranslateFn,
   TypographySectionProps,
@@ -21,9 +20,8 @@ interface UseEditorViewModelsParams {
   language: Language;
   onLanguageChange: (value: Language) => void;
   t: TranslateFn;
-  expandedSections: ExpandedSections;
-  onToggleSection: (section: keyof ExpandedSections) => void;
-  onExpandSection: (section: keyof ExpandedSections) => void;
+  desktopView: SidebarProps['desktopView'];
+  onDesktopViewChange: SidebarProps['onDesktopViewChange'];
   templates: TemplateSectionProps;
   canvas: CanvasSizeSectionProps;
   content: ContentSectionProps;
@@ -84,9 +82,8 @@ export function useEditorViewModels({
   language,
   onLanguageChange,
   t,
-  expandedSections,
-  onToggleSection,
-  onExpandSection,
+  desktopView,
+  onDesktopViewChange,
   templates,
   canvas,
   content,
@@ -146,9 +143,8 @@ export function useEditorViewModels({
     language,
     onLanguageChange,
     t,
-    expandedSections,
-    onToggleSection,
-    onExpandSection,
+    desktopView,
+    onDesktopViewChange,
     templates,
     canvas,
     content,
@@ -176,9 +172,8 @@ export function useEditorViewModels({
     language,
     onLanguageChange,
     t,
-    expandedSections,
-    onToggleSection,
-    onExpandSection,
+    desktopView,
+    onDesktopViewChange,
     templates,
     canvas,
     content,

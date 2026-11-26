@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { readDraft } from './helpers/readDraft';
+import { openPanel } from './helpers/sidebarNavigation';
 
 test.use({ viewport: { width: 1440, height: 900 } });
 
@@ -21,7 +22,7 @@ test.beforeEach(async ({ context }) => {
 test('restores uploaded background blobs and logo images without stripping layers', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
 
-  await page.getByRole('button', { name: /^Background/ }).click();
+  await openPanel(page, 'Background');
   await page.getByRole('button', { name: 'Image', exact: true }).click();
   await page.getByLabel('Upload Image').setInputFiles({
     name: 'background.png', mimeType: 'image/png', buffer: image,
@@ -29,7 +30,7 @@ test('restores uploaded background blobs and logo images without stripping layer
   await expect.poll(async () => (await readDraft(page))?.scene.background.backgroundImage)
     .toMatch(/^draft-asset:/);
 
-  await page.getByRole('button', { name: /^Decorations & Elements/ }).click();
+  await openPanel(page, 'Decor');
   await page.getByLabel('Upload Logo').setInputFiles({
     name: 'logo.png', mimeType: 'image/png', buffer: image,
   });
@@ -54,7 +55,8 @@ test('restores uploaded background blobs and logo images without stripping layer
       return false;
     }
   })).toBe(true);
-  const logo = page.getByRole('img', { name: 'Logo' });
+  // The Decorations panel reopens after reload and lists a thumbnail too.
+  const logo = page.getByLabel('Logo element').getByRole('img', { name: 'Logo' });
   await expect(logo).toHaveAttribute('src', /^blob:/);
   await expect.poll(() => logo.evaluate(async (element) => {
     const image = element as HTMLImageElement;
@@ -305,7 +307,7 @@ test('dirty artwork survives a failed detached save during same-tab navigation',
       configurable: true, value: () => { throw new Error('Storage unavailable'); },
     });
   });
-  await page.getByRole('button', { name: /^Background/ }).click();
+  await openPanel(page, 'Background');
   await page.getByRole('button', { name: 'Image', exact: true }).click();
   await page.getByLabel('Upload Image').setInputFiles({
     name: 'unsaved-background.png', mimeType: 'image/png', buffer: image,
@@ -313,6 +315,7 @@ test('dirty artwork survives a failed detached save during same-tab navigation',
   await expect.poll(async () => (await page.locator('[data-export-layer="background"]').first().getAttribute('style')) ?? '')
     .toContain('blob:');
 
+  await openPanel(page, 'Content');
   await page.getByRole('button', { name: 'Open Editor' }).click();
   await page.getByPlaceholder('Title').fill('Not yet on disk');
   await page.getByRole('button', { name: 'Done' }).click();
@@ -355,7 +358,7 @@ test('dirty artwork survives a failed detached save during same-tab navigation',
 
 test('a hidden uploaded background remains available after reload and changing modes', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /^Background/ }).click();
+  await openPanel(page, 'Background');
   await page.getByRole('button', { name: 'Image', exact: true }).click();
   await page.getByLabel('Upload Image').setInputFiles({
     name: 'hidden-background.png', mimeType: 'image/png', buffer: image,
@@ -368,8 +371,9 @@ test('a hidden uploaded background remains available after reload and changing m
   expect(id).toMatch(/^draft-asset:.+/);
 
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await expect(page.getByRole('button', { name: /^Background/ })).toBeVisible();
-  await page.getByRole('button', { name: /^Background/ }).click();
+  // The rail reopens the last panel after a reload.
+  await expect(page.getByRole('region', { name: 'Background', exact: true })).toBeVisible();
+  await openPanel(page, 'Background');
   await page.getByRole('button', { name: 'Image', exact: true }).click();
   const background = page.locator('[data-export-layer="background"]').first();
   await expect.poll(async () => (await background.getAttribute('style')) ?? '').toContain('blob:');

@@ -1,5 +1,5 @@
 import { Stamp } from 'lucide-react';
-import type { BorderStyle, DecorationsSectionProps, ExpandedSections, TranslateFn } from '../../types';
+import type { BorderStyle, DecorationsSectionProps, TranslateFn } from '../../types';
 import { ControlSection } from '../ControlSection';
 import { AddElementActions } from './AddElementActions';
 import { BorderControls } from './BorderControls';
@@ -48,12 +48,10 @@ const BORDER_STYLE_LABELS: Record<
 
 interface DecorationsPanelProps {
   t: TranslateFn;
-  expanded: ExpandedSections['decorations'];
-  onToggle: () => void;
   decorations: DecorationsSectionProps;
 }
 
-export function DecorationsPanel({ t, expanded, onToggle, decorations }: DecorationsPanelProps) {
+export function DecorationsPanel({ t, decorations }: DecorationsPanelProps) {
   const ornamentCount = decorations.logos.filter(item => item.ornamentId).length;
   const summaryParts = [
     decorations.showBorder ? t(BORDER_STYLE_LABELS[decorations.borderStyle]) : null,
@@ -69,8 +67,6 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
       title={t('decorations')}
       icon={<Stamp className="w-4 h-4" />}
       tint="var(--app-cat-decorations)"
-      expanded={expanded}
-      onToggle={onToggle}
       summary={summaryParts.join(' · ')}
     >
       <div className="space-y-4">

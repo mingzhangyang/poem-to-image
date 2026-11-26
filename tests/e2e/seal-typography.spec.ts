@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { openPanel } from './helpers/sidebarNavigation';
 
 test.beforeEach(async ({ page }) => {
   await page.route('**/api/billing/packages', async (route) => {
@@ -57,7 +58,7 @@ test('presets update selected seal modes and preserve text/position through undo
   test.skip(testInfo.project.name === 'chromium-mobile', 'Desktop control flow; Canvas test also runs on mobile');
   await page.clock.install();
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /^装饰与元素/ }).click();
+  await openPanel(page, '装饰');
   await page.getByRole('checkbox', { name: '显示印章' }).check();
   const input = page.getByRole('textbox', { name: '印章文字' });
   await input.fill('山水天地');
@@ -89,7 +90,7 @@ test('presets update selected seal modes and preserve text/position through undo
   })).toEqual(['zhuwen', '山水天地']);
 
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /^装饰与元素/ }).click();
+  await openPanel(page, '装饰');
   await expect(page.getByRole('combobox', { name: '印章模式' })).toHaveValue('zhuwen');
   await expect(page.getByRole('textbox', { name: '印章文字' })).toHaveValue('山水天地');
 });
@@ -103,7 +104,7 @@ for (const edit of ['mode', 'font'] as const) {
       localStorage.setItem('poem-to-image.active-template', 'graceful-whitespace');
     });
     await page.goto('/', { waitUntil: 'domcontentloaded' });
-    await page.getByRole('button', { name: /^装饰与元素/ }).click();
+    await openPanel(page, '装饰');
     await expect(page.getByRole('checkbox', { name: '显示印章' })).toBeChecked();
     const mode = page.getByRole('combobox', { name: '印章模式' });
     const font = page.getByRole('combobox', { name: '印章字体' });
@@ -114,10 +115,11 @@ for (const edit of ['mode', 'font'] as const) {
     }
     const expectedMode = await mode.inputValue();
     const expectedFont = await font.inputValue();
-    await page.getByRole('button', { name: '设置' }).click();
+    await openPanel(page, '设置');
     // English deliberately hides seals; switch to a supported CJK language.
     await page.getByRole('button', { name: '繁體中文', exact: true }).click();
-    await page.getByRole('button', { name: '設定' }).click();
+    // Settings is a rail tab; leave it for the Decorations panel.
+    await openPanel(page, '裝飾');
     await expect(page.getByRole('combobox', { name: '印章模式' })).toHaveValue(expectedMode);
     await expect(page.getByRole('combobox', { name: '印章字體' })).toHaveValue(expectedFont);
   });
@@ -177,9 +179,10 @@ test('pre-upgrade built-in draft localizes its seal without gaining a new stroke
     return [scene?.decorations?.stamp?.text, scene?.decorations?.stamp?.textStrokeWidthPct ?? null];
   })).toEqual(['清韵', null]);
 
-  await page.getByRole('button', { name: '设置' }).click();
+  await openPanel(page, '设置');
   await page.getByRole('button', { name: '繁體中文', exact: true }).click();
-  await page.getByRole('button', { name: '設定' }).click();
+  // Settings is a rail tab; leave it for the Decorations panel.
+  await openPanel(page, '裝飾');
   await expect.poll(() => page.evaluate(() => {
     const scene = JSON.parse(localStorage.getItem('inkpoem.editor-state.v1') || 'null');
     return [scene?.decorations?.stamp?.text, scene?.decorations?.stamp?.textStrokeWidthPct ?? null];
@@ -189,7 +192,7 @@ test('pre-upgrade built-in draft localizes its seal without gaining a new stroke
 test('glyph size and stroke sliders persist through editor reload', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name === 'chromium-mobile', 'Desktop settings flow');
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /^装饰与元素/ }).click();
+  await openPanel(page, '装饰');
   await page.getByRole('checkbox', { name: '显示印章' }).check();
   await expect(page.getByRole('textbox', { name: '印章文字' })).toHaveValue('印');
   const textSize = page.getByRole('slider', { name: '印文字号' });
@@ -208,7 +211,7 @@ test('glyph size and stroke sliders persist through editor reload', async ({ pag
     return [scene?.decorations?.stamp?.textScale, scene?.decorations?.stamp?.textStrokeWidthPct];
   })).toEqual([1.1, 4]);
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /^装饰与元素/ }).click();
+  await openPanel(page, '装饰');
   await expect(page.getByRole('slider', { name: '印文字号' })).toHaveValue('110');
   await expect(page.getByRole('slider', { name: '印文笔画粗细' })).toHaveValue('4');
 });
@@ -216,7 +219,7 @@ test('glyph size and stroke sliders persist through editor reload', async ({ pag
 test('Phase 4A: a new elongated seal retains eight glyphs and ratio after reload', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name === 'chromium-mobile', 'UI controls checked on desktop; drawing core is shared');
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /^装饰与元素/ }).click();
+  await openPanel(page, '装饰');
   await page.getByRole('checkbox', { name: '显示印章' }).check();
   const stampText = page.getByRole('textbox', { name: '印章文字' });
   await stampText.fill('春夏秋冬山水天地');
@@ -253,7 +256,7 @@ test('Phase 4A: a new elongated seal retains eight glyphs and ratio after reload
   })).toEqual(['春夏秋冬山水天地', 'oval', 0.6]);
 
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /^装饰与元素/ }).click();
+  await openPanel(page, '装饰');
   await expect(page.getByRole('textbox', { name: '印章文字' })).toHaveValue('春夏秋冬山水天地');
   await expect(page.getByRole('combobox', { name: '印章样式' })).toHaveValue('oval');
   await expect(page.getByRole('slider', { name: '短边 / 长边比例' })).toHaveValue('60');

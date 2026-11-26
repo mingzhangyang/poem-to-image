@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { openPanel } from './helpers/sidebarNavigation';
 
 test('vertical Chinese punctuation keeps upright ink, column order and export availability', async ({ page }, testInfo) => {
   await page.route('**/api/billing/packages', route => route.fulfill({
@@ -21,18 +22,19 @@ test('vertical Chinese punctuation keeps upright ink, column order and export av
   );
   await editor.getByRole('button', { name: 'Done' }).click();
 
+  const drawer = page.locator('#mobile-controls-drawer');
   if (isMobile) {
-    // Closing the editor leaves the Content sheet open. Typography is already
-    // inside that sheet; the backdrop intentionally blocks the Settings shortcut.
-    const drawer = page.locator('#mobile-controls-drawer');
+    // Closing the editor leaves the Content sheet open; the backdrop blocks
+    // the dock, so close it before opening Typography from More.
     await expect(drawer).toBeVisible();
-    await drawer.getByRole('button', { name: /^Typography/ }).click();
-    await drawer.getByRole('button', { name: 'Vertical', exact: true }).click();
     await drawer.getByRole('button', { name: 'Close controls' }).click();
     await expect(drawer).toBeHidden();
-  } else {
-    await page.getByRole('button', { name: /^Typography/ }).click();
-    await page.getByRole('button', { name: 'Vertical', exact: true }).click();
+  }
+  await openPanel(page, 'Typography');
+  await page.getByRole('button', { name: 'Vertical', exact: true }).click();
+  if (isMobile) {
+    await drawer.getByRole('button', { name: 'Close controls' }).click();
+    await expect(drawer).toBeHidden();
   }
   const preview = page.locator('svg[data-vertical-text-layout="true"]');
   await expect(preview.first()).toBeVisible();
@@ -46,9 +48,7 @@ test('vertical Chinese punctuation keeps upright ink, column order and export av
   });
 
   // No source text is rewritten: source is still accessible through the editor.
-  if (isMobile) {
-    await page.getByRole('button', { name: 'Content', exact: true }).click();
-  }
+  await openPanel(page, 'Content');
   await page.getByRole('button', { name: 'Open Editor' }).click();
   await expect(page.getByRole('dialog', { name: 'Poem Editor' })
     .getByPlaceholder('Enter your poem here...')).toHaveValue(

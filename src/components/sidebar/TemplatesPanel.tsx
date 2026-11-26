@@ -2,7 +2,7 @@ import { BookmarkPlus, Expand, Pencil, Search, Sparkles, Trash2, X } from 'lucid
 import { useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
-import type { ExpandedSections, TemplateSectionProps, TranslateFn } from '../../types';
+import type { TemplateSectionProps, TranslateFn } from '../../types';
 import { ControlSection } from '../ControlSection';
 import { useDialogA11y } from '../../hooks/useDialogA11y';
 import { getTemplatePreviewStyle } from '../../templates/preview-style';
@@ -19,8 +19,6 @@ type BuiltInTemplate = TemplateSectionProps['templates'][number];
 interface TemplatesPanelProps {
   t: TranslateFn;
   language: Language;
-  expanded: ExpandedSections['templates'];
-  onToggle: () => void;
   templates: TemplateSectionProps;
   currentBackgroundType: string;
 }
@@ -137,7 +135,7 @@ function BuiltInTemplateCard({ t, language, template, isActive, onApply, variant
   );
 }
 
-export function TemplatesPanel({ t, language, expanded, onToggle, templates, currentBackgroundType }: TemplatesPanelProps) {
+export function TemplatesPanel({ t, language, templates, currentBackgroundType }: TemplatesPanelProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmittingSave, setIsSubmittingSave] = useState(false);
   const saveInFlightRef = useRef(false);
@@ -267,10 +265,7 @@ export function TemplatesPanel({ t, language, expanded, onToggle, templates, cur
         title={t('templates')}
         icon={<Sparkles className="w-4 h-4" />}
         tint="var(--app-cat-templates)"
-        expanded={expanded}
-        onToggle={onToggle}
         summary={activeName ?? t('templatesHint')}
-        highlighted={!templates.activeTemplateId && !templates.activeCustomTemplateId}
       >
         <div className="space-y-4">
           <div>

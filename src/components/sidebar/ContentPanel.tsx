@@ -1,18 +1,16 @@
 import { Suspense, lazy, useEffect, useState } from 'react';
 import { Expand, Type } from 'lucide-react';
-import type { ContentSectionProps, ExpandedSections, TranslateFn } from '../../types';
+import type { ContentSectionProps, TranslateFn } from '../../types';
 import { ControlSection } from '../ControlSection';
 
 const PoemEditorModal = lazy(async () => ({ default: (await import('../PoemEditorModal')).PoemEditorModal }));
 
 interface ContentPanelProps {
   t: TranslateFn;
-  expanded: ExpandedSections['content'];
-  onToggle: () => void;
   content: ContentSectionProps;
 }
 
-export function ContentPanel({ t, expanded, onToggle, content }: ContentPanelProps) {
+export function ContentPanel({ t, content }: ContentPanelProps) {
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const { editorOpenRequestId = 0, onEditorOpenRequestHandled } = content;
 
@@ -35,8 +33,6 @@ export function ContentPanel({ t, expanded, onToggle, content }: ContentPanelPro
       <ControlSection
         title={t('content')}
         icon={<Type className="w-4 h-4" />}
-        expanded={expanded}
-        onToggle={onToggle}
         summary={summary}
       >
         <button

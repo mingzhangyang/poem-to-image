@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { openPanel, panelSummary } from './helpers/sidebarNavigation';
 
 test.use({ viewport: { width: 1440, height: 1000 } });
 
@@ -17,7 +18,7 @@ test('editor lifecycle registers visibilitychange on the browser document', asyn
   page.on('pageerror', (error) => errors.push(error.message));
 
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await expect(page.getByRole('button', { name: /^Background/ })).toBeVisible();
+  await expect(page.getByRole('tablist', { name: 'Control panels' })).toBeVisible();
 
   // Regression for a scene snapshot named "document" shadowing the DOM global.
   // This must not throw during mount or when the visibility event fires.
@@ -28,7 +29,7 @@ test('editor lifecycle registers visibilitychange on the browser document', asyn
 test('reverted border edits do not create duplicate history or suppress the next real edit', async ({ page }) => {
   await page.clock.install();
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /^Decorations/ }).click();
+  await openPanel(page, 'Decor');
 
   const border = page.getByRole('checkbox', { name: /Border/i });
   const undo = page.getByRole('button', { name: 'Undo' });
@@ -77,14 +78,17 @@ test('reverted border edits do not create duplicate history or suppress the next
 test('a multi-layer template command undoes and redoes before the history debounce', async ({ page }) => {
   await page.clock.install();
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /^Templates/ }).click();
+  await openPanel(page, 'Templates');
   await page.getByRole('button', { name: /^More \(/ }).click();
   const library = page.getByRole('dialog', { name: 'Built-in Templates' });
   // Freeze the 800ms debounce; polling cannot mask missing immediate-Undo support.
   // Native DOM click avoids Playwright actionability's animation-frame wait while paused.
   await page.clock.pauseAt(Date.now() + 5_000);
   await library.getByRole('button', { name: /Song Floral/ }).evaluate((element) => (element as HTMLButtonElement).click());
-  const summary = page.getByRole('button', { name: /^Background/ });
+  // Applying a template shows the Templates panel; switch to Background
+  // with a native click as well, since the clock is paused.
+  await page.getByRole('tab', { name: 'Background', exact: true }).evaluate((element) => (element as HTMLButtonElement).click());
+  const summary = panelSummary(page, 'Background');
   await expect(summary).toContainText('Templates');
 
   // The pending scene is undoable immediately, even before the 800ms timer
@@ -105,13 +109,13 @@ test('a multi-layer template command undoes and redoes before the history deboun
   })).toBe('image');
 
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await expect(page.getByRole('button', { name: /^Background/ })).toContainText('Templates');
+  await expect(panelSummary(page, 'Background')).toContainText('Templates');
 });
 
 test('rapid undo of a preset restores its identity and dimensions in saved document', async ({ page }) => {
   await page.clock.install();
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /^Canvas Size/ }).click();
+  await openPanel(page, 'Size');
   const selector = page.getByRole('combobox', { name: 'Preset Sizes' });
   const originalPreset = await selector.inputValue();
   const nextPreset = originalPreset === 'print-card' ? 'wechat-moments-long' : 'print-card';
@@ -132,6 +136,6 @@ test('rapid undo of a preset restores its identity and dimensions in saved docum
   })).toBe(nextPreset);
 
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /^Canvas Size/ }).click();
+  await openPanel(page, 'Size');
   await expect(page.getByRole('combobox', { name: 'Preset Sizes' })).toHaveValue(nextPreset);
 });
