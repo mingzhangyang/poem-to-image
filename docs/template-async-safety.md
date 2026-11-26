@@ -33,6 +33,18 @@ anonymous templates and cloud snapshots from whichever account last logged in.
 - Mutation calls are ordered per hook. Each queued write captures a unique
   account-lifetime lease (not merely a user ID), and old queued tasks cannot
   dispatch after unmount or an A → B → A switch.
+- The Save as Template form (typed name, open state, in-flight guard) lives
+  in `useTemplateManager` (`src/customTemplateSaveForm.ts`), not in the
+  Templates panel. The panel unmounts whenever the desktop rail or the mobile
+  drawer shows another panel, or the drawer closes; coming back shows the
+  pending save locked instead of offering a second create, and a failed save
+  keeps its name for a deliberate retry. As a backstop, `useCustomTemplates`
+  refuses a second cloud create while one is in flight in the same account
+  lifetime, and a repeated delete of the same template joins the pending one
+  instead of sending another DELETE. `tests/e2e/custom-template-save-navigation.spec.ts`
+  covers this with a held POST, signed in through the development server's
+  test account hook (`window.__INKPOEM_DEV_TEST_ACCOUNT`, see `src/main.tsx`;
+  not present in production builds).
 - A pending write invalidates older GET snapshots; each confirmed write
   invalidates reads again. Authoritative reconciliation waits until the entire
   mutation queue is idle so an intermediate GET cannot overwrite a later write.

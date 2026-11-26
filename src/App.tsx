@@ -202,7 +202,7 @@ function EditorApp({ initialState, initialRevision, promoteInitial }: EditorAppP
 
   const customTemplates = useCustomTemplates({ isLoaded, isSignedIn, userId, getToken });
 
-  const { activeTemplateId, handleApplyTemplate, handleApplyCustomTemplate, handleSaveCustomTemplate } =
+  const { activeTemplateId, handleApplyTemplate, handleApplyCustomTemplate, customTemplateSaveForm } =
     useTemplateManager({
       language,
       hasPersistedEditorState: initialState !== null,
@@ -488,7 +488,7 @@ function EditorApp({ initialState, initialRevision, promoteInitial }: EditorAppP
       onImportLegacyCustomTemplates: customTemplates.importLegacyTemplates,
       activeCustomTemplateId: customTemplates.activeCustomTemplateId,
       onApplyCustomTemplate: handleApplyCustomTemplate,
-      onSaveCustomTemplate: handleSaveCustomTemplate,
+      saveForm: customTemplateSaveForm,
       onDeleteCustomTemplate: customTemplates.deleteCustomTemplate,
       onRenameCustomTemplate: customTemplates.renameCustomTemplate,
     },

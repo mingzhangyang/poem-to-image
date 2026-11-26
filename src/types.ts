@@ -298,6 +298,18 @@ export interface UserCustomTemplate {
 
 export type TemplateReconciliationStatus = 'idle' | 'pending' | 'checking' | 'refreshed' | 'failed';
 
+export interface CustomTemplateSaveFormProps {
+  isOpen: boolean;
+  name: string;
+  /** A save is in flight; the form is locked until it settles. */
+  isSubmitting: boolean;
+  onOpen: () => void;
+  onClose: () => void;
+  onNameChange: (name: string) => void;
+  /** Saves the typed name; resolves false if the save was not confirmed. */
+  onSubmit: () => Promise<boolean>;
+}
+
 export interface TemplateSectionProps {
   templates: EditorTemplateDefinition[];
   activeTemplateId: EditorTemplateId | null;
@@ -313,7 +325,8 @@ export interface TemplateSectionProps {
   onImportLegacyCustomTemplates: () => void;
   activeCustomTemplateId: string | null;
   onApplyCustomTemplate: (id: string) => void;
-  onSaveCustomTemplate: (name: string) => Promise<boolean>;
+  /** The "Save as template" form; owned above the panel so it survives remounts. */
+  saveForm: CustomTemplateSaveFormProps;
   onDeleteCustomTemplate: (id: string) => Promise<void>;
   onRenameCustomTemplate: (id: string, name: string) => Promise<void>;
 }

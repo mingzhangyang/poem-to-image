@@ -95,7 +95,8 @@ test('a custom copy keeps its handwriting and drops it when another template is 
   await expect(signature).toBeVisible();
 
   await page.getByRole('button', { name: 'Save as Template' }).click();
-  await page.getByPlaceholder('Template name...').fill('Graceful Copy');
+  // On mobile the hidden desktop panel shares the same save form.
+  await page.getByPlaceholder('Template name...').filter({ visible: true }).fill('Graceful Copy');
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expect.poll(() => page.evaluate(() => {
     const copies = JSON.parse(localStorage.getItem('poem-to-image.custom-templates.v2.guest') || '[]');

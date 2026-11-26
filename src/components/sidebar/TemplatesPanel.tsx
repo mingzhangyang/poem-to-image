@@ -137,10 +137,9 @@ function BuiltInTemplateCard({ t, language, template, isActive, onApply, variant
 }
 
 export function TemplatesPanel({ t, language, templates, currentBackgroundType }: TemplatesPanelProps) {
-  const [isSaving, setIsSaving] = useState(false);
-  const [isSubmittingSave, setIsSubmittingSave] = useState(false);
-  const saveInFlightRef = useRef(false);
-  const [templateName, setTemplateName] = useState('');
+  // The save form is owned above this panel: it unmounts when another panel
+  // is shown, while a save it started keeps running.
+  const { saveForm } = templates;
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
@@ -205,33 +204,12 @@ export function TemplatesPanel({ t, language, templates, currentBackgroundType }
     failed: syncMessages.reconcileFailed,
   }[templates.templateReconciliationStatus];
 
-  const handleSave = async () => {
-    if (saveInFlightRef.current || !templates.canSaveCustomTemplate) return;
-    saveInFlightRef.current = true;
-    setIsSubmittingSave(true);
-    try {
-      const saved = await templates.onSaveCustomTemplate(templateName.trim());
-      // Keep the typed name and open form if authentication changed, or the
-      // server did not confirm the write. A retry can be deliberate and safe.
-      if (saved) {
-        setTemplateName('');
-        setIsSaving(false);
-      }
-    } finally {
-      saveInFlightRef.current = false;
-      setIsSubmittingSave(false);
-    }
-  };
-
   const handleKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') {
       event.preventDefault();
-      void handleSave();
+      if (templates.canSaveCustomTemplate) void saveForm.onSubmit();
     }
-    if (event.key === 'Escape' && !isSubmittingSave) {
-      setIsSaving(false);
-      setTemplateName('');
-    }
+    if (event.key === 'Escape') saveForm.onClose();
   };
 
   const startRenaming = (id: string, currentName: string) => {
@@ -272,9 +250,9 @@ export function TemplatesPanel({ t, language, templates, currentBackgroundType }
           <div>
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-semibold text-(--app-accent-500) uppercase tracking-wide">{t('myTemplates')}</span>
-              {!isSaving && (
+              {!saveForm.isOpen && (
                 <button
-                  onClick={() => setIsSaving(true)}
+                  onClick={saveForm.onOpen}
                   className="flex items-center gap-1 text-xs font-medium text-(--app-accent-600) hover:text-(--app-accent-800)"
                 >
                   <BookmarkPlus className="w-3.5 h-3.5" />
@@ -283,8 +261,8 @@ export function TemplatesPanel({ t, language, templates, currentBackgroundType }
               )}
             </div>
 
-            {isSaving && (
-              <div className="mb-3 space-y-2">
+            {saveForm.isOpen && (
+              <div className="mb-3 space-y-2" aria-busy={saveForm.isSubmitting}>
                 {isImageOrAiBg && (
                   <p className="text-xs text-amber-600 leading-4">{t('bgNotSavedNote')}</p>
                 )}
@@ -292,27 +270,24 @@ export function TemplatesPanel({ t, language, templates, currentBackgroundType }
                   <input
                     autoFocus
                     type="text"
-                    value={templateName}
-                    onChange={(event) => setTemplateName(event.target.value)}
+                    value={saveForm.name}
+                    onChange={(event) => saveForm.onNameChange(event.target.value)}
                     onKeyDown={handleKeyDown}
-                    disabled={isSubmittingSave}
+                    disabled={saveForm.isSubmitting}
                     placeholder={t('templateNamePlaceholder')}
                     className="app-input flex-1 text-sm"
                   />
                   <button
                     type="button"
-                    onClick={() => { void handleSave(); }}
-                    disabled={!templates.canSaveCustomTemplate || isSubmittingSave}
+                    onClick={() => { void saveForm.onSubmit(); }}
+                    disabled={!templates.canSaveCustomTemplate || saveForm.isSubmitting}
                     className="app-button-primary rounded-lg px-3 py-1.5 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {t('saveTemplate')}
                   </button>
                   <button
-                    onClick={() => {
-                      setIsSaving(false);
-                      setTemplateName('');
-                    }}
-                    disabled={isSubmittingSave}
+                    onClick={saveForm.onClose}
+                    disabled={saveForm.isSubmitting}
                     className="p-1.5 text-[rgba(34,48,52,0.4)] hover:text-(--app-accent-700) rounded-lg hover:bg-(--app-accent-50)"
                     aria-label={t('closeControls')}
                   >

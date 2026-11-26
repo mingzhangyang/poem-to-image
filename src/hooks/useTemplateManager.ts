@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { DEFAULT_POEM_STYLE, isSamePoemLayerStyle } from '../poemStyle';
 import { createAsyncIntentGate } from '../asyncIntentGate';
+import { createCustomTemplateSaveForm } from '../customTemplateSaveForm';
 import { createReusableTemplateParts, type EditorDocument } from '../editorDocument';
 import type { EditorTemplateParts, EditorTemplateSections } from '../editorCommands';
 import { resolveTemplateForLanguage } from '../templates';
@@ -198,6 +199,11 @@ export function useTemplateManager({
   // Selection intent outlives individual cloud writes. Saving data does not
   // grant a pending request permission to replace a newer user selection.
   const selectionIntentRef = useRef(createAsyncIntentGate());
+  const saveInFlightRef = useRef(false);
+  // The save form lives here, not in the Templates panel, which unmounts when
+  // another panel is shown while its save keeps running.
+  const [saveForm] = useState(createCustomTemplateSaveForm);
+  const saveFormState = useSyncExternalStore(saveForm.subscribe, saveForm.getState);
 
   // ── Apply built-in template ───────────────────────────────────────────────
 
@@ -257,19 +263,32 @@ export function useTemplateManager({
       // The identity may be unresolved while Clerk loads or changes account.
       // Do not treat a silent null result as a completed user save.
       if (!customTemplates.canSaveCustomTemplate) return false;
-      const saveEpoch = selectionIntentRef.current.begin();
-      const shouldActivate = () => selectionIntentRef.current.isCurrent(saveEpoch);
-      const { background: bgConfig, typography: typConfig, decorations: decConfig, poemStyle } =
-        createReusableTemplateParts(editorDocument);
-      const created = await customTemplates.saveCustomTemplate(
-        name, bgConfig, typConfig, decConfig, poemStyle, shouldActivate,
-      );
-      if (!created) return false;
-      // Never reset a template selected while this save was in flight.
-      if (shouldActivate()) setActiveTemplateId(null);
-      return true;
+      // Refuse an overlapping save before it can claim the selection intent
+      // of the one already in flight.
+      if (saveInFlightRef.current) return false;
+      saveInFlightRef.current = true;
+      try {
+        const saveEpoch = selectionIntentRef.current.begin();
+        const shouldActivate = () => selectionIntentRef.current.isCurrent(saveEpoch);
+        const { background: bgConfig, typography: typConfig, decorations: decConfig, poemStyle } =
+          createReusableTemplateParts(editorDocument);
+        const created = await customTemplates.saveCustomTemplate(
+          name, bgConfig, typConfig, decConfig, poemStyle, shouldActivate,
+        );
+        if (!created) return false;
+        // Never reset a template selected while this save was in flight.
+        if (shouldActivate()) setActiveTemplateId(null);
+        return true;
+      } finally {
+        saveInFlightRef.current = false;
+      }
     },
     [editorDocument, customTemplates],
+  );
+
+  const handleSubmitCustomTemplateSave = useCallback(
+    () => saveForm.submit(handleSaveCustomTemplate),
+    [saveForm, handleSaveCustomTemplate],
   );
 
   // ── Restore active template from localStorage on mount ────────────────────
@@ -360,6 +379,12 @@ export function useTemplateManager({
     activeTemplateId,
     handleApplyTemplate,
     handleApplyCustomTemplate,
-    handleSaveCustomTemplate,
+    customTemplateSaveForm: {
+      ...saveFormState,
+      onOpen: saveForm.open,
+      onClose: saveForm.close,
+      onNameChange: saveForm.setName,
+      onSubmit: handleSubmitCustomTemplateSave,
+    },
   };
 }
