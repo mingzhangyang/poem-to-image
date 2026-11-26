@@ -149,3 +149,11 @@ test('the selected LXGW WenKai family is defined by its local CSS', () => {
   assert.match(loader, /'LXGW WenKai Screen': \(\) => import\('lxgw-wenkai-screen-webfont\/lxgwwenkaiscreen\.css'\)/);
   assert.match(fontCss, /font-family:\s*["']?LXGW WenKai Screen["']?\s*;/i);
 });
+
+test('mobile preview toolbars sit on matching safe-area margins', () => {
+  const preview = readRepoFile('src/components/CanvasPreview.tsx');
+  // The floating mobile settings button was removed, so undo/redo no longer reserves room for it.
+  assert.equal(preview.includes('4.25rem'), false, 'undo/redo must not keep the old settings-button offset');
+  assert.match(preview, /left-\[calc\(1rem\+env\(safe-area-inset-left\)\)\] top-\[calc\(1rem\+env\(safe-area-inset-top\)\)\][^"]*lg:left-6 lg:top-6/);
+  assert.match(preview, /right-\[calc\(1rem\+env\(safe-area-inset-right\)\)\] top-\[calc\(1rem\+env\(safe-area-inset-top\)\)\][^"]*lg:right-6 lg:top-6/);
+});
