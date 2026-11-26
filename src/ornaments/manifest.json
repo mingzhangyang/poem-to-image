@@ -80,6 +80,32 @@
     "file": "/ornaments/maple-leaf.webp"
   },
   {
+    "id": "wild-rose",
+    "name_zh": "野蔷薇",
+    "name_en": "Wild Rose",
+    "category": "花木",
+    "moods": [
+      "春意",
+      "清雅"
+    ],
+    "default_anchor": "tr",
+    "default_scale": 0.2,
+    "file": "/ornaments/wild-rose.webp"
+  },
+  {
+    "id": "olive-sprig",
+    "name_zh": "橄榄枝",
+    "name_en": "Olive Sprig",
+    "category": "花木",
+    "moods": [
+      "清雅",
+      "隐逸"
+    ],
+    "default_anchor": "bl",
+    "default_scale": 0.18,
+    "file": "/ornaments/olive-sprig.webp"
+  },
+  {
     "id": "far-mountains",
     "name_zh": "远山",
     "name_en": "Far Mountains",
@@ -134,6 +160,19 @@
     "file": "/ornaments/crane.webp"
   },
   {
+    "id": "nightingale",
+    "name_zh": "夜莺",
+    "name_en": "Nightingale",
+    "category": "禽鸟",
+    "moods": [
+      "春意",
+      "孤寂"
+    ],
+    "default_anchor": "tl",
+    "default_scale": 0.18,
+    "file": "/ornaments/nightingale.webp"
+  },
+  {
     "id": "teapot",
     "name_zh": "茶盏",
     "name_en": "Tea Set",
@@ -173,6 +212,32 @@
     "file": "/ornaments/folding-fan.webp"
   },
   {
+    "id": "lyre",
+    "name_zh": "古希腊里拉琴",
+    "name_en": "Greek Lyre",
+    "category": "器物",
+    "moods": [
+      "清雅",
+      "喜庆"
+    ],
+    "default_anchor": "br",
+    "default_scale": 0.17,
+    "file": "/ornaments/lyre.webp"
+  },
+  {
+    "id": "quill-inkwell",
+    "name_zh": "羽毛笔与墨水瓶",
+    "name_en": "Quill and Inkwell",
+    "category": "器物",
+    "moods": [
+      "思乡",
+      "孤寂"
+    ],
+    "default_anchor": "bl",
+    "default_scale": 0.19,
+    "file": "/ornaments/quill-inkwell.webp"
+  },
+  {
     "id": "thatched-hut",
     "name_zh": "草庐",
     "name_en": "Thatched Hut",
@@ -197,6 +262,19 @@
     "default_anchor": "bc",
     "default_scale": 0.26,
     "file": "/ornaments/fishing-boat.webp"
+  },
+  {
+    "id": "gothic-window",
+    "name_zh": "哥特式尖拱窗",
+    "name_en": "Gothic Window",
+    "category": "景舍",
+    "moods": [
+      "清雅",
+      "孤寂"
+    ],
+    "default_anchor": "mr",
+    "default_scale": 0.21,
+    "file": "/ornaments/gothic-window.webp"
   },
   {
     "id": "corner-pattern",
