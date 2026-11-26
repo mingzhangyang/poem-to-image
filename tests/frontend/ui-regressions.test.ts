@@ -66,6 +66,15 @@ test('critical files do not include hardcoded CJK labels', () => {
     'src/components/sidebar/CanvasSizePanel.tsx',
     'src/components/sidebar/SidebarFooter.tsx',
     'src/components/sidebar/DecorationsPanel.tsx',
+    'src/components/sidebar/AddElementActions.tsx',
+    'src/components/sidebar/BorderControls.tsx',
+    'src/components/sidebar/CustomTextList.tsx',
+    'src/components/sidebar/LogoList.tsx',
+    'src/components/sidebar/SealControls.tsx',
+    'src/components/sidebar/SealCompositionControls.tsx',
+    'src/components/sidebar/SealFontControls.tsx',
+    'src/components/sidebar/SealInkControls.tsx',
+    'src/components/sidebar/SignatureList.tsx',
     'src/components/sidebar/OrnamentLibrary.tsx',
     'src/components/Sidebar.tsx',
     'src/App.tsx',
@@ -86,12 +95,18 @@ test('editor purchase flow surfaces checkout errors via toast', () => {
 });
 
 test('desktop and mobile paper selectors both receive the editor language', () => {
+  // Sidebar.tsx defines each panel once and lists it for desktop and mobile.
   const sidebar = readRepoFile('src/components/Sidebar.tsx');
   const instances = [...sidebar.matchAll(/<BackgroundPanel\b([\s\S]*?)\/>/g)];
-  assert.equal(instances.length, 2, 'both desktop and mobile controls must be checked');
-  for (const [, attributes] of instances) {
-    assert.match(attributes, /\blanguage=\{language\}/, 'paper swatch labels need the current language');
-  }
+  assert.equal(instances.length, 1, 'the paper selector should be defined once for desktop and mobile');
+  assert.match(instances[0][1], /\blanguage=\{language\}/, 'paper swatch labels need the current language');
+
+  const desktopPanels = sidebar.match(/const DESKTOP_PANELS\b[^=]*=\s*\[([^\]]*)\]/);
+  assert.ok(desktopPanels, 'desktop panel list should be declared');
+  assert.match(desktopPanels[1], /'background'/, 'desktop sidebar must show the paper selector');
+  const stylePanels = sidebar.match(/\bstyle:\s*\{\s*panels:\s*\[([^\]]*)\]/);
+  assert.ok(stylePanels, 'mobile style group should be declared');
+  assert.match(stylePanels[1], /'background'/, 'mobile style drawer must show the paper selector');
 });
 
 test('the selected LXGW WenKai family is defined by its local CSS', () => {

@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Download, Palette, Settings, Sparkles, Type, X } from 'lucide-react';
-import type { SidebarProps } from '../types';
+import type { ExpandedSections, SidebarProps } from '../types';
 import { BackgroundPanel } from './sidebar/BackgroundPanel';
 import { CanvasSizePanel } from './sidebar/CanvasSizePanel';
 import { ContentPanel } from './sidebar/ContentPanel';
@@ -13,7 +13,25 @@ import { TemplatesPanel } from './sidebar/TemplatesPanel';
 import { TypographyPanel } from './sidebar/TypographyPanel';
 import { useDialogA11y } from '../hooks/useDialogA11y';
 
-type MobilePanel = 'templates' | 'content' | 'style' | 'export' | 'settings';
+type PanelKey = keyof ExpandedSections;
+type MobilePanelGroup = 'templates' | 'content' | 'style';
+type MobilePanel = MobilePanelGroup | 'export' | 'settings';
+
+/** Panel order in the desktop sidebar. */
+const DESKTOP_PANELS: readonly PanelKey[] = ['content', 'templates', 'canvasSize', 'background', 'typography', 'decorations'];
+
+/**
+ * Panels in each mobile drawer group, and the section expanded when the
+ * group is opened from the bottom bar.
+ */
+const MOBILE_PANEL_GROUPS: Record<MobilePanelGroup, { panels: readonly PanelKey[]; expand: PanelKey }> = {
+  templates: { panels: ['canvasSize', 'templates'], expand: 'templates' },
+  content: { panels: ['content', 'typography'], expand: 'content' },
+  style: { panels: ['background', 'decorations'], expand: 'background' },
+};
+
+const isMobilePanelGroup = (panel: MobilePanel | null): panel is MobilePanelGroup =>
+  panel !== null && Object.hasOwn(MOBILE_PANEL_GROUPS, panel);
 
 const MOBILE_PANEL_TITLE_KEYS = {
   templates: 'templates',
@@ -84,79 +102,59 @@ export function Sidebar({
   }, []);
 
   const openMobilePanel = (panel: MobilePanel) => {
-    if (panel === 'templates') {
-      onExpandSection('templates');
-    }
-    if (panel === 'content') {
-      onExpandSection('content');
-    }
-    if (panel === 'style') {
-      onExpandSection('background');
+    if (isMobilePanelGroup(panel)) {
+      onExpandSection(MOBILE_PANEL_GROUPS[panel].expand);
     }
     setActiveMobilePanel(panel);
   };
-
 
   const mobileButtonClassName = (panel: MobilePanel) => {
     const isActive = activeMobilePanel === panel;
     return `flex min-w-0 min-h-12 flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2.5 text-xs font-medium transition-colors ${isActive ? 'bg-(--app-accent-700) text-white shadow-[0_10px_22px_var(--app-accent-shadow)]' : 'text-(--app-accent-800) hover:bg-[rgba(237,244,243,0.8)]'}`;
   };
 
+  // Each control panel is defined once here; the desktop sidebar and the
+  // mobile drawer only choose which panels to show and in which order.
+  const renderPanel = (panel: PanelKey) => {
+    const expanded = expandedSections[panel];
+    const onToggle = () => onToggleSection(panel);
+    switch (panel) {
+      case 'content':
+        return <ContentPanel t={t} expanded={expanded} onToggle={onToggle} content={content} />;
+      case 'templates':
+        return (
+          <TemplatesPanel
+            t={t}
+            language={language}
+            expanded={expanded}
+            onToggle={onToggle}
+            templates={templates}
+            currentBackgroundType={background.backgroundType}
+          />
+        );
+      case 'canvasSize':
+        return <CanvasSizePanel t={t} expanded={expanded} onToggle={onToggle} canvas={canvas} />;
+      case 'background':
+        return (
+          <BackgroundPanel
+            t={t}
+            language={language}
+            expanded={expanded}
+            onToggle={onToggle}
+            background={background}
+            balance={billing.balance}
+          />
+        );
+      case 'typography':
+        return <TypographyPanel language={language} t={t} expanded={expanded} onToggle={onToggle} typography={typography} />;
+      case 'decorations':
+        return <DecorationsPanel t={t} expanded={expanded} onToggle={onToggle} decorations={decorations} />;
+    }
+  };
+
   const sections = () => (
     <div className="app-sidebar-scrollbar p-4 sm:p-6 space-y-6 sm:space-y-8 flex-1 overflow-y-auto">
-      <div>
-        <ContentPanel
-          t={t}
-          expanded={expandedSections.content}
-          onToggle={() => onToggleSection('content')}
-          content={content}
-        />
-      </div>
-      <div>
-        <TemplatesPanel
-          t={t}
-          language={language}
-          expanded={expandedSections.templates}
-          onToggle={() => onToggleSection('templates')}
-          templates={templates}
-          currentBackgroundType={background.backgroundType}
-        />
-      </div>
-      <div>
-        <CanvasSizePanel
-          t={t}
-          expanded={expandedSections.canvasSize}
-          onToggle={() => onToggleSection('canvasSize')}
-          canvas={canvas}
-        />
-      </div>
-      <div>
-        <BackgroundPanel
-          t={t}
-          language={language}
-          expanded={expandedSections.background}
-          onToggle={() => onToggleSection('background')}
-          background={background}
-          balance={billing.balance}
-        />
-      </div>
-      <div>
-        <TypographyPanel
-          language={language}
-          t={t}
-          expanded={expandedSections.typography}
-          onToggle={() => onToggleSection('typography')}
-          typography={typography}
-        />
-      </div>
-      <div>
-        <DecorationsPanel
-          t={t}
-          expanded={expandedSections.decorations}
-          onToggle={() => onToggleSection('decorations')}
-          decorations={decorations}
-        />
-      </div>
+      {DESKTOP_PANELS.map((panel) => <div key={panel}>{renderPanel(panel)}</div>)}
     </div>
   );
 
@@ -172,64 +170,12 @@ export function Sidebar({
       );
     }
 
-    if (activeMobilePanel === 'templates') {
+    if (isMobilePanelGroup(activeMobilePanel)) {
       return (
         <div className="app-sidebar-scrollbar p-4 sm:p-6 space-y-6 flex-1 overflow-y-auto">
-          <CanvasSizePanel
-            t={t}
-            expanded={expandedSections.canvasSize}
-            onToggle={() => onToggleSection('canvasSize')}
-            canvas={canvas}
-          />
-          <TemplatesPanel
-            t={t}
-            language={language}
-            expanded={expandedSections.templates}
-            onToggle={() => onToggleSection('templates')}
-            templates={templates}
-            currentBackgroundType={background.backgroundType}
-          />
-        </div>
-      );
-    }
-
-    if (activeMobilePanel === 'content') {
-      return (
-        <div className="app-sidebar-scrollbar p-4 sm:p-6 space-y-6 flex-1 overflow-y-auto">
-          <ContentPanel
-            t={t}
-            expanded={expandedSections.content}
-            onToggle={() => onToggleSection('content')}
-            content={content}
-          />
-          <TypographyPanel
-            language={language}
-            t={t}
-            expanded={expandedSections.typography}
-            onToggle={() => onToggleSection('typography')}
-            typography={typography}
-          />
-        </div>
-      );
-    }
-
-    if (activeMobilePanel === 'style') {
-      return (
-        <div className="app-sidebar-scrollbar p-4 sm:p-6 space-y-6 flex-1 overflow-y-auto">
-          <BackgroundPanel
-            t={t}
-            language={language}
-            expanded={expandedSections.background}
-            onToggle={() => onToggleSection('background')}
-            background={background}
-            balance={billing.balance}
-          />
-          <DecorationsPanel
-            t={t}
-            expanded={expandedSections.decorations}
-            onToggle={() => onToggleSection('decorations')}
-            decorations={decorations}
-          />
+          {MOBILE_PANEL_GROUPS[activeMobilePanel].panels.map((panel) => (
+            <Fragment key={panel}>{renderPanel(panel)}</Fragment>
+          ))}
         </div>
       );
     }
