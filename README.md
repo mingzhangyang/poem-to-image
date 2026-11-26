@@ -17,7 +17,7 @@ Turn poems into AI-generated images with precise text control. Built with React 
 
 ### Adding an ornament
 
-Place a transparent PNG or WebP of at least 1024 × 1024 pixels in `public/ornaments/`. Add a record to [the ornament manifest](src/ornaments/manifest.json) with a stable ID, Chinese and English names, category, mood tags, recommended anchor, scale and public file path. Reuse the category and mood values in the manifest. The scale is a fraction of the shorter side of the poem frame. Anchors use `tl`, `tr`, `bl`, `br` or `bc` for the four corners and bottom center. Vite generates 144-pixel gallery thumbnails during development and production builds.
+Place a transparent PNG or WebP of at least 1024 × 1024 pixels in `public/ornaments/`. Add a record to [the ornament manifest](src/ornaments/manifest.json) with a stable ID, Chinese and English names, category, mood tags, recommended anchor, scale and public file path. Reuse the category and mood values in the manifest. The scale is a fraction of the shorter side of the poem frame. Anchors use `tl`, `tr`, `bl`, `br` or `bc` for the four corners and bottom center. Use `ml` and `mr` to center a tall motif along the left or right edge. Vite generates 144-pixel gallery thumbnails during development and production builds.
 
 ## Credit Costs
 

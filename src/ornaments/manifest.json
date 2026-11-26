@@ -41,6 +41,45 @@
     "file": "/ornaments/orchid.webp"
   },
   {
+    "id": "lotus",
+    "name_zh": "荷花",
+    "name_en": "Lotus",
+    "category": "花木",
+    "moods": [
+      "清雅",
+      "思乡"
+    ],
+    "default_anchor": "br",
+    "default_scale": 0.2,
+    "file": "/ornaments/lotus.webp"
+  },
+  {
+    "id": "bamboo",
+    "name_zh": "竹枝",
+    "name_en": "Bamboo",
+    "category": "花木",
+    "moods": [
+      "清雅",
+      "隐逸"
+    ],
+    "default_anchor": "ml",
+    "default_scale": 0.25,
+    "file": "/ornaments/bamboo.webp"
+  },
+  {
+    "id": "maple-leaf",
+    "name_zh": "枫叶",
+    "name_en": "Maple Leaves",
+    "category": "花木",
+    "moods": [
+      "秋意",
+      "思乡"
+    ],
+    "default_anchor": "tl",
+    "default_scale": 0.17,
+    "file": "/ornaments/maple-leaf.webp"
+  },
+  {
     "id": "far-mountains",
     "name_zh": "远山",
     "name_en": "Far Mountains",
@@ -82,6 +121,19 @@
     "file": "/ornaments/swallows.webp"
   },
   {
+    "id": "crane",
+    "name_zh": "仙鹤",
+    "name_en": "Crane",
+    "category": "禽鸟",
+    "moods": [
+      "喜庆",
+      "清雅"
+    ],
+    "default_anchor": "mr",
+    "default_scale": 0.23,
+    "file": "/ornaments/crane.webp"
+  },
+  {
     "id": "teapot",
     "name_zh": "茶盏",
     "name_en": "Tea Set",
@@ -106,6 +158,19 @@
     "default_anchor": "tr",
     "default_scale": 0.18,
     "file": "/ornaments/lantern.webp"
+  },
+  {
+    "id": "folding-fan",
+    "name_zh": "折扇",
+    "name_en": "Folding Fan",
+    "category": "器物",
+    "moods": [
+      "清雅",
+      "春意"
+    ],
+    "default_anchor": "br",
+    "default_scale": 0.18,
+    "file": "/ornaments/folding-fan.webp"
   },
   {
     "id": "thatched-hut",
