@@ -1,5 +1,13 @@
 import { defineConfig, devices } from '@playwright/test';
 
+// Chromium on Linux converts download file names to the locale's encoding.
+// Under a POSIX/C locale (common in containers) a non-ASCII name such as
+// 静夜思-….png falls back to "download", so give the browser a UTF-8 locale.
+const localeVariables = process.env.LC_ALL || process.env.LC_CTYPE || process.env.LANG || '';
+const browserEnv = process.platform === 'linux' && !/utf-?8/i.test(localeVariables)
+  ? { ...process.env, LC_ALL: 'C.UTF-8' }
+  : undefined;
+
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: true,
@@ -10,6 +18,7 @@ export default defineConfig({
   use: {
     baseURL: 'http://127.0.0.1:3000',
     trace: 'retain-on-failure',
+    launchOptions: browserEnv ? { env: browserEnv } : {},
   },
   projects: [
     {
