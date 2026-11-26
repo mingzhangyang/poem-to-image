@@ -72,6 +72,30 @@ test.describe('desktop navigation rail', () => {
     await expect(page.getByText('Poetic moods', { exact: false })).toBeHidden();
   });
 
+  test('the desktop panel fills an opaque column flat and pins its heading while scrolling', async ({ page }) => {
+    await dismissOnboarding(page);
+    await page.setViewportSize({ width: 1280, height: 600 });
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await tab(page, 'Typography').click();
+
+    const section = page.locator('#desktop-controls-panel > div > section');
+    const look = await section.evaluate((node) => {
+      const style = getComputedStyle(node);
+      const aside = node.closest('aside')!;
+      return { radius: style.borderTopLeftRadius, shadow: style.boxShadow, asideBg: getComputedStyle(aside).backgroundColor };
+    });
+    expect(look.radius).toBe('0px');
+    // Tailwind composes shadow-none from transparent layers, so check that none is visible.
+    const visibleShadows = look.shadow.split(/,(?![^(]*\))/).filter((layer) => layer.trim() !== 'none' && !layer.includes('rgba(0, 0, 0, 0)'));
+    expect(visibleShadows).toEqual([]);
+    expect(look.asideBg).toBe('rgb(255, 253, 248)');
+
+    const heading = region(page, 'Typography').getByRole('heading', { level: 2 });
+    const before = (await heading.boundingBox())!.y;
+    await page.locator('#desktop-controls-panel > div').evaluate((node) => { node.scrollTop = node.scrollHeight; });
+    await expect.poll(async () => (await heading.boundingBox())!.y).toBeCloseTo(before, 0);
+  });
+
   test('arrow keys, Home and End move focus and select tabs with a roving tab index', async ({ page }) => {
     await dismissOnboarding(page);
     await page.goto('/', { waitUntil: 'domcontentloaded' });

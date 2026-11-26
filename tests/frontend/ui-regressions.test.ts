@@ -162,3 +162,14 @@ test('desktop rail carries the app mark and the panel column drops the brand hea
   assert.match(brand, /className="sr-only">\{t\('appTitle'\)\}/);
   assert.equal(brand.includes('role="tab"'), false);
 });
+
+test('control panels float as cards only in the mobile drawer', () => {
+  const section = readRepoFile('src/components/ControlSection.tsx');
+  for (const cls of ['lg:rounded-none', 'lg:shadow-none', 'lg:border-0', 'lg:backdrop-blur-none', 'lg:sticky']) {
+    assert.ok(section.includes(cls), `desktop panels need ${cls}`);
+  }
+  const sidebar = readRepoFile('src/components/Sidebar.tsx');
+  const desktop = sidebar.slice(sidebar.indexOf('{/* Desktop sidebar'));
+  assert.match(desktop, /<aside className="[^"]*bg-\(--app-surface-strong\)/, 'the desktop sidebar must be an opaque column');
+  assert.equal(/<aside className="[^"]*backdrop-blur/.test(desktop), false, 'the desktop sidebar must not be translucent');
+});
