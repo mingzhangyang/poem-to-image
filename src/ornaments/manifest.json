@@ -106,6 +106,32 @@
     "file": "/ornaments/olive-sprig.webp"
   },
   {
+    "id": "oak-acorns",
+    "name_zh": "橡叶与橡果",
+    "name_en": "Oak Leaves and Acorns",
+    "category": "花木",
+    "moods": [
+      "秋意",
+      "隐逸"
+    ],
+    "default_anchor": "tr",
+    "default_scale": 0.19,
+    "file": "/ornaments/oak-acorns.webp"
+  },
+  {
+    "id": "heather-sprig",
+    "name_zh": "石南花枝",
+    "name_en": "Heather Sprig",
+    "category": "花木",
+    "moods": [
+      "隐逸",
+      "思乡"
+    ],
+    "default_anchor": "bl",
+    "default_scale": 0.19,
+    "file": "/ornaments/heather-sprig.webp"
+  },
+  {
     "id": "far-mountains",
     "name_zh": "远山",
     "name_en": "Far Mountains",
@@ -238,6 +264,32 @@
     "file": "/ornaments/quill-inkwell.webp"
   },
   {
+    "id": "scallop-shell",
+    "name_zh": "扇贝壳",
+    "name_en": "Scallop Shell",
+    "category": "器物",
+    "moods": [
+      "清雅",
+      "思乡"
+    ],
+    "default_anchor": "br",
+    "default_scale": 0.14,
+    "file": "/ornaments/scallop-shell.webp"
+  },
+  {
+    "id": "pocket-watch",
+    "name_zh": "怀表",
+    "name_en": "Pocket Watch",
+    "category": "器物",
+    "moods": [
+      "思乡",
+      "秋意"
+    ],
+    "default_anchor": "br",
+    "default_scale": 0.16,
+    "file": "/ornaments/pocket-watch.webp"
+  },
+  {
     "id": "thatched-hut",
     "name_zh": "草庐",
     "name_en": "Thatched Hut",
@@ -277,6 +329,19 @@
     "file": "/ornaments/gothic-window.webp"
   },
   {
+    "id": "lighthouse",
+    "name_zh": "海岸灯塔",
+    "name_en": "Coastal Lighthouse",
+    "category": "景舍",
+    "moods": [
+      "孤寂",
+      "思乡"
+    ],
+    "default_anchor": "bl",
+    "default_scale": 0.21,
+    "file": "/ornaments/lighthouse.webp"
+  },
+  {
     "id": "corner-pattern",
     "name_zh": "回纹角饰",
     "name_en": "Corner Pattern",
@@ -288,5 +353,70 @@
     "default_anchor": "tl",
     "default_scale": 0.14,
     "file": "/ornaments/corner-pattern.webp"
+  },
+  {
+    "id": "laurel-wreath",
+    "name_zh": "月桂冠",
+    "name_en": "Laurel Wreath",
+    "category": "纹样",
+    "moods": [
+      "喜庆",
+      "清雅"
+    ],
+    "default_anchor": "bc",
+    "default_scale": 0.17,
+    "file": "/ornaments/laurel-wreath.webp"
+  },
+  {
+    "id": "greek-meander",
+    "name_zh": "希腊回纹横带",
+    "name_en": "Greek Key Border",
+    "category": "纹样",
+    "moods": [
+      "清雅",
+      "隐逸"
+    ],
+    "default_anchor": "bc",
+    "default_scale": 0.26,
+    "file": "/ornaments/greek-meander.webp"
+  },
+  {
+    "id": "diamond-lattice",
+    "name_zh": "菱格斜带",
+    "name_en": "Diamond Lattice",
+    "category": "纹样",
+    "moods": [
+      "清雅",
+      "秋意"
+    ],
+    "default_anchor": "tl",
+    "default_scale": 0.18,
+    "file": "/ornaments/diamond-lattice.webp"
+  },
+  {
+    "id": "octagram-rosette",
+    "name_zh": "八角星花",
+    "name_en": "Eight-Pointed Star",
+    "category": "纹样",
+    "moods": [
+      "喜庆",
+      "清雅"
+    ],
+    "default_anchor": "tr",
+    "default_scale": 0.13,
+    "file": "/ornaments/octagram-rosette.webp"
+  },
+  {
+    "id": "guilloche-braid",
+    "name_zh": "扭索绳纹",
+    "name_en": "Guilloche Braid",
+    "category": "纹样",
+    "moods": [
+      "隐逸",
+      "清雅"
+    ],
+    "default_anchor": "bc",
+    "default_scale": 0.24,
+    "file": "/ornaments/guilloche-braid.webp"
   }
 ]
