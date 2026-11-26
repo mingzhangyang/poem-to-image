@@ -605,3 +605,21 @@ test('export draws poem sections at independent selected font weights', async ()
   assert.match(fontOf('AUTHOR'), /^[0-9]+px /);
   assert.match(fontOf('SOURCE'), /^500 /);
 });
+
+test('renders full-resolution ornaments on either side of the poem at 2x', async () => {
+  const scene = makeScene();
+  const ornament = {
+    id: 'a', ornamentId: 'chrysanthemum', imageUrl: '/ornaments/chrysanthemum.webp',
+    positionX: 50, positionY: 50, size: 96, rotation: 25, opacity: 0.6, flipped: true,
+  };
+  scene.decorations.logos = [ornament, { ...ornament, id: 'b', aboveText: true }];
+  const canvas = await renderCanvasExport(scene);
+  assert.equal(canvas.width, scene.canvasWidth * 2);
+  const trace = mainTrace();
+  const images = trace.flatMap((op, index) => op.op === 'drawImage' ? [index] : []);
+  const poem = trace.findIndex(op => op.op === 'fillText');
+  assert.equal(images.length, 2);
+  assert.ok(images[0] < poem && poem < images[1]);
+  assert.ok(trace.some(op => op.op === 'scale' && op.args[0] === -1));
+  assert.ok(requestedImages.includes(ornament.imageUrl));
+});

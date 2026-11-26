@@ -214,3 +214,13 @@ test('restore and template commands normalize legacy body sizing without changin
     assert.deepEqual(style, doc.poemStyle);
   }
 });
+
+test('reusable templates retain built-in ornaments when the artwork also contains an uploaded logo', () => {
+  const document = createEditorDocument(source());
+  const ornament = {
+    ...document.decorations.logos[0], id: 'flower', ornamentId: 'chrysanthemum',
+    imageUrl: '/ornaments/chrysanthemum.webp', aboveText: true, flipped: true,
+  };
+  document.decorations.logos.push(ornament);
+  assert.deepEqual(createReusableTemplateParts(document).decorations.logos, [ornament]);
+});

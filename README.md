@@ -9,10 +9,15 @@ Turn poems into AI-generated images with precise text control. Built with React 
 ## Features
 
 - **Public read-only artwork links**: publish immutable snapshot URLs such as `inkpoem.com/s/<id>`, with social preview, viewer download and a browser-local **My Shares** history backed by IndexedDB for link retrieval, removal-key backup, status checks and revocation. Uses D1 + a private R2 bucket; see [share setup & rollout instructions](docs/shareable-artwork-links.md).
+- **Ornaments** can be filtered by mood, snapped into place, and layered above or below the poem. PNG export uses the original artwork at the selected export scale.
 - AI image generation via Gemini and OpenAI
 - Clerk authentication
 - Stripe credit purchases
 - Cloudflare D1 database for user credits and transaction history
+
+### Adding an ornament
+
+Place a transparent PNG or WebP of at least 1024 × 1024 pixels in `public/ornaments/`. Add a record to [the ornament manifest](src/ornaments/manifest.json) with a stable ID, Chinese and English names, category, mood tags, recommended anchor, scale and public file path. Reuse the category and mood values in the manifest; a new category or mood must also be added to [the gallery filters](src/ornaments/taxonomy.ts), which a unit test checks. The scale is a fraction of the shorter side of the poem frame. Anchors use `tl`, `tr`, `bl`, `br` or `bc` for the four corners and bottom center. Use `ml` and `mr` to center a tall motif along the left or right edge. Vite generates 144-pixel gallery thumbnails during development and production builds.
 
 ## Credit Costs
 

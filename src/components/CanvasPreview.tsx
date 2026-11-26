@@ -24,6 +24,7 @@ export function CanvasPreview({
   poemFrameRef,
   poemTextRef,
   t,
+  language,
   poem,
   poemStyle,
   backgroundType,
@@ -543,6 +544,7 @@ export function CanvasPreview({
             >
               <div
                 ref={previewRef}
+                data-artwork-canvas
                 className="w-full h-full flex items-center justify-center relative overflow-hidden"
                 style={{
                   width: `${canvasWidth}px`,
@@ -564,6 +566,7 @@ export function CanvasPreview({
                     poemFrameRef={poemFrameRef}
                     poemTextRef={poemTextRef}
                     t={t}
+                    language={language}
                     poem={poem}
                     poemStyle={poemStyle}
                     fontFamily={fontFamily}

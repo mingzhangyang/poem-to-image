@@ -1,4 +1,5 @@
 import { Suspense, lazy, useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { OrnamentSelection } from './ornaments/selection';
 import { useAppAuth } from './context/auth';
 import { useToast } from './components/ToastProvider';
 import { getPlainPoemText, isSamePoemContent } from './poemContent';
@@ -160,6 +161,7 @@ function EditorApp({ initialState, initialRevision, promoteInitial }: EditorAppP
 
   const previewRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const ornamentSelection = useState('');
   const poemFrameRef = useRef<HTMLDivElement>(null);
   const poemTextRef = useRef<HTMLDivElement>(null);
 
@@ -577,6 +579,12 @@ function EditorApp({ initialState, initialRevision, promoteInitial }: EditorAppP
       customTexts: decorations.customTexts,
       logos: decorations.logos,
       signatures: decorations.signatures,
+      language,
+      getFrameSize: () => ({
+        width: poemFrameRef.current?.clientWidth || canvasWidth,
+        height: poemFrameRef.current?.clientHeight || canvasHeight,
+      }),
+      onAddOrnament: decorations.addLogo,
       onAddCustomText: decorations.addCustomText,
       onAddSignature: decorations.addSignature,
       onShowBorderChange: decorations.setShowBorder,
@@ -657,6 +665,7 @@ function EditorApp({ initialState, initialRevision, promoteInitial }: EditorAppP
   });
 
   return (
+    <OrnamentSelection.Provider value={ornamentSelection}>
     <div className="min-h-dvh bg-transparent flex flex-col lg:flex-row font-sans text-(--app-ink)">
       <Sidebar {...sidebarProps} />
       {saveError ? (
@@ -690,6 +699,7 @@ function EditorApp({ initialState, initialRevision, promoteInitial }: EditorAppP
         />
       </Suspense>
     </div>
+    </OrnamentSelection.Provider>
   );
 }
 

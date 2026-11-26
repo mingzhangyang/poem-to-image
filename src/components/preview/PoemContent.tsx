@@ -18,6 +18,7 @@ import {
 import { useElementSize } from '../../hooks/useElementSize';
 import { useFontLayoutRevision } from '../../hooks/useFontLayoutRevision';
 import { createStructuredPoemLayout, getPlainPoemText } from '../../poemContent';
+import { getOrnamentName } from '../../ornaments/taxonomy';
 import { getPoemFontWeights } from '../../poemStyle';
 import {
   didTextBoxDimensionsChange, getKeyboardDragBounds, getPreviewDragBounds, getPreviewPositioningRect,
@@ -36,6 +37,7 @@ interface PoemContentProps {
   poemFrameRef: RefObject<HTMLDivElement | null>;
   poemTextRef: RefObject<HTMLDivElement | null>;
   t: TranslateFn;
+  language: string;
   poem: PoemContentData;
   poemStyle: PoemLayerStyle;
   fontFamily: string;
@@ -73,6 +75,7 @@ export function PoemContent({
   poemFrameRef,
   poemTextRef,
   t,
+  language,
   poem,
   poemStyle,
   fontFamily,
@@ -558,9 +561,11 @@ export function PoemContent({
         onInteractionEnd={onInteractionEnd}
       />
 
-      {logos.map((logo) => (
+      {[...logos].sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0)).map((logo) => (
         <LogoOverlay
-          ariaLabel={t('logoElement')}
+          ariaLabel={logo.ornamentId ? getOrnamentName(logo.ornamentId, language) : t('logoElement')}
+          sizeLabel={t('size')}
+          effectiveScale={effectiveScale}
           key={logo.id}
           frameRef={poemFrameRef}
           logo={logo}

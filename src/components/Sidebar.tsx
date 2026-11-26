@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Download, Palette, Settings, Sparkles, Type, X } from 'lucide-react';
+import { Download, Flower2, Palette, Settings, Sparkles, Type, X } from 'lucide-react';
 import type { SidebarProps } from '../types';
 import { BackgroundPanel } from './sidebar/BackgroundPanel';
 import { CanvasSizePanel } from './sidebar/CanvasSizePanel';
 import { ContentPanel } from './sidebar/ContentPanel';
+import { OrnamentLibrary } from './sidebar/OrnamentLibrary';
 import { DecorationsPanel } from './sidebar/DecorationsPanel';
 import { SettingsPanel } from './sidebar/SettingsPanel';
 import { SidebarFooter } from './sidebar/SidebarFooter';
@@ -54,6 +55,9 @@ export function Sidebar({
   isSharing,
   canShare,
 }: SidebarProps) {
+  const [ornamentsOpen, setOrnamentsOpen] = useState(false);
+  const [mobileOrnamentsOpen, setMobileOrnamentsOpen] = useState(false);
+  const ornamentTitle = language.startsWith('zh') ? '装饰' : 'Ornaments';
   const [activeMobilePanel, setActiveMobilePanel] = useState<MobilePanel | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const isMobileControlsOpen = activeMobilePanel !== null;
@@ -84,6 +88,7 @@ export function Sidebar({
   }, []);
 
   const openMobilePanel = (panel: MobilePanel) => {
+    setMobileOrnamentsOpen(false);
     if (panel === 'templates') {
       onExpandSection('templates');
     }
@@ -285,9 +290,12 @@ export function Sidebar({
         </button>
       </div>
 
+      {mobileOrnamentsOpen && <section className="mobile-ornament-panel order-2 lg:hidden h-[40dvh] overflow-auto px-3 pb-20">
+        <OrnamentLibrary decorations={decorations} />
+      </section>}
       {/* Mobile bottom bar */}
       <div className="lg:hidden fixed inset-x-0 bottom-0 z-20 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pointer-events-none">
-        <div className="pointer-events-auto mx-auto grid max-w-md grid-cols-4 items-stretch gap-2 rounded-[1.75rem] border border-white/70 bg-[rgba(255,253,249,0.92)] p-2 shadow-[0_18px_50px_var(--app-accent-shadow)] backdrop-blur">
+        <div className="pointer-events-auto mx-auto grid max-w-md grid-cols-5 items-stretch gap-2 rounded-[1.75rem] border border-white/70 bg-[rgba(255,253,249,0.92)] p-2 shadow-[0_18px_50px_var(--app-accent-shadow)] backdrop-blur">
           <button
             type="button"
             onClick={() => openMobilePanel('templates')}
@@ -317,6 +325,10 @@ export function Sidebar({
           >
             <Palette className={`h-4 w-4 ${activeMobilePanel === 'style' ? 'text-white' : 'text-(--app-accent-600)'}`} />
             <span className="truncate">{t('stylePanelTitle')}</span>
+          </button>
+          <button className="flex flex-col items-center justify-center gap-1 rounded-2xl text-xs aria-expanded:bg-(--app-accent-700) aria-expanded:text-white" aria-expanded={mobileOrnamentsOpen}
+            onClick={() => { closeMobilePanel(); setMobileOrnamentsOpen(value => !value); }}>
+            <Flower2 className="h-4 w-4" />{ornamentTitle}
           </button>
           <button
             type="button"
@@ -405,7 +417,11 @@ export function Sidebar({
           />
         ) : (
           <>
-            {sections()}
+            <button className="mx-5 my-2 flex items-center gap-2 rounded-lg border bg-white px-4 py-2 text-sm" aria-expanded={ornamentsOpen}
+              onClick={() => setOrnamentsOpen(value => !value)}>
+              <Flower2 size={16} />{ornamentTitle}
+            </button>
+            {ornamentsOpen ? <div className="overflow-y-auto p-4"><OrnamentLibrary decorations={decorations} /></div> : sections()}
           </>
         )}
       </aside>

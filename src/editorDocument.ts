@@ -163,7 +163,7 @@ export function createReusableTemplateParts(document: EditorDocument): {
     typography: document.typography,
     decorations: {
       ...document.decorations,
-      logos: [],
+      logos: document.decorations.logos.filter(item => item.ornamentId),
     },
     poemStyle: document.poemStyle,
   };
