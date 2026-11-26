@@ -100,7 +100,7 @@ function BuiltInTemplateCard({ t, language, template, isActive, onApply, variant
       key={template.id}
       onClick={() => onApply(template.id)}
       aria-pressed={isActive}
-      className={`flex min-h-28 w-full items-stretch gap-3 rounded-2xl border p-3 text-left transition-all ${
+      className={`flex min-h-28 w-full min-w-0 items-stretch gap-3 rounded-2xl border p-3 text-left transition-all ${
         isActive
           ? 'border-(--app-accent-300) bg-(--app-accent-50) shadow-[0_10px_24px_var(--app-accent-shadow)]'
           : 'border-[rgba(34,48,52,0.08)] bg-white hover:border-(--app-accent-200) hover:bg-(--app-accent-50)'
@@ -113,8 +113,9 @@ function BuiltInTemplateCard({ t, language, template, isActive, onApply, variant
       />
       <div className="flex min-w-0 flex-1 flex-col justify-between gap-2 py-0.5">
         <div className="min-w-0">
-          <div className="flex items-start justify-between gap-2">
-            <div className="text-sm font-semibold leading-5 text-(--app-ink)">{t(template.nameKey)}</div>
+          {/* Wraps the Apply pill below the name when the sidebar is narrow. */}
+          <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1">
+            <div className="min-w-0 break-words text-sm font-semibold leading-5 text-(--app-ink)">{t(template.nameKey)}</div>
             <span
               className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${
                 isActive ? 'bg-(--app-accent-700) text-white' : 'bg-(--app-accent-50) text-(--app-accent-700)'
