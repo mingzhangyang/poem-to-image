@@ -1,6 +1,16 @@
 import { readDraft } from './helpers/readDraft';
 import sharp from 'sharp';
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
+
+/** Opens the ornament gallery inside the Decorations panel (in the Style drawer on mobile). */
+async function openOrnaments(page: Page, labels: { style: string; decorations: string; ornaments: string }) {
+  const isMobile = (page.viewportSize()?.width ?? 0) < 1024;
+  if (isMobile) await page.getByRole('button', { name: labels.style, exact: true }).click();
+  const section = page.getByRole('button', { name: new RegExp(`^${labels.decorations}`) });
+  if (await section.getAttribute('aria-expanded') !== 'true') await section.click();
+  await page.getByRole('button', { name: new RegExp(`^${labels.ornaments}`) }).click();
+  return isMobile;
+}
 
 test('filters, places, restores and exports an ornament', async ({ page }) => {
   await page.route('**/api/billing/packages', route => route.fulfill({ json: { packages: [] } }));
@@ -15,14 +25,14 @@ test('filters, places, restores and exports an ornament', async ({ page }) => {
   });
   await page.goto('/');
   const button = (name: string) => page.getByRole('button', { name, exact: true });
-  await button('Ornaments').click();
+  const isMobile = await openOrnaments(page, { style: 'Style', decorations: 'Decorations & Elements', ornaments: 'Ornaments' });
   await button('Autumn').click();
   await expect(button('Chrysanthemum')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Birds' })).toHaveCount(0);
   expect(originals).toEqual([]);
   await button('Chrysanthemum').click();
-  await page.getByRole('slider', { name: 'Rotation' }).fill('15');
-  await page.getByRole('slider', { name: 'Opacity' }).fill('0.72');
+  await page.getByRole('slider', { name: 'Rotation', exact: true }).fill('15');
+  await page.getByRole('slider', { name: 'Opacity', exact: true }).fill('0.72');
   await button('Move above text').click();
   await button('Bottom right').click();
   const images = page.locator('img[alt="Chrysanthemum"]');
@@ -51,15 +61,17 @@ test('filters, places, restores and exports an ornament', async ({ page }) => {
   await button('Flip horizontally').click();
   await button('Duplicate').click();
   await button('Duplicate').click();
-  const reminder = page.getByText('A little goes a long way. Let the poem lead.');
+  const reminder = page.getByText('A little goes a long way. Let the poem lead.').filter({ visible: true });
   await expect(reminder).toBeVisible();
   await button('Duplicate').click();
   await button('Duplicate').click();
-  await expect(page.getByText('Several ornaments may draw attention away from the poem.')).toBeVisible();
+  await expect(page.getByText('Several ornaments may draw attention away from the poem.').filter({ visible: true })).toBeVisible();
   await button('Delete').click();
   await button('Delete').click();
   await button('Delete').click();
   await expect(reminder).toHaveCount(0);
+  // The mobile controls drawer is modal; close it to reach the toolbar.
+  if (isMobile) await page.keyboard.press('Escape');
   await button('Undo').click();
   await expect(images).toHaveCount(3);
   await button('Redo').click();
@@ -126,10 +138,11 @@ test('exports a Chinese autumn chrysanthemum card within 30 seconds', async ({ p
   });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   const button = (name: string | RegExp) => page.getByRole('button', { name, exact: true });
-  await button('装饰').click();
+  await openOrnaments(page, { style: '样式', decorations: '装饰与元素', ornaments: '装饰图案' });
   await button('秋意').click();
   await button(/菊/).click();
   await button('右下').click();
+  if (isMobile) await page.keyboard.press('Escape');
   await button(isMobile ? '导出' : '导出图片').click();
   const downloading = page.waitForEvent('download');
   await page.getByRole('dialog').getByRole('button', { name: '保存图片' }).click();

@@ -110,7 +110,6 @@ function EditorApp({ initialState, initialRevision, promoteInitial }: EditorAppP
     background: false,
     typography: false,
     decorations: false,
-    billing: false,
   });
 
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);

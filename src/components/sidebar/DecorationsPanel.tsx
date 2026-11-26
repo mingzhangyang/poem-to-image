@@ -19,6 +19,7 @@ import {
 import { SIGNATURE_FONTS } from '../../signatureRendering';
 import type { BorderStyle, DecorationsSectionProps, ExpandedSections, SignatureFlourish, StampStyle, TranslateFn } from '../../types';
 import { ControlSection } from '../ControlSection';
+import { OrnamentLibrary } from './OrnamentLibrary';
 import { SealMotifPicker } from './SealMotifPicker';
 import { SealStyleGallery } from './SealStyleGallery';
 import { getSealStyleDesignUpdates } from '../../sealStyleCatalog';
@@ -107,11 +108,13 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
     true,
   );
 
+  const ornamentCount = decorations.logos.filter(item => item.ornamentId).length;
   const summaryParts = [
     decorations.showBorder ? t(BORDER_STYLE_LABELS[decorations.borderStyle]) : null,
     decorations.showStamp && decorations.stampSupported ? t('showStamp') : null,
     `${decorations.customTexts.length} ${t('customTexts')}`,
     `${decorations.logos.filter(item => !item.ornamentId).length} ${t('logos')}`,
+    ornamentCount > 0 ? `${ornamentCount} ${t('ornaments')}` : null,
     decorations.signatures.length > 0 ? `${decorations.signatures.length} ${t('signatures')}` : null,
   ].filter(Boolean);
 
@@ -776,6 +779,8 @@ export function DecorationsPanel({ t, expanded, onToggle, decorations }: Decorat
             />
           </label>
         </div>
+
+        <OrnamentLibrary t={t} decorations={decorations} />
 
         {decorations.customTexts.length > 0 ? (
           <div className="space-y-3">

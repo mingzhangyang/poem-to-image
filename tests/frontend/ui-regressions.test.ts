@@ -66,6 +66,8 @@ test('critical files do not include hardcoded CJK labels', () => {
     'src/components/sidebar/CanvasSizePanel.tsx',
     'src/components/sidebar/SidebarFooter.tsx',
     'src/components/sidebar/DecorationsPanel.tsx',
+    'src/components/sidebar/OrnamentLibrary.tsx',
+    'src/components/Sidebar.tsx',
     'src/App.tsx',
   ];
   const hanRegex = /\p{Script=Han}/u;

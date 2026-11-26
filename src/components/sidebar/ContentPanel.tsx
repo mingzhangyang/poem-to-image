@@ -1,5 +1,5 @@
-import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
-import { Expand, ScrollText, Type } from 'lucide-react';
+import { Suspense, lazy, useEffect, useState } from 'react';
+import { Expand, Type } from 'lucide-react';
 import type { ContentSectionProps, ExpandedSections, TranslateFn } from '../../types';
 import { ControlSection } from '../ControlSection';
 
@@ -25,10 +25,6 @@ export function ContentPanel({ t, expanded, onToggle, content }: ContentPanelPro
     .split('\n')
     .map((line) => line.trim())
     .filter(Boolean);
-  const filledFields = useMemo(
-    () => [content.poem.title, content.poem.author, content.poem.body, content.poem.sourceNote].filter((value) => value.trim().length > 0).length,
-    [content.poem.author, content.poem.body, content.poem.sourceNote, content.poem.title],
-  );
   const summary = content.poem.title.trim()
     || (trimmedLines.length > 0 ? trimmedLines[0].slice(0, 48) : '')
     || content.poem.author.trim()
@@ -43,45 +39,17 @@ export function ContentPanel({ t, expanded, onToggle, content }: ContentPanelPro
         onToggle={onToggle}
         summary={summary}
       >
-        <div className="space-y-4">
-          <p className="text-xs leading-5 text-(--app-accent-500)">{t('poemStructureHint')}</p>
-
-          <div className="space-y-3">
-            <div className="rounded-2xl border border-[rgba(34,48,52,0.06)] bg-[rgba(255,253,249,0.94)] px-4 py-3">
-              <div className="flex items-center justify-between gap-4">
-                <div className="text-xs uppercase tracking-[0.16em] text-(--app-accent-600)">{t('poemFields')}</div>
-                <div className="text-base font-semibold text-(--app-ink)">{filledFields}/4</div>
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-[rgba(34,48,52,0.06)] bg-[rgba(255,253,249,0.94)] px-4 py-3">
-              <div className="flex items-center justify-between gap-4">
-                <div className="text-xs uppercase tracking-[0.16em] text-(--app-accent-600)">{t('poemLines')}</div>
-                <div className="text-base font-semibold text-(--app-ink)">{trimmedLines.length}</div>
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-[rgba(34,48,52,0.06)] bg-[rgba(255,250,242,0.72)] px-4 py-3">
-              <div className="flex items-center gap-2 text-xs uppercase tracking-[0.16em] text-(--app-accent-600)">
-                <ScrollText className="h-3.5 w-3.5" />
-                <span>{t('poemEditorTitle')}</span>
-              </div>
-              <p className="mt-2 text-sm leading-6 text-(--app-accent-700)">{t('poemEditorHint')}</p>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setIsEditorOpen(true)}
-            className="flex w-full items-center justify-between gap-4 rounded-[1.4rem] border border-[rgba(34,48,52,0.08)] bg-[linear-gradient(135deg,rgba(237,244,243,0.88),rgba(255,253,249,0.96))] px-4 py-4 text-left transition-colors hover:border-(--app-accent-200)"
-          >
-            <span className="min-w-0">
-              <span className="block text-sm font-semibold text-(--app-ink)">{t('openPoemEditor')}</span>
-              <span className="mt-1 block text-xs leading-5 text-(--app-accent-500)">{summary}</span>
-            </span>
-            <Expand className="h-4 w-4 shrink-0 text-(--app-accent-600)" />
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setIsEditorOpen(true)}
+          className="flex w-full items-center justify-between gap-4 rounded-[1.4rem] border border-[rgba(34,48,52,0.08)] bg-[linear-gradient(135deg,rgba(237,244,243,0.88),rgba(255,253,249,0.96))] px-4 py-4 text-left transition-colors hover:border-(--app-accent-200)"
+        >
+          <span className="min-w-0">
+            <span className="block text-sm font-semibold text-(--app-ink)">{t('openPoemEditor')}</span>
+            <span className="mt-1 block text-xs leading-5 text-(--app-accent-500)">{t('poemEditorHint')}</span>
+          </span>
+          <Expand className="h-4 w-4 shrink-0 text-(--app-accent-600)" />
+        </button>
       </ControlSection>
 
       <Suspense fallback={null}>

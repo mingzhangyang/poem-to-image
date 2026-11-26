@@ -157,7 +157,6 @@ export interface ExpandedSections {
   background: boolean;
   typography: boolean;
   decorations: boolean;
-  billing: boolean;
 }
 
 export interface SignatureConfig {

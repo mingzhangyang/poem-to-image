@@ -28,7 +28,7 @@ const allowedEnglishMatches: Record<keyof typeof locales, ReadonlySet<string>> =
     'vertical', 'borderDouble', 'borderFractal', 'logos', 'imageShort', 'horiz', 'vert', 'angle',
     'exportFormatPng', 'exportFormatJpg', 'exportFormatWebp', 'exportTargetStory',
     'exportQualityStandard', 'exportQualityUltraHd', 'contact', 'signatures', 'addSignature',
-    'signatureRotation',
+    'signatureRotation', 'ornamentRotation', 'ornamentMoodSolitude',
     // “Dragon” and “Lotus” are also the natural French names for these motifs.
     'stampMotifDragon', 'stampMotifLotus',
   ]),
