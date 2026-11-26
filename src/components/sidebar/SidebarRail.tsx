@@ -1,5 +1,6 @@
 import { useRef, type KeyboardEvent } from 'react';
 import type { DesktopSidebarView, TranslateFn } from '../../types';
+import { Logo } from '../logo';
 import { PANEL_GROUP_ORDER, PANEL_GROUPS, SETTINGS_ITEM, type NavigationItem } from './panelGroups';
 
 interface RailItem extends NavigationItem {
@@ -99,10 +100,26 @@ export function SidebarRail({ t, activeView, onViewChange, panelId, badges }: Si
       role="tablist"
       aria-orientation="vertical"
       aria-label={t('controlsNavigation')}
-      className="flex h-full w-full flex-col gap-1.5 px-1 py-4"
+      className="flex min-h-0 w-full flex-1 flex-col gap-1.5 px-1 pt-2 pb-4"
     >
       {RAIL_GROUP_ITEMS.map((item) => renderItem(item))}
       {renderItem(RAIL_SETTINGS_ITEM, 'mt-auto')}
     </div>
+  );
+}
+
+/**
+ * App mark at the top of the desktop rail. It sits outside the tab list so
+ * arrow-key navigation skips it, and it carries the page's heading: the
+ * wordmark is screen-reader text because the rail is too narrow to show it.
+ */
+export function RailBrand({ t }: { t: TranslateFn }) {
+  return (
+    <h1 className="flex shrink-0 justify-center pt-4 pb-2" title={t('appTitle')}>
+      <span aria-hidden="true">
+        <Logo className="h-9 w-9" />
+      </span>
+      <span className="sr-only">{t('appTitle')}</span>
+    </h1>
   );
 }

@@ -4,15 +4,15 @@ import { Logo } from '../logo';
 
 interface SidebarHeaderProps {
   t: TranslateFn;
-  isSheet?: boolean;
   balance?: number | null;
 }
 
-export function SidebarHeader({ t, isSheet = false, balance }: SidebarHeaderProps) {
+/** App title, subtitle and credits at the top of the mobile Settings sheet. */
+export function SidebarHeader({ t, balance }: SidebarHeaderProps) {
   const { isSignedIn } = useAppAuth();
 
   return (
-    <div className={`${isSheet ? 'px-4 py-4' : 'px-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-4 sm:p-6'} border-b border-[rgba(34,48,52,0.06)] flex items-start justify-between gap-3 bg-[linear-gradient(180deg,rgba(255,250,242,0.92),rgba(255,253,249,0.4))]`}>
+    <div className="px-4 py-4 border-b border-[rgba(34,48,52,0.06)] flex items-start justify-between gap-3 bg-[linear-gradient(180deg,rgba(255,250,242,0.92),rgba(255,253,249,0.4))]">
       <div className="min-w-0">
         <h1
           className="text-xl sm:text-2xl font-semibold flex items-center gap-2 text-(--app-accent-900)"

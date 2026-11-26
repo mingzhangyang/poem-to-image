@@ -149,3 +149,16 @@ test('the selected LXGW WenKai family is defined by its local CSS', () => {
   assert.match(loader, /'LXGW WenKai Screen': \(\) => import\('lxgw-wenkai-screen-webfont\/lxgwwenkaiscreen\.css'\)/);
   assert.match(fontCss, /font-family:\s*["']?LXGW WenKai Screen["']?\s*;/i);
 });
+
+test('desktop rail carries the app mark and the panel column drops the brand header', () => {
+  const sidebar = readRepoFile('src/components/Sidebar.tsx');
+  const rail = readRepoFile('src/components/sidebar/SidebarRail.tsx');
+  assert.match(sidebar, /<RailBrand t=\{t\} \/>\s*<SidebarRail\b/, 'the app mark sits above the rail tabs');
+  const desktop = sidebar.slice(sidebar.indexOf('{/* Desktop sidebar'));
+  assert.equal(desktop.includes('<SidebarHeader'), false, 'the desktop panel column must not repeat the brand header');
+  // The mark is the page heading, outside role="tablist" so arrow keys skip it.
+  const brand = rail.slice(rail.indexOf('export function RailBrand'));
+  assert.match(brand, /<h1\b/);
+  assert.match(brand, /className="sr-only">\{t\('appTitle'\)\}/);
+  assert.equal(brand.includes('role="tab"'), false);
+});

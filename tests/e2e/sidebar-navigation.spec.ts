@@ -57,6 +57,21 @@ test.describe('desktop navigation rail', () => {
     await expect(region(page, 'Decorations & Elements')).toHaveCount(0);
   });
 
+  test('the app mark heads the rail, outside the tab list, and the panel column has no brand header', async ({ page }) => {
+    await dismissOnboarding(page);
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+
+    const brand = page.getByRole('heading', { level: 1, name: 'InkPoem' });
+    await expect(brand).toBeVisible();
+    await expect(rail(page).getByRole('heading')).toHaveCount(0);
+    const brandBox = await brand.boundingBox();
+    const firstTabBox = await tab(page, 'Templates').boundingBox();
+    expect(brandBox!.x + brandBox!.width).toBeLessThanOrEqual(72);
+    expect(brandBox!.y + brandBox!.height).toBeLessThanOrEqual(firstTabBox!.y);
+    // The subtitle and wordmark header no longer sit above the active panel.
+    await expect(page.getByText('Poetic moods', { exact: false })).toBeHidden();
+  });
+
   test('arrow keys, Home and End move focus and select tabs with a roving tab index', async ({ page }) => {
     await dismissOnboarding(page);
     await page.goto('/', { waitUntil: 'domcontentloaded' });
