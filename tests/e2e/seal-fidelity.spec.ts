@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { openPanel } from './helpers/sidebarNavigation';
 
 test.beforeEach(async ({ page }) => {
   await page.route('**/api/billing/packages', async (route) => {
@@ -83,7 +84,7 @@ test('seal rasterization remains deterministic across pixel ratios and shape mod
 test('Unicode stamp input honors the eight-grapheme cap and survives draft restore', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name === 'chromium-mobile', 'Desktop UI flow; mobile raster tests run separately');
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /^装饰与元素/ }).click();
+  await openPanel(page, '装饰');
   await page.getByRole('checkbox', { name: '显示印章' }).check();
   const input = page.getByRole('textbox', { name: '印章文字' });
   // The accent combines with 𠮷: nine graphemes in, eight retained.
@@ -103,7 +104,7 @@ test('Unicode stamp input honors the eight-grapheme cap and survives draft resto
   })).toBe(expected);
 
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /^装饰与元素/ }).click();
+  await openPanel(page, '装饰');
   await expect(page.getByRole('textbox', { name: '印章文字' })).toHaveValue(expected);
 });
 
@@ -112,7 +113,7 @@ test('preview zoom updates seal backing pixels without exceeding the cap', async
   test.skip(testInfo.project.name === 'chromium-mobile', 'Desktop preview zoom control');
   await page.setViewportSize({ width: 1920, height: 1600 });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /^装饰与元素/ }).click();
+  await openPanel(page, '装饰');
   await page.getByRole('checkbox', { name: '显示印章' }).check();
 
   const canvas = page.locator('[aria-label="印章元素"] canvas');

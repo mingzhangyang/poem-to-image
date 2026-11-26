@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { openPanel } from './helpers/sidebarNavigation';
 
 test.beforeEach(async ({ page }) => {
   await page.route('**/api/billing/packages', async (route) => {
@@ -13,7 +14,7 @@ test.beforeEach(async ({ page }) => {
 test('motif mode preserves underlying text across selection, reload and returning to text', async ({ page }, info) => {
   test.skip(info.project.name === 'chromium-mobile', 'Desktop settings flow; drawing tests also run on mobile');
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /^装饰与元素/ }).click();
+  await openPanel(page, '装饰');
   await page.getByRole('checkbox', { name: '显示印章' }).check();
   const sealText = page.getByRole('textbox', { name: '印章文字' });
   await sealText.fill('李明之印');
@@ -35,7 +36,7 @@ test('motif mode preserves underlying text across selection, reload and returnin
   })).toEqual(['landscape', '李明之印', 'baiwen', originalFont]);
 
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /^装饰与元素/ }).click();
+  await openPanel(page, '装饰');
   await expect(page.getByRole('button', { name: '山水', exact: true }))
     .toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('button', { name: '文字印', exact: true }).click();
@@ -49,14 +50,15 @@ test('switching zh-CN to zh-TW does not replace a template stamp with a chosen m
     localStorage.setItem('poem-to-image.active-template', 'graceful-whitespace');
   });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /^装饰与元素/ }).click();
+  await openPanel(page, '装饰');
   await expect(page.getByRole('checkbox', { name: '显示印章' })).toBeChecked();
   await page.getByRole('button', { name: '山水', exact: true }).click();
   await expect(page.getByRole('button', { name: '山水', exact: true })).toHaveAttribute('aria-pressed', 'true');
 
-  await page.getByRole('button', { name: '设置' }).click();
+  await openPanel(page, '设置');
   await page.getByRole('button', { name: '繁體中文', exact: true }).click();
-  await page.getByRole('button', { name: '設定' }).click();
+  // Settings is a rail tab; leave it for the Decorations panel.
+  await openPanel(page, '裝飾');
   await expect(page.getByRole('button', { name: '山水', exact: true }))
     .toHaveAttribute('aria-pressed', 'true');
   await expect.poll(() => page.evaluate(() => {
@@ -68,7 +70,7 @@ test('switching zh-CN to zh-TW does not replace a template stamp with a chosen m
 test('cold-restored motif does not fetch the hidden seal-script font', async ({ page, browser }, info) => {
   test.skip(info.project.name === 'chromium-mobile', 'Desktop controls; network checked with isolated cache');
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /^装饰与元素/ }).click();
+  await openPanel(page, '装饰');
   await page.getByRole('checkbox', { name: '显示印章' }).check();
   await page.getByRole('button', { name: '传统朱文姓名印' }).click();
   // The preset now defaults to verified CNS Seal. Explicitly choose the legacy
@@ -112,7 +114,7 @@ test('cold-restored motif does not fetch the hidden seal-script font', async ({ 
   try {
     const freshPage = await freshContext.newPage();
     await freshPage.goto(new URL('/', page.url()).toString(), { waitUntil: 'domcontentloaded' });
-    await freshPage.getByRole('button', { name: /^装饰与元素/ }).click();
+    await openPanel(freshPage, '装饰');
     await expect(freshPage.getByRole('button', { name: '山水', exact: true }))
       .toHaveAttribute('aria-pressed', 'true');
     // The isolated context has an empty font cache, so attempted fetches hit the route.

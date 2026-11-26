@@ -1,61 +1,34 @@
-import { AnimatePresence, motion } from 'motion/react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useId } from 'react';
 import type { ControlSectionProps } from '../types';
 
-export function ControlSection({ title, icon, expanded, onToggle, summary, highlighted = false, action, children, tint }: ControlSectionProps) {
-  const contentId = useId();
-  const tinted = expanded || highlighted;
-  const iconStyle = tinted && tint ? { color: tint } : undefined;
-  const containerClassName = expanded
-    ? 'border-white/60 bg-[rgba(255,250,242,0.72)] shadow-[0_18px_45px_var(--app-accent-shadow)] backdrop-blur-xl'
-    : highlighted
-      ? 'border-white/60 bg-[rgba(255,248,238,0.6)] shadow-[0_12px_30px_var(--app-accent-shadow)] backdrop-blur-xl'
-      : 'border-white/45 bg-[rgba(255,250,242,0.5)] hover:border-white/70 backdrop-blur-xl';
+/**
+ * Card holding one control panel. The sidebar shows one panel at a time
+ * (picked from the desktop rail or the mobile dock), so it is always open.
+ */
+export function ControlSection({ title, icon, summary, action, children, tint }: ControlSectionProps) {
+  const headingId = useId();
+  const iconStyle = tint ? { color: tint } : undefined;
 
   return (
-    <section className={`overflow-hidden rounded-[1.5rem] border transition-all duration-200 ${containerClassName}`}>
+    <section
+      aria-labelledby={headingId}
+      className="overflow-hidden rounded-[1.5rem] border border-white/60 bg-[rgba(255,250,242,0.72)] shadow-[0_18px_45px_var(--app-accent-shadow)] backdrop-blur-xl"
+    >
       <div className="flex items-start justify-between gap-3 px-4 py-4 sm:px-5">
-        <button
-          type="button"
-          onClick={onToggle}
-          className="flex-1 text-left transition-colors"
-          aria-expanded={expanded}
-          aria-controls={contentId}
-        >
-          <span className="flex items-start justify-between gap-3">
-            <span className="min-w-0">
-              <span className={`flex items-center gap-2 text-sm font-semibold ${expanded || highlighted ? 'text-(--app-ink)' : 'text-(--app-accent-800)'}`}>
-                <span className={tinted ? (tint ? '' : 'text-[var(--app-accent-600)]') : 'text-[rgba(34,48,52,0.38)]'} style={iconStyle}>{icon}</span>
-                <span style={{ fontFamily: "'Cormorant Garamond', 'Noto Serif SC', Georgia, serif" }}>{title}</span>
-              </span>
-              {summary ? (
-                <span className={`mt-1.5 block text-xs leading-5 ${expanded ? 'text-[color:rgba(51,88,87,0.82)]' : 'text-(--app-accent-500)'}`}>
-                  {summary}
-                </span>
-              ) : null}
-            </span>
-            <span className={`mt-0.5 shrink-0 rounded-full border p-1.5 transition-colors ${expanded ? 'border-[var(--app-accent-200)] bg-[var(--app-accent-50)] text-[var(--app-accent-600)]' : 'border-[rgba(34,48,52,0.08)] bg-[rgba(255,253,249,0.92)] text-[rgba(34,48,52,0.38)]'}`}>
-              {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-            </span>
-          </span>
-        </button>
+        <div className="min-w-0">
+          <h2 id={headingId} className="flex items-center gap-2 text-sm font-semibold text-(--app-ink)">
+            <span className={tint ? '' : 'text-[var(--app-accent-600)]'} style={iconStyle}>{icon}</span>
+            <span style={{ fontFamily: "'Cormorant Garamond', 'Noto Serif SC', Georgia, serif" }}>{title}</span>
+          </h2>
+          {summary ? (
+            <p className="mt-1.5 text-xs leading-5 text-[color:rgba(51,88,87,0.82)]" data-section-summary>
+              {summary}
+            </p>
+          ) : null}
+        </div>
         {action ? <div className="shrink-0">{action}</div> : null}
       </div>
-      <AnimatePresence initial={false}>
-        {expanded && (
-          <motion.div
-            key="content"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
-            style={{ overflow: 'hidden' }}
-          >
-            <div id={contentId} className="border-t border-[rgba(34,48,52,0.06)] px-4 pb-4 pt-4 sm:px-5 sm:pb-5">{children}</div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <div className="border-t border-[rgba(34,48,52,0.06)] px-4 pb-4 pt-4 sm:px-5 sm:pb-5">{children}</div>
     </section>
   );
 }

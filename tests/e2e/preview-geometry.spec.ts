@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { openPanel } from './helpers/sidebarNavigation';
 
 test.use({ viewport: { width: 1440, height: 1000 } });
 
@@ -85,7 +86,7 @@ for (const zoom of [70, 100, 200] as const) {
     await expect.poll(async () => (await readSavedPoemPosition(page))?.boxWidth)
       .toBeCloseTo(expectedPoemWidth, 2);
 
-    await page.getByRole('button', { name: /^Decorations & Elements/ }).click();
+    await openPanel(page, 'Decor');
     await page.getByRole('button', { name: 'Add Text Box' }).click();
     const customText = page.locator('[aria-label="Custom text element"][tabindex="0"]');
     await expect(customText).toBeVisible();

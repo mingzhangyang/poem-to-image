@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { OrnamentSelection } from './ornaments/selection';
 import { useAppAuth } from './context/auth';
 import { useToast } from './components/ToastProvider';
@@ -12,6 +12,7 @@ import { DEFAULT_CANVAS_PRESET_ID, getCanvasSizePresetById } from './canvasPrese
 import { useCanvasScale } from './hooks/useCanvasScale';
 import { useDecorationsConfig } from './hooks/useDecorationsConfig';
 import { useEditorViewModels } from './hooks/useEditorViewModels';
+import { useSidebarNavigation } from './hooks/useSidebarNavigation';
 import { useImageExporter } from './hooks/useImageExporter';
 import { useTypographyConfig } from './hooks/useTypographyConfig';
 import { useCustomTemplates } from './hooks/useCustomTemplates';
@@ -32,7 +33,7 @@ import { isSealMotifId } from './sealMotifs';
 import { ensureFontLoaded } from './fontLoader';
 import { usePageMetadata } from './hooks/usePageMetadata';
 import { useStructuralMemo } from './hooks/useStructuralMemo';
-import type { ExpandedSections, ExportFormat, ExportScale } from './types';
+import type { ExportFormat, ExportScale } from './types';
 import { PublishDialog, type PublishedShare } from './sharing/PublishDialog';
 import { shareCopy } from './sharing/copy';
 import {
@@ -103,15 +104,7 @@ function EditorApp({ initialState, initialRevision, promoteInitial }: EditorAppP
   const activeInteractionCountRef = useRef(0);
   const pendingSceneSettleResolversRef = useRef<Array<() => void>>([]);
 
-  const [expandedSections, setExpandedSections] = useState<ExpandedSections>({
-    templates: false,
-    canvasSize: false,
-    content: true,
-    background: false,
-    typography: false,
-    decorations: false,
-    billing: false,
-  });
+  const { desktopView, setDesktopView, showPanel } = useSidebarNavigation();
 
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [editorOpenRequestId, setEditorOpenRequestId] = useState(0);
@@ -126,7 +119,7 @@ function EditorApp({ initialState, initialRevision, promoteInitial }: EditorAppP
 
   const handleStartFromOnboarding = () => {
     handleCloseOnboarding();
-    setExpandedSections((current) => ({ ...current, content: true, templates: false }));
+    showPanel('content');
     setEditorOpenRequestId((current) => current + 1);
   };
 
@@ -151,17 +144,16 @@ function EditorApp({ initialState, initialRevision, promoteInitial }: EditorAppP
     [changeLanguage],
   );
 
-  const toggleSection = (section: keyof ExpandedSections) => {
-    setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
-  };
-
-  const expandSection = (section: keyof ExpandedSections) => {
-    setExpandedSections((prev) => (prev[section] ? prev : { ...prev, [section]: true }));
-  };
-
   const previewRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const ornamentSelection = useState('');
+  const [selectedOrnamentId, setSelectedOrnamentId] = useState('');
+  // Selecting an ornament (on the canvas or in the library) reveals its
+  // controls, switching the desktop rail to Style when needed.
+  const selectOrnament = useCallback((id: string) => {
+    setSelectedOrnamentId(id);
+    if (id) showPanel('decorations');
+  }, [showPanel]);
+  const ornamentSelection = useMemo(() => [selectedOrnamentId, selectOrnament] as const, [selectedOrnamentId, selectOrnament]);
   const poemFrameRef = useRef<HTMLDivElement>(null);
   const poemTextRef = useRef<HTMLDivElement>(null);
 
@@ -182,7 +174,7 @@ function EditorApp({ initialState, initialRevision, promoteInitial }: EditorAppP
     fontSize: typography.fontSize,
     textColor: typography.textColor,
     writingMode: typography.writingMode,
-    onCustomTextAdded: () => setExpandedSections((prev) => ({ ...prev, decorations: true })),
+    onCustomTextAdded: () => showPanel('decorations'),
     initialDraft: initialState?.decorations,
   });
   // Commands are the only multi-field edit boundary; one canonical snapshot
@@ -210,7 +202,7 @@ function EditorApp({ initialState, initialRevision, promoteInitial }: EditorAppP
 
   const customTemplates = useCustomTemplates({ isLoaded, isSignedIn, userId, getToken });
 
-  const { activeTemplateId, handleApplyTemplate, handleApplyCustomTemplate, handleSaveCustomTemplate } =
+  const { activeTemplateId, handleApplyTemplate, handleApplyCustomTemplate, customTemplateSaveForm } =
     useTemplateManager({
       language,
       hasPersistedEditorState: initialState !== null,
@@ -219,7 +211,7 @@ function EditorApp({ initialState, initialRevision, promoteInitial }: EditorAppP
       poemStyle,
       editorDocument,
       applyEditorTemplate: editorCommands.applyTemplate,
-      setExpandedSections,
+      showPanel,
       customTemplates,
     });
 
@@ -298,12 +290,12 @@ function EditorApp({ initialState, initialRevision, promoteInitial }: EditorAppP
       reader.onload = (e) => {
         const imageUrl = e.target?.result as string;
         decorations.addLogo(imageUrl);
-        setExpandedSections((prev) => ({ ...prev, decorations: true }));
+        showPanel('decorations');
       };
       reader.readAsDataURL(file);
       event.target.value = '';
     },
-    [decorations],
+    [decorations, showPanel],
   );
 
   const scale = useCanvasScale(containerRef, canvasWidth, canvasHeight);
@@ -479,9 +471,8 @@ function EditorApp({ initialState, initialRevision, promoteInitial }: EditorAppP
     language,
     onLanguageChange: handleLanguageChange,
     t,
-    expandedSections,
-    onToggleSection: toggleSection,
-    onExpandSection: expandSection,
+    desktopView,
+    onDesktopViewChange: setDesktopView,
     templates: {
       templates: editorTemplates,
       activeTemplateId,
@@ -497,7 +488,7 @@ function EditorApp({ initialState, initialRevision, promoteInitial }: EditorAppP
       onImportLegacyCustomTemplates: customTemplates.importLegacyTemplates,
       activeCustomTemplateId: customTemplates.activeCustomTemplateId,
       onApplyCustomTemplate: handleApplyCustomTemplate,
-      onSaveCustomTemplate: handleSaveCustomTemplate,
+      saveForm: customTemplateSaveForm,
       onDeleteCustomTemplate: customTemplates.deleteCustomTemplate,
       onRenameCustomTemplate: customTemplates.renameCustomTemplate,
     },

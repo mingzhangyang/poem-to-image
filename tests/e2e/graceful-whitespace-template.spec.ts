@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { openPanel } from './helpers/sidebarNavigation';
 
 test.beforeEach(async ({ page }) => {
   await page.route('**/api/billing/packages', async (route) => {
@@ -13,8 +14,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 async function openTemplates(page: Page) {
-  const mobile = (page.viewportSize()?.width ?? 0) < 1024;
-  await page.getByRole('button', { name: mobile ? 'Templates' : /^Templates/, exact: mobile }).click();
+  await openPanel(page, 'Templates');
 }
 
 /** Assert card's seal/signature is entirely inside the reserved artwork, not under caption. */
@@ -95,7 +95,8 @@ test('a custom copy keeps its handwriting and drops it when another template is 
   await expect(signature).toBeVisible();
 
   await page.getByRole('button', { name: 'Save as Template' }).click();
-  await page.getByPlaceholder('Template name...').fill('Graceful Copy');
+  // On mobile the hidden desktop panel shares the same save form.
+  await page.getByPlaceholder('Template name...').filter({ visible: true }).fill('Graceful Copy');
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expect.poll(() => page.evaluate(() => {
     const copies = JSON.parse(localStorage.getItem('poem-to-image.custom-templates.v2.guest') || '[]');
@@ -130,7 +131,7 @@ test('Chinese variant previews exactly one poem and keeps its seal, without Lati
   await page.evaluate(() => localStorage.setItem('poem-to-image.language', 'zh-CN'));
   await page.reload({ waitUntil: 'domcontentloaded' });
 
-  await page.getByRole('button', { name: /^模板主题/ }).click();
+  await openPanel(page, '模板主题');
   await page.getByRole('button', { name: /^更多 \(/ }).click();
   const library = page.getByRole('dialog', { name: '系统模板' });
   const card = library.getByRole('button', { name: /婉约留白/ });

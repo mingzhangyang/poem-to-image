@@ -1,21 +1,41 @@
+import { useContext, useEffect, useState } from 'react';
+import { ChevronDown, ChevronUp, Flower2 } from 'lucide-react';
 import { OrnamentSelection } from '../../ornaments/selection';
-import { useContext, useState } from 'react';
 import manifest from '../../ornaments/manifest.json';
-import { ORNAMENT_CATEGORIES as categories, ORNAMENT_MOODS as moods } from '../../ornaments/taxonomy';
-import type { DecorationsSectionProps, LogoConfig } from '../../types';
+import { getOrnamentName, ORNAMENT_CATEGORIES, ORNAMENT_MOODS, type OrnamentManifestItem } from '../../ornaments/taxonomy';
+import type { DecorationsSectionProps, LogoConfig, TranslateFn } from '../../types';
+import type { TranslationKey } from '../../translations';
 
-const anchors = { tl: ['左上', 'Top left'], tr: ['右上', 'Top right'], bl: ['左下', 'Bottom left'], br: ['右下', 'Bottom right'], bc: ['底部居中', 'Bottom center'] };
-const chip = 'rounded-full border border-stone-200 px-2.5 py-1 text-xs text-stone-700 hover:border-stone-400 aria-pressed:bg-(--app-accent-700) aria-pressed:text-white';
+const ANCHORS: Array<[anchor: string, label: TranslationKey]> = [
+  ['tl', 'ornamentAnchorTopLeft'],
+  ['tr', 'ornamentAnchorTopRight'],
+  ['bl', 'ornamentAnchorBottomLeft'],
+  ['br', 'ornamentAnchorBottomRight'],
+  ['bc', 'ornamentAnchorBottomCenter'],
+];
 
-export function OrnamentLibrary({ decorations }: { decorations: DecorationsSectionProps }) {
-  const [mood, setMood] = useState('全部');
+const chipClassName = 'rounded-full border border-[rgba(34,48,52,0.14)] bg-[#fffdfa] px-2.5 py-1 text-xs font-medium text-(--app-accent-700) transition-colors hover:border-(--app-accent-300) aria-pressed:border-(--app-accent-700) aria-pressed:bg-(--app-accent-700) aria-pressed:text-white';
+
+interface OrnamentLibraryProps {
+  t: TranslateFn;
+  decorations: DecorationsSectionProps;
+}
+
+/** Ornament gallery and the controls for the selected ornament, shown inside the Decorations panel. */
+export function OrnamentLibrary({ t, decorations }: OrnamentLibraryProps) {
+  const [expanded, setExpanded] = useState(false);
+  const [mood, setMood] = useState<string | null>(null);
   const [selected, setSelected] = useContext(OrnamentSelection);
   const layers = decorations.logos.filter(item => item.ornamentId);
   const active = layers.find(item => item.id === selected) ?? layers.at(-1);
-  const zh = decorations.language.startsWith('zh');
-  const label = (chinese: string, english: string) => zh ? chinese : english;
-  const title = (item: typeof manifest[number]) => label(item.name_zh, item.name_en);
+  const name = (ornamentId: string) => getOrnamentName(ornamentId, decorations.language);
   const frame = decorations.getFrameSize;
+
+  // Selecting an ornament on the canvas reveals its controls.
+  useEffect(() => {
+    if (selected) setExpanded(true);
+  }, [selected]);
+
   function position(anchor: string, size: number, rotation = 0) {
     const { width, height } = frame();
     const radians = rotation * Math.PI / 180;
@@ -27,7 +47,7 @@ export function OrnamentLibrary({ decorations }: { decorations: DecorationsSecti
       positionY: anchor.startsWith('t') ? y : anchor.startsWith('b') ? 100 - y : 50,
     };
   }
-  function add(item: typeof manifest[number]) {
+  function add(item: OrnamentManifestItem) {
     const { width, height } = frame();
     const size = Math.min(width, height) * item.default_scale;
     setSelected(decorations.onAddOrnament(item.file, {
@@ -37,43 +57,102 @@ export function OrnamentLibrary({ decorations }: { decorations: DecorationsSecti
   function update(changes: Partial<LogoConfig>) {
     if (active) decorations.onLogoChange(active.id, changes);
   }
-  return <section className="space-y-3 rounded-xl border border-stone-200 bg-white p-3">
-    <h3 className="font-medium">{label('装饰', 'Ornaments')}</h3>
-    <div aria-live="polite" className="space-y-1 text-xs text-stone-600 empty:hidden">
-      {layers.length > 2 && <p>{label('点缀宜少，诗是主体。', 'A little goes a long way. Let the poem lead.')}</p>}
-      {layers.length > 4 && <p>{label('元素较多，可能喧宾夺主。', 'Several ornaments may draw attention away from the poem.')}</p>}
+
+  return (
+    <div className="space-y-3">
+      <button
+        type="button"
+        aria-expanded={expanded}
+        onClick={() => setExpanded(value => !value)}
+        className="flex w-full items-center gap-2 rounded-lg border border-[rgba(34,48,52,0.12)] bg-[rgba(237,244,243,0.5)] px-3 py-2 text-left text-xs font-medium text-(--app-accent-700)"
+      >
+        <Flower2 aria-hidden="true" className="h-4 w-4 shrink-0" />
+        <span>{t('ornaments')}</span>
+        {layers.length > 0 ? (
+          <span className="ml-auto rounded-full bg-(--app-accent-50) px-2 text-[11px] text-(--app-accent-600)">{layers.length}</span>
+        ) : <span className="ml-auto" />}
+        {expanded
+          ? <ChevronUp aria-hidden="true" className="h-4 w-4 shrink-0" />
+          : <ChevronDown aria-hidden="true" className="h-4 w-4 shrink-0" />}
+      </button>
+
+      {expanded ? (
+        <div className="space-y-3">
+          <div aria-live="polite" className="space-y-1 text-xs text-(--app-accent-500) empty:hidden">
+            {layers.length > 2 && <p>{t('ornamentsHintFew')}</p>}
+            {layers.length > 4 && <p>{t('ornamentsHintMany')}</p>}
+          </div>
+
+          <div className="flex flex-wrap gap-1">
+            <button type="button" className={chipClassName} aria-pressed={mood === null} onClick={() => setMood(null)}>
+              {t('ornamentMoodAll')}
+            </button>
+            {Object.entries(ORNAMENT_MOODS).map(([key, label]) => (
+              <button type="button" className={chipClassName} key={key} aria-pressed={mood === key} onClick={() => setMood(key)}>
+                {t(label)}
+              </button>
+            ))}
+          </div>
+
+          <div className="app-sidebar-scrollbar max-h-64 space-y-3 overflow-y-auto">
+            {Object.entries(ORNAMENT_CATEGORIES).map(([key, label]) => {
+              const items = manifest.filter(item => item.category === key && (mood === null || item.moods.includes(mood)));
+              return items.length > 0 && (
+                <section key={key}>
+                  <h4 className="mb-1 text-xs font-medium text-(--app-accent-500)">{t(label)}</h4>
+                  <div className="grid grid-cols-3 gap-1">
+                    {items.map(item => (
+                      <button type="button" key={item.id} onClick={() => add(item)}
+                        className="rounded-md p-1 text-xs text-(--app-accent-800) transition-colors hover:bg-(--app-accent-50)">
+                        <img loading="lazy" className="mb-1 h-16 w-full rounded bg-[#eeece6] object-contain" src={'/ornaments/thumbs/' + item.id + '.webp'} alt="" />
+                        {name(item.id)}
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              );
+            })}
+          </div>
+
+          {active ? (
+            <div className="app-soft-surface space-y-2 rounded-lg p-3 text-xs text-(--app-accent-700)">
+              <select className="app-select w-full text-sm" aria-label={t('placedOrnaments')} value={active.id} onChange={event => setSelected(event.target.value)}>
+                {layers.map((layer, index) => (
+                  <option key={layer.id} value={layer.id}>{index + 1}. {name(layer.ornamentId!)}</option>
+                ))}
+              </select>
+              <div className="flex flex-wrap gap-1">
+                {ANCHORS.map(([anchor, label]) => (
+                  <button type="button" key={anchor} className={chipClassName} onClick={() => update(position(anchor, active.size, active.rotation))}>{t(label)}</button>
+                ))}
+              </div>
+              <label className="flex items-center justify-between gap-2">
+                {t('size')}
+                <input type="range" className="app-range flex-1" min="12" max={Math.max(active.size, Math.min(frame().width, frame().height))} value={active.size} onChange={event => update({ size: +event.target.value })} />
+              </label>
+              <label className="flex items-center justify-between gap-2">
+                {t('ornamentRotation')}
+                <input type="range" className="app-range flex-1" min="-180" max="180" value={active.rotation} onChange={event => update({ rotation: +event.target.value })} />
+              </label>
+              <label className="flex items-center justify-between gap-2">
+                {t('opacity')}
+                <input type="range" className="app-range flex-1" min="0" max="1" step=".01" value={active.opacity} onChange={event => update({ opacity: +event.target.value })} />
+              </label>
+              <div className="flex flex-wrap gap-1">
+                <button type="button" className={chipClassName} aria-pressed={!!active.flipped} onClick={() => update({ flipped: !active.flipped })}>{t('ornamentFlip')}</button>
+                <button type="button" className={chipClassName} onClick={() => update({ aboveText: !active.aboveText })}>
+                  {active.aboveText ? t('ornamentBelowText') : t('ornamentAboveText')}
+                </button>
+                <button type="button" className={chipClassName}
+                  onClick={() => setSelected(decorations.onAddOrnament(active.imageUrl, { ...active, positionX: Math.min(97, active.positionX + 2) }))}>
+                  {t('ornamentDuplicate')}
+                </button>
+                <button type="button" className={chipClassName} onClick={() => decorations.onLogoRemove(active.id)}>{t('ornamentDelete')}</button>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </div>
-    <div className="flex flex-wrap gap-1">{Object.entries(moods).map(([key, en]) =>
-      <button className={chip} key={key} aria-pressed={mood === key} onClick={() => setMood(key)}>{label(key, en)}</button>)}</div>
-    <div className="app-sidebar-scrollbar max-h-64 overflow-y-auto space-y-3">{Object.entries(categories).map(([key, en]) => {
-      const items = manifest.filter(item => item.category === key && (mood === '全部' || item.moods.includes(mood)));
-      return items.length > 0 && <section key={key}>
-        <h4 className="mb-1 text-xs font-medium text-stone-600">{label(key, en)}</h4>
-        <div className="grid grid-cols-3 gap-1">{items.map(item =>
-          <button key={item.id} onClick={() => add(item)} className="rounded-md text-xs p-1 text-stone-700 hover:bg-stone-100">
-            <img loading="lazy" className="mb-1 w-full h-16 object-contain rounded bg-[#eeece6]" src={'/ornaments/thumbs/' + item.id + '.webp'} alt="" />
-            {title(item)}
-          </button>)}</div>
-      </section>;
-    })}</div>
-    {active && <div className="border-t pt-3 space-y-2 text-xs">
-      <select className="app-select w-full" aria-label={label('已放置的装饰', 'Placed ornaments')} value={active.id} onChange={e => setSelected(e.target.value)}>
-        {layers.map((layer, index) => {
-          const item = manifest.find(entry => entry.id === layer.ornamentId);
-          return <option key={layer.id} value={layer.id}>{index + 1}. {item ? title(item) : layer.ornamentId}</option>;
-        })}
-      </select>
-      <div className="flex flex-wrap gap-1">{Object.entries(anchors).map(([key, names]) =>
-        <button key={key} className={chip} onClick={() => update(position(key, active.size, active.rotation))}>{label(names[0], names[1])}</button>)}</div>
-      <label className="flex items-center justify-between gap-2">{label('大小', 'Size')} <input type="range" min="12" max={Math.max(active.size, Math.min(frame().width, frame().height))} value={active.size} onChange={e => update({ size: +e.target.value })}/></label>
-      <label className="flex items-center justify-between gap-2">{label('旋转', 'Rotation')} <input type="range" min="-180" max="180" value={active.rotation} onChange={e => update({ rotation: +e.target.value })}/></label>
-      <label className="flex items-center justify-between gap-2">{label('透明度', 'Opacity')} <input type="range" min="0" max="1" step=".01" value={active.opacity} onChange={e => update({ opacity: +e.target.value })}/></label>
-      <div className="flex flex-wrap gap-1">
-        <button className={chip} aria-pressed={!!active.flipped} onClick={() => update({ flipped: !active.flipped })}>{label('水平翻转', 'Flip horizontally')}</button>
-        <button className={chip} onClick={() => update({ aboveText: !active.aboveText })}>{active.aboveText ? label('置于文字之下', 'Move below text') : label('置于文字之上', 'Move above text')}</button>
-        <button className={chip} onClick={() => setSelected(decorations.onAddOrnament(active.imageUrl, { ...active, positionX: Math.min(97, active.positionX + 2) }))}>{label('复制', 'Duplicate')}</button>
-        <button className={chip} onClick={() => decorations.onLogoRemove(active.id)}>{label('删除', 'Delete')}</button>
-      </div>
-    </div>}
-  </section>;
+  );
 }

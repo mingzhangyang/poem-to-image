@@ -1,4 +1,5 @@
 import { expect, test, type Locator } from '@playwright/test';
+import { openPanel } from './helpers/sidebarNavigation';
 
 test.use({ viewport: { width: 1920, height: 1600 } });
 
@@ -21,7 +22,7 @@ async function pointer(target: Locator, type: string, pointerId: number, x: numb
 
 test('pinching over an overlay cancels its drag and defers seal rasterization', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /^装饰与元素/ }).click();
+  await openPanel(page, '装饰');
   await page.getByRole('checkbox', { name: '显示印章' }).check();
   const poem = page.locator('[aria-label="正文"][tabindex="0"]');
   const stamp = page.locator('[aria-label="印章元素"]');

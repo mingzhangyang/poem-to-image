@@ -66,6 +66,21 @@ test('critical files do not include hardcoded CJK labels', () => {
     'src/components/sidebar/CanvasSizePanel.tsx',
     'src/components/sidebar/SidebarFooter.tsx',
     'src/components/sidebar/DecorationsPanel.tsx',
+    'src/components/sidebar/AddElementActions.tsx',
+    'src/components/sidebar/BorderControls.tsx',
+    'src/components/sidebar/CustomTextList.tsx',
+    'src/components/sidebar/LogoList.tsx',
+    'src/components/sidebar/SealControls.tsx',
+    'src/components/sidebar/SealCompositionControls.tsx',
+    'src/components/sidebar/SealFontControls.tsx',
+    'src/components/sidebar/SealInkControls.tsx',
+    'src/components/sidebar/SignatureList.tsx',
+    'src/components/sidebar/OrnamentLibrary.tsx',
+    'src/components/Sidebar.tsx',
+    'src/components/sidebar/SidebarRail.tsx',
+    'src/components/sidebar/SidebarHeader.tsx',
+    'src/components/sidebar/panelGroups.ts',
+    'src/hooks/useSidebarNavigation.ts',
     'src/App.tsx',
   ];
   const hanRegex = /\p{Script=Han}/u;
@@ -84,12 +99,46 @@ test('editor purchase flow surfaces checkout errors via toast', () => {
 });
 
 test('desktop and mobile paper selectors both receive the editor language', () => {
+  // Sidebar.tsx defines each panel once; the desktop rail and the mobile
+  // drawer both show the groups declared in panelGroups.ts.
   const sidebar = readRepoFile('src/components/Sidebar.tsx');
   const instances = [...sidebar.matchAll(/<BackgroundPanel\b([\s\S]*?)\/>/g)];
-  assert.equal(instances.length, 2, 'both desktop and mobile controls must be checked');
-  for (const [, attributes] of instances) {
-    assert.match(attributes, /\blanguage=\{language\}/, 'paper swatch labels need the current language');
-  }
+  assert.equal(instances.length, 1, 'the paper selector should be defined once for desktop and mobile');
+  assert.match(instances[0][1], /\blanguage=\{language\}/, 'paper swatch labels need the current language');
+
+  const groups = readRepoFile('src/components/sidebar/panelGroups.ts');
+  assert.match(groups, /\n\s*background:\s*\{[^}]*icon:/, 'the paper selector must have its own panel group');
+  const groupOrder = groups.match(/const PANEL_GROUP_ORDER\b[^=]*=\s*\[([^\]]*)\]/);
+  assert.ok(groupOrder, 'panel order should be declared');
+  assert.match(groupOrder[1], /'background'/, 'the paper selector must be reachable from the rail and the mobile menus');
+  // Both layouts render panels from the shared definition.
+  assert.match(sidebar, /<SidebarRail\b/, 'desktop sidebar must render the navigation rail');
+  assert.match(sidebar, /renderGroup\(desktopView\)/, 'desktop panel area must show the active panel');
+  assert.match(sidebar, /\[\.\.\.PANEL_GROUP_ORDER, 'export', 'settings'\]/, 'mobile dock and More menu must list every panel');
+});
+
+test('mobile dock pins four destinations and lists the rest under More', () => {
+  const sidebar = readRepoFile('src/components/Sidebar.tsx');
+  const dock = sidebar.match(/const MOBILE_DOCK\b[^=]*=\s*\[([^\]]*)\]/);
+  assert.ok(dock, 'mobile dock should be declared as data');
+  assert.equal(dock[1].split(',').filter((item) => item.trim()).length, 4, 'the dock pins four destinations next to More');
+  assert.match(sidebar, /MOBILE_DESTINATIONS\.filter\(\(destination\) => !MOBILE_DOCK\.includes\(destination\)\)/);
+  assert.match(sidebar, /t\('quickMore'\)/);
+});
+
+test('desktop navigation rail is an accessible vertical tab list', () => {
+  const rail = readRepoFile('src/components/sidebar/SidebarRail.tsx');
+  const sidebar = readRepoFile('src/components/Sidebar.tsx');
+  assert.match(rail, /role="tablist"/);
+  assert.match(rail, /aria-orientation="vertical"/);
+  assert.match(rail, /aria-label=\{t\('controlsNavigation'\)\}/);
+  assert.match(rail, /role="tab"/);
+  assert.match(rail, /aria-selected=/);
+  assert.match(rail, /aria-controls=/);
+  assert.match(rail, /tabIndex=\{selected \? 0 : -1\}/);
+  for (const key of ['ArrowDown', 'ArrowUp', 'Home', 'End']) assert.match(rail, new RegExp(key));
+  assert.match(sidebar, /role="tabpanel"/);
+  assert.match(sidebar, /aria-labelledby=\{getRailLabelId\(desktopView\)\}/);
 });
 
 test('the selected LXGW WenKai family is defined by its local CSS', () => {

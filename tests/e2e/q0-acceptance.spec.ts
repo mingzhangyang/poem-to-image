@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
+import { openPanel } from './helpers/sidebarNavigation';
 
 // Q0 is a post-merge acceptance suite. Never call AI or paid checkout services.
 test.beforeEach(async ({ page }) => {
@@ -36,7 +37,7 @@ test('all nine export format and scale combinations produce correctly sized, uni
   await editor.getByPlaceholder('Enter your poem here...').fill('A quiet sky\nAbove a river');
   await editor.getByRole('button', { name: 'Done' }).click();
 
-  await page.getByRole('button', { name: /^Canvas Size/ }).click();
+  await openPanel(page, 'Size');
   await page.getByRole('combobox', { name: 'Preset Sizes' }).selectOption('custom');
   await page.getByRole('spinbutton', { name: 'Width (px)' }).fill('160');
   await page.getByRole('spinbutton', { name: 'Height (px)' }).fill('200');
@@ -87,14 +88,14 @@ test('all nine export format and scale combinations produce correctly sized, uni
 });
 
 const localeMatrix = [
-  { code: 'en', button: 'English', settings: 'Settings', language: 'Language', canvas: 'Canvas Size', quick: 'Quick platform presets', presets: 'Preset Sizes', print: 'Print' },
-  { code: 'zh-CN', button: '简体中文', settings: '设置', language: '语言', canvas: '画布尺寸', quick: '常用平台尺寸', presets: '预设尺寸', print: '打印' },
-  { code: 'zh-TW', button: '繁體中文', settings: '設定', language: '語言', canvas: '畫布尺寸', quick: '常用平台尺寸', presets: '預設尺寸', print: '列印' },
-  { code: 'ja', button: '日本語', settings: '設定', language: '言語', canvas: 'キャンバスサイズ', quick: 'プラットフォーム別クイック設定', presets: 'プリセットサイズ', print: '印刷' },
-  { code: 'ko', button: '한국어', settings: '설정', language: '언어', canvas: '캔버스 크기', quick: '플랫폼별 빠른 크기', presets: '사전 설정 크기', print: '인쇄' },
-  { code: 'es', button: 'Español', settings: 'Ajustes', language: 'Idioma', canvas: 'Tamaño del lienzo', quick: 'Formatos rápidos por plataforma', presets: 'Tamaños predefinidos', print: 'Impresión' },
-  { code: 'fr', button: 'Français', settings: 'Paramètres', language: 'Langue', canvas: 'Taille de la toile', quick: 'Formats rapides par plateforme', presets: 'Tailles prédéfinies', print: 'Impression' },
-  { code: 'de', button: 'Deutsch', settings: 'Einstellungen', language: 'Sprache', canvas: 'Leinwandgröße', quick: 'Schnelle Plattformformate', presets: 'Voreingestellte Größen', print: 'Druck' },
+  { code: 'en', button: 'English', settings: 'Settings', language: 'Language', canvas: 'Size', quick: 'Quick platform presets', presets: 'Preset Sizes', print: 'Print' },
+  { code: 'zh-CN', button: '简体中文', settings: '设置', language: '语言', canvas: '尺寸', quick: '常用平台尺寸', presets: '预设尺寸', print: '打印' },
+  { code: 'zh-TW', button: '繁體中文', settings: '設定', language: '語言', canvas: '尺寸', quick: '常用平台尺寸', presets: '預設尺寸', print: '列印' },
+  { code: 'ja', button: '日本語', settings: '設定', language: '言語', canvas: 'サイズ', quick: 'プラットフォーム別クイック設定', presets: 'プリセットサイズ', print: '印刷' },
+  { code: 'ko', button: '한국어', settings: '설정', language: '언어', canvas: '크기', quick: '플랫폼별 빠른 크기', presets: '사전 설정 크기', print: '인쇄' },
+  { code: 'es', button: 'Español', settings: 'Ajustes', language: 'Idioma', canvas: 'Tamaño', quick: 'Formatos rápidos por plataforma', presets: 'Tamaños predefinidos', print: 'Impresión' },
+  { code: 'fr', button: 'Français', settings: 'Paramètres', language: 'Langue', canvas: 'Taille', quick: 'Formats rapides par plateforme', presets: 'Tailles prédéfinies', print: 'Impression' },
+  { code: 'de', button: 'Deutsch', settings: 'Einstellungen', language: 'Sprache', canvas: 'Größe', quick: 'Schnelle Plattformformate', presets: 'Voreingestellte Größen', print: 'Druck' },
 ] as const;
 
 test('all eight languages localize canvas controls and survive reload', async ({ page }, testInfo) => {
@@ -102,34 +103,31 @@ test('all eight languages localize canvas controls and survive reload', async ({
   test.setTimeout(90_000);
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await openPanel(page, 'Settings');
 
   for (const locale of localeMatrix) {
     await page.getByRole('button', { name: locale.button, exact: true }).click();
     await expect(page.getByText(locale.language, { exact: true })).toBeVisible();
-    await page.getByRole('button', { name: locale.settings, exact: true }).click();
+    await openPanel(page, locale.canvas);
 
     const quickLabel = page.getByText(locale.quick, { exact: true });
-    if (!(await quickLabel.isVisible())) {
-      await page.getByRole('button', { name: new RegExp('^' + locale.canvas) }).click();
-    }
     await expect(quickLabel).toBeVisible();
     const select = page.getByRole('combobox', { name: locale.presets, exact: true });
     await expect(select).toBeVisible();
     await expect(select.locator('optgroup').nth(3)).toHaveAttribute('label', locale.print);
-    await page.getByRole('button', { name: locale.settings, exact: true }).click();
+    await openPanel(page, locale.settings);
   }
 
   await expect.poll(() => page.evaluate(() => window.localStorage.getItem('poem-to-image.language'))).toBe('de');
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await expect(page.getByRole('button', { name: 'Einstellungen', exact: true })).toBeVisible();
+  await expect(page.getByRole('tab', { name: 'Einstellungen', exact: true })).toBeVisible();
 });
 
 test('canvas preset identity restores through undo, redo and reload', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium-desktop', 'Run history acceptance once');
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /^Canvas Size/ }).click();
+  await openPanel(page, 'Size');
   const presets = page.getByRole('combobox', { name: 'Preset Sizes' });
   await presets.selectOption('wechat-moments-long');
   await page.waitForTimeout(950);
@@ -142,7 +140,7 @@ test('canvas preset identity restores through undo, redo and reload', async ({ p
   await expect(presets).toHaveValue('print-card');
   await page.waitForTimeout(900);
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /^Canvas Size/ }).click();
+  await openPanel(page, 'Size');
   await expect(page.getByRole('combobox', { name: 'Preset Sizes' })).toHaveValue('print-card');
 });
 
@@ -154,7 +152,7 @@ test('guest AI generation remains gated without invoking a paid endpoint', async
     if (new URL(request.url()).pathname === '/api/ai-background') attempts.push(request.url());
   });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /^Background/ }).click();
+  await openPanel(page, 'Background');
   await page.getByRole('button', { name: 'AI', exact: true }).click();
   await expect(page.getByRole('button', { name: /Generate AI Background/ })).toBeDisabled();
   await expect(page.getByText('Please sign in to use AI generation.')).toBeVisible();
@@ -189,7 +187,7 @@ test('applied template appearance and poem content survive reload', async ({ pag
   test.skip(testInfo.project.name !== 'chromium-desktop', 'Run built-in template persistence once');
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /^Templates/ }).click();
+  await openPanel(page, 'Templates');
   await page.getByRole('button', { name: /^More \(/ }).click();
   const library = page.getByRole('dialog', { name: 'Built-in Templates' });
   await library.getByRole('button', { name: /Song Floral/ }).click();
@@ -199,6 +197,7 @@ test('applied template appearance and poem content survive reload', async ({ pag
   await expect.poll(() => page.evaluate(() => window.localStorage.getItem('poem-to-image.active-template')))
     .toBe('song-floral');
 
+  await openPanel(page, 'Content');
   await page.getByRole('button', { name: 'Open Editor' }).click();
   const editor = page.getByRole('dialog', { name: 'Poem Editor' });
   await editor.getByPlaceholder('Title').fill('Q0 Persisted Poem');
@@ -221,6 +220,6 @@ test('applied template appearance and poem content survive reload', async ({ pag
 
   await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(page.getByLabel('Body').getByText('Q0 Persisted Poem')).toBeVisible();
-  await page.getByRole('button', { name: /^Templates/ }).click();
+  await openPanel(page, 'Templates');
   await expect(page.locator('button[aria-pressed]').filter({ hasText: 'Song Floral' }).first()).toHaveAttribute('aria-pressed', 'true');
 });

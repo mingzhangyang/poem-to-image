@@ -2,7 +2,7 @@ import { BookmarkPlus, Expand, Pencil, Search, Sparkles, Trash2, X } from 'lucid
 import { useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
-import type { ExpandedSections, TemplateSectionProps, TranslateFn } from '../../types';
+import type { TemplateSectionProps, TranslateFn } from '../../types';
 import { ControlSection } from '../ControlSection';
 import { useDialogA11y } from '../../hooks/useDialogA11y';
 import { getTemplatePreviewStyle } from '../../templates/preview-style';
@@ -19,8 +19,6 @@ type BuiltInTemplate = TemplateSectionProps['templates'][number];
 interface TemplatesPanelProps {
   t: TranslateFn;
   language: Language;
-  expanded: ExpandedSections['templates'];
-  onToggle: () => void;
   templates: TemplateSectionProps;
   currentBackgroundType: string;
 }
@@ -102,7 +100,7 @@ function BuiltInTemplateCard({ t, language, template, isActive, onApply, variant
       key={template.id}
       onClick={() => onApply(template.id)}
       aria-pressed={isActive}
-      className={`flex min-h-28 w-full items-stretch gap-3 rounded-2xl border p-3 text-left transition-all ${
+      className={`flex min-h-28 w-full min-w-0 items-stretch gap-3 rounded-2xl border p-3 text-left transition-all ${
         isActive
           ? 'border-(--app-accent-300) bg-(--app-accent-50) shadow-[0_10px_24px_var(--app-accent-shadow)]'
           : 'border-[rgba(34,48,52,0.08)] bg-white hover:border-(--app-accent-200) hover:bg-(--app-accent-50)'
@@ -115,8 +113,9 @@ function BuiltInTemplateCard({ t, language, template, isActive, onApply, variant
       />
       <div className="flex min-w-0 flex-1 flex-col justify-between gap-2 py-0.5">
         <div className="min-w-0">
-          <div className="flex items-start justify-between gap-2">
-            <div className="text-sm font-semibold leading-5 text-(--app-ink)">{t(template.nameKey)}</div>
+          {/* Wraps the Apply pill below the name when the sidebar is narrow. */}
+          <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1">
+            <div className="min-w-0 break-words text-sm font-semibold leading-5 text-(--app-ink)">{t(template.nameKey)}</div>
             <span
               className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${
                 isActive ? 'bg-(--app-accent-700) text-white' : 'bg-(--app-accent-50) text-(--app-accent-700)'
@@ -137,11 +136,10 @@ function BuiltInTemplateCard({ t, language, template, isActive, onApply, variant
   );
 }
 
-export function TemplatesPanel({ t, language, expanded, onToggle, templates, currentBackgroundType }: TemplatesPanelProps) {
-  const [isSaving, setIsSaving] = useState(false);
-  const [isSubmittingSave, setIsSubmittingSave] = useState(false);
-  const saveInFlightRef = useRef(false);
-  const [templateName, setTemplateName] = useState('');
+export function TemplatesPanel({ t, language, templates, currentBackgroundType }: TemplatesPanelProps) {
+  // The save form is owned above this panel: it unmounts when another panel
+  // is shown, while a save it started keeps running.
+  const { saveForm } = templates;
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
@@ -206,33 +204,12 @@ export function TemplatesPanel({ t, language, expanded, onToggle, templates, cur
     failed: syncMessages.reconcileFailed,
   }[templates.templateReconciliationStatus];
 
-  const handleSave = async () => {
-    if (saveInFlightRef.current || !templates.canSaveCustomTemplate) return;
-    saveInFlightRef.current = true;
-    setIsSubmittingSave(true);
-    try {
-      const saved = await templates.onSaveCustomTemplate(templateName.trim());
-      // Keep the typed name and open form if authentication changed, or the
-      // server did not confirm the write. A retry can be deliberate and safe.
-      if (saved) {
-        setTemplateName('');
-        setIsSaving(false);
-      }
-    } finally {
-      saveInFlightRef.current = false;
-      setIsSubmittingSave(false);
-    }
-  };
-
   const handleKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') {
       event.preventDefault();
-      void handleSave();
+      if (templates.canSaveCustomTemplate) void saveForm.onSubmit();
     }
-    if (event.key === 'Escape' && !isSubmittingSave) {
-      setIsSaving(false);
-      setTemplateName('');
-    }
+    if (event.key === 'Escape') saveForm.onClose();
   };
 
   const startRenaming = (id: string, currentName: string) => {
@@ -267,18 +244,15 @@ export function TemplatesPanel({ t, language, expanded, onToggle, templates, cur
         title={t('templates')}
         icon={<Sparkles className="w-4 h-4" />}
         tint="var(--app-cat-templates)"
-        expanded={expanded}
-        onToggle={onToggle}
         summary={activeName ?? t('templatesHint')}
-        highlighted={!templates.activeTemplateId && !templates.activeCustomTemplateId}
       >
         <div className="space-y-4">
           <div>
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-semibold text-(--app-accent-500) uppercase tracking-wide">{t('myTemplates')}</span>
-              {!isSaving && (
+              {!saveForm.isOpen && (
                 <button
-                  onClick={() => setIsSaving(true)}
+                  onClick={saveForm.onOpen}
                   className="flex items-center gap-1 text-xs font-medium text-(--app-accent-600) hover:text-(--app-accent-800)"
                 >
                   <BookmarkPlus className="w-3.5 h-3.5" />
@@ -287,8 +261,8 @@ export function TemplatesPanel({ t, language, expanded, onToggle, templates, cur
               )}
             </div>
 
-            {isSaving && (
-              <div className="mb-3 space-y-2">
+            {saveForm.isOpen && (
+              <div className="mb-3 space-y-2" aria-busy={saveForm.isSubmitting}>
                 {isImageOrAiBg && (
                   <p className="text-xs text-amber-600 leading-4">{t('bgNotSavedNote')}</p>
                 )}
@@ -296,27 +270,24 @@ export function TemplatesPanel({ t, language, expanded, onToggle, templates, cur
                   <input
                     autoFocus
                     type="text"
-                    value={templateName}
-                    onChange={(event) => setTemplateName(event.target.value)}
+                    value={saveForm.name}
+                    onChange={(event) => saveForm.onNameChange(event.target.value)}
                     onKeyDown={handleKeyDown}
-                    disabled={isSubmittingSave}
+                    disabled={saveForm.isSubmitting}
                     placeholder={t('templateNamePlaceholder')}
                     className="app-input flex-1 text-sm"
                   />
                   <button
                     type="button"
-                    onClick={() => { void handleSave(); }}
-                    disabled={!templates.canSaveCustomTemplate || isSubmittingSave}
+                    onClick={() => { void saveForm.onSubmit(); }}
+                    disabled={!templates.canSaveCustomTemplate || saveForm.isSubmitting}
                     className="app-button-primary rounded-lg px-3 py-1.5 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {t('saveTemplate')}
                   </button>
                   <button
-                    onClick={() => {
-                      setIsSaving(false);
-                      setTemplateName('');
-                    }}
-                    disabled={isSubmittingSave}
+                    onClick={saveForm.onClose}
+                    disabled={saveForm.isSubmitting}
                     className="p-1.5 text-[rgba(34,48,52,0.4)] hover:text-(--app-accent-700) rounded-lg hover:bg-(--app-accent-50)"
                     aria-label={t('closeControls')}
                   >

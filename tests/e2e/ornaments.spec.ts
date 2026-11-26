@@ -1,6 +1,14 @@
 import { readDraft } from './helpers/readDraft';
 import sharp from 'sharp';
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
+import { isDesktopLayout, openPanel } from './helpers/sidebarNavigation';
+
+/** Opens the ornament gallery inside the Decorations panel (a drawer on mobile). */
+async function openOrnaments(page: Page, labels: { decorations: string; ornaments: string }) {
+  await openPanel(page, labels.decorations);
+  await page.getByRole('button', { name: new RegExp(`^${labels.ornaments}`) }).click();
+  return !isDesktopLayout(page);
+}
 
 test('filters, places, restores and exports an ornament', async ({ page }) => {
   await page.route('**/api/billing/packages', route => route.fulfill({ json: { packages: [] } }));
@@ -15,14 +23,14 @@ test('filters, places, restores and exports an ornament', async ({ page }) => {
   });
   await page.goto('/');
   const button = (name: string) => page.getByRole('button', { name, exact: true });
-  await button('Ornaments').click();
+  const isMobile = await openOrnaments(page, { decorations: 'Decor', ornaments: 'Ornaments' });
   await button('Autumn').click();
   await expect(button('Chrysanthemum')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Birds' })).toHaveCount(0);
   expect(originals).toEqual([]);
   await button('Chrysanthemum').click();
-  await page.getByRole('slider', { name: 'Rotation' }).fill('15');
-  await page.getByRole('slider', { name: 'Opacity' }).fill('0.72');
+  await page.getByRole('slider', { name: 'Rotation', exact: true }).fill('15');
+  await page.getByRole('slider', { name: 'Opacity', exact: true }).fill('0.72');
   await button('Move above text').click();
   await button('Bottom right').click();
   const images = page.locator('img[alt="Chrysanthemum"]');
@@ -51,15 +59,17 @@ test('filters, places, restores and exports an ornament', async ({ page }) => {
   await button('Flip horizontally').click();
   await button('Duplicate').click();
   await button('Duplicate').click();
-  const reminder = page.getByText('A little goes a long way. Let the poem lead.');
+  const reminder = page.getByText('A little goes a long way. Let the poem lead.').filter({ visible: true });
   await expect(reminder).toBeVisible();
   await button('Duplicate').click();
   await button('Duplicate').click();
-  await expect(page.getByText('Several ornaments may draw attention away from the poem.')).toBeVisible();
+  await expect(page.getByText('Several ornaments may draw attention away from the poem.').filter({ visible: true })).toBeVisible();
   await button('Delete').click();
   await button('Delete').click();
   await button('Delete').click();
   await expect(reminder).toHaveCount(0);
+  // The mobile controls drawer is modal; close it to reach the toolbar.
+  if (isMobile) await page.keyboard.press('Escape');
   await button('Undo').click();
   await expect(images).toHaveCount(3);
   await button('Redo').click();
@@ -68,7 +78,7 @@ test('filters, places, restores and exports an ornament', async ({ page }) => {
   await expect(images).toHaveCount(2);
   await expect(images.first()).toHaveCSS('transform', 'matrix(-1, 0, 0, 1, 0, 0)');
   if ((page.viewportSize()?.width ?? 0) >= 1024) {
-    await page.getByRole('button', { name: /^Typography/ }).click();
+    await openPanel(page, 'Typography');
     await page.getByRole('combobox', { name: 'Font Family' }).selectOption('system-ui, sans-serif');
     const artwork = page.locator('[data-artwork-canvas]');
     const canvasBox = (await artwork.boundingBox())!;
@@ -94,12 +104,11 @@ test('filters, places, restores and exports an ornament', async ({ page }) => {
     const deviation = samples[0].reduce((sum, value, i) => sum + Math.abs(value - samples[1][i]), 0);
     expect(deviation / samples[0].length).toBeLessThan(5);
 
-    await page.getByRole('button', { name: /^Templates/ }).click();
+    await openPanel(page, 'Templates');
     await page.getByRole('button', { name: /^More \(/ }).click();
     await page.getByRole('dialog', { name: 'Built-in Templates' }).getByRole('button', { name: /Song Floral/ }).click();
     await expect(images).toHaveCount(2);
-    const backgroundSection = page.getByRole('button', { name: /^Background/ });
-    if (await backgroundSection.getAttribute('aria-expanded') !== 'true') await backgroundSection.click();
+    await openPanel(page, 'Background');
     await button('Solid').click();
     await expect(images).toHaveCount(2);
     await button('Image').click();
@@ -126,10 +135,11 @@ test('exports a Chinese autumn chrysanthemum card within 30 seconds', async ({ p
   });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   const button = (name: string | RegExp) => page.getByRole('button', { name, exact: true });
-  await button('装饰').click();
+  await openOrnaments(page, { decorations: '装饰', ornaments: '装饰图案' });
   await button('秋意').click();
   await button(/菊/).click();
   await button('右下').click();
+  if (isMobile) await page.keyboard.press('Escape');
   await button(isMobile ? '导出' : '导出图片').click();
   const downloading = page.waitForEvent('download');
   await page.getByRole('dialog').getByRole('button', { name: '保存图片' }).click();

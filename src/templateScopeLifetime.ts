@@ -8,10 +8,30 @@ export interface TemplateScopeLifetime {
   scope: TemplateScope | null;
   active: boolean;
   pendingMutations: number;
+  /**
+   * Writes still in flight in this lifetime, by key (a create, or the delete
+   * of one template). A repeated request joins or is refused instead of
+   * sending a second write; a new lifetime starts empty.
+   */
+  inFlight: Map<string, Promise<unknown>>;
 }
 
 export function createTemplateScopeLifetime(scope: TemplateScope | null): TemplateScopeLifetime {
-  return { scope, active: true, pendingMutations: 0 };
+  return { scope, active: true, pendingMutations: 0, inFlight: new Map() };
+}
+
+/** Records `task` under `key` in this lifetime until it settles. */
+export function trackTemplateMutation<T>(
+  lifetime: TemplateScopeLifetime,
+  key: string,
+  task: Promise<T>,
+): Promise<T> {
+  lifetime.inFlight.set(key, task);
+  const release = () => {
+    if (lifetime.inFlight.get(key) === task) lifetime.inFlight.delete(key);
+  };
+  task.then(release, release);
+  return task;
 }
 
 export function isCurrentTemplateScopeLifetime(

@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { openPanel } from './helpers/sidebarNavigation';
 
 type Point = { text: string; x: number; y: number };
 
@@ -39,7 +40,7 @@ test('real-browser SVG preview and Canvas PNG export share punctuation positions
     '床前明月光，\n疑是地上霜。\n举头望明月，\n低头思故乡。',
   );
   await editor.getByRole('button', { name: 'Done' }).click();
-  await page.getByRole('button', { name: /^Typography/ }).click();
+  await openPanel(page, 'Typography');
   await page.getByRole('button', { name: 'Vertical', exact: true }).click();
   await page.evaluate(() => document.fonts.ready);
 

@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
+import { openPanel } from './helpers/sidebarNavigation';
 
 const cards = [
   ['European Travel Postcard', '/template-backgrounds/postcard-premium-europe.webp'],
@@ -23,10 +24,7 @@ test('premium gallery assets load, poem stays editable, selection restores and e
   test.setTimeout(120_000);
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   const mobile = (page.viewportSize()?.width ?? 0) < 1024;
-  const templates = page.getByRole('button', {
-    name: mobile ? 'Templates' : /^Templates/, exact: mobile,
-  });
-  if (await templates.getAttribute('aria-expanded') !== 'true') await templates.click();
+  await openPanel(page, 'Templates');
   await page.getByRole('button', { name: /^More \(/ }).click();
   const gallery = page.getByRole('dialog', { name: 'Built-in Templates' });
   for (const [name] of cards) {
@@ -48,8 +46,8 @@ test('premium gallery assets load, poem stays editable, selection restores and e
   if (mobile) {
     const drawer = page.getByRole('dialog', { name: 'Templates', exact: true });
     await drawer.getByRole('button', { name: 'Close controls', exact: true }).click();
-    await page.getByRole('button', { name: 'Content', exact: true }).click();
   }
+  await openPanel(page, 'Content');
   await page.getByRole('button', { name: 'Open Editor' }).click();
   const editor = page.getByRole('dialog', { name: 'Poem Editor' });
   await editor.locator('#poem-editor-body-input').fill('A postcard sent across the sea');

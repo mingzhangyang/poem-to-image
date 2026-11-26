@@ -3,18 +3,16 @@ import { AlignCenter, AlignLeft, AlignRight, ChevronDown, ChevronRight, LayoutTe
 import { getOtherFontOptions, getRecommendedFontOptions } from '../../fontOptions';
 import { getVerifiedSealFont } from '../../sealFontSources';
 import type { Language } from '../../translations';
-import type { ExpandedSections, FontWeight, TextAlign, TranslateFn, TypographySectionProps, WritingMode } from '../../types';
+import type { FontWeight, TextAlign, TranslateFn, TypographySectionProps, WritingMode } from '../../types';
 import { ControlSection } from '../ControlSection';
 
 interface TypographyPanelProps {
   language: Language;
   t: TranslateFn;
-  expanded: ExpandedSections['typography'];
-  onToggle: () => void;
   typography: TypographySectionProps;
 }
 
-export function TypographyPanel({ language, t, expanded, onToggle, typography }: TypographyPanelProps) {
+export function TypographyPanel({ language, t, typography }: TypographyPanelProps) {
   const recommendedFonts = getRecommendedFontOptions(language);
   const otherFonts = getOtherFontOptions(language);
   const fontName = typography.fontFamily
@@ -42,8 +40,6 @@ export function TypographyPanel({ language, t, expanded, onToggle, typography }:
       title={t('typography')}
       icon={<LayoutTemplate className="w-4 h-4" />}
       tint="var(--app-cat-typography)"
-      expanded={expanded}
-      onToggle={onToggle}
       summary={summary}
     >
       <div className="space-y-3">

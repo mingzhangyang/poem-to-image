@@ -1,13 +1,11 @@
 import { Maximize } from 'lucide-react';
 import { CANVAS_SIZE_PRESETS, getCanvasSizePresetById } from '../../canvasPresets';
-import type { CanvasSizeSectionProps, ExpandedSections, TranslateFn } from '../../types';
+import type { CanvasSizeSectionProps, TranslateFn } from '../../types';
 import type { TranslationKey } from '../../translations';
 import { ControlSection } from '../ControlSection';
 
 interface CanvasSizePanelProps {
   t: TranslateFn;
-  expanded: ExpandedSections['canvasSize'];
-  onToggle: () => void;
   canvas: CanvasSizeSectionProps;
 }
 
@@ -53,7 +51,7 @@ function getRatioLabel(width: number, height: number) {
   return `${width / factor}:${height / factor}`;
 }
 
-export function CanvasSizePanel({ t, expanded, onToggle, canvas }: CanvasSizePanelProps) {
+export function CanvasSizePanel({ t, canvas }: CanvasSizePanelProps) {
   const presetName = (id: string) => {
     const key = PRESET_LABEL_KEYS[id] ?? LEGACY_PRESET_LABEL_KEYS[id];
     return key ? t(key) : id;
@@ -65,8 +63,6 @@ export function CanvasSizePanel({ t, expanded, onToggle, canvas }: CanvasSizePan
     <ControlSection
       title={t('canvasSize')}
       icon={<Maximize className="w-4 h-4" />}
-      expanded={expanded}
-      onToggle={onToggle}
       summary={summary}
     >
       <div className="space-y-3">

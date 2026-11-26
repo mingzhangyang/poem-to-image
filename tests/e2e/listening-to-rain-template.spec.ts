@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { openPanel } from './helpers/sidebarNavigation';
 
 test.beforeEach(async ({ page }) => {
   await page.route('**/api/billing/packages', async route => {
@@ -12,9 +13,7 @@ test.beforeEach(async ({ page }) => {
 
 test('Listening to Rain thumbnail loads and selection survives reload', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  const mobile = (page.viewportSize()?.width ?? 0) < 1024;
-  const button = page.getByRole('button', { name: mobile ? 'Templates' : /^Templates/, exact: mobile });
-  if (await button.getAttribute('aria-expanded') !== 'true') await button.click();
+  await openPanel(page, 'Templates');
   await page.getByRole('button', { name: /^More \(/ }).click();
   const library = page.getByRole('dialog', { name: 'Built-in Templates' });
   const card = library.getByRole('button', { name: /Listening to Rain/ });

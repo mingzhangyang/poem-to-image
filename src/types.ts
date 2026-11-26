@@ -150,15 +150,11 @@ export interface PositionedElement {
   boxWidth?: number;
 }
 
-export interface ExpandedSections {
-  canvasSize: boolean;
-  templates: boolean;
-  content: boolean;
-  background: boolean;
-  typography: boolean;
-  decorations: boolean;
-  billing: boolean;
-}
+/** A control panel; each one is a desktop rail tab and a mobile destination. */
+export type SidebarPanel = 'templates' | 'canvasSize' | 'content' | 'typography' | 'background' | 'decorations';
+
+/** What the desktop sidebar shows next to its navigation rail. */
+export type DesktopSidebarView = SidebarPanel | 'settings';
 
 export interface SignatureConfig {
   id: string;
@@ -302,6 +298,18 @@ export interface UserCustomTemplate {
 
 export type TemplateReconciliationStatus = 'idle' | 'pending' | 'checking' | 'refreshed' | 'failed';
 
+export interface CustomTemplateSaveFormProps {
+  isOpen: boolean;
+  name: string;
+  /** A save is in flight; the form is locked until it settles. */
+  isSubmitting: boolean;
+  onOpen: () => void;
+  onClose: () => void;
+  onNameChange: (name: string) => void;
+  /** Saves the typed name; resolves false if the save was not confirmed. */
+  onSubmit: () => Promise<boolean>;
+}
+
 export interface TemplateSectionProps {
   templates: EditorTemplateDefinition[];
   activeTemplateId: EditorTemplateId | null;
@@ -317,7 +325,8 @@ export interface TemplateSectionProps {
   onImportLegacyCustomTemplates: () => void;
   activeCustomTemplateId: string | null;
   onApplyCustomTemplate: (id: string) => void;
-  onSaveCustomTemplate: (name: string) => Promise<boolean>;
+  /** The "Save as template" form; owned above the panel so it survives remounts. */
+  saveForm: CustomTemplateSaveFormProps;
   onDeleteCustomTemplate: (id: string) => Promise<void>;
   onRenameCustomTemplate: (id: string, name: string) => Promise<void>;
 }
@@ -513,9 +522,8 @@ export interface SidebarProps {
   language: Language;
   onLanguageChange: (value: Language) => void;
   t: TranslateFn;
-  expandedSections: ExpandedSections;
-  onToggleSection: (section: keyof ExpandedSections) => void;
-  onExpandSection: (section: keyof ExpandedSections) => void;
+  desktopView: DesktopSidebarView;
+  onDesktopViewChange: (view: DesktopSidebarView) => void;
   templates: TemplateSectionProps;
   canvas: CanvasSizeSectionProps;
   content: ContentSectionProps;
@@ -644,10 +652,7 @@ export interface BillingSectionProps {
 export interface ControlSectionProps {
   title: string;
   icon: ReactNode;
-  expanded: boolean;
-  onToggle: () => void;
   summary?: string;
-  highlighted?: boolean;
   action?: ReactNode;
   children: ReactNode;
   /** Optional per-section accent color (CSS value), e.g. 'var(--app-cat-templates)'. */

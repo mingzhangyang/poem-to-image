@@ -1,14 +1,13 @@
 import { expect, test, type Page } from '@playwright/test';
 import { editorTemplates } from '../../src/templates';
 import { groupGalleryTemplates } from '../../src/templates/gallery';
+import { openPanel } from './helpers/sidebarNavigation';
 
 const allCount = editorTemplates.length;
 const categoryCounts = new Map(groupGalleryTemplates(editorTemplates).map((group) => [group.key, group.items.length]));
 
 async function openLibrary(page: Page) {
-  const mobile = (page.viewportSize()?.width ?? 0) < 1024;
-  const panel = page.getByRole('button', { name: mobile ? 'Templates' : /^Templates/, exact: mobile });
-  if (await panel.getAttribute('aria-expanded') !== 'true') await panel.click();
+  await openPanel(page, 'Templates');
   await page.getByRole('button', { name: /^More \(/ }).click();
   return page.getByRole('dialog', { name: 'Built-in Templates' });
 }

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { openPanel } from './helpers/sidebarNavigation';
 
 test.beforeEach(async ({ page }) => {
   await page.route('**/api/billing/packages', async (route) => {
@@ -12,11 +13,7 @@ test.beforeEach(async ({ page }) => {
 
 async function openBackground(page: Page) {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  if ((page.viewportSize()?.width ?? 0) < 1024) {
-    await page.getByRole('button', { name: 'Style', exact: true }).click();
-  } else {
-    await page.getByRole('button', { name: /^Background/ }).click();
-  }
+  await openPanel(page, 'Background');
 }
 
 test('solid preset remains editable and persists through reload', async ({ page }) => {
@@ -33,11 +30,7 @@ test('solid preset remains editable and persists through reload', async ({ page 
     JSON.parse(localStorage.getItem('inkpoem.editor-state.v1') || 'null')?.background?.backgroundColor?.toLowerCase(),
   )).toBe('#f1e7e2');
   await page.reload({ waitUntil: 'domcontentloaded' });
-  if ((page.viewportSize()?.width ?? 0) < 1024) {
-    await page.getByRole('button', { name: 'Style', exact: true }).click();
-  } else {
-    await page.getByRole('button', { name: /^Background/ }).click();
-  }
+  await openPanel(page, 'Background');
   await expect(page.locator('input[type="color"][aria-label="Solid"]:visible')).toHaveValue('#f1e7e2');
 });
 

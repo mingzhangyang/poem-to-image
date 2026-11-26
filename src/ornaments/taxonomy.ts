@@ -1,12 +1,31 @@
 import manifest from './manifest.json';
+import type { TranslationKey } from '../translations';
 
 export type OrnamentManifestItem = (typeof manifest)[number];
 
-/** Gallery filters, in display order. Every manifest mood must appear here. */
-export const ORNAMENT_MOODS: Record<string, string> = { 全部: 'All', 清雅: 'Serenity', 春意: 'Spring', 秋意: 'Autumn', 隐逸: 'Retreat', 思乡: 'Homesickness', 喜庆: 'Celebration', 孤寂: 'Solitude' };
+/**
+ * Gallery mood filters, in display order, keyed by the manifest's mood value.
+ * Every manifest mood must appear here. The "all" filter is not a mood.
+ */
+export const ORNAMENT_MOODS: Record<string, TranslationKey> = {
+  清雅: 'ornamentMoodSerenity',
+  春意: 'ornamentMoodSpring',
+  秋意: 'ornamentMoodAutumn',
+  隐逸: 'ornamentMoodRetreat',
+  思乡: 'ornamentMoodHomesickness',
+  喜庆: 'ornamentMoodCelebration',
+  孤寂: 'ornamentMoodSolitude',
+};
 
-/** Gallery sections, in display order. Every manifest category must appear here. */
-export const ORNAMENT_CATEGORIES: Record<string, string> = { 花木: 'Botanicals', 山水: 'Landscapes', 禽鸟: 'Birds', 器物: 'Objects', 景舍: 'Dwellings', 纹样: 'Patterns' };
+/** Gallery sections, in display order, keyed by the manifest's category value. Every manifest category must appear here. */
+export const ORNAMENT_CATEGORIES: Record<string, TranslationKey> = {
+  花木: 'ornamentCategoryBotanicals',
+  山水: 'ornamentCategoryLandscapes',
+  禽鸟: 'ornamentCategoryBirds',
+  器物: 'ornamentCategoryObjects',
+  景舍: 'ornamentCategoryDwellings',
+  纹样: 'ornamentCategoryPatterns',
+};
 
 const byId = new Map<string, OrnamentManifestItem>(manifest.map(item => [item.id, item]));
 

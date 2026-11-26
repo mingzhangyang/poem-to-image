@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { openPanel } from './helpers/sidebarNavigation';
 
 test.beforeEach(async ({ page }) => {
   await page.route('**/api/billing/packages', (route) =>
@@ -77,7 +78,7 @@ test('natural texture identity survives color and opacity changes, undo, redo an
   test.skip(testInfo.project.name === 'chromium-mobile', 'Desktop UI regression; Canvas raster regression covers mobile');
   await page.clock.install();
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /^装饰与元素/ }).click();
+  await openPanel(page, '装饰');
   await page.getByRole('checkbox', { name: '显示印章' }).check();
 
   const impression = page.getByRole('combobox', { name: '印蜕质感' });
@@ -124,7 +125,7 @@ test('natural texture identity survives color and opacity changes, undo, redo an
   await expect.poll(async () => (await readStamp())?.textureSeed).toBe(updatedSeed);
 
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /^装饰与元素/ }).click();
+  await openPanel(page, '装饰');
   await expect(page.getByRole('combobox', { name: '印蜕质感' })).toHaveValue('natural');
   await expect.poll(async () => (await readStamp())?.textureSeed).toBe(updatedSeed);
 });

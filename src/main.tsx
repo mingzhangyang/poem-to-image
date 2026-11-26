@@ -1,7 +1,7 @@
 import { Suspense, StrictMode, lazy } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { NoAuthProvider } from './context/auth';
+import { AppAuthContext, NoAuthProvider, type AppAuthContextValue } from './context/auth';
 import { ToastProvider } from './components/ToastProvider';
 import { installStaleBundleRecovery } from './staleBundleRecovery';
 import './index.css';
@@ -21,6 +21,22 @@ const runtimeClerkKey = typeof window !== 'undefined'
   ? (window as { __INKPOEM_CLERK_PUBLISHABLE_KEY?: string }).__INKPOEM_CLERK_PUBLISHABLE_KEY
   : undefined;
 const clerkPublishableKey = runtimeClerkKey ?? (import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string | undefined);
+
+// Development server only (stripped from production builds): Playwright specs
+// set this to sign in a fixed test account, so cloud-backed flows can run
+// against route-intercepted APIs without a Clerk instance.
+const devTestAccount = import.meta.env.DEV && typeof window !== 'undefined'
+  ? (window as { __INKPOEM_DEV_TEST_ACCOUNT?: { userId: string; token: string } }).__INKPOEM_DEV_TEST_ACCOUNT
+  : undefined;
+const devTestAuth: AppAuthContextValue | null = devTestAccount
+  ? {
+    isLoaded: true,
+    isSignedIn: true,
+    userId: devTestAccount.userId,
+    user: null,
+    getToken: async () => devTestAccount.token,
+  }
+  : null;
 
 function RouteFallback() {
   return (
@@ -44,6 +60,9 @@ function AppRoutes() {
 }
 
 function EditorWithAuth() {
+  if (devTestAuth) {
+    return <AppAuthContext.Provider value={devTestAuth}><AppRoutes /></AppAuthContext.Provider>;
+  }
   return clerkPublishableKey ? (
     <Suspense fallback={<RouteFallback />}>
       <ClerkProvider publishableKey={clerkPublishableKey} afterSignOutUrl="/">

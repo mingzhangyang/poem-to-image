@@ -1,16 +1,17 @@
-import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { DEFAULT_POEM_STYLE, isSamePoemLayerStyle } from '../poemStyle';
 import { createAsyncIntentGate } from '../asyncIntentGate';
+import { createCustomTemplateSaveForm } from '../customTemplateSaveForm';
 import { createReusableTemplateParts, type EditorDocument } from '../editorDocument';
 import type { EditorTemplateParts, EditorTemplateSections } from '../editorCommands';
 import { resolveTemplateForLanguage } from '../templates';
 import { matchesTemplateCustomTexts } from '../templates/templateCustomTextMatching';
 import type { Language } from '../translations';
+import type { ShowPanel } from './useSidebarNavigation';
 import type {
   BorderStyle,
   CustomText,
   EditorTemplateId,
-  ExpandedSections,
   LogoConfig,
   PoemLayerStyle,
   StampConfig,
@@ -24,6 +25,7 @@ import type {
 } from '../types';
 
 const ACTIVE_TEMPLATE_STORAGE_KEY = 'poem-to-image.active-template';
+
 
 interface TypographyState {
   fontFamily: string;
@@ -80,7 +82,8 @@ interface UseTemplateManagerParams {
   poemStyle: PoemLayerStyle;
   editorDocument: EditorDocument;
   applyEditorTemplate: (template: EditorTemplateParts, sections?: EditorTemplateSections) => void;
-  setExpandedSections: Dispatch<SetStateAction<ExpandedSections>>;
+  /** Shows a sidebar panel on the user's behalf. */
+  showPanel: ShowPanel;
   customTemplates: CustomTemplatesState;
 }
 
@@ -188,7 +191,7 @@ export function useTemplateManager({
   poemStyle,
   editorDocument,
   applyEditorTemplate,
-  setExpandedSections,
+  showPanel,
   customTemplates,
 }: UseTemplateManagerParams) {
   const [activeTemplateId, setActiveTemplateId] = useState<EditorTemplateId | null>(null);
@@ -196,11 +199,16 @@ export function useTemplateManager({
   // Selection intent outlives individual cloud writes. Saving data does not
   // grant a pending request permission to replace a newer user selection.
   const selectionIntentRef = useRef(createAsyncIntentGate());
+  const saveInFlightRef = useRef(false);
+  // The save form lives here, not in the Templates panel, which unmounts when
+  // another panel is shown while its save keeps running.
+  const [saveForm] = useState(createCustomTemplateSaveForm);
+  const saveFormState = useSyncExternalStore(saveForm.subscribe, saveForm.getState);
 
   // ── Apply built-in template ───────────────────────────────────────────────
 
   const applyTemplateById = useCallback(
-    (templateId: EditorTemplateId, options?: { expandSections?: boolean }): boolean => {
+    (templateId: EditorTemplateId, options?: { revealPanel?: boolean }): boolean => {
       const template = resolveTemplateForLanguage(templateId, language);
       if (!template) return false;
 
@@ -212,19 +220,13 @@ export function useTemplateManager({
       });
       setActiveTemplateId(templateId);
 
-      if (options?.expandSections ?? true) {
-        setExpandedSections((prev) => ({
-          ...prev,
-          templates: true,
-          background: true,
-          typography: true,
-          decorations: true,
-        }));
+      if (options?.revealPanel ?? true) {
+        showPanel('templates');
       }
 
       return true;
     },
-    [language, applyEditorTemplate, setExpandedSections],
+    [language, applyEditorTemplate, showPanel],
   );
 
   // ── Public handlers ───────────────────────────────────────────────────────
@@ -251,15 +253,9 @@ export function useTemplateManager({
       });
       customTemplates.applyCustomTemplate(id);
       setActiveTemplateId(null);
-      setExpandedSections((prev) => ({
-        ...prev,
-        templates: true,
-        background: true,
-        typography: true,
-        decorations: true,
-      }));
+      showPanel('templates');
     },
-    [applyEditorTemplate, customTemplates, setExpandedSections],
+    [applyEditorTemplate, customTemplates, showPanel],
   );
 
   const handleSaveCustomTemplate = useCallback(
@@ -267,19 +263,32 @@ export function useTemplateManager({
       // The identity may be unresolved while Clerk loads or changes account.
       // Do not treat a silent null result as a completed user save.
       if (!customTemplates.canSaveCustomTemplate) return false;
-      const saveEpoch = selectionIntentRef.current.begin();
-      const shouldActivate = () => selectionIntentRef.current.isCurrent(saveEpoch);
-      const { background: bgConfig, typography: typConfig, decorations: decConfig, poemStyle } =
-        createReusableTemplateParts(editorDocument);
-      const created = await customTemplates.saveCustomTemplate(
-        name, bgConfig, typConfig, decConfig, poemStyle, shouldActivate,
-      );
-      if (!created) return false;
-      // Never reset a template selected while this save was in flight.
-      if (shouldActivate()) setActiveTemplateId(null);
-      return true;
+      // Refuse an overlapping save before it can claim the selection intent
+      // of the one already in flight.
+      if (saveInFlightRef.current) return false;
+      saveInFlightRef.current = true;
+      try {
+        const saveEpoch = selectionIntentRef.current.begin();
+        const shouldActivate = () => selectionIntentRef.current.isCurrent(saveEpoch);
+        const { background: bgConfig, typography: typConfig, decorations: decConfig, poemStyle } =
+          createReusableTemplateParts(editorDocument);
+        const created = await customTemplates.saveCustomTemplate(
+          name, bgConfig, typConfig, decConfig, poemStyle, shouldActivate,
+        );
+        if (!created) return false;
+        // Never reset a template selected while this save was in flight.
+        if (shouldActivate()) setActiveTemplateId(null);
+        return true;
+      } finally {
+        saveInFlightRef.current = false;
+      }
     },
     [editorDocument, customTemplates],
+  );
+
+  const handleSubmitCustomTemplateSave = useCallback(
+    () => saveForm.submit(handleSaveCustomTemplate),
+    [saveForm, handleSaveCustomTemplate],
   );
 
   // ── Restore active template from localStorage on mount ────────────────────
@@ -370,6 +379,12 @@ export function useTemplateManager({
     activeTemplateId,
     handleApplyTemplate,
     handleApplyCustomTemplate,
-    handleSaveCustomTemplate,
+    customTemplateSaveForm: {
+      ...saveFormState,
+      onOpen: saveForm.open,
+      onClose: saveForm.close,
+      onNameChange: saveForm.setName,
+      onSubmit: handleSubmitCustomTemplateSave,
+    },
   };
 }

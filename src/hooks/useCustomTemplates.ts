@@ -6,6 +6,7 @@ import {
   createTemplateScopeLifetime,
   enqueueTemplateMutation,
   isCurrentTemplateScopeLifetime,
+  trackTemplateMutation,
   type TemplateScopeLifetime,
 } from '../templateScopeLifetime';
 import { getPaperStyle } from '../paperStyles';
@@ -77,6 +78,9 @@ function deriveAccentColors(background: TemplateBackgroundConfig): { accentFrom:
   }
   return { accentFrom: background.backgroundColor, accentTo: background.backgroundColor };
 }
+
+const CREATE_KEY = 'create';
+const deleteKey = (id: string) => `delete:${id}`;
 
 interface UseCustomTemplatesParams {
   isLoaded: boolean;
@@ -262,6 +266,10 @@ export function useCustomTemplates({ isLoaded, isSignedIn, userId, getToken }: U
       name: name.trim() || 'Custom Template',
       accentFrom, accentTo, background, typography, decorations, poemStyle,
     };
+    // One cloud creation at a time per account lifetime: a repeated save
+    // (double submit, or a form remounted while the first POST is pending)
+    // must not enqueue a second create that could also succeed.
+    if (lifetime.inFlight.has(CREATE_KEY)) return null;
     startMutation(ownerScope);
     if (ownerScope === 'guest') {
       if (viewRef.current.cacheCorrupt) { setMutationError(ownerScope); return null; }
@@ -276,7 +284,7 @@ export function useCustomTemplates({ isLoaded, isSignedIn, userId, getToken }: U
       }), true);
       return created;
     }
-    return enqueue(lifetime, async () => {
+    return trackTemplateMutation(lifetime, CREATE_KEY, enqueue(lifetime, async () => {
       const { owner, controller } = ownerFor(lifetime);
       try {
         const saved = await createCloudTemplate(payload, owner);
@@ -296,7 +304,7 @@ export function useCustomTemplates({ isLoaded, isSignedIn, userId, getToken }: U
       } finally {
         pendingRequestsRef.current.delete(controller);
       }
-    }, null);
+    }, null));
   }, [confirmMutation, enqueue, isLifetimeCurrent, ownerFor, setMutationError, startMutation, update]);
 
   const applyCustomTemplate = useCallback((id: string) => {
@@ -343,6 +351,10 @@ export function useCustomTemplates({ isLoaded, isSignedIn, userId, getToken }: U
     const lifetime = scopeLifetimeRef.current;
     if (!ownerScope || !isLifetimeCurrent(lifetime)
       || !viewRef.current.templates.some((item) => item.id === id)) return;
+    // A second delete of the same template while the first is pending joins
+    // it rather than sending a DELETE that would fail with 404.
+    const pendingDelete = lifetime.inFlight.get(deleteKey(id));
+    if (pendingDelete) { await pendingDelete; return; }
     startMutation(ownerScope);
     if (ownerScope === 'guest') {
       if (viewRef.current.cacheCorrupt) { setMutationError(ownerScope); return; }
@@ -352,7 +364,7 @@ export function useCustomTemplates({ isLoaded, isSignedIn, userId, getToken }: U
       }), true);
       return;
     }
-    await enqueue(lifetime, async () => {
+    await trackTemplateMutation(lifetime, deleteKey(id), enqueue(lifetime, async () => {
       const { owner, controller } = ownerFor(lifetime);
       try {
         await deleteCloudTemplate(id, owner);
@@ -367,7 +379,7 @@ export function useCustomTemplates({ isLoaded, isSignedIn, userId, getToken }: U
       } finally {
         pendingRequestsRef.current.delete(controller);
       }
-    }, undefined);
+    }, undefined));
   }, [confirmMutation, enqueue, isLifetimeCurrent, ownerFor, setMutationError, startMutation, update]);
 
   const clearActiveCustomTemplate = useCallback(() => {
