@@ -9,7 +9,7 @@ import type {
   FC,
 } from 'react';
 import {
-  getAnchoredDragBounds, getKeyboardDragBounds, getPreviewDragBounds, getPreviewPositioningRect,
+  getAnchoredDragBounds, getArtworkCanvasRect, getKeyboardDragBounds, getPreviewPositioningRect,
   isArrowDirection, movePreviewPosition, nudgePreviewPosition,
 } from '../../positioningRect';
 import type { PreviewPositioningRect, RelativePosition } from '../../positioningRect';
@@ -37,7 +37,7 @@ export const LogoOverlay: FC<LogoOverlayProps> = ({ ariaLabel, sizeLabel, effect
   const beginPointerInteraction = usePreviewPointerInteraction(onInteractionStart, onInteractionEnd);
   const logoRef = useRef<HTMLDivElement>(null);
 
-  /** The ornament's position is its image centre, which need not be the centre of its visible ink. */
+  /** The position is the image centre, which need not be the centre of an ornament's visible ink. */
   const anchorPoint = (frameRect: PreviewPositioningRect, position: RelativePosition) => ({
     x: frameRect.left + (frameRect.width * position.positionX) / 100,
     y: frameRect.top + (frameRect.height * position.positionY) / 100,
@@ -49,10 +49,20 @@ export const LogoOverlay: FC<LogoOverlayProps> = ({ ariaLabel, sizeLabel, effect
     }
   }, [logo.positionX, logo.positionY]);
 
+  /**
+   * Logos and ornaments may move into the canvas padding, which only keeps
+   * text off the paper edge, until their visible box meets the canvas edge.
+   */
+  const dragBounds = (frameElement: HTMLElement, boxRect: DOMRect, position: RelativePosition) => {
+    const frameRect = getPreviewPositioningRect(frameElement);
+    return getAnchoredDragBounds(frameRect, boxRect, anchorPoint(frameRect, position), getArtworkCanvasRect(frameElement));
+  };
+
   const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const frameRect = frameRef.current ? getPreviewPositioningRect(frameRef.current) : null;
+    const frameElement = frameRef.current;
+    const frameRect = frameElement ? getPreviewPositioningRect(frameElement) : null;
     const boxRect = event.currentTarget.getBoundingClientRect();
-    if (!frameRect || (event.pointerType === 'mouse' && event.button !== 0)) return;
+    if (!frameElement || !frameRect || (event.pointerType === 'mouse' && event.button !== 0)) return;
 
     event.preventDefault();
     event.stopPropagation();
@@ -61,9 +71,7 @@ export const LogoOverlay: FC<LogoOverlayProps> = ({ ariaLabel, sizeLabel, effect
     const startX = event.clientX;
     const startY = event.clientY;
     const livePositionRef = { current: startPosition };
-    const bounds = logo.ornamentId
-      ? getAnchoredDragBounds(frameRect, boxRect, anchorPoint(frameRect, startPosition))
-      : getPreviewDragBounds(frameRect, boxRect);
+    const bounds = dragBounds(frameElement, boxRect, startPosition);
     isDraggingRef.current = true;
     beginPointerInteraction(event.pointerId, {
       onMove: (moveEvent) => {
@@ -90,11 +98,10 @@ export const LogoOverlay: FC<LogoOverlayProps> = ({ ariaLabel, sizeLabel, effect
     event.preventDefault();
     event.stopPropagation();
 
-    const frameRect = frameRef.current ? getPreviewPositioningRect(frameRef.current) : null;
     const boxRect = logoRef.current?.getBoundingClientRect();
-    const bounds = logo.ornamentId && frameRect && boxRect
-      ? getAnchoredDragBounds(frameRect, boxRect, anchorPoint(frameRect, livePosition))
-      : getKeyboardDragBounds(frameRect, boxRect);
+    const bounds = frameRef.current && boxRect
+      ? dragBounds(frameRef.current, boxRect, livePosition)
+      : getKeyboardDragBounds(null, null);
     const nextPosition = nudgePreviewPosition(livePosition, key, event.shiftKey, bounds);
 
     setLivePosition(nextPosition);

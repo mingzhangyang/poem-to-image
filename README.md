@@ -9,7 +9,7 @@ Turn poems into AI-generated images with precise text control. Built with React 
 ## Features
 
 - **Public read-only artwork links**: publish immutable snapshot URLs such as `inkpoem.com/s/<id>`, with social preview, viewer download and a browser-local **My Shares** history backed by IndexedDB for link retrieval, removal-key backup, status checks and revocation. Uses D1 + a private R2 bucket; see [share setup & rollout instructions](docs/shareable-artwork-links.md).
-- **Ornaments** (in the Decorations & Elements panel) can be filtered by mood, snapped into place, and layered above or below the poem. PNG export uses the original artwork at the selected export scale.
+- **Ornaments** (in the Decorations & Elements panel) can be filtered by mood, snapped into place, and layered above or below the poem. Canvas padding only keeps text off the paper edge: ornaments and uploaded logos can be dragged or snapped into it, up to the canvas edge. PNG export uses the original artwork at the selected export scale.
 - AI image generation via Gemini and OpenAI
 - Clerk authentication
 - Stripe credit purchases
@@ -17,7 +17,7 @@ Turn poems into AI-generated images with precise text control. Built with React 
 
 ### Adding an ornament
 
-Place a transparent PNG or WebP of at least 1024 × 1024 pixels in `public/ornaments/`. Add a record to [the ornament manifest](src/ornaments/manifest.json) with a stable ID, Chinese and English names, category, mood tags, recommended anchor, scale and public file path. Reuse the category and mood values in the manifest; a new category or mood must also be added to [the gallery filters](src/ornaments/taxonomy.ts), which a unit test checks, with a translation key for its label in every locale under `src/i18n/locales/`. The scale is a fraction of the shorter side of the poem frame. Anchors use `tl`, `tr`, `bl`, `br` or `bc` for the four corners and bottom center. Use `ml` and `mr` to center a tall motif along the left or right edge. Vite generates 144-pixel gallery thumbnails during development and production builds. Then run `node scripts/ornament-content-bounds.mjs` to record each image's visible area as `content` in the manifest: the editor selects, drags and anchors that area rather than the transparent margin around it, so the artwork itself can reach the edge of the frame. A unit test fails if `content` no longer matches the image.
+Place a transparent PNG or WebP of at least 1024 × 1024 pixels in `public/ornaments/`. Add a record to [the ornament manifest](src/ornaments/manifest.json) with a stable ID, Chinese and English names, category, mood tags, recommended anchor, scale and public file path. Reuse the category and mood values in the manifest; a new category or mood must also be added to [the gallery filters](src/ornaments/taxonomy.ts), which a unit test checks, with a translation key for its label in every locale under `src/i18n/locales/`. The scale is a fraction of the shorter side of the poem frame. Anchors use `tl`, `tr`, `bl`, `br` or `bc` for the four corners and bottom center. Use `ml` and `mr` to center a tall motif along the left or right edge. Vite generates 144-pixel gallery thumbnails during development and production builds. Then run `node scripts/ornament-content-bounds.mjs` to record each image's visible area as `content` in the manifest: the editor selects, drags and anchors that area rather than the transparent margin around it, so the artwork itself can reach the edge of the canvas. A unit test fails if `content` no longer matches the image.
 
 ## Credit Costs
 

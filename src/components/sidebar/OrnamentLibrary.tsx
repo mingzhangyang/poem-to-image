@@ -30,30 +30,39 @@ export function OrnamentLibrary({ t, decorations }: OrnamentLibraryProps) {
   const layers = decorations.logos.filter(item => item.ornamentId);
   const active = layers.find(item => item.id === selected) ?? layers.at(-1);
   const name = (ornamentId: string) => getOrnamentName(ornamentId, decorations.language);
-  const frame = decorations.getFrameSize;
+  const placement = decorations.getPlacementArea;
 
   // Selecting an ornament on the canvas reveals its controls.
   useEffect(() => {
     if (selected) setExpanded(true);
   }, [selected]);
 
-  /** Places the ornament's visible ink, not its transparent margin, 3% inside the chosen corner or edge. */
+  /**
+   * Places the ornament's visible ink, not its transparent margin, 3% inside
+   * the chosen corner or edge of the canvas. Canvas padding is for text, so
+   * ornaments may sit in it; positions stay percentages of the poem frame.
+   */
   function position(anchor: string, ornament: Pick<LogoConfig, 'ornamentId' | 'size' | 'rotation' | 'flipped'>) {
-    const { width, height } = frame();
+    const area = placement();
     const reach = getOrnamentContentExtents(
       getOrnamentContentBox(ornament.ornamentId, ornament.flipped), ornament.size, ornament.rotation,
     );
-    const toPercent = (distance: number, frameSize: number) => Math.min(50, 3 + distance / frameSize * 100);
-    const centered = (before: number, after: number, frameSize: number) => 50 + (before - after) / 2 / frameSize * 100;
+    // Image centre in canvas pixels along one axis.
+    const place = (side: 'start' | 'end' | 'center', before: number, after: number, canvasSize: number) => {
+      const margin = canvasSize * 0.03;
+      return side === 'start' ? margin + before
+        : side === 'end' ? canvasSize - margin - after
+          : canvasSize / 2 + (before - after) / 2;
+    };
+    const x = place(anchor.endsWith('l') ? 'start' : anchor.endsWith('r') ? 'end' : 'center', reach.left, reach.right, area.canvasWidth);
+    const y = place(anchor.startsWith('t') ? 'start' : anchor.startsWith('b') ? 'end' : 'center', reach.top, reach.bottom, area.canvasHeight);
     return {
-      positionX: anchor.endsWith('l') ? toPercent(reach.left, width)
-        : anchor.endsWith('r') ? 100 - toPercent(reach.right, width) : centered(reach.left, reach.right, width),
-      positionY: anchor.startsWith('t') ? toPercent(reach.top, height)
-        : anchor.startsWith('b') ? 100 - toPercent(reach.bottom, height) : centered(reach.top, reach.bottom, height),
+      positionX: (x - area.left) / area.width * 100,
+      positionY: (y - area.top) / area.height * 100,
     };
   }
   function add(item: OrnamentManifestItem) {
-    const { width, height } = frame();
+    const { width, height } = placement();
     const size = Math.min(width, height) * item.default_scale;
     setSelected(decorations.onAddOrnament(item.file, {
       ornamentId: item.id, size, ...position(item.default_anchor, { ornamentId: item.id, size, rotation: 0 }),
@@ -133,7 +142,7 @@ export function OrnamentLibrary({ t, decorations }: OrnamentLibraryProps) {
               </div>
               <label className="flex items-center justify-between gap-2">
                 {t('size')}
-                <input type="range" className="app-range flex-1" min="12" max={Math.max(active.size, Math.min(frame().width, frame().height))} value={active.size} onChange={event => update({ size: +event.target.value })} />
+                <input type="range" className="app-range flex-1" min="12" max={Math.max(active.size, Math.min(placement().width, placement().height))} value={active.size} onChange={event => update({ size: +event.target.value })} />
               </label>
               <label className="flex items-center justify-between gap-2">
                 {t('ornamentRotation')}

@@ -146,7 +146,7 @@ test('exports a Chinese autumn chrysanthemum card within 30 seconds', async ({ p
   expect((await downloading).suggestedFilename()).toMatch(/\.png$/);
 });
 
-test('drags a banded ornament until its visible ink touches the canvas edge', async ({ page }) => {
+test('drags a banded ornament through the canvas padding until its visible ink touches the canvas edge', async ({ page }) => {
   await page.route('**/api/billing/packages', route => route.fulfill({ json: { packages: [] } }));
   await page.addInitScript(() => {
     localStorage.setItem('poem-to-image.onboarding-dismissed', 'true');
@@ -167,18 +167,10 @@ test('drags a banded ornament until its visible ink touches the canvas edge', as
   // The box that is selected and dragged is the band, not the image's transparent square.
   expect(layerBox.height).toBeLessThan(imageBox.height * 0.25);
 
-  // Ornaments are positioned inside the canvas padding, in their offset parent's padding box.
-  const canvas = await layer.evaluate(el => {
-    const frame = (el as HTMLElement).offsetParent as HTMLElement;
-    const rect = frame.getBoundingClientRect();
-    const scale = rect.width / frame.offsetWidth;
-    return {
-      x: rect.left + frame.clientLeft * scale,
-      y: rect.top + frame.clientTop * scale,
-      width: frame.clientWidth * scale,
-      height: frame.clientHeight * scale,
-    };
-  });
+  // Canvas padding keeps text off the paper edge; ornaments may use it.
+  const canvas = (await page.locator('[data-artwork-canvas]').boundingBox())!;
+  const padding = await page.locator('[data-artwork-canvas]').evaluate(el => parseFloat(getComputedStyle(el).paddingTop));
+  expect(padding).toBeGreaterThan(0);
   const dragTo = async (dx: number, dy: number) => {
     const box = (await layer.boundingBox())!;
     const x = box.x + box.width / 2;
@@ -195,4 +187,19 @@ test('drags a banded ornament until its visible ink touches the canvas edge', as
   expect(Math.abs(bottom.y + bottom.height - (canvas.y + canvas.height))).toBeLessThan(2);
   const left = await dragTo(-canvas.width, 0);
   expect(Math.abs(left.x - canvas.x)).toBeLessThan(2);
+
+  // Corner placement also measures from the canvas edge, not the padding.
+  if (isMobile) {
+    await openPanel(page, 'Decor');
+    const gallery = page.getByRole('button', { name: /^Ornaments/ });
+    if (await gallery.getAttribute('aria-expanded') !== 'true') await gallery.click();
+  }
+  await page.getByRole('button', { name: 'Top left', exact: true }).click();
+  if (isMobile) {
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#mobile-controls-drawer')).toBeHidden();
+  }
+  const corner = (await layer.boundingBox())!;
+  expect(corner.x - canvas.x).toBeCloseTo(canvas.width * 0.03, 0);
+  expect(corner.y - canvas.y).toBeCloseTo(canvas.height * 0.03, 0);
 });
