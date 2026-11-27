@@ -106,42 +106,34 @@ export function usePoemAutofill({ poem, language }: UsePoemAutofillParams): UseP
     };
   }, [hasTitle, language, poem.body]);
 
-  useEffect(() => {
-    if (!suggestion) {
-      return;
-    }
-
-    if (isAppliedPoemSuggestion(poem, suggestion)) {
-      setSuggestion(null);
-      return;
-    }
-
-    const suggestionKey = getSuggestionKey(suggestion);
-    if (suggestionKey && dismissedSuggestionKey === suggestionKey) {
-      setSuggestion(null);
-    }
-  }, [dismissedSuggestionKey, poem, suggestion]);
+  // Derived rather than cleared, so a match the poem already reflects comes
+  // back as soon as an edit (say, clearing the author) makes it useful again.
+  const visibleSuggestion = suggestion
+    && !isAppliedPoemSuggestion(poem, suggestion)
+    && getSuggestionKey(suggestion) !== dismissedSuggestionKey
+    ? suggestion
+    : null;
 
   const applySuggestionToPoem = useCallback(() => {
-    if (!suggestion) {
+    if (!visibleSuggestion) {
       return null;
     }
 
     setDismissedSuggestionKey(null);
     setSuggestion(null);
-    return suggestion;
-  }, [suggestion]);
+    return visibleSuggestion;
+  }, [visibleSuggestion]);
 
   const dismissSuggestion = useCallback(() => {
-    const key = getSuggestionKey(suggestion);
+    const key = getSuggestionKey(visibleSuggestion);
     if (key) {
       setDismissedSuggestionKey(key);
     }
     setSuggestion(null);
-  }, [suggestion]);
+  }, [visibleSuggestion]);
 
   return {
-    suggestion,
+    suggestion: visibleSuggestion,
     isMatching,
     applySuggestionToPoem,
     dismissSuggestion,

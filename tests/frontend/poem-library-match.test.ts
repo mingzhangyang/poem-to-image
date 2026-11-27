@@ -70,6 +70,25 @@ test('isAppliedPoemSuggestion becomes true when metadata also matches', () => {
   assert.equal(applied, true);
 });
 
+test('isAppliedPoemSuggestion accepts the same credits written in another form', () => {
+  const suggestion = findBestPoemMatch('床前明月光，\n疑是地上霜。\n举头望明月，\n低头思故乡。', 'zh-CN');
+  assert.ok(suggestion);
+  // The default poem writes era and author together and leaves the source empty.
+  const poem = { title: '静夜思', author: '唐·李白', body: '床前明月光，\n疑是地上霜。\n举头望明月，\n低头思故乡。', sourceNote: '' };
+  assert.equal(isAppliedPoemSuggestion(poem, suggestion), true);
+  assert.equal(isAppliedPoemSuggestion({ ...poem, author: '李白', sourceNote: '唐' }, suggestion), true);
+});
+
+test('isAppliedPoemSuggestion stays false while the suggestion still adds something', () => {
+  const suggestion = findBestPoemMatch('床前明月光', 'zh-CN');
+  assert.ok(suggestion);
+  const poem = { title: '静夜思', author: '唐·李白', body: suggestion.body, sourceNote: '' };
+  assert.equal(isAppliedPoemSuggestion({ ...poem, author: '' }, suggestion), false, 'missing author');
+  assert.equal(isAppliedPoemSuggestion({ ...poem, author: '李白' }, suggestion), false, 'missing era');
+  assert.equal(isAppliedPoemSuggestion({ ...poem, title: '' }, suggestion), false, 'missing title');
+  assert.equal(isAppliedPoemSuggestion({ ...poem, body: '床前明月光' }, suggestion), false, 'partial text');
+});
+
 test('recognizes Shakespeare in both English and Chinese UI', () => {
   const query = "Shall I compare thee to a summer's day?\nThou art more lovely and more temperate.";
   const english = findBestPoemMatch(query, 'en');

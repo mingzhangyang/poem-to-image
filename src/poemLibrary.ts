@@ -298,9 +298,18 @@ function normalizeSuggestionField(value: string): string {
   return value.normalize('NFKC').trim();
 }
 
+/**
+ * Whether applying the suggestion would add nothing the poem lacks: the same
+ * text and title, with the suggested author and source already present in
+ * the poem's author or source line. Credits written in another form count,
+ * so "唐·李白" with no source covers author "李白" and source "唐".
+ */
 export function isAppliedPoemSuggestion(poem: PoemContentData, suggestion: PoemAutofillSuggestion): boolean {
-  return isSamePoemSuggestion(poem.body, suggestion)
-    && normalizeSuggestionField(poem.title) === normalizeSuggestionField(suggestion.title)
-    && normalizeSuggestionField(poem.author) === normalizeSuggestionField(suggestion.author)
-    && normalizeSuggestionField(poem.sourceNote) === normalizeSuggestionField(suggestion.sourceNote);
+  if (!isSamePoemSuggestion(poem.body, suggestion)) return false;
+  if (normalizeSuggestionField(poem.title) !== normalizeSuggestionField(suggestion.title)) return false;
+  const credits = normalizeForMatching(`${poem.author} ${poem.sourceNote}`);
+  return [suggestion.author, suggestion.sourceNote].every((field) => {
+    const normalized = normalizeForMatching(field);
+    return normalized.length === 0 || credits.includes(normalized);
+  });
 }

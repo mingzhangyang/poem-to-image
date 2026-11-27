@@ -120,6 +120,27 @@ test.describe('desktop navigation rail', () => {
     await expect(page.locator('[data-content-inline-fields]')).not.toHaveAttribute('inert', '');
   });
 
+  test('the Content panel offers a recognized poem only when applying it would change something', async ({ page }) => {
+    await dismissOnboarding(page);
+    await page.addInitScript(() => localStorage.setItem('poem-to-image.language', 'zh-CN'));
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    const fields = page.locator('[data-content-inline-fields]');
+    const author = fields.getByRole('textbox', { name: '作者', exact: true });
+    const apply = fields.getByRole('button', { name: '一键套用' });
+
+    // The default 静夜思 writes "唐·李白", which already covers author 李白 and era 唐.
+    await expect(author).toHaveValue('唐·李白');
+    await fields.getByRole('textbox', { name: '正文', exact: true }).press('End');
+    await page.waitForTimeout(600);
+    await expect(apply).toHaveCount(0);
+
+    await author.fill('');
+    await expect(apply).toBeVisible();
+    await apply.click();
+    await expect(author).toHaveValue('李白');
+    await expect(apply).toHaveCount(0);
+  });
+
   test('arrow keys, Home and End move focus and select tabs with a roving tab index', async ({ page }) => {
     await dismissOnboarding(page);
     await page.goto('/', { waitUntil: 'domcontentloaded' });
