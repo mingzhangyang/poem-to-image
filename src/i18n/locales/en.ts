@@ -205,6 +205,7 @@ const en = {
     openPoemEditor: "Open Editor",
     poemEditorTitle: "Poem Editor",
     poemEditorHint: "Edit your poem and adjust the title, body, author and source sizes and layout independently.",
+    poemSectionStylesHint: "Fine-tune the size, weight, spacing and position of the title, body, author and source separately.",
     poemEditorTextSection: "Poem Text",
     poemLayerStyles: "Layer Styles",
     relativeFontSize: "Relative Font Size",

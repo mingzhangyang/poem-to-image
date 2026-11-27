@@ -197,6 +197,7 @@ const fr: TranslationMessages = {
     openPoemEditor: "Ouvrir l’éditeur",
     poemEditorTitle: "Éditeur de poème",
     poemEditorHint: "Modifiez le poème et réglez séparément la taille et la mise en page du titre, du corps, de l’auteur et de la source.",
+    poemSectionStylesHint: "Réglez séparément la taille, la graisse, l’espacement et la position du titre, du corps, de l’auteur et de la source.",
     poemEditorTextSection: "Texte du poème",
     poemLayerStyles: "Styles de niveaux",
     relativeFontSize: "Taille relative du texte",

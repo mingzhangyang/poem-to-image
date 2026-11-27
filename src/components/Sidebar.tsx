@@ -10,7 +10,7 @@ import { EXPORT_ITEM, PANEL_GROUP_ORDER, PANEL_GROUPS, SETTINGS_ITEM, isPanelGro
 import { SettingsPanel } from './sidebar/SettingsPanel';
 import { SidebarFooter } from './sidebar/SidebarFooter';
 import { SidebarHeader } from './sidebar/SidebarHeader';
-import { SidebarRail, getRailLabelId } from './sidebar/SidebarRail';
+import { RailBrand, SidebarRail, getRailLabelId } from './sidebar/SidebarRail';
 import { TemplatesPanel } from './sidebar/TemplatesPanel';
 import { TypographyPanel } from './sidebar/TypographyPanel';
 import { useDialogA11y } from '../hooks/useDialogA11y';
@@ -140,7 +140,7 @@ export function Sidebar({
   };
 
   const renderGroup = (panel: SidebarPanel) => (
-    <div className="app-sidebar-scrollbar p-4 sm:p-6 flex-1 overflow-y-auto">
+    <div className="app-sidebar-scrollbar p-4 sm:p-6 lg:p-0 flex-1 overflow-y-auto">
       {renderPanel(panel)}
     </div>
   );
@@ -302,16 +302,17 @@ export function Sidebar({
                 </div>
               </div>
 
-              {activeMobilePanel === 'settings' ? <SidebarHeader t={t} isSheet balance={billing.balance} /> : null}
+              {activeMobilePanel === 'settings' ? <SidebarHeader t={t} balance={billing.balance} /> : null}
               {mobileSections()}
             </motion.aside>
           </>
         ) : null}
       </AnimatePresence>
 
-      {/* Desktop sidebar: navigation rail plus the active panel */}
-      <aside className="hidden lg:flex lg:order-1 lg:h-screen shrink-0 bg-[rgba(255,250,242,0.55)] lg:border-r lg:border-white/40 shadow-sm z-10 flex-row backdrop-blur-xl">
-        <div className="w-[72px] shrink-0 border-r border-[rgba(34,48,52,0.06)] bg-[rgba(255,253,249,0.45)]">
+      {/* Desktop sidebar: an opaque column holding the navigation rail and the active panel, flat against the page */}
+      <aside className="hidden lg:flex lg:order-1 lg:h-screen shrink-0 bg-(--app-surface-strong) border-r border-[rgba(34,48,52,0.08)] z-10 flex-row">
+        <div className="flex w-[72px] shrink-0 flex-col border-r border-[rgba(34,48,52,0.06)] bg-(--app-surface)">
+          <RailBrand t={t} />
           <SidebarRail
             t={t}
             activeView={desktopView}
@@ -321,7 +322,6 @@ export function Sidebar({
           />
         </div>
         <div className="flex min-w-0 flex-col lg:w-[320px] xl:w-[360px]">
-          <SidebarHeader t={t} balance={billing.balance} />
           <div
             id={DESKTOP_PANEL_ID}
             role="tabpanel"

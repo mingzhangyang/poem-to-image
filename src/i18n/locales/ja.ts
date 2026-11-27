@@ -197,6 +197,7 @@ const ja: TranslationMessages = {
     openPoemEditor: "編集を開く",
     poemEditorTitle: "詩のエディタ",
     poemEditorHint: "詩を大きな画面で編集し、題名・本文・作者・出典の文字サイズと配置を個別に調整できます。",
+    poemSectionStylesHint: "題名・本文・作者・出典の文字サイズ、太さ、間隔、配置を個別に調整します。",
     poemEditorTextSection: "詩の本文",
     poemLayerStyles: "レイヤースタイル",
     relativeFontSize: "相対文字サイズ",

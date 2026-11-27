@@ -150,6 +150,30 @@ test('the selected LXGW WenKai family is defined by its local CSS', () => {
   assert.match(fontCss, /font-family:\s*["']?LXGW WenKai Screen["']?\s*;/i);
 });
 
+test('desktop rail carries the app mark and the panel column drops the brand header', () => {
+  const sidebar = readRepoFile('src/components/Sidebar.tsx');
+  const rail = readRepoFile('src/components/sidebar/SidebarRail.tsx');
+  assert.match(sidebar, /<RailBrand t=\{t\} \/>\s*<SidebarRail\b/, 'the app mark sits above the rail tabs');
+  const desktop = sidebar.slice(sidebar.indexOf('{/* Desktop sidebar'));
+  assert.equal(desktop.includes('<SidebarHeader'), false, 'the desktop panel column must not repeat the brand header');
+  // The mark is the page heading, outside role="tablist" so arrow keys skip it.
+  const brand = rail.slice(rail.indexOf('export function RailBrand'));
+  assert.match(brand, /<h1\b/);
+  assert.match(brand, /className="sr-only">\{t\('appTitle'\)\}/);
+  assert.equal(brand.includes('role="tab"'), false);
+});
+
+test('control panels float as cards only in the mobile drawer', () => {
+  const section = readRepoFile('src/components/ControlSection.tsx');
+  for (const cls of ['lg:rounded-none', 'lg:shadow-none', 'lg:border-0', 'lg:backdrop-blur-none', 'lg:sticky']) {
+    assert.ok(section.includes(cls), `desktop panels need ${cls}`);
+  }
+  const sidebar = readRepoFile('src/components/Sidebar.tsx');
+  const desktop = sidebar.slice(sidebar.indexOf('{/* Desktop sidebar'));
+  assert.match(desktop, /<aside className="[^"]*bg-\(--app-surface-strong\)/, 'the desktop sidebar must be an opaque column');
+  assert.equal(/<aside className="[^"]*backdrop-blur/.test(desktop), false, 'the desktop sidebar must not be translucent');
+});
+
 test('mobile preview toolbars sit on matching safe-area margins', () => {
   const preview = readRepoFile('src/components/CanvasPreview.tsx');
   // The floating mobile settings button was removed, so undo/redo no longer reserves room for it.

@@ -197,6 +197,7 @@ const zhCN: TranslationMessages = {
     openPoemEditor: "打开编辑器",
     poemEditorTitle: "诗歌编辑器",
     poemEditorHint: "在更大的工作区输入诗歌，并分别调整标题、正文、作者与出处的字号和布局。",
+    poemSectionStylesHint: "分别调整标题、正文、作者与出处的字号、字重、间距和位置。",
     poemEditorTextSection: "诗歌文本",
     poemLayerStyles: "层级样式",
     relativeFontSize: "相对字号",

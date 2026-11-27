@@ -57,6 +57,90 @@ test.describe('desktop navigation rail', () => {
     await expect(region(page, 'Decorations & Elements')).toHaveCount(0);
   });
 
+  test('the app mark heads the rail, outside the tab list, and the panel column has no brand header', async ({ page }) => {
+    await dismissOnboarding(page);
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+
+    const brand = page.getByRole('heading', { level: 1, name: 'InkPoem' });
+    await expect(brand).toBeVisible();
+    await expect(rail(page).getByRole('heading')).toHaveCount(0);
+    const brandBox = await brand.boundingBox();
+    const firstTabBox = await tab(page, 'Templates').boundingBox();
+    expect(brandBox!.x + brandBox!.width).toBeLessThanOrEqual(72);
+    expect(brandBox!.y + brandBox!.height).toBeLessThanOrEqual(firstTabBox!.y);
+    // The subtitle and wordmark header no longer sit above the active panel.
+    await expect(page.getByText('Poetic moods', { exact: false })).toBeHidden();
+  });
+
+  test('the desktop panel fills an opaque column flat and pins its heading while scrolling', async ({ page }) => {
+    await dismissOnboarding(page);
+    await page.setViewportSize({ width: 1280, height: 600 });
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await tab(page, 'Typography').click();
+
+    const section = page.locator('#desktop-controls-panel > div > section');
+    const look = await section.evaluate((node) => {
+      const style = getComputedStyle(node);
+      const aside = node.closest('aside')!;
+      return { radius: style.borderTopLeftRadius, shadow: style.boxShadow, asideBg: getComputedStyle(aside).backgroundColor };
+    });
+    expect(look.radius).toBe('0px');
+    // Tailwind composes shadow-none from transparent layers, so check that none is visible.
+    const visibleShadows = look.shadow.split(/,(?![^(]*\))/).filter((layer) => layer.trim() !== 'none' && !layer.includes('rgba(0, 0, 0, 0)'));
+    expect(visibleShadows).toEqual([]);
+    expect(look.asideBg).toBe('rgb(255, 253, 248)');
+
+    const heading = region(page, 'Typography').getByRole('heading', { level: 2 });
+    const before = (await heading.boundingBox())!.y;
+    await page.locator('#desktop-controls-panel > div').evaluate((node) => { node.scrollTop = node.scrollHeight; });
+    await expect.poll(async () => (await heading.boundingBox())!.y).toBeCloseTo(before, 0);
+  });
+
+  test('the Content panel edits the poem in place and the full editor holds section styles', async ({ page }) => {
+    await dismissOnboarding(page);
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await tab(page, 'Content').click();
+    const panel = page.getByRole('tabpanel', { name: 'Content', exact: true });
+
+    await panel.getByRole('textbox', { name: 'Title', exact: true }).fill('Inline Panel Title');
+    await panel.getByRole('textbox', { name: 'Body', exact: true }).fill('First inline line\nSecond inline line');
+    await expect(page.locator('div[aria-label="Body"]')).toContainText('Second inline line');
+    await expect(page.getByText('Inline Panel Title').first()).toBeVisible();
+
+    // The full editor shows the same text, and the panel fields are inert behind it.
+    await panel.getByRole('button', { name: /Open Editor/ }).click();
+    const editor = page.getByRole('dialog');
+    await expect(editor.getByPlaceholder('Title')).toHaveValue('Inline Panel Title');
+    await expect(editor.getByRole('slider', { name: 'Body: Relative Font Size' })).toBeVisible();
+    await expect(page.locator('[data-content-inline-fields]')).toHaveAttribute('inert', '');
+    await editor.getByPlaceholder('Title').fill('Edited In Editor');
+    await page.keyboard.press('Escape');
+    await expect(editor).toHaveCount(0);
+    await expect(panel.getByRole('textbox', { name: 'Title', exact: true })).toHaveValue('Edited In Editor');
+    await expect(page.locator('[data-content-inline-fields]')).not.toHaveAttribute('inert', '');
+  });
+
+  test('the Content panel offers a recognized poem only when applying it would change something', async ({ page }) => {
+    await dismissOnboarding(page);
+    await page.addInitScript(() => localStorage.setItem('poem-to-image.language', 'zh-CN'));
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    const fields = page.locator('[data-content-inline-fields]');
+    const author = fields.getByRole('textbox', { name: '作者', exact: true });
+    const apply = fields.getByRole('button', { name: '一键套用' });
+
+    // The default 静夜思 writes "唐·李白", which already covers author 李白 and era 唐.
+    await expect(author).toHaveValue('唐·李白');
+    await fields.getByRole('textbox', { name: '正文', exact: true }).press('End');
+    await page.waitForTimeout(600);
+    await expect(apply).toHaveCount(0);
+
+    await author.fill('');
+    await expect(apply).toBeVisible();
+    await apply.click();
+    await expect(author).toHaveValue('李白');
+    await expect(apply).toHaveCount(0);
+  });
+
   test('arrow keys, Home and End move focus and select tabs with a roving tab index', async ({ page }) => {
     await dismissOnboarding(page);
     await page.goto('/', { waitUntil: 'domcontentloaded' });
@@ -162,6 +246,16 @@ test.describe('desktop navigation rail', () => {
 
 test.describe('mobile dock and More menu', () => {
   test.skip(({ isMobile }) => !isMobile, 'The dock is the mobile layout');
+
+  test('the Content drawer keeps typing in the full-screen editor', async ({ page }) => {
+    await dismissOnboarding(page);
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.locator('#mobile-dock').getByRole('button', { name: 'Content', exact: true }).click();
+    const drawer = page.locator('#mobile-controls-drawer');
+    await expect(drawer.getByRole('button', { name: /Open Editor/ })).toBeVisible();
+    await expect(drawer.getByRole('textbox')).toHaveCount(0);
+    await expect(page.locator('[data-content-inline-fields]')).toHaveCount(0);
+  });
 
   test('More lists the panels that are not pinned and opens each one', async ({ page }) => {
     await dismissOnboarding(page);

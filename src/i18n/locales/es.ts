@@ -197,6 +197,7 @@ const es: TranslationMessages = {
     openPoemEditor: "Abrir editor",
     poemEditorTitle: "Editor del poema",
     poemEditorHint: "Edita el poema y ajusta por separado el tamaño y la disposición del título, cuerpo, autor y fuente.",
+    poemSectionStylesHint: "Ajusta por separado el tamaño, el grosor, el espaciado y la posición del título, cuerpo, autor y fuente.",
     poemEditorTextSection: "Texto del poema",
     poemLayerStyles: "Estilos de capas",
     relativeFontSize: "Tamaño relativo del texto",
