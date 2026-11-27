@@ -120,7 +120,8 @@ export function usePoemAutofill({ poem, language }: UsePoemAutofillParams): UseP
     }
 
     setDismissedSuggestionKey(null);
-    setSuggestion(null);
+    // Keep the match when applying changes only the metadata. Visibility is
+    // derived from the poem, and body/title-presence changes rematch as usual.
     return visibleSuggestion;
   }, [visibleSuggestion]);
 
