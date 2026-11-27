@@ -122,7 +122,8 @@ test('postcard gallery artwork loads and the edited postcard survives reload and
 
   await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(page.locator('[data-export-layer="background"]').first()).toHaveCSS('background-size', '100% 100%');
-  await expect(page.getByLabel('Body')).toContainText('A blue tide meets the page');
+  // The canvas poem layer, not the desktop Content panel's Body field.
+  await expect(page.locator('div[aria-label="Body"]')).toContainText('A blue tide meets the page');
   await expect.poll(() => page.evaluate(() => {
     const draft = JSON.parse(localStorage.getItem('inkpoem.editor-state.v1') || 'null');
     return draft?.poem?.body;

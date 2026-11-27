@@ -197,6 +197,7 @@ const de: TranslationMessages = {
     openPoemEditor: "Editor öffnen",
     poemEditorTitle: "Gedicht-Editor",
     poemEditorHint: "Bearbeite das Gedicht und passe Schriftgröße und Layout von Titel, Text, Autor und Quelle einzeln an.",
+    poemSectionStylesHint: "Passe Größe, Schriftstärke, Abstände und Position von Titel, Text, Autor und Quelle einzeln an.",
     poemEditorTextSection: "Gedichttext",
     poemLayerStyles: "Ebenenstile",
     relativeFontSize: "Relative Schriftgröße",

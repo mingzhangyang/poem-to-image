@@ -197,6 +197,7 @@ const ko: TranslationMessages = {
     openPoemEditor: "편집기 열기",
     poemEditorTitle: "시 편집기",
     poemEditorHint: "넓은 편집기에서 시를 수정하고 제목, 본문, 저자, 출처의 글자 크기와 배치를 따로 조절하세요.",
+    poemSectionStylesHint: "제목, 본문, 저자, 출처의 글자 크기, 굵기, 간격, 위치를 따로 조절합니다.",
     poemEditorTextSection: "시 텍스트",
     poemLayerStyles: "레이어 스타일",
     relativeFontSize: "상대 글자 크기",

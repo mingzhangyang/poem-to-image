@@ -96,6 +96,30 @@ test.describe('desktop navigation rail', () => {
     await expect.poll(async () => (await heading.boundingBox())!.y).toBeCloseTo(before, 0);
   });
 
+  test('the Content panel edits the poem in place and the full editor holds section styles', async ({ page }) => {
+    await dismissOnboarding(page);
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await tab(page, 'Content').click();
+    const panel = page.getByRole('tabpanel', { name: 'Content', exact: true });
+
+    await panel.getByRole('textbox', { name: 'Title', exact: true }).fill('Inline Panel Title');
+    await panel.getByRole('textbox', { name: 'Body', exact: true }).fill('First inline line\nSecond inline line');
+    await expect(page.locator('div[aria-label="Body"]')).toContainText('Second inline line');
+    await expect(page.getByText('Inline Panel Title').first()).toBeVisible();
+
+    // The full editor shows the same text, and the panel fields are inert behind it.
+    await panel.getByRole('button', { name: /Open Editor/ }).click();
+    const editor = page.getByRole('dialog');
+    await expect(editor.getByPlaceholder('Title')).toHaveValue('Inline Panel Title');
+    await expect(editor.getByRole('slider', { name: 'Body: Relative Font Size' })).toBeVisible();
+    await expect(page.locator('[data-content-inline-fields]')).toHaveAttribute('inert', '');
+    await editor.getByPlaceholder('Title').fill('Edited In Editor');
+    await page.keyboard.press('Escape');
+    await expect(editor).toHaveCount(0);
+    await expect(panel.getByRole('textbox', { name: 'Title', exact: true })).toHaveValue('Edited In Editor');
+    await expect(page.locator('[data-content-inline-fields]')).not.toHaveAttribute('inert', '');
+  });
+
   test('arrow keys, Home and End move focus and select tabs with a roving tab index', async ({ page }) => {
     await dismissOnboarding(page);
     await page.goto('/', { waitUntil: 'domcontentloaded' });
@@ -201,6 +225,16 @@ test.describe('desktop navigation rail', () => {
 
 test.describe('mobile dock and More menu', () => {
   test.skip(({ isMobile }) => !isMobile, 'The dock is the mobile layout');
+
+  test('the Content drawer keeps typing in the full-screen editor', async ({ page }) => {
+    await dismissOnboarding(page);
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.locator('#mobile-dock').getByRole('button', { name: 'Content', exact: true }).click();
+    const drawer = page.locator('#mobile-controls-drawer');
+    await expect(drawer.getByRole('button', { name: /Open Editor/ })).toBeVisible();
+    await expect(drawer.getByRole('textbox')).toHaveCount(0);
+    await expect(page.locator('[data-content-inline-fields]')).toHaveCount(0);
+  });
 
   test('More lists the panels that are not pinned and opens each one', async ({ page }) => {
     await dismissOnboarding(page);
