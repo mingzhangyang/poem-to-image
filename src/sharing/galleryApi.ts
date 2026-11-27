@@ -1,15 +1,9 @@
-// Client for the public gallery (worker/gallery.ts). Owner requests carry the
-// private removal key in a header, never in the URL.
+// Client for the public gallery and visitor reports (worker/gallery.ts).
+// Submitting to the gallery goes through the account API (accountSharesApi.ts).
 
 export type GalleryStatus = 'none' | 'pending' | 'listed' | 'rejected';
 export type ReportReason = 'copyright' | 'privacy' | 'inappropriate' | 'other';
 export const REPORT_REASONS: readonly ReportReason[] = ['copyright', 'privacy', 'inappropriate', 'other'];
-
-export interface GalleryOwnerState {
-  status: GalleryStatus;
-  /** Only permanent shares can be listed. */
-  eligible: boolean;
-}
 
 export interface GalleryItem {
   id: string;
@@ -26,37 +20,8 @@ export interface GalleryPage {
   nextCursor: string | null;
 }
 
-const STATUSES: readonly GalleryStatus[] = ['none', 'pending', 'listed', 'rejected'];
-
-/** Error codes: NOT_PERMANENT, NOT_FOUND, RATE_LIMITED, or HTTP_<status>. */
+/** Error codes: RATE_LIMITED, MALFORMED_RESPONSE or HTTP_<status>. */
 export class GalleryRequestError extends Error {}
-
-async function ownerRequest(id: string, deleteToken: string, method: 'GET' | 'PUT' | 'DELETE'): Promise<GalleryOwnerState> {
-  const response = await fetch('/api/shares/' + encodeURIComponent(id) + '/gallery', {
-    method,
-    headers: { 'X-Share-Delete-Token': deleteToken },
-  });
-  if (response.status === 409) throw new GalleryRequestError('NOT_PERMANENT');
-  if (response.status === 404) throw new GalleryRequestError('NOT_FOUND');
-  if (!response.ok) throw new GalleryRequestError('HTTP_' + response.status);
-  const body = await response.json() as Partial<GalleryOwnerState>;
-  if (!STATUSES.includes(body.status as GalleryStatus) || typeof body.eligible !== 'boolean') {
-    throw new GalleryRequestError('MALFORMED_RESPONSE');
-  }
-  return { status: body.status as GalleryStatus, eligible: body.eligible };
-}
-
-export function getGalleryStatus(id: string, deleteToken: string): Promise<GalleryOwnerState> {
-  return ownerRequest(id, deleteToken, 'GET');
-}
-
-export function requestGalleryListing(id: string, deleteToken: string): Promise<GalleryOwnerState> {
-  return ownerRequest(id, deleteToken, 'PUT');
-}
-
-export function withdrawGalleryListing(id: string, deleteToken: string): Promise<GalleryOwnerState> {
-  return ownerRequest(id, deleteToken, 'DELETE');
-}
 
 export async function fetchGalleryPage(cursor: string | null, signal?: AbortSignal): Promise<GalleryPage> {
   const query = cursor ? '?cursor=' + encodeURIComponent(cursor) : '';

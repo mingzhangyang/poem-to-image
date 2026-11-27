@@ -66,7 +66,8 @@ export async function getShareReadiness(request: Request, env: WorkerEnv): Promi
       `SELECT id, title, author, image_key, image_type, card_key,
               delete_token_hash, content_fingerprint, created_at,
               published_at, revoked_at, assets_deleted_at, expiry_policy, expires_at,
-              gallery_status, gallery_requested_at, gallery_listed_at, gallery_reviewed_at
+              gallery_status, gallery_requested_at, gallery_listed_at, gallery_reviewed_at,
+              owner_user_id
        FROM shared_artworks LIMIT 1`,
     ).all();
     // The public gallery and visitor reports (migration 0007).
@@ -501,22 +502,33 @@ export async function deleteShare(request: Request, env: WorkerEnv, id: string):
   // R2 keys must be deleted.
   row = await findShareById(env.DB, id);
   if (!row || row.delete_token_hash !== hash || !row.revoked_at) return notFound();
+  await deleteRevokedShareAssets(env, row);
+  return jsonResponse({ revoked: true });
+}
+
+/**
+ * Delete the R2 objects of a share that is already revoked in D1. A failed
+ * delete leaves `assets_deleted_at` NULL for the hourly maintenance retry.
+ */
+export async function deleteRevokedShareAssets(
+  env: WorkerEnv,
+  row: { id: string; image_key: string | null; card_key: string | null },
+): Promise<void> {
   if (row.image_key && row.card_key) {
     try {
       await Promise.all([env.ARTWORKS.delete(row.image_key), env.ARTWORKS.delete(row.card_key)]);
       await env.DB.prepare(
         'UPDATE shared_artworks SET assets_deleted_at = CURRENT_TIMESTAMP WHERE id = ?',
-      ).bind(id).run();
+      ).bind(row.id).run();
     } catch (error) {
-      logError('share.cleanup_failed', error, { id });
+      logError('share.cleanup_failed', error, { id: row.id });
       // The scheduled maintenance task retries failed object deletion.
     }
   } else {
     await env.DB.prepare(
       'UPDATE shared_artworks SET assets_deleted_at = CURRENT_TIMESTAMP WHERE id = ?',
-    ).bind(id).run();
+    ).bind(row.id).run();
   }
-  return jsonResponse({ revoked: true });
 }
 
 /** Retry failed R2 cleanup from earlier revocations in small bounded cron batches. */

@@ -2,6 +2,7 @@ import { SELF, env } from 'cloudflare:test';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { runOperationalChecks } from '../../worker/maintenance';
 import { GALLERY_REPORT_HIDE_THRESHOLD } from '../../worker/gallery';
+import { routeAccountShares } from '../../worker/accountShares';
 import { sql } from '../../scripts/gallery-review-sql.mjs';
 import type { WorkerEnv } from '../../worker/env';
 
@@ -45,10 +46,41 @@ async function publish(title: string, expiry: '7d' | '30d' | 'never' = 'never'):
   return share;
 }
 
-function gallery(share: Share, method: 'GET' | 'PUT' | 'DELETE', token = share.deleteToken) {
-  return SELF.fetch(ORIGIN + '/api/shares/' + share.id + '/gallery', {
-    method, headers: { Origin: ORIGIN, 'X-Share-Delete-Token': token },
+const USER = 'user_gallery_owner';
+
+function account(path: string, method: string, body?: unknown, userId = USER) {
+  const request = new Request(ORIGIN + path, {
+    method,
+    headers: { Origin: ORIGIN, 'Content-Type': 'application/json' },
+    body: body === undefined ? undefined : JSON.stringify(body),
   });
+  return routeAccountShares(request, env as unknown as WorkerEnv, userId, path);
+}
+
+async function claim(shares: Share[], userId = USER): Promise<string[]> {
+  const response = await account('/api/me/shares/claim', 'POST', { shares }, userId);
+  expect(response.status).toBe(200);
+  return (await response.json() as { claimed: string[] }).claimed;
+}
+
+function gallery(share: Share, method: 'PUT' | 'DELETE', userId = USER) {
+  return account('/api/me/shares/' + share.id + '/gallery', method, undefined, userId);
+}
+
+interface AccountShare { id: string; title: string; permanent: boolean; galleryStatus: string; imageUrl: string }
+
+async function accountShares(userId = USER): Promise<AccountShare[]> {
+  const response = await account('/api/me/shares', 'GET', undefined, userId);
+  expect(response.status).toBe(200);
+  return (await response.json() as { shares: AccountShare[] }).shares;
+}
+
+/** Publish, claim for USER and submit to the gallery. */
+async function submitted(title: string): Promise<Share> {
+  const share = await publish(title);
+  expect(await claim([share])).toEqual([share.id]);
+  expect((await gallery(share, 'PUT')).status).toBe(200);
+  return share;
 }
 
 async function review(statements: string[]) {
@@ -80,18 +112,20 @@ describe('public gallery', () => {
     ]);
   });
 
-  it('lists a permanent share only after the creator opts in and a maintainer approves', async () => {
+  it('lists a permanent share only after its account owner submits it and a maintainer approves', async () => {
     const share = await publish('Quiet night');
-    expect(await (await gallery(share, 'GET')).json()).toEqual({ status: 'none', eligible: true });
-    expect((await listedIds()).ids).toEqual([]);
+    // An anonymous share cannot be submitted: it has no account yet.
+    expect((await gallery(share, 'PUT')).status).toBe(404);
+
+    expect(await claim([share])).toEqual([share.id]);
+    expect(await accountShares()).toEqual([expect.objectContaining({ id: share.id, permanent: true, galleryStatus: 'none' })]);
 
     const requested = await gallery(share, 'PUT');
-    expect(requested.status).toBe(200);
     expect(await requested.json()).toEqual({ status: 'pending', eligible: true });
     expect((await listedIds()).ids).toEqual([]);
 
     await review(sql.approve([share.id]));
-    expect(await (await gallery(share, 'GET')).json()).toEqual({ status: 'listed', eligible: true });
+    expect((await accountShares())[0]).toMatchObject({ galleryStatus: 'listed' });
     const response = await SELF.fetch(ORIGIN + '/api/gallery');
     expect(await response.json()).toEqual({
       items: [expect.objectContaining({
@@ -103,33 +137,29 @@ describe('public gallery', () => {
 
     // Asking again keeps the listing rather than resetting it to pending.
     expect(await (await gallery(share, 'PUT')).json()).toEqual({ status: 'listed', eligible: true });
+    // Another account cannot change it.
+    expect((await gallery(share, 'DELETE', 'user_someone_else')).status).toBe(404);
   });
 
-  it('refuses expiring shares and requests without the private removal key', async () => {
+  it('refuses expiring shares, and the review script refuses shares without an owner', async () => {
     const expiring = await publish('One week', '7d');
+    await claim([expiring]);
     const refused = await gallery(expiring, 'PUT');
     expect(refused.status).toBe(409);
     expect(await refused.json()).toMatchObject({ code: 'SHARE_NOT_PERMANENT' });
-    expect(await (await gallery(expiring, 'GET')).json()).toEqual({ status: 'none', eligible: false });
-
-    // Even a maintainer cannot approve an expiring share.
+    expect((await accountShares())[0]).toMatchObject({ permanent: false, galleryStatus: 'none' });
     await env.DB.prepare("UPDATE shared_artworks SET gallery_status = 'pending' WHERE id = ?").bind(expiring.id).run();
     await review(sql.approve([expiring.id]));
     expect((await listedIds()).ids).toEqual([]);
 
-    const permanent = await publish('Permanent');
-    expect((await gallery(permanent, 'PUT', 'f'.repeat(64))).status).toBe(404);
-    expect((await gallery(permanent, 'PUT', 'not-a-token')).status).toBe(404);
-    const crossOrigin = await SELF.fetch(ORIGIN + '/api/shares/' + permanent.id + '/gallery', {
-      method: 'PUT', headers: { Origin: 'https://evil.test', 'X-Share-Delete-Token': permanent.deleteToken },
-    });
-    expect(crossOrigin.status).toBe(403);
-    expect((await SELF.fetch(ORIGIN + '/api/shares/' + permanent.id + '/gallery', { method: 'POST' })).status).toBe(405);
+    const anonymous = await publish('Anonymous');
+    await env.DB.prepare("UPDATE shared_artworks SET gallery_status = 'pending' WHERE id = ?").bind(anonymous.id).run();
+    await review(sql.approve([anonymous.id]));
+    expect((await listedIds()).ids).toEqual([]);
   });
 
-  it('lets the creator withdraw, but a rejected share cannot be resubmitted', async () => {
-    const share = await publish('Withdrawn');
-    await gallery(share, 'PUT');
+  it('lets the owner withdraw, but a rejected share cannot be resubmitted', async () => {
+    const share = await submitted('Withdrawn');
     await review(sql.approve([share.id]));
     expect(await (await gallery(share, 'DELETE')).json()).toEqual({ status: 'none', eligible: true });
     expect((await listedIds()).ids).toEqual([]);
@@ -142,8 +172,7 @@ describe('public gallery', () => {
   });
 
   it('drops a listed share from the gallery as soon as it is revoked', async () => {
-    const share = await publish('Revoked');
-    await gallery(share, 'PUT');
+    const share = await submitted('Revoked');
     await review(sql.approve([share.id]));
     expect((await listedIds()).ids).toEqual([share.id]);
 
@@ -152,16 +181,15 @@ describe('public gallery', () => {
     });
     expect(revoked.status).toBe(200);
     expect((await listedIds()).ids).toEqual([]);
-    expect((await gallery(share, 'GET')).status).toBe(404);
+    expect(await accountShares()).toEqual([]);
   });
 
   it('takes a share down entirely with the review script', async () => {
-    const share = await publish('Taken down');
-    await gallery(share, 'PUT');
+    const share = await submitted('Taken down');
     await review(sql.approve([share.id]));
     await review(sql.remove([share.id]));
     expect((await listedIds()).ids).toEqual([]);
-    expect((await SELF.fetch(ORIGIN + '/s/' + share.id)).status).toBe(404);
+    expect((await SELF.fetch(ORIGIN + '/api/shares/' + share.id)).status).toBe(404);
     expect((await SELF.fetch(ORIGIN + '/s/' + share.id + '/card.jpg')).status).toBe(404);
     const row = await env.DB.prepare('SELECT title, author, revoked_at FROM shared_artworks WHERE id = ?')
       .bind(share.id).first<{ title: string; author: string; revoked_at: string | null }>();
@@ -179,9 +207,7 @@ describe('public gallery', () => {
     const shares: Share[] = [];
     for (let i = 0; i < 5; i++) {
       await env.DB.prepare('DELETE FROM rate_limits').run();
-      const share = await publish('Poem ' + i);
-      await gallery(share, 'PUT');
-      shares.push(share);
+      shares.push(await submitted('Poem ' + i));
     }
     await review(sql.approve(shares.map((share) => share.id)));
     // Same-second approvals tie on listed_at and fall back to ID order.
@@ -203,8 +229,7 @@ describe('public gallery', () => {
   });
 
   it('returns a listed share to review once enough distinct visitors report it', async () => {
-    const share = await publish('Reported');
-    await gallery(share, 'PUT');
+    const share = await submitted('Reported');
     await review(sql.approve([share.id]));
 
     for (let i = 1; i < GALLERY_REPORT_HIDE_THRESHOLD; i++) {
@@ -219,8 +244,12 @@ describe('public gallery', () => {
     // The link stays up while the maintainer reviews it.
     expect((await SELF.fetch(ORIGIN + '/api/shares/' + share.id)).status).toBe(200);
 
-    const pending = (await env.DB.prepare(sql.pending()).all<{ id: string; report_count: number; gallery_listed_at: string | null }>()).results;
-    expect(pending).toEqual([expect.objectContaining({ id: share.id, report_count: GALLERY_REPORT_HIDE_THRESHOLD })]);
+    const pending = (await env.DB.prepare(sql.pending()).all<{
+      id: string; report_count: number; gallery_listed_at: string | null; owner_user_id: string;
+    }>()).results;
+    expect(pending).toEqual([expect.objectContaining({
+      id: share.id, report_count: GALLERY_REPORT_HIDE_THRESHOLD, owner_user_id: USER,
+    })]);
     expect(pending[0]!.gallery_listed_at).not.toBeNull();
 
     // Approving again clears the reports and restores the original position.
@@ -250,5 +279,70 @@ describe('public gallery', () => {
     await runOperationalChecks(env as unknown as WorkerEnv);
     const count = await env.DB.prepare('SELECT COUNT(*) AS n FROM share_reports').first<{ n: number }>();
     expect(count?.n).toBe(0);
+  });
+});
+
+describe('shares owned by an account', () => {
+  beforeEach(async () => {
+    await env.DB.batch([
+      env.DB.prepare('DELETE FROM rate_limits'),
+      env.DB.prepare('DELETE FROM shared_artworks'),
+    ]);
+  });
+
+  it('requires a signed-in user', async () => {
+    expect((await SELF.fetch(ORIGIN + '/api/me/shares')).status).toBe(401);
+    const claimAttempt = await SELF.fetch(ORIGIN + '/api/me/shares/claim', {
+      method: 'POST', headers: { Origin: ORIGIN, 'Content-Type': 'application/json' }, body: '{"shares":[]}',
+    });
+    expect(claimAttempt.status).toBe(401);
+  });
+
+  it('claims shares only with their removal key and only once', async () => {
+    const first = await publish('First');
+    const second = await publish('Second');
+    expect(await claim([{ id: first.id, deleteToken: 'f'.repeat(64) }])).toEqual([]);
+    expect(await claim([first, second])).toEqual([first.id, second.id]);
+    // Claiming again is harmless; another account cannot take them over.
+    expect(await claim([first])).toEqual([first.id]);
+    expect(await claim([first], 'user_someone_else')).toEqual([]);
+    expect(await accountShares('user_someone_else')).toEqual([]);
+    expect((await accountShares()).map((share) => share.id).sort()).toEqual([first.id, second.id].sort());
+
+    expect((await account('/api/me/shares/claim', 'POST', { shares: [] })).status).toBe(400);
+    expect((await account('/api/me/shares/claim', 'POST', { shares: [{ id: 'bad', deleteToken: first.deleteToken }] })).status).toBe(400);
+    const tooMany = Array.from({ length: 51 }, () => first);
+    expect((await account('/api/me/shares/claim', 'POST', { shares: tooMany })).status).toBe(400);
+  });
+
+  it('lets the owner revoke a share from any device without its removal key', async () => {
+    const share = await publish('Mine');
+    await claim([share]);
+    expect((await account('/api/me/shares/' + share.id, 'DELETE', undefined, 'user_someone_else')).status).toBe(404);
+
+    const revoked = await account('/api/me/shares/' + share.id, 'DELETE');
+    expect(revoked.status).toBe(200);
+    expect(await accountShares()).toEqual([]);
+    expect((await SELF.fetch(ORIGIN + '/api/shares/' + share.id)).status).toBe(404);
+    const row = await env.DB.prepare('SELECT title, assets_deleted_at FROM shared_artworks WHERE id = ?')
+      .bind(share.id).first<{ title: string; assets_deleted_at: string | null }>();
+    expect(row?.title).toBe('');
+    expect(row?.assets_deleted_at).not.toBeNull();
+    // A revoked share can no longer be claimed or revoked again.
+    expect(await claim([share])).toEqual([]);
+    expect((await account('/api/me/shares/' + share.id, 'DELETE')).status).toBe(404);
+  });
+
+  it('rejects cross-origin mutations and unknown routes', async () => {
+    const share = await publish('Origin');
+    await claim([share]);
+    const path = '/api/me/shares/' + share.id;
+    const crossOrigin = await routeAccountShares(new Request(ORIGIN + path, {
+      method: 'DELETE', headers: { Origin: 'https://evil.test' },
+    }), env as unknown as WorkerEnv, USER, path);
+    expect(crossOrigin.status).toBe(403);
+    expect((await account('/api/me/shares', 'POST')).status).toBe(405);
+    expect((await account('/api/me/shares/' + share.id + '/gallery', 'GET')).status).toBe(405);
+    expect((await account('/api/me/shares/nope/extra', 'GET')).status).toBe(404);
   });
 });

@@ -30,6 +30,7 @@ function rowLimit(limit) {
 
 const LIVE = 'published_at IS NOT NULL AND revoked_at IS NULL';
 const PERMANENT = "expiry_policy = 'never' AND expires_at IS NULL";
+const OWNER = 'owner_user_id, (SELECT u.email FROM users u WHERE u.id = s.owner_user_id) AS owner_email';
 const REPORT_COUNT = '(SELECT COUNT(*) FROM share_reports r WHERE r.share_id = s.id)';
 // Every write's first statement ends in RETURNING: local wrangler does not
 // report meta.changes, so the review script counts the returned rows.
@@ -38,7 +39,7 @@ const REPORT_REASONS = '(SELECT GROUP_CONCAT(DISTINCT r.reason) FROM share_repor
 export const sql = {
   /** Submissions waiting for review, oldest first. */
   pending(limit = 50) {
-    return `SELECT id, title, author, image_type, published_at, gallery_requested_at, gallery_listed_at,
+    return `SELECT id, title, author, image_type, published_at, gallery_requested_at, gallery_listed_at, ${OWNER},
       ${REPORT_COUNT} AS report_count, ${REPORT_REASONS} AS report_reasons
       FROM shared_artworks s
       WHERE gallery_status = 'pending' AND ${LIVE}
@@ -47,7 +48,7 @@ export const sql = {
 
   /** Artworks currently shown in the gallery, newest first. */
   listed(limit = 50) {
-    return `SELECT id, title, author, image_type, gallery_listed_at,
+    return `SELECT id, title, author, image_type, gallery_listed_at, ${OWNER},
       ${REPORT_COUNT} AS report_count, ${REPORT_REASONS} AS report_reasons
       FROM shared_artworks s
       WHERE gallery_status = 'listed' AND ${LIVE}
@@ -56,7 +57,7 @@ export const sql = {
 
   /** Live shares with visitor reports, most reported first. */
   reports(limit = 50) {
-    return `SELECT id, title, author, image_type, gallery_status,
+    return `SELECT id, title, author, image_type, gallery_status, ${OWNER},
       ${REPORT_COUNT} AS report_count, ${REPORT_REASONS} AS report_reasons,
       (SELECT MAX(r.created_at) FROM share_reports r WHERE r.share_id = s.id) AS last_report_at
       FROM shared_artworks s
@@ -66,14 +67,14 @@ export const sql = {
 
   /** One share with its gallery and report state. */
   show(id) {
-    return `SELECT id, title, author, image_type, published_at, revoked_at, expiry_policy, expires_at,
+    return `SELECT id, title, author, image_type, published_at, revoked_at, expiry_policy, expires_at, ${OWNER},
       gallery_status, gallery_requested_at, gallery_listed_at, gallery_reviewed_at,
       ${REPORT_COUNT} AS report_count, ${REPORT_REASONS} AS report_reasons
       FROM shared_artworks s WHERE id IN (${idList([id])})`;
   },
 
   /**
-   * List pending submissions. An artwork that came back into review after
+   * List pending submissions. Only account-owned shares can be listed. An artwork that came back into review after
    * reports keeps its original place in the gallery; its reports are cleared
    * so they do not immediately pull it out again.
    * @param {string[]} ids
@@ -86,6 +87,7 @@ export const sql = {
            gallery_listed_at = COALESCE(gallery_listed_at, CURRENT_TIMESTAMP),
            gallery_reviewed_at = CURRENT_TIMESTAMP
        WHERE id IN (${list}) AND gallery_status = 'pending' AND ${LIVE} AND ${PERMANENT}
+         AND owner_user_id IS NOT NULL
        RETURNING id`,
       `DELETE FROM share_reports WHERE share_id IN (${list})
        AND share_id IN (SELECT id FROM shared_artworks WHERE gallery_status = 'listed')`,

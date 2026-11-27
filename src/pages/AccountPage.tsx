@@ -10,6 +10,7 @@ import { useCheckoutReturn } from '../hooks/useCheckoutReturn';
 import { useLang } from '../hooks/useLang';
 import { usePageMetadata } from '../hooks/usePageMetadata';
 import { Logo } from '../components/logo';
+import { AccountShareList } from '../sharing/AccountShareList';
 
 const CLERK_CONFIGURED = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
@@ -28,7 +29,7 @@ export function AccountPage() {
   const { items: history, isLoading: isLoadingHistory, refetch: refetchHistory } = useBillingHistory();
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [purchaseError, setPurchaseError] = useState<string | null>(null);
-  const { t } = useLang();
+  const { t, language } = useLang();
   usePageMetadata({
     title: 'Account – InkPoem',
     robots: 'noindex, nofollow',
@@ -169,6 +170,14 @@ export function AccountPage() {
               <p className="text-xs text-gray-400 mt-3">
                 {t('creditCostInfo')}
               </p>
+            </section>
+
+            {/* Published artworks, manageable from any device */}
+            <section className="app-panel-surface rounded-2xl p-6">
+              <AccountShareList
+                language={language}
+                headingClassName="text-sm font-semibold uppercase tracking-wider text-gray-400 mb-4"
+              />
             </section>
 
             {/* Transaction history */}

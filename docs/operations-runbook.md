@@ -60,7 +60,7 @@ Use the Stripe session ID as the support-safe lookup identifier. Do not copy car
 
 ## Public gallery review
 
-Creators submit permanent shares to the public gallery at `/gallery`; nothing appears there until a maintainer approves it. Review the queue with the script in the repository root. It runs SQL through `wrangler d1 execute`, so it needs `npm ci` and a `npx wrangler login` for the production Cloudflare account. It targets the production database unless you pass `--local`.
+Signed-in creators submit permanent shares to the public gallery at `/gallery`; nothing appears there until a maintainer approves it. Review the queue with the script in the repository root. It runs SQL through `wrangler d1 execute`, so it needs `npm ci` and a `npx wrangler login` for the production Cloudflare account. It targets the production database unless you pass `--local`.
 
 ```sh
 npm run gallery:review                # step through pending submissions one by one
@@ -74,9 +74,9 @@ npm run gallery:review -- dismiss <id> [<id>...]
 npm run gallery:review -- remove <id> [<id>...]
 ```
 
-In the step-through review, each submission shows its title, author, times, any reports and the share page URL. Press `o` to open the page in a browser, then `a` to approve, `r` to reject, `s` to skip, `d` to take the share down or `q` to stop.
+In the step-through review, each submission shows its title, author, owning account and email, times, any reports and the share page URL. Press `o` to open the page in a browser, then `a` to approve, `r` to reject, `s` to skip, `d` to take the share down or `q` to stop.
 
-- **approve** lists a pending, permanent, live share. If it came back to review after reports, it keeps its original place and its reports are cleared.
+- **approve** lists a pending, permanent, live share that belongs to an account. If it came back to review after reports, it keeps its original place and its reports are cleared.
 - **reject** keeps a pending share out of the gallery, or takes a listed one out. The share link stays up and the creator cannot resubmit it.
 - **dismiss** deletes reports judged unfounded without changing the listing.
 - **remove** is a takedown for content that must not stay public at all, such as infringing or illegal material. It revokes the share as the creator's removal would: the link returns 404 at once, the title and author are cleared, and the hourly maintenance run deletes the images from R2. It asks for confirmation unless you pass `--yes`.

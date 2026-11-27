@@ -42,8 +42,8 @@ it should succeed even if no prior POST reached the Worker.
    ```
    HTTP 200 with `{"ready":true}` confirms the live Worker can query
    the `shared_artworks`, `shared_artwork_upload_attempts`, `share_reports`
-   and `rate_limits` tables (including `published_at` and the gallery
-   columns) and access the private
+   and `rate_limits` tables (including `published_at`, the gallery columns
+   and `owner_user_id`) and access the private
    R2 bucket. The rate-limit table matters to both first-time POST and
    DELETE of an unseen ID; without it, both mutations can fail while
    a public share page still returns a normal 404. HTTP
@@ -54,8 +54,8 @@ it should succeed even if no prior POST reached the Worker.
    ```sh
    npx wrangler r2 bucket list
    npx wrangler d1 migrations list DB --remote --config wrangler.jsonc
-   # Confirm 0002 (rate_limits), 0005 (shared_artworks) and 0007 (gallery
-   # columns and share_reports).
+   # Confirm 0002 (rate_limits), 0005 (shared_artworks), 0007 (gallery
+   # columns and share_reports) and 0008 (owner_user_id).
    # Only if numbered migrations are pending:
    npx wrangler d1 migrations apply DB --remote --config wrangler.jsonc
    ```
@@ -112,27 +112,54 @@ the original browser pending state can be retried after recovery.
 Open **Export / Share → My Shares** on desktop or mobile. The list survives
 closing the publish dialog and reloading the editor (on the same browser
 profile). It includes published, pending and migrated unverified records.
-Each entry offers its link, explicit private key backup, creator-authorized
-status verification, and token-authenticated revocation. A server-confirmed
-DELETE erases the local key and keeps a revoked tombstone so old credentials
-are not resurrected by migration. There is no user account, cloud backup or
-cross-device sync. Clearing site data also removes IndexedDB; a private key
-backup is still necessary for long-term revocation access.
+Each entry offers its link, creator-authorized status verification and
+token-authenticated revocation; copying the private key is tucked under a
+**Back up removal key** disclosure, because creators do not need it to remove
+a share from the same browser. A server-confirmed DELETE erases the local key
+and keeps a revoked tombstone so old credentials are not resurrected by
+migration. Clearing site data also removes IndexedDB, after which an
+anonymous share can be removed only with a key backed up beforehand.
+Signed-in creators avoid this: see the next section.
 
 **Important:** The browser-held key is not encryption. Do not show or send it
 in public links or browser diagnostics. The share endpoint itself stores
 only the key hash, so a lost key cannot be recovered from the server.
 
+## Shares owned by an account
+
+Publishing stays anonymous and uses the protocol above unchanged. When the
+creator is signed in, the browser then **claims** the new share for their
+account: `POST /api/me/shares/claim` with `{ "shares": [{ "id", "deleteToken" }] }`
+(at most 50 per request) and the Clerk bearer token. The removal key proves
+ownership; the Worker stores only `owner_user_id` on the row (migration
+`0008_share_owners.sql`). A share already owned by another account is left
+alone, and claiming one's own share again is a no-op.
+
+- **My artworks.** Signed-in creators see their account's shares in **My
+  Shares** and on the account page, on any device: `GET /api/me/shares` lists
+  live, published shares with their expiry and gallery status. They revoke
+  with `DELETE /api/me/shares/:id`, which needs no removal key and deletes the
+  R2 images like the key-based DELETE.
+- **Earlier anonymous shares.** If this browser holds published shares that
+  are not yet in the account, the list offers **Add to my account**, which
+  claims them with the keys saved in IndexedDB. Shares published in another
+  browser can only be added from that browser.
+- **Failure handling.** If the claim after publishing fails, the share is
+  still published and stays in the browser-local list, from where it can be
+  added later. The publish dialog says so.
+- Anonymous creators keep the browser-held key as their only way to remove a
+  share; nothing about anonymous publishing changed.
+
 ## Public gallery (`/gallery`)
 
 Creators can opt in to show a share in the public gallery. Nothing is listed without both the creator's request and a maintainer's approval.
 
-- **Opt-in.** The publish dialog has an **Also submit to the public gallery** checkbox, off by default and enabled only when the expiration is **Never**. After a confirmed publication the browser sends the request; if it fails, the share stays published and the creator can resubmit from **My Shares**. Each permanent, published share in **My Shares** shows its gallery status with a submit or withdraw button. Shares published before the gallery existed are never listed unless their creator submits them.
+- **Opt-in, signed in only.** The publish dialog has an **Also submit to the public gallery** checkbox, off by default and enabled only for a signed-in creator with the expiration set to **Never**. After a confirmed publication the browser claims the share for the account, then submits it; if either step fails, the share stays published and the creator can submit it from **My Shares** or the account page, where every account share shows its gallery status with a submit or withdraw button. Anonymous shares cannot be submitted until they are added to an account.
 - **Only permanent shares.** The Worker refuses requests for shares with a 7-day or 30-day expiration (`409 SHARE_NOT_PERMANENT`), and the review script will not approve them.
-- **Owner endpoints.** `GET|PUT|DELETE /api/shares/:id/gallery` read, request or withdraw a listing. They require the private `X-Share-Delete-Token` header and return `{ status, eligible }`, where `status` is `none`, `pending`, `listed` or `rejected`. A rejected share keeps that status: neither a new request nor a withdrawal puts it back in the queue.
+- **Owner endpoints.** `PUT|DELETE /api/me/shares/:id/gallery` request or withdraw a listing for a share the signed-in account owns, and return `{ status, eligible }`, where `status` is `none`, `pending`, `listed` or `rejected`. A rejected share keeps that status: neither a new request nor a withdrawal puts it back in the queue. Account endpoints are rate-limited to 30 requests a minute per user.
 - **Public listing.** `GET /api/gallery?cursor=&limit=` returns approved shares, newest approval first, 24 per page by default (at most 48), with an opaque `nextCursor`. Every query also requires a published, unrevoked, permanent row, so revoking a share removes it from the gallery at once. Thumbnails are the existing `card.jpg` social previews.
 - **Reports.** Every share page has a **Report this artwork** control for visitors who do not hold the removal key. `POST /api/shares/:id/report` takes `{ "reason": "copyright" | "privacy" | "inappropriate" | "other" }` and returns `202` whether or not the visitor had already reported it. Each visitor counts once per share (a per-share salted hash of `CF-Connecting-IP`), and reports are rate-limited per network to 10 an hour and 30 a day. When three distinct visitors have reported a listed share, it goes back to `pending` and drops out of the gallery until reviewed; the share link stays up. Reports of revoked shares are deleted by the hourly maintenance run.
-- **Review.** Maintainers review with `npm run gallery:review` (see the [operations runbook](operations-runbook.md#public-gallery-review)). There is no admin API: the script runs SQL against D1 through wrangler with the maintainer's Cloudflare login.
+- **Review.** Maintainers review with `npm run gallery:review` (see the [operations runbook](operations-runbook.md#public-gallery-review)). There is no admin API: the script runs SQL against D1 through wrangler with the maintainer's Cloudflare login. It shows each submission's account and email, and approves only account-owned shares.
 
 ## Privacy and abuse controls
 

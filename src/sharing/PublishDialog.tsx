@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { Check, Copy, ExternalLink, Link2, Loader2, Trash2, X } from 'lucide-react';
 import { useDialogA11y } from '../hooks/useDialogA11y';
 import { shareCopy } from './copy';
-import {
-  getGalleryStatus, requestGalleryListing, withdrawGalleryListing, type GalleryOwnerState,
-} from './galleryApi';
+import { useAppAuth } from '../context/auth';
+import { AccountShareList } from './AccountShareList';
+import { claimShares, requestGalleryListing } from './accountSharesApi';
 import { galleryCopy } from './galleryCopy';
 import { removePublishCredentialsSafely } from './publishProtocol';
 import {
@@ -40,6 +40,7 @@ interface Props {
 export function PublishDialog({ language, isOpen, onClose, publish, initialLibrary = false }: Props) {
   const copy = shareCopy[language];
   const gallery = galleryCopy[language];
+  const { isSignedIn, getToken } = useAppAuth();
   const dialogRef = useRef<HTMLDivElement>(null);
   const urlRef = useRef<HTMLInputElement>(null);
   const recoveryKeyRef = useRef<HTMLInputElement>(null);
@@ -60,9 +61,10 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
   const [libraryError, setLibraryError] = useState('');
   const [exposedKey, setExposedKey] = useState<string | null>(null);
   const [submitToGallery, setSubmitToGallery] = useState(false);
-  const [galleryOutcome, setGalleryOutcome] = useState<'submitted' | 'failed' | null>(null);
-  const [galleryStates, setGalleryStates] = useState<Record<string, GalleryOwnerState | 'error'>>({});
-  const [galleryBusy, setGalleryBusy] = useState('');
+  // What happened after a confirmed publication: saving it to the signed-in
+  // account, and the optional gallery submission (which needs the account).
+  const [afterPublish, setAfterPublish] = useState<{ linked: boolean; gallery: 'submitted' | 'failed' | null } | null>(null);
+  const [accountIds, setAccountIds] = useState<ReadonlySet<string>>(new Set());
   const libraryLoadRef = useRef(0);
 
   // A live share without persistent revocation credentials cannot be dismissed
@@ -74,6 +76,8 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
   const canClose = !inFlightRef.current && !publishing && !recoveryBusy
     && !libraryAction && !needsBackup;
   const close = () => { if (canClose) onClose(); };
+  // Shares already in the account are managed there, without their keys.
+  const localRecords = records.filter((share) => !accountIds.has(share.id));
   useDialogA11y({ isOpen, dialogRef, onClose: close });
 
   useEffect(() => {
@@ -89,8 +93,8 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
       setLibraryError('');
       setExposedKey(null);
       setSubmitToGallery(false);
-      setGalleryOutcome(null);
-      setGalleryStates({});
+      setAfterPublish(null);
+      setAccountIds(new Set());
     }
   }, [isOpen, initialLibrary]);
 
@@ -101,18 +105,7 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
     setLibraryBusy(true);
     setLibraryError('');
     void listLocalShares().then((all) => {
-      if (!active || ticket !== libraryLoadRef.current) return;
-      setRecords(all);
-      // Gallery status lives on the server; ask only for shares that can be listed.
-      for (const share of all.filter(canUseGallery)) {
-        void getGalleryStatus(share.id, share.deleteToken)
-          .then((state) => state, () => 'error' as const)
-          .then((state) => {
-            if (active && ticket === libraryLoadRef.current) {
-              setGalleryStates((current) => ({ ...current, [share.id]: state }));
-            }
-          });
-      }
+      if (active && ticket === libraryLoadRef.current) setRecords(all);
     }).catch(() => {
       if (active && ticket === libraryLoadRef.current) setLibraryError(copy.recoveryStorageUnavailable);
     }).finally(() => {
@@ -126,18 +119,31 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
     inFlightRef.current = true;
     setPublishing(true);
     setError('');
-    setGalleryOutcome(null);
+    setAfterPublish(null);
     try {
       const published = await publish(expiry);
       setResult(published);
-      if (submitToGallery && expiry === 'never' && !published.statusUnknown && !published.recoveryRequired) {
+      if (isSignedIn && !published.statusUnknown && !published.recoveryRequired) {
+        // Publishing is anonymous; the browser's removal key proves ownership
+        // so the share can be tied to the account straight away.
+        let linked = false;
+        let galleryOutcome: 'submitted' | 'failed' | null = null;
         try {
-          await requestGalleryListing(published.id, published.deleteToken);
-          setGalleryOutcome('submitted');
+          linked = (await claimShares(getToken, [published])).includes(published.id);
         } catch {
-          // The share itself is live; the creator can resubmit from My shares.
-          setGalleryOutcome('failed');
+          linked = false;
         }
+        if (submitToGallery && expiry === 'never') {
+          try {
+            if (!linked) throw new Error('NOT_LINKED');
+            await requestGalleryListing(getToken, published.id);
+            galleryOutcome = 'submitted';
+          } catch {
+            // The share itself is live; the creator can resubmit from My shares.
+            galleryOutcome = 'failed';
+          }
+        }
+        setAfterPublish({ linked, gallery: galleryOutcome });
       }
     } catch (caught) {
       const code = caught instanceof Error ? caught.message : '';
@@ -261,23 +267,6 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
     }
   };
 
-  const handleGalleryToggle = async (share: LocalShare, state: GalleryOwnerState) => {
-    if (galleryBusy || libraryAction) return;
-    setGalleryBusy(share.id);
-    setLibraryError('');
-    try {
-      const next = state.status === 'pending' || state.status === 'listed'
-        ? await withdrawGalleryListing(share.id, share.deleteToken)
-        : await requestGalleryListing(share.id, share.deleteToken);
-      setGalleryStates((current) => ({ ...current, [share.id]: next }));
-    } catch (caught) {
-      setLibraryError(caught instanceof Error && caught.message === 'NOT_PERMANENT'
-        ? gallery.needsPermanent : gallery.actionFailed);
-    } finally {
-      setGalleryBusy('');
-    }
-  };
-
   const handleCopyLocal = async (value: string, revealId?: string) => {
     try { await navigator.clipboard.writeText(value); }
     catch {
@@ -324,26 +313,40 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
         {!showLibrary && !result && !revoked ? (
           <label className="mb-4 flex items-start gap-3 rounded-xl border border-(--app-accent-200) px-3 py-3 text-sm text-(--app-accent-800)">
             <input type="checkbox" className="mt-1 h-4 w-4 shrink-0"
-              checked={submitToGallery && expiry === 'never'} disabled={publishing || expiry !== 'never'}
+              checked={submitToGallery && isSignedIn && expiry === 'never'}
+              disabled={publishing || !isSignedIn || expiry !== 'never'}
               onChange={(event) => setSubmitToGallery(event.target.checked)} />
             <span>
               <span className="block font-medium">{gallery.submit}</span>
               <span className="mt-1 block text-xs leading-5 text-(--app-accent-600)">
-                {expiry === 'never' ? gallery.submitHint : gallery.needsPermanent}
+                {!isSignedIn ? gallery.loginToSubmit : expiry === 'never' ? gallery.submitHint : gallery.needsPermanent}
               </span>
             </span>
           </label>
         ) : null}
         {showLibrary ? (
           <div className="space-y-4">
-            <p className="text-xs leading-5 text-(--app-accent-600)">{copy.libraryLocalOnly}</p>
+            <div className="max-h-[60vh] space-y-5 overflow-y-auto">
+            {isSignedIn ? (
+              <AccountShareList language={language} onAccountIds={setAccountIds} disabled={!!libraryAction} />
+            ) : (
+              <p className="rounded-xl border border-(--app-accent-200) bg-(--app-accent-50) px-3 py-2 text-xs leading-5 text-(--app-accent-800)">
+                {gallery.accountHint}
+              </p>
+            )}
+            {isSignedIn && localRecords.length > 0 ? (
+              <h3 className="text-sm font-semibold text-(--app-accent-900)">{gallery.localOnlyTitle}</h3>
+            ) : null}
+            {!isSignedIn || localRecords.length > 0 ? (
+              <p className="text-xs leading-5 text-(--app-accent-600)">{copy.libraryLocalOnly}</p>
+            ) : null}
             {libraryBusy ? <p role="status" className="text-sm text-(--app-accent-700)">{copy.loading}</p> : null}
             {libraryError ? <p role="alert" className="text-sm text-red-700">{libraryError}</p> : null}
-            {!libraryBusy && records.length === 0 ? (
+            {!isSignedIn && !libraryBusy && records.length === 0 ? (
               <p className="rounded-xl border border-(--app-accent-200) p-4 text-sm text-(--app-accent-700)">{copy.libraryEmpty}</p>
             ) : null}
-            <div className="max-h-[50vh] space-y-3 overflow-y-auto">
-              {records.map((share) => (
+            <div className="space-y-3">
+              {localRecords.map((share) => (
                 <div key={share.id} className="space-y-2 rounded-xl border border-(--app-accent-200) bg-white/75 p-3">
                   <div className="flex items-start justify-between gap-2">
                     <p className="min-w-0 truncate font-medium text-(--app-accent-900)">
@@ -361,8 +364,6 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
                   <div className="flex flex-wrap gap-2">
                     <button type="button" onClick={() => void handleCopyLocal(new URL('/s/' + share.id, window.location.origin).toString())}
                       className="app-button-secondary rounded-lg px-3 py-2 text-xs">{copy.copy}</button>
-                    <button type="button" onClick={() => void handleCopyLocal(share.deleteToken, share.id)}
-                      className="app-button-secondary rounded-lg px-3 py-2 text-xs">{copy.recoveryCopy}</button>
                     <button type="button" disabled={!!libraryAction} onClick={() => void handleCheckLocal(share)}
                       className="app-button-secondary rounded-lg px-3 py-2 text-xs disabled:opacity-50">
                       {libraryAction === share.id ? copy.loading : copy.libraryCheck}
@@ -370,15 +371,11 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
                     <button type="button" disabled={!!libraryAction} onClick={() => void handleRemoveLocal(share)}
                       className="rounded-lg border border-red-200 px-3 py-2 text-xs text-red-800 disabled:opacity-50">{copy.revoke}</button>
                   </div>
-                  {canUseGallery(share) ? (
-                    <GalleryRow
-                      state={galleryStates[share.id]}
-                      busy={galleryBusy === share.id}
-                      disabled={!!galleryBusy || !!libraryAction}
-                      copy={gallery}
-                      onToggle={(state) => void handleGalleryToggle(share, state)}
-                    />
-                  ) : null}
+                  <details className="text-xs text-(--app-accent-700)">
+                    <summary className="cursor-pointer select-none">{gallery.advancedKey}</summary>
+                    <button type="button" onClick={() => void handleCopyLocal(share.deleteToken, share.id)}
+                      className="app-button-secondary mt-2 rounded-lg px-3 py-2 text-xs">{copy.recoveryCopy}</button>
+                  </details>
                   {exposedKey === share.id ? (
                     <label className="block text-xs text-(--app-accent-700)">
                       {copy.recoveryKey}
@@ -389,6 +386,7 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
                   ) : null}
                 </div>
               ))}
+            </div>
             </div>
             <button type="button" disabled={!!libraryAction}
               onClick={() => {
@@ -469,15 +467,19 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
                 {copied ? <Check size={16} /> : <Copy size={16} />}{copied ? copy.copied : copy.copy}
               </button>
             </div>
-            {galleryOutcome ? (
-              <p role="status" className={'rounded-xl border px-4 py-3 text-sm leading-6 '
-                + (galleryOutcome === 'submitted'
+            {afterPublish ? (
+              <div role="status" className={'space-y-1 rounded-xl border px-4 py-3 text-sm leading-6 '
+                + (afterPublish.linked && afterPublish.gallery !== 'failed'
                   ? 'border-(--app-accent-200) bg-(--app-accent-50) text-(--app-accent-800)'
                   : 'border-amber-300 bg-amber-50 text-amber-950')}>
-                {galleryOutcome === 'submitted' ? gallery.submitted : gallery.submitFailed}
-              </p>
-            ) : null}
-            <p className="text-xs leading-5 text-(--app-accent-600)">{copy.localManage}</p>
+                <p>{afterPublish.linked ? gallery.linked : gallery.linkFailed}</p>
+                {afterPublish.gallery ? (
+                  <p>{afterPublish.gallery === 'submitted' ? gallery.submitted : gallery.submitFailed}</p>
+                ) : null}
+              </div>
+            ) : (
+              <p className="text-xs leading-5 text-(--app-accent-600)">{copy.localManage}</p>
+            )}
             <button type="button" onClick={() => setShowLibrary(true)}
               className="app-button-secondary w-full rounded-xl px-4 py-3 text-sm font-semibold">{copy.manageShares}</button>
             <a href={result.url} target="_blank" rel="noopener noreferrer"
@@ -507,31 +509,3 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
   );
 }
 
-/** Expiring shares can never be listed; older records without an expiry were permanent. */
-function canUseGallery(share: LocalShare): boolean {
-  return share.state === 'published' && (share.expiry ?? 'never') === 'never';
-}
-
-function GalleryRow({ state, busy, disabled, copy, onToggle }: {
-  state: GalleryOwnerState | 'error' | undefined;
-  busy: boolean;
-  disabled: boolean;
-  copy: (typeof galleryCopy)[keyof typeof galleryCopy];
-  onToggle: (state: GalleryOwnerState) => void;
-}) {
-  const known = state && state !== 'error' ? state : null;
-  const label = state === 'error' ? copy.actionFailed
-    : known ? (known.eligible ? copy.status[known.status] : copy.notEligible) : copy.loading;
-  const inGallery = known?.status === 'pending' || known?.status === 'listed';
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-(--app-accent-50) px-3 py-2 text-xs text-(--app-accent-800)">
-      <span>{copy.label}: {label}</span>
-      {known && known.eligible && known.status !== 'rejected' ? (
-        <button type="button" disabled={disabled} onClick={() => onToggle(known)}
-          className="app-button-secondary rounded-lg px-3 py-1.5 text-xs disabled:opacity-50">
-          {busy ? copy.loading : inGallery ? copy.withdraw : copy.request}
-        </button>
-      ) : null}
-    </div>
-  );
-}

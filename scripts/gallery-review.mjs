@@ -139,6 +139,9 @@ function describe(row, origin) {
     `  《${clean(row.title) || '无题'}》${row.author ? ' · ' + clean(row.author) : ''}`,
     `  ID        ${id}`,
   ];
+  if (row.owner_user_id !== undefined) {
+    lines.push(`  账号      ${row.owner_user_id ? clean(row.owner_user_id) + (row.owner_email ? '（' + clean(row.owner_email) + '）' : '') : '匿名'}`);
+  }
   if (row.gallery_status !== undefined) lines.push(`  图库状态  ${STATUS_LABEL[/** @type {keyof typeof STATUS_LABEL} */ (row.gallery_status)] ?? '未申请'}`);
   if (row.published_at) lines.push(`  发布时间  ${clean(row.published_at)} UTC`);
   if (row.gallery_requested_at) lines.push(`  申请时间  ${clean(row.gallery_requested_at)} UTC`);
@@ -274,7 +277,7 @@ async function run(options) {
       return;
     }
     case 'approve':
-      console.log(`已通过 ${d1Changes(options, sql.approve(options.ids))} / ${options.ids.length} 件（只处理待审核、仍有效的永久作品）。`);
+      console.log(`已通过 ${d1Changes(options, sql.approve(options.ids))} / ${options.ids.length} 件（只处理待审核、仍有效、属于登录账号的永久作品）。`);
       return;
     case 'reject':
       console.log(`已拒绝 ${d1Changes(options, sql.reject(options.ids))} / ${options.ids.length} 件（只处理待审核或已入库的作品）。`);

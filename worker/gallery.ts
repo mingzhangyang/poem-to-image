@@ -6,14 +6,13 @@ import { hasAllowedOrigin, imagePath, isShareId, tokenHash } from './shares';
 /**
  * Public gallery of shared artworks.
  *
- * A share is listed only when (1) its creator asks for it with the private
- * removal key, (2) the share is permanent (`expiry_policy = 'never'`), and
- * (3) a maintainer approves it with `scripts/gallery-review.mjs`. Revoking
- * the share removes it from the gallery, because every gallery query also
- * requires a live, published row.
+ * A share is listed only when (1) it belongs to a signed-in account whose
+ * owner submits it (`worker/accountShares.ts`), (2) it is permanent
+ * (`expiry_policy = 'never'`), and (3) a maintainer approves it with
+ * `scripts/gallery-review.mjs`. Revoking the share removes it from the
+ * gallery, because every gallery query also requires a live, published row.
  */
 
-export type GalleryStatus = 'none' | 'pending' | 'listed' | 'rejected';
 export const GALLERY_PAGE_SIZE = 24;
 const MAX_GALLERY_PAGE_SIZE = 48;
 /** Distinct reporters needed to pull a listed artwork back into review. */
@@ -22,16 +21,6 @@ const REPORT_REASONS = ['copyright', 'privacy', 'inappropriate', 'other'] as con
 type ReportReason = (typeof REPORT_REASONS)[number];
 const REPORT_BODY_LIMIT = 1024;
 const TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
-
-interface OwnedShareRow {
-  id: string;
-  delete_token_hash: string;
-  published_at: string | null;
-  revoked_at: string | null;
-  expiry_policy: string;
-  expires_at: string | null;
-  gallery_status: 'pending' | 'listed' | 'rejected' | null;
-}
 
 interface GalleryRow {
   id: string;
@@ -47,68 +36,6 @@ function available(env: WorkerEnv): boolean {
 
 function notFound(): Response {
   return jsonResponse({ error: 'Artwork not found.', code: 'NOT_FOUND' }, 404);
-}
-
-function isPermanent(row: Pick<OwnedShareRow, 'expiry_policy' | 'expires_at'>): boolean {
-  return row.expiry_policy === 'never' && row.expires_at === null;
-}
-
-function statusOf(row: Pick<OwnedShareRow, 'gallery_status'>): GalleryStatus {
-  return row.gallery_status ?? 'none';
-}
-
-async function findOwnedShare(env: WorkerEnv, id: string, token: string): Promise<OwnedShareRow | null> {
-  if (!isShareId(id) || !/^[a-f0-9]{64}$/.test(token)) return null;
-  const row = await env.DB.prepare(
-    `SELECT id, delete_token_hash, published_at, revoked_at, expiry_policy, expires_at, gallery_status
-     FROM shared_artworks WHERE id = ?`,
-  ).bind(id).first<OwnedShareRow>();
-  if (!row || row.revoked_at || !row.published_at) return null;
-  if (row.delete_token_hash !== await tokenHash(token)) return null;
-  return row;
-}
-
-function ownerStatus(row: OwnedShareRow): Response {
-  return jsonResponse({ status: statusOf(row), eligible: isPermanent(row) });
-}
-
-/**
- * `GET|PUT|DELETE /api/shares/:id/gallery` with the private
- * `X-Share-Delete-Token` header: read, request or withdraw a gallery listing.
- */
-export async function handleShareGallery(request: Request, env: WorkerEnv, id: string): Promise<Response> {
-  if (!['GET', 'PUT', 'DELETE'].includes(request.method)) return methodNotAllowed(['GET', 'PUT', 'DELETE']);
-  if (!available(env)) return jsonResponse({ error: 'Sharing is not configured.' }, 503);
-  if (!hasAllowedOrigin(request)) return jsonResponse({ error: 'Invalid origin.' }, 403);
-  const token = request.headers.get('X-Share-Delete-Token') ?? '';
-  const row = await findOwnedShare(env, id, token);
-  if (!row) return notFound();
-  if (request.method === 'GET') return ownerStatus(row);
-
-  if (request.method === 'PUT') {
-    if (!isPermanent(row)) {
-      return jsonResponse({
-        error: 'Only permanent shares can be submitted to the gallery.',
-        code: 'SHARE_NOT_PERMANENT',
-      }, 409);
-    }
-    // A rejected or already-listed artwork keeps its status: resubmitting
-    // must not put a rejected artwork back into the review queue.
-    await env.DB.prepare(
-      `UPDATE shared_artworks
-       SET gallery_status = 'pending', gallery_requested_at = CURRENT_TIMESTAMP
-       WHERE id = ? AND delete_token_hash = ? AND revoked_at IS NULL AND published_at IS NOT NULL
-         AND expiry_policy = 'never' AND expires_at IS NULL AND gallery_status IS NULL`,
-    ).bind(id, row.delete_token_hash).run();
-  } else {
-    await env.DB.prepare(
-      `UPDATE shared_artworks
-       SET gallery_status = NULL, gallery_requested_at = NULL, gallery_listed_at = NULL
-       WHERE id = ? AND delete_token_hash = ? AND gallery_status IN ('pending', 'listed')`,
-    ).bind(id, row.delete_token_hash).run();
-  }
-  const updated = await findOwnedShare(env, id, token);
-  return updated ? ownerStatus(updated) : notFound();
 }
 
 function encodeCursor(row: GalleryRow): string {

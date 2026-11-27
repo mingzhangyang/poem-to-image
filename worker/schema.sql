@@ -98,7 +98,8 @@ CREATE TABLE IF NOT EXISTS shared_artworks (
   gallery_status TEXT CHECK (gallery_status IN ('pending', 'listed', 'rejected')),
   gallery_requested_at TEXT,
   gallery_listed_at TEXT,
-  gallery_reviewed_at TEXT
+  gallery_reviewed_at TEXT,
+  owner_user_id TEXT
 );
 
 CREATE TABLE IF NOT EXISTS rate_limits (
@@ -158,3 +159,8 @@ CREATE TABLE IF NOT EXISTS share_reports (
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (share_id, reporter_hash)
 );
+
+-- Account ownership of shares (migration 0008).
+CREATE INDEX IF NOT EXISTS idx_shared_artworks_owner
+  ON shared_artworks(owner_user_id, published_at)
+  WHERE owner_user_id IS NOT NULL;
