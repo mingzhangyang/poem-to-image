@@ -31,10 +31,12 @@ function rowLimit(limit) {
 const LIVE = 'published_at IS NOT NULL AND revoked_at IS NULL';
 const PERMANENT = "expiry_policy = 'never' AND expires_at IS NULL";
 const OWNER = 'owner_user_id, (SELECT u.email FROM users u WHERE u.id = s.owner_user_id) AS owner_email';
-// A review (approve, reject, remove or dismiss) sets gallery_reviewed_at and
-// so resolves every report filed before it; reports are never deleted here.
+// Every review (approve, reject, remove or dismiss) increments the share's
+// gallery_review_generation in the same UPDATE, which resolves every report
+// filed under the previous generation; reports are never deleted here.
 // Keep this in step with the report threshold in worker/gallery.ts.
-const OPEN_REPORT = 'r.share_id = s.id AND (s.gallery_reviewed_at IS NULL OR r.created_at >= s.gallery_reviewed_at)';
+const OPEN_REPORT = 'r.share_id = s.id AND r.review_generation = s.gallery_review_generation';
+const REVIEWED = 'gallery_reviewed_at = CURRENT_TIMESTAMP, gallery_review_generation = gallery_review_generation + 1';
 const REPORT_COUNT = `(SELECT COUNT(*) FROM share_reports r WHERE ${OPEN_REPORT})`;
 const REPORT_REASONS = `(SELECT GROUP_CONCAT(DISTINCT r.reason) FROM share_reports r WHERE ${OPEN_REPORT})`;
 // Every write ends in RETURNING: local wrangler does not report
@@ -89,7 +91,7 @@ export const sql = {
       `UPDATE shared_artworks
        SET gallery_status = 'listed',
            gallery_listed_at = COALESCE(gallery_listed_at, CURRENT_TIMESTAMP),
-           gallery_reviewed_at = CURRENT_TIMESTAMP
+           ${REVIEWED}
        WHERE id IN (${idList(ids)}) AND gallery_status = 'pending' AND ${LIVE} AND ${PERMANENT}
          AND owner_user_id IS NOT NULL
        RETURNING id`,
@@ -105,7 +107,7 @@ export const sql = {
     return [
       `UPDATE shared_artworks
        SET gallery_status = 'rejected', gallery_listed_at = NULL,
-           gallery_reviewed_at = CURRENT_TIMESTAMP
+           ${REVIEWED}
        WHERE id IN (${idList(ids)}) AND gallery_status IN ('pending', 'listed') AND ${LIVE}
        RETURNING id`,
     ];
@@ -121,7 +123,7 @@ export const sql = {
       `UPDATE shared_artworks
        SET revoked_at = CURRENT_TIMESTAMP, title = '', author = '',
            gallery_status = NULL, gallery_listed_at = NULL,
-           gallery_reviewed_at = CURRENT_TIMESTAMP,
+           ${REVIEWED},
            assets_deleted_at = CASE WHEN image_key IS NULL AND card_key IS NULL
              THEN CURRENT_TIMESTAMP ELSE assets_deleted_at END
        WHERE id IN (${idList(ids)}) AND revoked_at IS NULL
@@ -135,10 +137,10 @@ export const sql = {
    */
   dismissReports(ids) {
     return [
-      `UPDATE shared_artworks SET gallery_reviewed_at = CURRENT_TIMESTAMP
+      `UPDATE shared_artworks SET ${REVIEWED}
        WHERE id IN (${idList(ids)}) AND ${LIVE}
          AND EXISTS (SELECT 1 FROM share_reports r WHERE r.share_id = shared_artworks.id
-           AND (shared_artworks.gallery_reviewed_at IS NULL OR r.created_at >= shared_artworks.gallery_reviewed_at))
+           AND r.review_generation = shared_artworks.gallery_review_generation)
        RETURNING id`,
     ];
   },

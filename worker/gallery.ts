@@ -131,25 +131,28 @@ export async function reportShare(request: Request, env: WorkerEnv, id: string):
 
   const address = request.headers.get('CF-Connecting-IP') || 'unknown';
   const reporter = await tokenHash('inkpoem-report:' + id + ':' + address);
-  // A report is open until a maintainer reviews the share (approve, reject,
-  // remove or dismiss set gallery_reviewed_at). One open report per visitor;
-  // a visitor whose earlier report was resolved can report again.
-  const inserted = await env.DB.prepare(
-    `INSERT INTO share_reports (share_id, reporter_hash, reason) VALUES (?, ?, ?)
-     ON CONFLICT (share_id, reporter_hash) DO UPDATE
-       SET reason = excluded.reason, created_at = CURRENT_TIMESTAMP
-       WHERE share_reports.created_at < COALESCE(
-         (SELECT gallery_reviewed_at FROM shared_artworks WHERE id = share_reports.share_id), '')`,
-  ).bind(id, reporter, reason).run();
-  if (inserted.meta.changes === 1) {
-    await env.DB.prepare(
+  // A report is open while its review_generation equals the share's
+  // gallery_review_generation; every maintainer review increments the latter.
+  // One open report per visitor: a repeat is ignored, while a report a review
+  // already resolved is reopened under the current generation.
+  // The report and the threshold check run as one atomic batch, and the check
+  // runs on every report, so a retry also repairs an interrupted earlier one.
+  await env.DB.batch([
+    env.DB.prepare(
+      `INSERT INTO share_reports (share_id, reporter_hash, reason, review_generation)
+       VALUES (?, ?, ?, (SELECT gallery_review_generation FROM shared_artworks WHERE id = ?))
+       ON CONFLICT (share_id, reporter_hash) DO UPDATE
+         SET reason = excluded.reason, created_at = CURRENT_TIMESTAMP,
+             review_generation = excluded.review_generation
+         WHERE share_reports.review_generation < excluded.review_generation`,
+    ).bind(id, reporter, reason, id),
+    env.DB.prepare(
       `UPDATE shared_artworks SET gallery_status = 'pending'
        WHERE id = ? AND gallery_status = 'listed'
          AND (SELECT COUNT(*) FROM share_reports r WHERE r.share_id = shared_artworks.id
-           AND (shared_artworks.gallery_reviewed_at IS NULL
-             OR r.created_at >= shared_artworks.gallery_reviewed_at)) >= ?`,
-    ).bind(id, GALLERY_REPORT_HIDE_THRESHOLD).run();
-  }
+           AND r.review_generation = shared_artworks.gallery_review_generation) >= ?`,
+    ).bind(id, GALLERY_REPORT_HIDE_THRESHOLD),
+  ]);
   // The same answer for a first and a repeated report from one visitor.
   return jsonResponse({ received: true }, 202);
 }

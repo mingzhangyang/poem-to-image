@@ -67,12 +67,12 @@ export async function getShareReadiness(request: Request, env: WorkerEnv): Promi
               delete_token_hash, content_fingerprint, created_at,
               published_at, revoked_at, assets_deleted_at, expiry_policy, expires_at,
               gallery_status, gallery_requested_at, gallery_listed_at, gallery_reviewed_at,
-              owner_user_id
+              owner_user_id, gallery_review_generation
        FROM shared_artworks LIMIT 1`,
     ).all();
     // The public gallery and visitor reports (migration 0007).
     await env.DB.prepare(
-      'SELECT share_id, reporter_hash, reason, created_at FROM share_reports LIMIT 1',
+      'SELECT share_id, reporter_hash, reason, created_at, review_generation FROM share_reports LIMIT 1',
     ).all();
     await env.DB.prepare(
       `SELECT attempt_id, share_id, image_key, card_key, created_at

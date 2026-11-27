@@ -99,7 +99,8 @@ CREATE TABLE IF NOT EXISTS shared_artworks (
   gallery_requested_at TEXT,
   gallery_listed_at TEXT,
   gallery_reviewed_at TEXT,
-  owner_user_id TEXT
+  owner_user_id TEXT,
+  gallery_review_generation INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS rate_limits (
@@ -157,6 +158,7 @@ CREATE TABLE IF NOT EXISTS share_reports (
   reporter_hash TEXT NOT NULL,
   reason TEXT NOT NULL CHECK (reason IN ('copyright', 'privacy', 'inappropriate', 'other')),
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  review_generation INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (share_id, reporter_hash)
 );
 

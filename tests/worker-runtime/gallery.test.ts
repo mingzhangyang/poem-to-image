@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { runOperationalChecks } from '../../worker/maintenance';
 import { GALLERY_REPORT_HIDE_THRESHOLD } from '../../worker/gallery';
 import { routeAccountShares } from '../../worker/accountShares';
+import { tokenHash } from '../../worker/shares';
 import { sql } from '../../scripts/gallery-review-sql.mjs';
 import type { WorkerEnv } from '../../worker/env';
 
@@ -81,21 +82,6 @@ async function submitted(title: string): Promise<Share> {
   expect(await claim([share])).toEqual([share.id]);
   expect((await gallery(share, 'PUT')).status).toBe(200);
   return share;
-}
-
-/**
- * D1 timestamps have one-second resolution, and a report filed in the same
- * second as a review stays open. Move existing reports (and optionally the
- * last review) into the past so a review in this test resolves them.
- */
-async function ageReports(id?: string) {
-  await env.DB.prepare("UPDATE share_reports SET created_at = datetime('now', '-2 minutes')"
-    + (id ? ' WHERE share_id = ?' : '')).bind(...(id ? [id] : [])).run();
-}
-
-async function ageReview(id: string) {
-  await env.DB.prepare("UPDATE shared_artworks SET gallery_reviewed_at = datetime('now', '-5 minutes') WHERE id = ?")
-    .bind(id).run();
 }
 
 async function openReports(): Promise<{ id: string; report_count: number }[]> {
@@ -272,7 +258,6 @@ describe('public gallery', () => {
     expect(pending[0]!.gallery_listed_at).not.toBeNull();
 
     // Approving again resolves the reports and restores the original position.
-    await ageReports();
     await review(sql.approve([share.id]));
     expect((await listedIds()).ids).toEqual([share.id]);
     expect(await openReports()).toEqual([]);
@@ -285,7 +270,6 @@ describe('public gallery', () => {
   it('approve leaves an already-listed share and its new reports alone, also in a mixed batch', async () => {
     const listed = await submitted('Already listed');
     await review(sql.approve([listed.id]));
-    await ageReview(listed.id);
     const pending = await submitted('Waiting');
     expect((await report(listed.id, 'copyright', '203.0.113.50')).status).toBe(202);
 
@@ -302,9 +286,7 @@ describe('public gallery', () => {
   it('dismiss resolves reports without changing the listing, and maintenance prunes them', async () => {
     const share = await submitted('Dismissed');
     await review(sql.approve([share.id]));
-    await ageReview(share.id);
     await report(share.id, 'other', '203.0.113.60');
-    await ageReports(share.id);
     const dismissed = await env.DB.prepare(sql.dismissReports([share.id])[0]!).all<{ id: string }>();
     expect(dismissed.results.map((row) => row.id)).toEqual([share.id]);
     expect(await openReports()).toEqual([]);
@@ -313,6 +295,60 @@ describe('public gallery', () => {
     await runOperationalChecks(env as unknown as WorkerEnv);
     const count = await env.DB.prepare('SELECT COUNT(*) AS n FROM share_reports').first<{ n: number }>();
     expect(count?.n).toBe(0);
+  });
+
+  it('orders reports and reviews by write order, even within the same second', async () => {
+    const share = await submitted('Same second');
+    await review(sql.approve([share.id]));
+    // Report, review and report again with no delay: D1 timestamps cannot
+    // tell these apart, the review generation can.
+    await report(share.id, 'copyright', '203.0.113.70');
+    await report(share.id, 'privacy', '203.0.113.71');
+    await review(sql.dismissReports([share.id]));
+    expect(await openReports()).toEqual([]);
+
+    await report(share.id, 'other', '203.0.113.72');
+    // A visitor whose report was just resolved can report again at once.
+    await report(share.id, 'other', '203.0.113.70');
+    expect(await openReports()).toEqual([expect.objectContaining({ id: share.id, report_count: 2 })]);
+    // The resolved report from .71 does not count towards hiding the share.
+    expect((await listedIds()).ids).toEqual([share.id]);
+
+    // A newly approved share is not pulled back by reports resolved by that approval.
+    await report(share.id, 'other', '203.0.113.73');
+    expect((await listedIds()).ids).toEqual([]);
+    await review(sql.approve([share.id]));
+    expect((await listedIds()).ids).toEqual([share.id]);
+    await report(share.id, 'other', '203.0.113.70');
+    expect((await listedIds()).ids).toEqual([share.id]);
+    expect(await openReports()).toEqual([expect.objectContaining({ id: share.id, report_count: 1 })]);
+
+    // Maintenance prunes exactly the resolved reports.
+    await runOperationalChecks(env as unknown as WorkerEnv);
+    const remaining = await env.DB.prepare('SELECT COUNT(*) AS n FROM share_reports').first<{ n: number }>();
+    expect(remaining?.n).toBe(1);
+  });
+
+  it('a repeated report repairs a threshold transition that did not complete', async () => {
+    const share = await submitted('Interrupted');
+    await review(sql.approve([share.id]));
+    // Simulate an earlier request that stored the third report but stopped
+    // before hiding the share.
+    const generation = (await env.DB.prepare('SELECT gallery_review_generation AS g FROM shared_artworks WHERE id = ?')
+      .bind(share.id).first<{ g: number }>())!.g;
+    const visitors = Array.from({ length: GALLERY_REPORT_HIDE_THRESHOLD }, (_, i) => '192.0.2.' + (200 + i));
+    for (const ip of visitors) {
+      await env.DB.prepare(
+        "INSERT INTO share_reports (share_id, reporter_hash, reason, review_generation) VALUES (?, ?, 'other', ?)",
+      ).bind(share.id, await tokenHash('inkpoem-report:' + share.id + ':' + ip), generation).run();
+    }
+    expect((await listedIds()).ids).toEqual([share.id]);
+
+    // The last visitor retries: no new row, but the threshold is re-evaluated.
+    expect((await report(share.id, 'other', visitors.at(-1)!)).status).toBe(202);
+    const count = await env.DB.prepare('SELECT COUNT(*) AS n FROM share_reports').first<{ n: number }>();
+    expect(count?.n).toBe(GALLERY_REPORT_HIDE_THRESHOLD);
+    expect((await listedIds()).ids).toEqual([]);
   });
 
   it('validates reports and rate-limits each visitor', async () => {

@@ -42,8 +42,8 @@ it should succeed even if no prior POST reached the Worker.
    ```
    HTTP 200 with `{"ready":true}` confirms the live Worker can query
    the `shared_artworks`, `shared_artwork_upload_attempts`, `share_reports`
-   and `rate_limits` tables (including `published_at`, the gallery columns
-   and `owner_user_id`) and access the private
+   and `rate_limits` tables (including `published_at`, the gallery columns,
+   `owner_user_id` and the review generations) and access the private
    R2 bucket. The rate-limit table matters to both first-time POST and
    DELETE of an unseen ID; without it, both mutations can fail while
    a public share page still returns a normal 404. HTTP
@@ -55,7 +55,8 @@ it should succeed even if no prior POST reached the Worker.
    npx wrangler r2 bucket list
    npx wrangler d1 migrations list DB --remote --config wrangler.jsonc
    # Confirm 0002 (rate_limits), 0005 (shared_artworks), 0007 (gallery
-   # columns and share_reports) and 0008 (owner_user_id).
+   # columns and share_reports), 0008 (owner_user_id) and 0009 (report
+   # review generations).
    # Only if numbered migrations are pending:
    npx wrangler d1 migrations apply DB --remote --config wrangler.jsonc
    ```
@@ -163,7 +164,7 @@ Creators can opt in to show a share in the public gallery. Nothing is listed wit
 - **Only permanent shares.** The Worker refuses requests for shares with a 7-day or 30-day expiration (`409 SHARE_NOT_PERMANENT`), and the review script will not approve them.
 - **Owner endpoints.** `PUT|DELETE /api/me/shares/:id/gallery` request or withdraw a listing for a share the signed-in account owns, and return `{ status, eligible }`, where `status` is `none`, `pending`, `listed` or `rejected`. A rejected share keeps that status: neither a new request nor a withdrawal puts it back in the queue. Account endpoints are rate-limited to 30 requests a minute per user.
 - **Public listing.** `GET /api/gallery?cursor=&limit=` returns approved shares, newest approval first, 24 per page by default (at most 48), with an opaque `nextCursor`. Every query also requires a published, unrevoked, permanent row, so revoking a share removes it from the gallery at once. Thumbnails are the existing `card.jpg` social previews.
-- **Reports.** Every share page has a **Report this artwork** control for visitors who do not hold the removal key. `POST /api/shares/:id/report` takes `{ "reason": "copyright" | "privacy" | "inappropriate" | "other" }` and returns `202` whether or not the visitor had already reported it. Each visitor counts once per share (a per-share salted hash of `CF-Connecting-IP`), and reports are rate-limited per network to 10 an hour and 30 a day. A report stays open until a maintainer next reviews the share (approve, reject, remove or dismiss), which records `gallery_reviewed_at`; reports filed before that time are resolved, and a visitor whose report was resolved can report again. When three distinct visitors have open reports on a listed share, it goes back to `pending` and drops out of the gallery until reviewed; the share link stays up. The hourly maintenance run deletes resolved reports and reports of revoked shares.
+- **Reports.** Every share page has a **Report this artwork** control for visitors who do not hold the removal key. `POST /api/shares/:id/report` takes `{ "reason": "copyright" | "privacy" | "inappropriate" | "other" }` and returns `202` whether or not the visitor had already reported it. Each visitor counts once per share (a per-share salted hash of `CF-Connecting-IP`), and reports are rate-limited per network to 10 an hour and 30 a day. A report stays open until a maintainer next reviews the share (approve, reject, remove or dismiss). Each review increments the share's `gallery_review_generation` in the same statement, and each report records the generation current when it was filed, so write order decides which reports a review resolved, even within the same second (migration `0009_share_report_generations.sql`). A visitor whose report was resolved can report again. When three distinct visitors have open reports on a listed share, it goes back to `pending` and drops out of the gallery until reviewed; the share link stays up. Storing a report and checking this threshold run as one atomic D1 batch, and the check runs on every report, so a repeated report also completes a check an earlier request did not finish. The hourly maintenance run deletes resolved reports and reports of revoked shares.
 - **Review.** Maintainers review with `npm run gallery:review` (see the [operations runbook](operations-runbook.md#public-gallery-review)). There is no admin API: the script runs SQL against D1 through wrangler with the maintainer's Cloudflare login. It shows each submission's account and email, and approves only account-owned shares.
 
 ## Privacy and abuse controls
