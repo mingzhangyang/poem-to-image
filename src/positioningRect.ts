@@ -118,6 +118,27 @@ export function getPreviewDragBounds(frameRect: PreviewPositioningRect, boxRect:
   };
 }
 
+/**
+ * Drag bounds for a box whose position is a point other than its centre,
+ * such as an ornament positioned by its image centre whose visible ink is
+ * off-centre. Keeps the whole box inside the frame; a box larger than the
+ * frame on an axis is centred on that axis.
+ */
+export function getAnchoredDragBounds(
+  frameRect: PreviewPositioningRect,
+  boxRect: Pick<DOMRect, 'left' | 'right' | 'top' | 'bottom'>,
+  anchor: { x: number; y: number },
+): DragBounds {
+  const axis = (before: number, after: number, frameSize: number) => {
+    const min = (Math.max(0, before) / frameSize) * 100;
+    const max = 100 - (Math.max(0, after) / frameSize) * 100;
+    return min <= max ? [min, max] : [(min + max) / 2, (min + max) / 2];
+  };
+  const [minPositionX, maxPositionX] = axis(anchor.x - boxRect.left, boxRect.right - anchor.x, frameRect.width);
+  const [minPositionY, maxPositionY] = axis(anchor.y - boxRect.top, boxRect.bottom - anchor.y, frameRect.height);
+  return { minPositionX, maxPositionX, minPositionY, maxPositionY };
+}
+
 const DEFAULT_DRAG_BOUNDS: DragBounds = {
   minPositionX: 0,
   maxPositionX: 100,

@@ -145,3 +145,54 @@ test('exports a Chinese autumn chrysanthemum card within 30 seconds', async ({ p
   await page.getByRole('dialog').getByRole('button', { name: '保存图片' }).click();
   expect((await downloading).suggestedFilename()).toMatch(/\.png$/);
 });
+
+test('drags a banded ornament until its visible ink touches the canvas edge', async ({ page }) => {
+  await page.route('**/api/billing/packages', route => route.fulfill({ json: { packages: [] } }));
+  await page.addInitScript(() => {
+    localStorage.setItem('poem-to-image.onboarding-dismissed', 'true');
+    localStorage.setItem('poem-to-image.language', 'en');
+  });
+  await page.goto('/');
+  const isMobile = await openOrnaments(page, { decorations: 'Decor', ornaments: 'Ornaments' });
+  await page.getByRole('button', { name: 'Greek Key Border', exact: true }).click();
+  if (isMobile) {
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#mobile-controls-drawer')).toBeHidden();
+  }
+
+  const image = page.locator('img[alt="Greek Key Border"]');
+  const layer = image.locator('..');
+  const imageBox = (await image.boundingBox())!;
+  const layerBox = (await layer.boundingBox())!;
+  // The box that is selected and dragged is the band, not the image's transparent square.
+  expect(layerBox.height).toBeLessThan(imageBox.height * 0.25);
+
+  // Ornaments are positioned inside the canvas padding, in their offset parent's padding box.
+  const canvas = await layer.evaluate(el => {
+    const frame = (el as HTMLElement).offsetParent as HTMLElement;
+    const rect = frame.getBoundingClientRect();
+    const scale = rect.width / frame.offsetWidth;
+    return {
+      x: rect.left + frame.clientLeft * scale,
+      y: rect.top + frame.clientTop * scale,
+      width: frame.clientWidth * scale,
+      height: frame.clientHeight * scale,
+    };
+  });
+  const dragTo = async (dx: number, dy: number) => {
+    const box = (await layer.boundingBox())!;
+    const x = box.x + box.width / 2;
+    const y = box.y + box.height / 2;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x + dx, y + dy, { steps: 6 });
+    await page.mouse.up();
+    return (await layer.boundingBox())!;
+  };
+  const top = await dragTo(0, -canvas.height);
+  expect(Math.abs(top.y - canvas.y)).toBeLessThan(2);
+  const bottom = await dragTo(0, canvas.height * 2);
+  expect(Math.abs(bottom.y + bottom.height - (canvas.y + canvas.height))).toBeLessThan(2);
+  const left = await dragTo(-canvas.width, 0);
+  expect(Math.abs(left.x - canvas.x)).toBeLessThan(2);
+});

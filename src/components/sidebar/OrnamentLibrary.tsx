@@ -1,5 +1,6 @@
 import { useContext, useEffect, useState } from 'react';
 import { ChevronDown, ChevronUp, Flower2 } from 'lucide-react';
+import { getOrnamentContentBox, getOrnamentContentExtents } from '../../ornaments/contentBox';
 import { OrnamentSelection } from '../../ornaments/selection';
 import manifest from '../../ornaments/manifest.json';
 import { getOrnamentName, ORNAMENT_CATEGORIES, ORNAMENT_MOODS, type OrnamentManifestItem } from '../../ornaments/taxonomy';
@@ -36,22 +37,26 @@ export function OrnamentLibrary({ t, decorations }: OrnamentLibraryProps) {
     if (selected) setExpanded(true);
   }, [selected]);
 
-  function position(anchor: string, size: number, rotation = 0) {
+  /** Places the ornament's visible ink, not its transparent margin, 3% inside the chosen corner or edge. */
+  function position(anchor: string, ornament: Pick<LogoConfig, 'ornamentId' | 'size' | 'rotation' | 'flipped'>) {
     const { width, height } = frame();
-    const radians = rotation * Math.PI / 180;
-    const half = size * (Math.abs(Math.sin(radians)) + Math.abs(Math.cos(radians))) / 2;
-    const x = Math.min(50, 3 + half / width * 100);
-    const y = Math.min(50, 3 + half / height * 100);
+    const reach = getOrnamentContentExtents(
+      getOrnamentContentBox(ornament.ornamentId, ornament.flipped), ornament.size, ornament.rotation,
+    );
+    const toPercent = (distance: number, frameSize: number) => Math.min(50, 3 + distance / frameSize * 100);
+    const centered = (before: number, after: number, frameSize: number) => 50 + (before - after) / 2 / frameSize * 100;
     return {
-      positionX: anchor.endsWith('l') ? x : anchor.endsWith('r') ? 100 - x : 50,
-      positionY: anchor.startsWith('t') ? y : anchor.startsWith('b') ? 100 - y : 50,
+      positionX: anchor.endsWith('l') ? toPercent(reach.left, width)
+        : anchor.endsWith('r') ? 100 - toPercent(reach.right, width) : centered(reach.left, reach.right, width),
+      positionY: anchor.startsWith('t') ? toPercent(reach.top, height)
+        : anchor.startsWith('b') ? 100 - toPercent(reach.bottom, height) : centered(reach.top, reach.bottom, height),
     };
   }
   function add(item: OrnamentManifestItem) {
     const { width, height } = frame();
     const size = Math.min(width, height) * item.default_scale;
     setSelected(decorations.onAddOrnament(item.file, {
-      ornamentId: item.id, size, ...position(item.default_anchor, size),
+      ornamentId: item.id, size, ...position(item.default_anchor, { ornamentId: item.id, size, rotation: 0 }),
     }));
   }
   function update(changes: Partial<LogoConfig>) {
@@ -123,7 +128,7 @@ export function OrnamentLibrary({ t, decorations }: OrnamentLibraryProps) {
               </select>
               <div className="flex flex-wrap gap-1">
                 {ANCHORS.map(([anchor, label]) => (
-                  <button type="button" key={anchor} className={chipClassName} onClick={() => update(position(anchor, active.size, active.rotation))}>{t(label)}</button>
+                  <button type="button" key={anchor} className={chipClassName} onClick={() => update(position(anchor, active))}>{t(label)}</button>
                 ))}
               </div>
               <label className="flex items-center justify-between gap-2">

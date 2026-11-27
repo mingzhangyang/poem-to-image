@@ -11,7 +11,13 @@
     ],
     "default_anchor": "br",
     "default_scale": 0.19,
-    "file": "/ornaments/chrysanthemum.webp"
+    "file": "/ornaments/chrysanthemum.webp",
+    "content": [
+      0.035,
+      0.047,
+      0.969,
+      0.968
+    ]
   },
   {
     "id": "plum-branch",
@@ -25,7 +31,13 @@
     ],
     "default_anchor": "tr",
     "default_scale": 0.24,
-    "file": "/ornaments/plum-branch.webp"
+    "file": "/ornaments/plum-branch.webp",
+    "content": [
+      0.008,
+      0.081,
+      0.965,
+      0.955
+    ]
   },
   {
     "id": "orchid",
@@ -38,7 +50,13 @@
     ],
     "default_anchor": "bl",
     "default_scale": 0.18,
-    "file": "/ornaments/orchid.webp"
+    "file": "/ornaments/orchid.webp",
+    "content": [
+      0.012,
+      0.048,
+      0.969,
+      0.967
+    ]
   },
   {
     "id": "lotus",
@@ -51,7 +69,13 @@
     ],
     "default_anchor": "br",
     "default_scale": 0.2,
-    "file": "/ornaments/lotus.webp"
+    "file": "/ornaments/lotus.webp",
+    "content": [
+      0.062,
+      0.068,
+      0.934,
+      0.945
+    ]
   },
   {
     "id": "bamboo",
@@ -64,7 +88,13 @@
     ],
     "default_anchor": "ml",
     "default_scale": 0.25,
-    "file": "/ornaments/bamboo.webp"
+    "file": "/ornaments/bamboo.webp",
+    "content": [
+      0.118,
+      0.031,
+      0.888,
+      0.984
+    ]
   },
   {
     "id": "maple-leaf",
@@ -77,7 +107,13 @@
     ],
     "default_anchor": "tl",
     "default_scale": 0.17,
-    "file": "/ornaments/maple-leaf.webp"
+    "file": "/ornaments/maple-leaf.webp",
+    "content": [
+      0.098,
+      0.08,
+      0.894,
+      0.907
+    ]
   },
   {
     "id": "wild-rose",
@@ -90,7 +126,13 @@
     ],
     "default_anchor": "tr",
     "default_scale": 0.2,
-    "file": "/ornaments/wild-rose.webp"
+    "file": "/ornaments/wild-rose.webp",
+    "content": [
+      0.118,
+      0.038,
+      0.883,
+      0.977
+    ]
   },
   {
     "id": "olive-sprig",
@@ -103,7 +145,13 @@
     ],
     "default_anchor": "bl",
     "default_scale": 0.18,
-    "file": "/ornaments/olive-sprig.webp"
+    "file": "/ornaments/olive-sprig.webp",
+    "content": [
+      0.033,
+      0.027,
+      0.978,
+      0.962
+    ]
   },
   {
     "id": "oak-acorns",
@@ -116,7 +164,13 @@
     ],
     "default_anchor": "tr",
     "default_scale": 0.19,
-    "file": "/ornaments/oak-acorns.webp"
+    "file": "/ornaments/oak-acorns.webp",
+    "content": [
+      0.044,
+      0.021,
+      0.954,
+      0.978
+    ]
   },
   {
     "id": "heather-sprig",
@@ -129,7 +183,13 @@
     ],
     "default_anchor": "bl",
     "default_scale": 0.19,
-    "file": "/ornaments/heather-sprig.webp"
+    "file": "/ornaments/heather-sprig.webp",
+    "content": [
+      0.121,
+      0.015,
+      0.876,
+      0.98
+    ]
   },
   {
     "id": "far-mountains",
@@ -143,7 +203,13 @@
     ],
     "default_anchor": "bc",
     "default_scale": 0.36,
-    "file": "/ornaments/far-mountains.webp"
+    "file": "/ornaments/far-mountains.webp",
+    "content": [
+      0.029,
+      0.429,
+      0.977,
+      0.646
+    ]
   },
   {
     "id": "full-moon",
@@ -157,7 +223,13 @@
     ],
     "default_anchor": "tr",
     "default_scale": 0.15,
-    "file": "/ornaments/full-moon.webp"
+    "file": "/ornaments/full-moon.webp",
+    "content": [
+      0.075,
+      0.091,
+      0.905,
+      0.929
+    ]
   },
   {
     "id": "swallows",
@@ -170,7 +242,13 @@
     ],
     "default_anchor": "tl",
     "default_scale": 0.21,
-    "file": "/ornaments/swallows.webp"
+    "file": "/ornaments/swallows.webp",
+    "content": [
+      0.031,
+      0,
+      0.946,
+      0.985
+    ]
   },
   {
     "id": "crane",
@@ -183,7 +261,13 @@
     ],
     "default_anchor": "mr",
     "default_scale": 0.23,
-    "file": "/ornaments/crane.webp"
+    "file": "/ornaments/crane.webp",
+    "content": [
+      0.21,
+      0.035,
+      0.771,
+      0.964
+    ]
   },
   {
     "id": "nightingale",
@@ -196,7 +280,13 @@
     ],
     "default_anchor": "tl",
     "default_scale": 0.18,
-    "file": "/ornaments/nightingale.webp"
+    "file": "/ornaments/nightingale.webp",
+    "content": [
+      0.083,
+      0.103,
+      0.867,
+      0.905
+    ]
   },
   {
     "id": "teapot",
@@ -209,7 +299,13 @@
     ],
     "default_anchor": "br",
     "default_scale": 0.18,
-    "file": "/ornaments/teapot.webp"
+    "file": "/ornaments/teapot.webp",
+    "content": [
+      0.067,
+      0.208,
+      0.975,
+      0.825
+    ]
   },
   {
     "id": "lantern",
@@ -222,7 +318,13 @@
     ],
     "default_anchor": "tr",
     "default_scale": 0.18,
-    "file": "/ornaments/lantern.webp"
+    "file": "/ornaments/lantern.webp",
+    "content": [
+      0.311,
+      0.005,
+      0.687,
+      1
+    ]
   },
   {
     "id": "folding-fan",
@@ -235,7 +337,13 @@
     ],
     "default_anchor": "br",
     "default_scale": 0.18,
-    "file": "/ornaments/folding-fan.webp"
+    "file": "/ornaments/folding-fan.webp",
+    "content": [
+      0.019,
+      0.198,
+      0.98,
+      0.814
+    ]
   },
   {
     "id": "lyre",
@@ -248,7 +356,13 @@
     ],
     "default_anchor": "br",
     "default_scale": 0.17,
-    "file": "/ornaments/lyre.webp"
+    "file": "/ornaments/lyre.webp",
+    "content": [
+      0.161,
+      0.014,
+      0.835,
+      0.986
+    ]
   },
   {
     "id": "quill-inkwell",
@@ -261,7 +375,13 @@
     ],
     "default_anchor": "bl",
     "default_scale": 0.19,
-    "file": "/ornaments/quill-inkwell.webp"
+    "file": "/ornaments/quill-inkwell.webp",
+    "content": [
+      0.181,
+      0.021,
+      0.941,
+      0.975
+    ]
   },
   {
     "id": "scallop-shell",
@@ -274,7 +394,13 @@
     ],
     "default_anchor": "br",
     "default_scale": 0.14,
-    "file": "/ornaments/scallop-shell.webp"
+    "file": "/ornaments/scallop-shell.webp",
+    "content": [
+      0.035,
+      0.076,
+      0.965,
+      0.924
+    ]
   },
   {
     "id": "pocket-watch",
@@ -287,7 +413,13 @@
     ],
     "default_anchor": "br",
     "default_scale": 0.16,
-    "file": "/ornaments/pocket-watch.webp"
+    "file": "/ornaments/pocket-watch.webp",
+    "content": [
+      0.082,
+      0.075,
+      0.895,
+      0.945
+    ]
   },
   {
     "id": "thatched-hut",
@@ -300,7 +432,13 @@
     ],
     "default_anchor": "br",
     "default_scale": 0.2,
-    "file": "/ornaments/thatched-hut.webp"
+    "file": "/ornaments/thatched-hut.webp",
+    "content": [
+      0.022,
+      0.169,
+      0.977,
+      0.855
+    ]
   },
   {
     "id": "fishing-boat",
@@ -313,7 +451,13 @@
     ],
     "default_anchor": "bc",
     "default_scale": 0.26,
-    "file": "/ornaments/fishing-boat.webp"
+    "file": "/ornaments/fishing-boat.webp",
+    "content": [
+      0.089,
+      0.406,
+      0.926,
+      0.651
+    ]
   },
   {
     "id": "gothic-window",
@@ -326,7 +470,13 @@
     ],
     "default_anchor": "mr",
     "default_scale": 0.21,
-    "file": "/ornaments/gothic-window.webp"
+    "file": "/ornaments/gothic-window.webp",
+    "content": [
+      0.232,
+      0.012,
+      0.769,
+      0.979
+    ]
   },
   {
     "id": "lighthouse",
@@ -339,7 +489,13 @@
     ],
     "default_anchor": "bl",
     "default_scale": 0.21,
-    "file": "/ornaments/lighthouse.webp"
+    "file": "/ornaments/lighthouse.webp",
+    "content": [
+      0.326,
+      0.023,
+      0.669,
+      0.978
+    ]
   },
   {
     "id": "corner-pattern",
@@ -352,7 +508,13 @@
     ],
     "default_anchor": "tl",
     "default_scale": 0.14,
-    "file": "/ornaments/corner-pattern.webp"
+    "file": "/ornaments/corner-pattern.webp",
+    "content": [
+      0.059,
+      0.086,
+      0.906,
+      0.922
+    ]
   },
   {
     "id": "laurel-wreath",
@@ -365,7 +527,13 @@
     ],
     "default_anchor": "bc",
     "default_scale": 0.17,
-    "file": "/ornaments/laurel-wreath.webp"
+    "file": "/ornaments/laurel-wreath.webp",
+    "content": [
+      0.022,
+      0.066,
+      0.96,
+      0.907
+    ]
   },
   {
     "id": "greek-meander",
@@ -378,7 +546,13 @@
     ],
     "default_anchor": "bc",
     "default_scale": 0.26,
-    "file": "/ornaments/greek-meander.webp"
+    "file": "/ornaments/greek-meander.webp",
+    "content": [
+      0.066,
+      0.427,
+      0.934,
+      0.587
+    ]
   },
   {
     "id": "diamond-lattice",
@@ -391,7 +565,13 @@
     ],
     "default_anchor": "tl",
     "default_scale": 0.18,
-    "file": "/ornaments/diamond-lattice.webp"
+    "file": "/ornaments/diamond-lattice.webp",
+    "content": [
+      0.028,
+      0.404,
+      0.971,
+      0.596
+    ]
   },
   {
     "id": "octagram-rosette",
@@ -404,7 +584,13 @@
     ],
     "default_anchor": "tr",
     "default_scale": 0.13,
-    "file": "/ornaments/octagram-rosette.webp"
+    "file": "/ornaments/octagram-rosette.webp",
+    "content": [
+      0.023,
+      0.023,
+      0.976,
+      0.976
+    ]
   },
   {
     "id": "guilloche-braid",
@@ -417,6 +603,12 @@
     ],
     "default_anchor": "bc",
     "default_scale": 0.24,
-    "file": "/ornaments/guilloche-braid.webp"
+    "file": "/ornaments/guilloche-braid.webp",
+    "content": [
+      0.032,
+      0.43,
+      0.968,
+      0.576
+    ]
   }
 ]
