@@ -1,13 +1,16 @@
 import { SELF, env } from 'cloudflare:test';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { runOperationalChecks } from '../../worker/maintenance';
-import { GALLERY_REPORT_HIDE_THRESHOLD } from '../../worker/gallery';
+import {
+  GALLERY_REPORT_HIDE_THRESHOLD, REPORT_RETENTION_DAYS, reportShare, reporterHash, reporterNetwork,
+} from '../../worker/gallery';
 import { routeAccountShares } from '../../worker/accountShares';
-import { tokenHash } from '../../worker/shares';
+import { getShareReadiness, tokenHash } from '../../worker/shares';
 import { sql } from '../../scripts/gallery-review-sql.mjs';
 import type { WorkerEnv } from '../../worker/env';
 
 const ORIGIN = 'https://inkpoem.test';
+const SECRET = (env as unknown as WorkerEnv).SHARE_REPORT_SECRET!;
 
 function png() {
   const bytes = new Uint8Array(32);
@@ -58,10 +61,14 @@ function account(path: string, method: string, body?: unknown, userId = USER) {
   return routeAccountShares(request, env as unknown as WorkerEnv, userId, path);
 }
 
-async function claim(shares: Share[], userId = USER): Promise<string[]> {
+async function claimResult(shares: Share[], userId = USER): Promise<{ claimed: string[]; ownedElsewhere: string[] }> {
   const response = await account('/api/me/shares/claim', 'POST', { shares }, userId);
   expect(response.status).toBe(200);
-  return (await response.json() as { claimed: string[] }).claimed;
+  return response.json();
+}
+
+async function claim(shares: Share[], userId = USER): Promise<string[]> {
+  return (await claimResult(shares, userId)).claimed;
 }
 
 function gallery(share: Share, method: 'PUT' | 'DELETE', userId = USER) {
@@ -340,7 +347,7 @@ describe('public gallery', () => {
     for (const ip of visitors) {
       await env.DB.prepare(
         "INSERT INTO share_reports (share_id, reporter_hash, reason, review_generation) VALUES (?, ?, 'other', ?)",
-      ).bind(share.id, await tokenHash('inkpoem-report:' + share.id + ':' + ip), generation).run();
+      ).bind(share.id, await reporterHash(SECRET, share.id, ip), generation).run();
     }
     expect((await listedIds()).ids).toEqual([share.id]);
 
@@ -363,6 +370,66 @@ describe('public gallery', () => {
 
     for (let i = 0; i < 10; i++) expect((await report(share.id, 'other', '192.0.2.9')).status).toBe(202);
     expect((await report(share.id, 'other', '192.0.2.9')).status).toBe(429);
+  });
+
+  it('counts an IPv6 /64 as one visitor, for both the threshold and the rate limit', async () => {
+    expect(reporterNetwork('2001:db8:abcd:12::1')).toBe('2001:db8:abcd:12::/64');
+    expect(reporterNetwork('2001:0DB8:ABCD:0012:ffff:1:2:3')).toBe('2001:db8:abcd:12::/64');
+    expect(reporterNetwork('2001:db8::')).toBe('2001:db8:0:0::/64');
+    expect(reporterNetwork('::ffff:192.0.2.1')).toBe('192.0.2.1');
+    expect(reporterNetwork('192.0.2.1')).toBe('192.0.2.1');
+    expect(reporterNetwork('not:an:address::x')).toBe('not:an:address::x');
+
+    const share = await submitted('IPv6');
+    await review(sql.approve([share.id]));
+    for (let i = 1; i <= GALLERY_REPORT_HIDE_THRESHOLD; i++) {
+      expect((await report(share.id, 'other', '2001:db8:abcd:12::' + i.toString(16))).status).toBe(202);
+    }
+    expect(await openReports()).toEqual([expect.objectContaining({ id: share.id, report_count: 1 })]);
+    expect((await listedIds()).ids).toEqual([share.id]);
+
+    for (let i = GALLERY_REPORT_HIDE_THRESHOLD; i < 10; i++) {
+      expect((await report(share.id, 'other', '2001:db8:abcd:12::' + (100 + i).toString(16))).status).toBe(202);
+    }
+    expect((await report(share.id, 'other', '2001:db8:abcd:12:9::9')).status).toBe(429);
+    // A different /64 is a different visitor.
+    expect((await report(share.id, 'other', '2001:db8:abcd:13::1')).status).toBe(202);
+  });
+
+  it('stores only a keyed reporter hash and refuses reports without the secret', async () => {
+    const share = await publish('Keyed');
+    expect((await report(share.id, 'other', '192.0.2.77')).status).toBe(202);
+    const stored = await env.DB.prepare('SELECT reporter_hash AS h FROM share_reports').first<{ h: string }>();
+    expect(stored?.h).toBe(await reporterHash(SECRET, share.id, '192.0.2.77'));
+    expect(stored?.h).not.toBe(await tokenHash('inkpoem-report:' + share.id + ':192.0.2.77'));
+    expect(stored?.h).not.toBe(await reporterHash('another_secret_0123456789abcdef0123', share.id, '192.0.2.77'));
+
+    for (const secret of [undefined, 'too-short']) {
+      const unconfigured = { ...env, SHARE_REPORT_SECRET: secret } as unknown as WorkerEnv;
+      const response = await reportShare(new Request(ORIGIN + '/api/shares/' + share.id + '/report', {
+        method: 'POST',
+        headers: { Origin: ORIGIN, 'Content-Type': 'application/json', 'CF-Connecting-IP': '192.0.2.78' },
+        body: JSON.stringify({ reason: 'other' }),
+      }), unconfigured, share.id);
+      expect(response.status).toBe(503);
+      expect(await response.json()).toMatchObject({ code: 'REPORTS_NOT_CONFIGURED' });
+      const readiness = await getShareReadiness(new Request(ORIGIN + '/api/health/sharing'), unconfigured);
+      expect(readiness.status).toBe(503);
+      expect(await readiness.json()).toEqual({ ready: false, code: 'SHARE_REPORTS_UNCONFIGURED' });
+    }
+  });
+
+  it('deletes open reports after the retention period', async () => {
+    const share = await publish('Old reports');
+    await report(share.id, 'other', '192.0.2.80');
+    await report(share.id, 'other', '192.0.2.81');
+    await env.DB.prepare(
+      "UPDATE share_reports SET created_at = datetime('now', ?) WHERE reporter_hash = ?",
+    ).bind('-' + (REPORT_RETENTION_DAYS + 1) + ' days', await reporterHash(SECRET, share.id, '192.0.2.80')).run();
+    await runOperationalChecks(env as unknown as WorkerEnv);
+    const remaining = await env.DB.prepare('SELECT reporter_hash AS h FROM share_reports').all<{ h: string }>();
+    expect(remaining.results.map((row) => row.h))
+      .toEqual([await reporterHash(SECRET, share.id, '192.0.2.81')]);
   });
 
   it('drops reports of revoked shares during maintenance', async () => {
@@ -398,7 +465,10 @@ describe('shares owned by an account', () => {
     expect(await claim([first, second])).toEqual([first.id, second.id]);
     // Claiming again is harmless; another account cannot take them over.
     expect(await claim([first])).toEqual([first.id]);
-    expect(await claim([first], 'user_someone_else')).toEqual([]);
+    expect(await claimResult([first], 'user_someone_else')).toEqual({ claimed: [], ownedElsewhere: [first.id] });
+    // Without the matching key, nothing is revealed about the owner.
+    expect(await claimResult([{ id: first.id, deleteToken: 'e'.repeat(64) }], 'user_someone_else'))
+      .toEqual({ claimed: [], ownedElsewhere: [] });
     expect(await accountShares('user_someone_else')).toEqual([]);
     expect((await accountShares()).map((share) => share.id).sort()).toEqual([first.id, second.id].sort());
 

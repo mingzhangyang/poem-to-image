@@ -230,3 +230,49 @@ test('after signing in, shares published anonymously in this browser can be adde
   await expect(page.getByText('Public gallery: Permanent shares only')).toBeVisible();
   expect(claimBody).toEqual({ shares: [{ id: published.id, deleteToken: published.token }] });
 });
+
+test('a share held by another account stops being offered after one claim attempt', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'chromium-mobile', 'Account page flow is the same on mobile');
+  test.setTimeout(90_000);
+  const published = await mockPublish(page);
+  const dialog = await openPublishDialog(page, false);
+  await dialog.getByRole('button', { name: 'Publish artwork', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Your artwork is published' })).toBeVisible({ timeout: 45_000 });
+
+  await page.addInitScript(() => {
+    (window as Window & { __INKPOEM_DEV_TEST_ACCOUNT?: unknown }).__INKPOEM_DEV_TEST_ACCOUNT = {
+      userId: 'user_e2e_second', token: 'e2e-token',
+    };
+  });
+  await page.route('**/api/me', (route) => route.fulfill({
+    contentType: 'application/json', body: JSON.stringify({ userId: 'user_e2e_second', email: null, balance: 0 }),
+  }));
+  await page.route('**/api/billing/**', (route) => route.fulfill({ contentType: 'application/json', body: '{"packages":[],"balance":0,"items":[]}' }));
+  let claims = 0;
+  await page.route('**/api/me/shares**', async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === '/api/me/shares/owned') {
+      await route.fulfill({ contentType: 'application/json', body: '{"owned":[]}' });
+      return;
+    }
+    if (path === '/api/me/shares/claim') {
+      claims++;
+      await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ claimed: [], ownedElsewhere: [published.id] }) });
+      return;
+    }
+    await route.fulfill({ contentType: 'application/json', body: '{"nextCursor":null,"shares":[]}' });
+  });
+
+  await page.goto('/account');
+  await expect(page.getByText(/Artworks this browser published without an account: 1\./)).toBeVisible();
+  await page.getByRole('button', { name: 'Add to my account' }).click();
+  await expect(page.getByText(/1 of them belong to another account and were not added/)).toBeVisible();
+  await expect(page.getByText(/Artworks this browser published without an account/)).toBeHidden();
+
+  // The browser remembers it, so a later visit does not offer the claim again.
+  await page.reload();
+  // Wait for the account list to load before checking the banner is absent.
+  await expect(page.getByText('No published artworks in your account yet.')).toBeVisible();
+  await expect(page.getByText(/Artworks this browser published without an account/)).toBeHidden();
+  expect(claims).toBe(1);
+});

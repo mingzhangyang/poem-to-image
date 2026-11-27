@@ -129,7 +129,7 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
         let linked = false;
         let galleryOutcome: 'submitted' | 'failed' | null = null;
         try {
-          linked = (await claimShares(getToken, [published])).includes(published.id);
+          linked = (await claimShares(getToken, [published])).claimed.includes(published.id);
         } catch {
           linked = false;
         }

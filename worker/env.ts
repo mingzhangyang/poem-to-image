@@ -7,6 +7,8 @@ export interface SecretBindings {
   CLERK_ALLOWED_AUTHORIZED_PARTIES?: string;
   STRIPE_SECRET_KEY?: string;
   STRIPE_WEBHOOK_SECRET?: string;
+  /** HMAC key for visitor-report identifiers (worker/gallery.ts); at least 32 characters. */
+  SHARE_REPORT_SECRET?: string;
 }
 
 export type WorkerEnv = Env & SecretBindings;

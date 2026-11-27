@@ -154,14 +154,32 @@ async function claimShares(request: Request, env: WorkerEnv, userId: string): Pr
 
   // The removal key proves ownership. A share already claimed by another
   // account is left alone; re-claiming one's own share is a no-op success.
-  const statements = await Promise.all(claims.map(async ({ id, deleteToken }) => env.DB.prepare(
+  const hashes = await Promise.all(claims.map(({ deleteToken }) => tokenHash(deleteToken)));
+  const statements = claims.map(({ id }, index) => env.DB.prepare(
     `UPDATE shared_artworks SET owner_user_id = ?
      WHERE id = ? AND delete_token_hash = ? AND published_at IS NOT NULL AND revoked_at IS NULL
        AND (owner_user_id IS NULL OR owner_user_id = ?)
      RETURNING id`,
-  ).bind(userId, id, await tokenHash(deleteToken), userId)));
+  ).bind(userId, id, hashes[index], userId));
   const results = await env.DB.batch<{ id: string }>(statements);
-  return jsonResponse({ claimed: results.flatMap((result) => result.results.map((row) => row.id)) });
+  const claimed = results.flatMap((result) => result.results.map((row) => row.id));
+
+  // Tell the creator which keys belong to shares another account holds, so
+  // the browser stops offering them. Only a matching key reveals this.
+  const claimedIds = new Set(claimed);
+  const rest = claims.map((claim, index) => ({ ...claim, hash: hashes[index]! }))
+    .filter(({ id }) => !claimedIds.has(id));
+  let ownedElsewhere: string[] = [];
+  if (rest.length) {
+    const { results: owners } = await env.DB.prepare(
+      `SELECT id, delete_token_hash FROM shared_artworks
+       WHERE id IN (${rest.map(() => '?').join(', ')}) AND owner_user_id IS NOT NULL AND owner_user_id != ?
+         AND published_at IS NOT NULL AND revoked_at IS NULL`,
+    ).bind(...rest.map(({ id }) => id), userId).all<{ id: string; delete_token_hash: string }>();
+    const matching = new Map(rest.map(({ id, hash }) => [id, hash]));
+    ownedElsewhere = owners.filter((row) => matching.get(row.id) === row.delete_token_hash).map((row) => row.id);
+  }
+  return jsonResponse({ claimed, ownedElsewhere });
 }
 
 async function revokeShare(env: WorkerEnv, userId: string, id: string): Promise<Response> {

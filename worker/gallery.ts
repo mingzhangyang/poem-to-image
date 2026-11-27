@@ -1,8 +1,9 @@
 import { consumeRateLimit } from './db';
 import { bodyErrorResponse, jsonResponse, methodNotAllowed, readJsonBody } from './http';
 import type { WorkerEnv } from './env';
-import { hasAllowedOrigin, imagePath, isShareId, tokenHash } from './shares';
+import { hasAllowedOrigin, imagePath, isShareId } from './shares';
 import { decodeCursor, encodeCursor, parseLimit } from './cursor';
+import { reportSecret } from './reportSecret';
 
 /**
  * Public gallery of shared artworks.
@@ -21,6 +22,8 @@ export const GALLERY_REPORT_HIDE_THRESHOLD = 3;
 const REPORT_REASONS = ['copyright', 'privacy', 'inappropriate', 'other'] as const;
 type ReportReason = (typeof REPORT_REASONS)[number];
 const REPORT_BODY_LIMIT = 1024;
+/** Open reports older than this are deleted by the hourly maintenance run. */
+export const REPORT_RETENTION_DAYS = 90;
 
 interface GalleryRow {
   id: string;
@@ -81,9 +84,47 @@ export async function listGallery(request: Request, env: WorkerEnv): Promise<Res
   });
 }
 
-async function reportLimit(request: Request, db: D1Database): Promise<Response | null> {
-  const address = request.headers.get('CF-Connecting-IP') || 'unknown';
-  const hash = await tokenHash('inkpoem-report:' + address);
+/**
+ * The network a report comes from. IPv4 addresses count individually; an
+ * IPv6 address counts as its /64, because one subscriber is routinely given a
+ * whole /64 and can pick a fresh address in it at will.
+ */
+export function reporterNetwork(address: string): string {
+  const value = address.trim().toLowerCase();
+  if (!value.includes(':')) return value;
+  const mapped = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/.exec(value);
+  if (mapped) return mapped[1]!;
+  const halves = value.split('::');
+  if (halves.length > 2) return value;
+  const head = halves[0] ? halves[0].split(':') : [];
+  const tail = halves.length === 2 && halves[1] ? halves[1].split(':') : [];
+  const missing = 8 - head.length - tail.length;
+  if (![...head, ...tail].every((group) => /^[0-9a-f]{1,4}$/.test(group))
+    || (halves.length === 1 ? missing !== 0 : missing < 1)) return value;
+  const groups = [...head, ...Array<string>(missing).fill('0'), ...tail];
+  return groups.slice(0, 4).map((group) => parseInt(group, 16).toString(16)).join(':') + '::/64';
+}
+
+/**
+ * Keyed hash of a visitor's network. An unkeyed hash of an address can be
+ * reversed by trying every IPv4 address, so stored identifiers use HMAC with
+ * the Worker secret `SHARE_REPORT_SECRET`.
+ */
+async function networkHmac(secret: string, message: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    'raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'],
+  );
+  const digest = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(message));
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+/** The stored reporter identifier: one per network and share. */
+export function reporterHash(secret: string, shareId: string, address: string): Promise<string> {
+  return networkHmac(secret, 'report:' + shareId + ':' + reporterNetwork(address));
+}
+
+async function reportLimit(secret: string, address: string, db: D1Database): Promise<Response | null> {
+  const hash = await networkHmac(secret, 'report-limit:' + reporterNetwork(address));
   for (const [key, max, period] of [
     ['report:hour:' + hash, 10, 3600],
     ['report:day:' + hash, 30, 86400],
@@ -106,6 +147,8 @@ async function reportLimit(request: Request, db: D1Database): Promise<Response |
 export async function reportShare(request: Request, env: WorkerEnv, id: string): Promise<Response> {
   if (request.method !== 'POST') return methodNotAllowed(['POST']);
   if (!available(env)) return jsonResponse({ error: 'Sharing is not configured.' }, 503);
+  const secret = reportSecret(env);
+  if (!secret) return jsonResponse({ error: 'Reports are not configured.', code: 'REPORTS_NOT_CONFIGURED' }, 503);
   if (!isShareId(id)) return notFound();
   if (!hasAllowedOrigin(request)) return jsonResponse({ error: 'Invalid origin.' }, 403);
 
@@ -126,11 +169,11 @@ export async function reportShare(request: Request, env: WorkerEnv, id: string):
   ).bind(id).first<{ id: string }>();
   if (!live) return notFound();
 
-  const limited = await reportLimit(request, env.DB);
+  const address = request.headers.get('CF-Connecting-IP') || 'unknown';
+  const limited = await reportLimit(secret, address, env.DB);
   if (limited) return limited;
 
-  const address = request.headers.get('CF-Connecting-IP') || 'unknown';
-  const reporter = await tokenHash('inkpoem-report:' + id + ':' + address);
+  const reporter = await reporterHash(secret, id, address);
   // A report is open while its review_generation equals the share's
   // gallery_review_generation; every maintainer review increments the latter.
   // One open report per visitor: a repeat is ignored, while a report a review

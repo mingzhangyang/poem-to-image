@@ -3,13 +3,14 @@ import { Check, Copy, ExternalLink, Loader2, Trash2 } from 'lucide-react';
 import { useAppAuth } from '../context/auth';
 import type { Language } from '../translations';
 import {
-  claimShares, fetchAccountShares, fetchOwnedShareIds, requestGalleryListing, revokeAccountShare, withdrawGalleryListing,
+  claimShares, fetchAccountShares, fetchOwnedShareIds, readOwnedElsewhere, rememberOwnedElsewhere,
+  requestGalleryListing, revokeAccountShare, withdrawGalleryListing,
   type AccountShare,
 } from './accountSharesApi';
 import { shareCopy } from './copy';
 import { galleryCopy } from './galleryCopy';
 import { removePublishCredentialsSafely } from './publishProtocol';
-import { listLocalShares, markLocalShareRevokedSafely, type LocalShare } from './shareLibrary';
+import { checkLocalShareStatus, listLocalShares, markLocalShareRevokedSafely, type LocalShare } from './shareLibrary';
 
 interface Props {
   language: Language;
@@ -44,6 +45,7 @@ export function AccountShareList({
   const [loadFailed, setLoadFailed] = useState(false);
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const [copiedId, setCopiedId] = useState('');
   const loadTicket = useRef(0);
   const onAccountIdsRef = useRef(onAccountIds);
@@ -64,7 +66,9 @@ export function AccountShareList({
       setShares(page.shares);
       setNextCursor(page.nextCursor);
       setLocalById(new Map(local.map((share) => [share.id, share])));
-      setUnclaimed(local.filter((share) => share.state === 'published' && !owned.has(share.id)));
+      const elsewhere = readOwnedElsewhere();
+      setUnclaimed(local.filter((share) => share.state === 'published'
+        && !owned.has(share.id) && !elsewhere.has(share.id)));
       onAccountIdsRef.current?.(owned);
     } catch {
       if (ticket === loadTicket.current) setLoadFailed(true);
@@ -106,6 +110,7 @@ export function AccountShareList({
     if (busy || disabled) return;
     setBusy(id);
     setError('');
+    setNotice('');
     try {
       await action();
     } catch (caught) {
@@ -116,8 +121,19 @@ export function AccountShareList({
   };
 
   const claimAll = () => run('claim', async () => {
-    await claimShares(getToken, unclaimed);
+    const { claimed, ownedElsewhere } = await claimShares(getToken, unclaimed);
+    rememberOwnedElsewhere(ownedElsewhere);
+    // Neither claimed nor held elsewhere: the share was revoked or expired, or
+    // the key no longer matches. Re-check it so its local state stops saying
+    // "published" and the banner does not offer it again.
+    const settled = new Set([...claimed, ...ownedElsewhere]);
+    const unavailable = unclaimed.filter((share) => !settled.has(share.id));
+    await Promise.all(unavailable.map((share) => checkLocalShareStatus(share).catch(() => null)));
+    const messages = [];
+    if (ownedElsewhere.length) messages.push(gallery.claimOwnedElsewhere.replace('{count}', String(ownedElsewhere.length)));
+    if (unavailable.length) messages.push(gallery.claimUnavailable.replace('{count}', String(unavailable.length)));
     await load();
+    setNotice(messages.join(' '));
   }, gallery.claimFailed);
 
   const revoke = (share: AccountShare) => {
@@ -162,6 +178,9 @@ export function AccountShareList({
             {busy === 'claim' ? gallery.loading : gallery.claimButton}
           </button>
         </div>
+      ) : null}
+      {notice ? (
+        <p role="status" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">{notice}</p>
       ) : null}
       {error ? <p role="alert" className="text-sm text-red-700">{error}</p> : null}
       {loadFailed ? (

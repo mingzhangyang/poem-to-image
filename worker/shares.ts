@@ -3,6 +3,7 @@ import { applySecurityHeaders, bodyErrorResponse, jsonResponse, methodNotAllowed
 import type { WorkerEnv } from './env';
 import { logError } from './observability';
 import { validJpegDimensions } from './jpeg';
+import { reportsConfigured } from './reportSecret';
 
 export const MAX_SHARE_REQUEST_BYTES = 9 * 1024 * 1024;
 export const MAX_ARTWORK_BYTES = 6 * 1024 * 1024;
@@ -95,6 +96,8 @@ export async function getShareReadiness(request: Request, env: WorkerEnv): Promi
     logError('share.health_storage_failed', error);
     return jsonResponse({ ready: false, code: 'SHARE_STORAGE_UNAVAILABLE' }, 503);
   }
+  // Visitor reports need the HMAC secret; without it they fail with 503.
+  if (!reportsConfigured(env)) return jsonResponse({ ready: false, code: 'SHARE_REPORTS_UNCONFIGURED' }, 503);
   return jsonResponse({ ready: true });
 }
 

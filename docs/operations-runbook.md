@@ -81,7 +81,7 @@ In the step-through review, each submission shows its title, author, owning acco
 - **dismiss** resolves reports judged unfounded without changing the listing.
 - **remove** is a takedown for content that must not stay public at all, such as infringing or illegal material. It revokes the share as the creator's removal would: the link returns 404 at once, the title and author are cleared, and the hourly maintenance run deletes the images from R2. It asks for confirmation unless you pass `--yes`.
 
-A listed share that three distinct visitors report goes back to `pending` automatically, so check `reports` and the pending queue regularly. Titles and authors are visitor-supplied: the script strips control characters before printing them, but judge the artwork from its page rather than its title.
+A listed share that three distinct visitors report goes back to `pending` automatically, so check `reports` and the pending queue regularly. Visitors are counted per IPv4 address or IPv6 /64. Open reports are deleted after 90 days, so act on them within that time. Reports need the `SHARE_REPORT_SECRET` Worker secret (at least 32 characters, e.g. `openssl rand -hex 32`); `/api/health/sharing` returns `SHARE_REPORTS_UNCONFIGURED` while it is missing. Rotating it makes earlier reporters count as new visitors on shares they already reported. Titles and authors are visitor-supplied: the script strips control characters before printing them, but judge the artwork from its page rather than its title.
 
 ## Refunds and disputes
 

@@ -63,6 +63,8 @@ Place a transparent PNG or WebP of at least 1024 × 1024 pixels in `public/ornam
    CLERK_JWT_AUDIENCE=your-clerk-audience
    STRIPE_SECRET_KEY=your_key_here
    STRIPE_WEBHOOK_SECRET=your_key_here
+   # Visitor reports on shared artworks; at least 32 characters (openssl rand -hex 32):
+   SHARE_REPORT_SECRET=your_random_secret_here
    ```
 5. Copy `.env.example` to `.env` for the frontend and set the public Clerk key:
    ```
@@ -101,6 +103,7 @@ The Vite dev server proxies `/api/*` requests to the local Worker on port `8787`
    npx wrangler secret put STRIPE_WEBHOOK_SECRET
    npx wrangler secret put GEMINI_API_KEY
    npx wrangler secret put OPENAI_API_KEY
+   npx wrangler secret put SHARE_REPORT_SECRET   # openssl rand -hex 32
    ```
 7. Set Worker auth validation variables (must match your Clerk instance and frontend origins):
    ```

@@ -79,21 +79,56 @@ export async function fetchOwnedShareIds(getToken: GetToken, ids: string[]): Pro
   return owned;
 }
 
+export interface ClaimResult {
+  /** Shares now tied to this account (including ones it already held). */
+  claimed: string[];
+  /** Shares whose key matched but that another account already holds. */
+  ownedElsewhere: string[];
+}
+
 /**
  * Tie shares this browser published to the account. The removal keys prove
  * ownership; they travel in the request body, never in a URL.
  */
-export async function claimShares(getToken: GetToken, shares: { id: string; deleteToken: string }[]): Promise<string[]> {
-  const claimed: string[] = [];
+export async function claimShares(getToken: GetToken, shares: { id: string; deleteToken: string }[]): Promise<ClaimResult> {
+  const result: ClaimResult = { claimed: [], ownedElsewhere: [] };
+  const ids = (value: unknown) => (Array.isArray(value) ? value : []).filter((id): id is string => typeof id === 'string');
   for (let start = 0; start < shares.length; start += 50) {
     const batch = shares.slice(start, start + 50).map(({ id, deleteToken }) => ({ id, deleteToken }));
     const body = await request(getToken, '/api/me/shares/claim', {
       method: 'POST', body: JSON.stringify({ shares: batch }),
-    }) as { claimed?: unknown };
+    }) as { claimed?: unknown; ownedElsewhere?: unknown };
     if (!Array.isArray(body.claimed)) throw new AccountShareError('MALFORMED_RESPONSE');
-    claimed.push(...body.claimed.filter((id): id is string => typeof id === 'string'));
+    result.claimed.push(...ids(body.claimed));
+    result.ownedElsewhere.push(...ids(body.ownedElsewhere));
   }
-  return claimed;
+  return result;
+}
+
+const OWNED_ELSEWHERE_KEY = 'inkpoem:shares-owned-elsewhere';
+const MAX_OWNED_ELSEWHERE = 500;
+
+/**
+ * Local shares known to belong to another account. The claim banner skips
+ * them, so it does not keep offering a claim the server will always refuse.
+ */
+export function readOwnedElsewhere(): Set<string> {
+  try {
+    const value = JSON.parse(window.localStorage.getItem(OWNED_ELSEWHERE_KEY) ?? '[]') as unknown;
+    return new Set(Array.isArray(value) ? value.filter((id): id is string => typeof id === 'string' && SHARE_ID.test(id)) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+export function rememberOwnedElsewhere(ids: string[]): void {
+  if (!ids.length) return;
+  try {
+    const merged = [...new Set([...readOwnedElsewhere(), ...ids])].slice(-MAX_OWNED_ELSEWHERE);
+    window.localStorage.setItem(OWNED_ELSEWHERE_KEY, JSON.stringify(merged));
+  } catch {
+    // Storage may be unavailable; the banner then just offers them again.
+  }
 }
 
 export async function revokeAccountShare(getToken: GetToken, id: string): Promise<void> {
