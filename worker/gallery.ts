@@ -2,6 +2,7 @@ import { consumeRateLimit } from './db';
 import { bodyErrorResponse, jsonResponse, methodNotAllowed, readJsonBody } from './http';
 import type { WorkerEnv } from './env';
 import { hasAllowedOrigin, imagePath, isShareId, tokenHash } from './shares';
+import { decodeCursor, encodeCursor, parseLimit } from './cursor';
 
 /**
  * Public gallery of shared artworks.
@@ -20,7 +21,6 @@ export const GALLERY_REPORT_HIDE_THRESHOLD = 3;
 const REPORT_REASONS = ['copyright', 'privacy', 'inappropriate', 'other'] as const;
 type ReportReason = (typeof REPORT_REASONS)[number];
 const REPORT_BODY_LIMIT = 1024;
-const TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
 
 interface GalleryRow {
   id: string;
@@ -38,34 +38,13 @@ function notFound(): Response {
   return jsonResponse({ error: 'Artwork not found.', code: 'NOT_FOUND' }, 404);
 }
 
-function encodeCursor(row: GalleryRow): string {
-  return btoa(JSON.stringify([row.gallery_listed_at, row.id]))
-    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
-function decodeCursor(raw: string): [string, string] | null {
-  if (raw.length > 200 || !/^[A-Za-z0-9_-]+$/.test(raw)) return null;
-  try {
-    const value = JSON.parse(atob(raw.replace(/-/g, '+').replace(/_/g, '/'))) as unknown;
-    if (Array.isArray(value) && value.length === 2
-      && typeof value[0] === 'string' && TIMESTAMP_PATTERN.test(value[0])
-      && typeof value[1] === 'string' && isShareId(value[1])) {
-      return [value[0], value[1]];
-    }
-  } catch {
-    // Fall through: a malformed cursor is a client error.
-  }
-  return null;
-}
-
 /** `GET /api/gallery?cursor=&limit=`: approved artworks, newest first. */
 export async function listGallery(request: Request, env: WorkerEnv): Promise<Response> {
   if (request.method !== 'GET') return methodNotAllowed(['GET']);
   if (!available(env)) return jsonResponse({ error: 'Sharing is not configured.' }, 503);
   const params = new URL(request.url).searchParams;
-  const rawLimit = params.get('limit');
-  const limit = rawLimit === null ? GALLERY_PAGE_SIZE : Number(rawLimit);
-  if (!Number.isInteger(limit) || limit < 1 || limit > MAX_GALLERY_PAGE_SIZE) {
+  const limit = parseLimit(params.get('limit'), GALLERY_PAGE_SIZE, MAX_GALLERY_PAGE_SIZE);
+  if (limit === null) {
     return jsonResponse({ error: 'Invalid page size.', code: 'INVALID_LIMIT' }, 400);
   }
   const rawCursor = params.get('cursor');
@@ -97,7 +76,8 @@ export async function listGallery(request: Request, env: WorkerEnv): Promise<Res
       imageUrl: imagePath(row.id, row.image_type),
       cardUrl: '/s/' + row.id + '/card.jpg',
     })),
-    nextCursor: results.length > limit ? encodeCursor(page[page.length - 1]!) : null,
+    nextCursor: results.length > limit
+      ? encodeCursor(page[page.length - 1]!.gallery_listed_at, page[page.length - 1]!.id) : null,
   });
 }
 
@@ -151,15 +131,24 @@ export async function reportShare(request: Request, env: WorkerEnv, id: string):
 
   const address = request.headers.get('CF-Connecting-IP') || 'unknown';
   const reporter = await tokenHash('inkpoem-report:' + id + ':' + address);
+  // A report is open until a maintainer reviews the share (approve, reject,
+  // remove or dismiss set gallery_reviewed_at). One open report per visitor;
+  // a visitor whose earlier report was resolved can report again.
   const inserted = await env.DB.prepare(
-    'INSERT OR IGNORE INTO share_reports (share_id, reporter_hash, reason) VALUES (?, ?, ?)',
+    `INSERT INTO share_reports (share_id, reporter_hash, reason) VALUES (?, ?, ?)
+     ON CONFLICT (share_id, reporter_hash) DO UPDATE
+       SET reason = excluded.reason, created_at = CURRENT_TIMESTAMP
+       WHERE share_reports.created_at < COALESCE(
+         (SELECT gallery_reviewed_at FROM shared_artworks WHERE id = share_reports.share_id), '')`,
   ).bind(id, reporter, reason).run();
   if (inserted.meta.changes === 1) {
     await env.DB.prepare(
       `UPDATE shared_artworks SET gallery_status = 'pending'
        WHERE id = ? AND gallery_status = 'listed'
-         AND (SELECT COUNT(*) FROM share_reports WHERE share_id = ?) >= ?`,
-    ).bind(id, id, GALLERY_REPORT_HIDE_THRESHOLD).run();
+         AND (SELECT COUNT(*) FROM share_reports r WHERE r.share_id = shared_artworks.id
+           AND (shared_artworks.gallery_reviewed_at IS NULL
+             OR r.created_at >= shared_artworks.gallery_reviewed_at)) >= ?`,
+    ).bind(id, GALLERY_REPORT_HIDE_THRESHOLD).run();
   }
   // The same answer for a first and a repeated report from one visitor.
   return jsonResponse({ received: true }, 202);

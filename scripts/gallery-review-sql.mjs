@@ -31,10 +31,14 @@ function rowLimit(limit) {
 const LIVE = 'published_at IS NOT NULL AND revoked_at IS NULL';
 const PERMANENT = "expiry_policy = 'never' AND expires_at IS NULL";
 const OWNER = 'owner_user_id, (SELECT u.email FROM users u WHERE u.id = s.owner_user_id) AS owner_email';
-const REPORT_COUNT = '(SELECT COUNT(*) FROM share_reports r WHERE r.share_id = s.id)';
-// Every write's first statement ends in RETURNING: local wrangler does not
-// report meta.changes, so the review script counts the returned rows.
-const REPORT_REASONS = '(SELECT GROUP_CONCAT(DISTINCT r.reason) FROM share_reports r WHERE r.share_id = s.id)';
+// A review (approve, reject, remove or dismiss) sets gallery_reviewed_at and
+// so resolves every report filed before it; reports are never deleted here.
+// Keep this in step with the report threshold in worker/gallery.ts.
+const OPEN_REPORT = 'r.share_id = s.id AND (s.gallery_reviewed_at IS NULL OR r.created_at >= s.gallery_reviewed_at)';
+const REPORT_COUNT = `(SELECT COUNT(*) FROM share_reports r WHERE ${OPEN_REPORT})`;
+const REPORT_REASONS = `(SELECT GROUP_CONCAT(DISTINCT r.reason) FROM share_reports r WHERE ${OPEN_REPORT})`;
+// Every write ends in RETURNING: local wrangler does not report
+// meta.changes, so the review script counts the returned rows.
 
 export const sql = {
   /** Submissions waiting for review, oldest first. */
@@ -59,9 +63,9 @@ export const sql = {
   reports(limit = 50) {
     return `SELECT id, title, author, image_type, gallery_status, ${OWNER},
       ${REPORT_COUNT} AS report_count, ${REPORT_REASONS} AS report_reasons,
-      (SELECT MAX(r.created_at) FROM share_reports r WHERE r.share_id = s.id) AS last_report_at
+      (SELECT MAX(r.created_at) FROM share_reports r WHERE ${OPEN_REPORT}) AS last_report_at
       FROM shared_artworks s
-      WHERE ${LIVE} AND EXISTS (SELECT 1 FROM share_reports r WHERE r.share_id = s.id)
+      WHERE ${LIVE} AND EXISTS (SELECT 1 FROM share_reports r WHERE ${OPEN_REPORT})
       ORDER BY report_count DESC, last_report_at DESC LIMIT ${rowLimit(limit)}`;
   },
 
@@ -75,22 +79,20 @@ export const sql = {
 
   /**
    * List pending submissions. Only account-owned shares can be listed. An artwork that came back into review after
-   * reports keeps its original place in the gallery; its reports are cleared
-   * so they do not immediately pull it out again.
+   * reports keeps its original place in the gallery. Approving resolves the
+   * reports filed so far, and only for the rows this statement approves: an
+   * ID that is not pending is left untouched, along with its reports.
    * @param {string[]} ids
    */
   approve(ids) {
-    const list = idList(ids);
     return [
       `UPDATE shared_artworks
        SET gallery_status = 'listed',
            gallery_listed_at = COALESCE(gallery_listed_at, CURRENT_TIMESTAMP),
            gallery_reviewed_at = CURRENT_TIMESTAMP
-       WHERE id IN (${list}) AND gallery_status = 'pending' AND ${LIVE} AND ${PERMANENT}
+       WHERE id IN (${idList(ids)}) AND gallery_status = 'pending' AND ${LIVE} AND ${PERMANENT}
          AND owner_user_id IS NOT NULL
        RETURNING id`,
-      `DELETE FROM share_reports WHERE share_id IN (${list})
-       AND share_id IN (SELECT id FROM shared_artworks WHERE gallery_status = 'listed')`,
     ];
   },
 
@@ -128,10 +130,16 @@ export const sql = {
   },
 
   /**
-   * Discard reports judged unfounded.
+   * Resolve reports judged unfounded without changing the listing.
    * @param {string[]} ids
    */
   dismissReports(ids) {
-    return [`DELETE FROM share_reports WHERE share_id IN (${idList(ids)}) RETURNING share_id`];
+    return [
+      `UPDATE shared_artworks SET gallery_reviewed_at = CURRENT_TIMESTAMP
+       WHERE id IN (${idList(ids)}) AND ${LIVE}
+         AND EXISTS (SELECT 1 FROM share_reports r WHERE r.share_id = shared_artworks.id
+           AND (shared_artworks.gallery_reviewed_at IS NULL OR r.created_at >= shared_artworks.gallery_reviewed_at))
+       RETURNING id`,
+    ];
   },
 };

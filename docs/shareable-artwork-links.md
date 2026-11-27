@@ -136,13 +136,18 @@ ownership; the Worker stores only `owner_user_id` on the row (migration
 alone, and claiming one's own share again is a no-op.
 
 - **My artworks.** Signed-in creators see their account's shares in **My
-  Shares** and on the account page, on any device: `GET /api/me/shares` lists
-  live, published shares with their expiry and gallery status. They revoke
+  Shares** and on the account page, on any device: `GET /api/me/shares?cursor=&limit=`
+  lists live, published shares with their expiry and gallery status, newest
+  first, 50 per page by default (at most 100), with a `nextCursor` so every
+  share stays reachable; the list has a **Load more** button. They revoke
   with `DELETE /api/me/shares/:id`, which needs no removal key and deletes the
   R2 images like the key-based DELETE.
 - **Earlier anonymous shares.** If this browser holds published shares that
   are not yet in the account, the list offers **Add to my account**, which
-  claims them with the keys saved in IndexedDB. Shares published in another
+  claims them with the keys saved in IndexedDB. To tell which local shares are
+  already in the account, the browser asks `POST /api/me/shares/owned` with
+  `{ "ids": [...] }` (at most 500), which answers for every owned share in any
+  state, independent of the list page shown. Shares published in another
   browser can only be added from that browser.
 - **Failure handling.** If the claim after publishing fails, the share is
   still published and stays in the browser-local list, from where it can be
@@ -158,7 +163,7 @@ Creators can opt in to show a share in the public gallery. Nothing is listed wit
 - **Only permanent shares.** The Worker refuses requests for shares with a 7-day or 30-day expiration (`409 SHARE_NOT_PERMANENT`), and the review script will not approve them.
 - **Owner endpoints.** `PUT|DELETE /api/me/shares/:id/gallery` request or withdraw a listing for a share the signed-in account owns, and return `{ status, eligible }`, where `status` is `none`, `pending`, `listed` or `rejected`. A rejected share keeps that status: neither a new request nor a withdrawal puts it back in the queue. Account endpoints are rate-limited to 30 requests a minute per user.
 - **Public listing.** `GET /api/gallery?cursor=&limit=` returns approved shares, newest approval first, 24 per page by default (at most 48), with an opaque `nextCursor`. Every query also requires a published, unrevoked, permanent row, so revoking a share removes it from the gallery at once. Thumbnails are the existing `card.jpg` social previews.
-- **Reports.** Every share page has a **Report this artwork** control for visitors who do not hold the removal key. `POST /api/shares/:id/report` takes `{ "reason": "copyright" | "privacy" | "inappropriate" | "other" }` and returns `202` whether or not the visitor had already reported it. Each visitor counts once per share (a per-share salted hash of `CF-Connecting-IP`), and reports are rate-limited per network to 10 an hour and 30 a day. When three distinct visitors have reported a listed share, it goes back to `pending` and drops out of the gallery until reviewed; the share link stays up. Reports of revoked shares are deleted by the hourly maintenance run.
+- **Reports.** Every share page has a **Report this artwork** control for visitors who do not hold the removal key. `POST /api/shares/:id/report` takes `{ "reason": "copyright" | "privacy" | "inappropriate" | "other" }` and returns `202` whether or not the visitor had already reported it. Each visitor counts once per share (a per-share salted hash of `CF-Connecting-IP`), and reports are rate-limited per network to 10 an hour and 30 a day. A report stays open until a maintainer next reviews the share (approve, reject, remove or dismiss), which records `gallery_reviewed_at`; reports filed before that time are resolved, and a visitor whose report was resolved can report again. When three distinct visitors have open reports on a listed share, it goes back to `pending` and drops out of the gallery until reviewed; the share link stays up. The hourly maintenance run deletes resolved reports and reports of revoked shares.
 - **Review.** Maintainers review with `npm run gallery:review` (see the [operations runbook](operations-runbook.md#public-gallery-review)). There is no admin API: the script runs SQL against D1 through wrangler with the maintainer's Cloudflare login. It shows each submission's account and email, and approves only account-owned shares.
 
 ## Privacy and abuse controls

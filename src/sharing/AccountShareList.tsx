@@ -3,7 +3,7 @@ import { Check, Copy, ExternalLink, Loader2, Trash2 } from 'lucide-react';
 import { useAppAuth } from '../context/auth';
 import type { Language } from '../translations';
 import {
-  claimShares, fetchAccountShares, requestGalleryListing, revokeAccountShare, withdrawGalleryListing,
+  claimShares, fetchAccountShares, fetchOwnedShareIds, requestGalleryListing, revokeAccountShare, withdrawGalleryListing,
   type AccountShare,
 } from './accountSharesApi';
 import { shareCopy } from './copy';
@@ -37,6 +37,8 @@ export function AccountShareList({
   const copy = shareCopy[language];
   const gallery = galleryCopy[language];
   const [shares, setShares] = useState<AccountShare[] | null>(null);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [unclaimed, setUnclaimed] = useState<LocalShare[]>([]);
   const [localById, setLocalById] = useState<Map<string, LocalShare>>(new Map());
   const [loadFailed, setLoadFailed] = useState(false);
@@ -51,16 +53,19 @@ export function AccountShareList({
     const ticket = ++loadTicket.current;
     setLoadFailed(false);
     try {
-      const [remote, local] = await Promise.all([
+      const [page, local] = await Promise.all([
         fetchAccountShares(getToken),
         listLocalShares().catch(() => [] as LocalShare[]),
       ]);
+      // Ask the server which local shares the account owns: the first page
+      // of the account list does not show every share.
+      const owned = local.length ? await fetchOwnedShareIds(getToken, local.map((share) => share.id)) : new Set<string>();
       if (ticket !== loadTicket.current) return;
-      const ids = new Set(remote.map((share) => share.id));
-      setShares(remote);
+      setShares(page.shares);
+      setNextCursor(page.nextCursor);
       setLocalById(new Map(local.map((share) => [share.id, share])));
-      setUnclaimed(local.filter((share) => share.state === 'published' && !ids.has(share.id)));
-      onAccountIdsRef.current?.(ids);
+      setUnclaimed(local.filter((share) => share.state === 'published' && !owned.has(share.id)));
+      onAccountIdsRef.current?.(owned);
     } catch {
       if (ticket === loadTicket.current) setLoadFailed(true);
     }
@@ -74,6 +79,26 @@ export function AccountShareList({
     const tickets = loadTicket;
     return () => { tickets.current++; };
   }, [isSignedIn, userId, load]);
+
+  const loadMore = async () => {
+    if (!nextCursor || loadingMore) return;
+    const ticket = loadTicket.current;
+    setLoadingMore(true);
+    setError('');
+    try {
+      const page = await fetchAccountShares(getToken, nextCursor);
+      if (ticket !== loadTicket.current) return;
+      setShares((current) => {
+        const seen = new Set(current?.map((share) => share.id));
+        return [...(current ?? []), ...page.shares.filter((share) => !seen.has(share.id))];
+      });
+      setNextCursor(page.nextCursor);
+    } catch {
+      if (ticket === loadTicket.current) setError(gallery.accountLoadError);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   if (!isSignedIn) return null;
 
@@ -198,6 +223,12 @@ export function AccountShareList({
           })}
         </ul>
       )}
+      {shares && nextCursor && !loadFailed ? (
+        <button type="button" onClick={() => void loadMore()} disabled={loadingMore}
+          className="app-button-secondary w-full rounded-xl px-4 py-2.5 text-sm font-medium disabled:opacity-50">
+          {loadingMore ? gallery.loading : gallery.loadMore}
+        </button>
+      ) : null}
     </section>
   );
 }

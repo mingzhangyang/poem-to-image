@@ -283,7 +283,7 @@ async function run(options) {
       console.log(`已拒绝 ${d1Changes(options, sql.reject(options.ids))} / ${options.ids.length} 件（只处理待审核或已入库的作品）。`);
       return;
     case 'dismiss':
-      console.log(`已清除 ${d1Changes(options, sql.dismissReports(options.ids))} 条举报。`);
+      console.log(`已清除 ${d1Changes(options, sql.dismissReports(options.ids))} 件作品的举报。`);
       return;
     case 'remove': {
       if (!options.yes) {

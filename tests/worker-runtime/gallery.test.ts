@@ -83,6 +83,25 @@ async function submitted(title: string): Promise<Share> {
   return share;
 }
 
+/**
+ * D1 timestamps have one-second resolution, and a report filed in the same
+ * second as a review stays open. Move existing reports (and optionally the
+ * last review) into the past so a review in this test resolves them.
+ */
+async function ageReports(id?: string) {
+  await env.DB.prepare("UPDATE share_reports SET created_at = datetime('now', '-2 minutes')"
+    + (id ? ' WHERE share_id = ?' : '')).bind(...(id ? [id] : [])).run();
+}
+
+async function ageReview(id: string) {
+  await env.DB.prepare("UPDATE shared_artworks SET gallery_reviewed_at = datetime('now', '-5 minutes') WHERE id = ?")
+    .bind(id).run();
+}
+
+async function openReports(): Promise<{ id: string; report_count: number }[]> {
+  return (await env.DB.prepare(sql.reports()).all<{ id: string; report_count: number }>()).results;
+}
+
 async function review(statements: string[]) {
   for (const statement of statements) await env.DB.prepare(statement).all();
 }
@@ -252,10 +271,48 @@ describe('public gallery', () => {
     })]);
     expect(pending[0]!.gallery_listed_at).not.toBeNull();
 
-    // Approving again clears the reports and restores the original position.
+    // Approving again resolves the reports and restores the original position.
+    await ageReports();
     await review(sql.approve([share.id]));
     expect((await listedIds()).ids).toEqual([share.id]);
-    expect((await env.DB.prepare(sql.reports()).all()).results).toEqual([]);
+    expect(await openReports()).toEqual([]);
+
+    // A visitor whose report was resolved can report again, and it counts.
+    expect((await report(share.id, 'privacy', '198.51.100.7')).status).toBe(202);
+    expect(await openReports()).toEqual([expect.objectContaining({ id: share.id, report_count: 1 })]);
+  });
+
+  it('approve leaves an already-listed share and its new reports alone, also in a mixed batch', async () => {
+    const listed = await submitted('Already listed');
+    await review(sql.approve([listed.id]));
+    await ageReview(listed.id);
+    const pending = await submitted('Waiting');
+    expect((await report(listed.id, 'copyright', '203.0.113.50')).status).toBe(202);
+
+    const approved = await env.DB.prepare(sql.approve([listed.id, pending.id])[0]!).all<{ id: string }>();
+    expect(approved.results.map((row) => row.id)).toEqual([pending.id]);
+    expect(await openReports()).toEqual([expect.objectContaining({ id: listed.id, report_count: 1 })]);
+
+    // Re-running approve on the listed share alone changes nothing either.
+    const again = await env.DB.prepare(sql.approve([listed.id])[0]!).all<{ id: string }>();
+    expect(again.results).toEqual([]);
+    expect(await openReports()).toEqual([expect.objectContaining({ id: listed.id, report_count: 1 })]);
+  });
+
+  it('dismiss resolves reports without changing the listing, and maintenance prunes them', async () => {
+    const share = await submitted('Dismissed');
+    await review(sql.approve([share.id]));
+    await ageReview(share.id);
+    await report(share.id, 'other', '203.0.113.60');
+    await ageReports(share.id);
+    const dismissed = await env.DB.prepare(sql.dismissReports([share.id])[0]!).all<{ id: string }>();
+    expect(dismissed.results.map((row) => row.id)).toEqual([share.id]);
+    expect(await openReports()).toEqual([]);
+    expect((await listedIds()).ids).toEqual([share.id]);
+
+    await runOperationalChecks(env as unknown as WorkerEnv);
+    const count = await env.DB.prepare('SELECT COUNT(*) AS n FROM share_reports').first<{ n: number }>();
+    expect(count?.n).toBe(0);
   });
 
   it('validates reports and rate-limits each visitor', async () => {
@@ -331,6 +388,54 @@ describe('shares owned by an account', () => {
     // A revoked share can no longer be claimed or revoked again.
     expect(await claim([share])).toEqual([]);
     expect((await account('/api/me/shares/' + share.id, 'DELETE')).status).toBe(404);
+  });
+
+  it('pages through more than 200 shares and classifies ownership independently of the page', async () => {
+    // Insert directly: publishing 205 shares through the API would hit the
+    // per-IP publish limit. Pairs share a second to exercise the ID tie-break.
+    const ids = Array.from({ length: 205 }, (_, i) => 'own' + String(i).padStart(9, '0'));
+    const statements = ids.map((id, i) => env.DB.prepare(
+      `INSERT INTO shared_artworks (id, title, author, image_key, image_type, card_key, delete_token_hash,
+         published_at, owner_user_id)
+       VALUES (?, ?, '', ?, 'image/png', ?, 'hash', datetime('2026-01-01', '+' || ? || ' seconds'), ?)`,
+    ).bind(id, 'Poem ' + i, 'img/' + id, 'card/' + id, Math.floor(i / 2), USER));
+    await env.DB.batch(statements);
+    await env.DB.prepare(
+      `INSERT INTO shared_artworks (id, title, author, delete_token_hash, published_at, owner_user_id)
+       VALUES ('otherUser001', 'Not mine', '', 'hash', CURRENT_TIMESTAMP, 'user_someone_else')`,
+    ).run();
+
+    const seen: string[] = [];
+    let cursor: string | null = null;
+    let pages = 0;
+    do {
+      const path: string = '/api/me/shares?limit=100' + (cursor ? '&cursor=' + cursor : '');
+      const response = await routeAccountShares(new Request(ORIGIN + path), env as unknown as WorkerEnv, USER, '/api/me/shares');
+      expect(response.status).toBe(200);
+      const body = await response.json() as { shares: { id: string }[]; nextCursor: string | null };
+      seen.push(...body.shares.map((share) => share.id));
+      cursor = body.nextCursor;
+      pages++;
+    } while (cursor && pages < 10);
+    expect(pages).toBe(3);
+    expect(seen).toHaveLength(205);
+    expect(new Set(seen)).toEqual(new Set(ids));
+    // Newest first: the last two inserted share a second, higher ID first.
+    expect(seen.slice(0, 2)).toEqual(['own000000204', 'own000000203'].sort().reverse());
+    expect(seen.at(-1)).toBe('own000000000');
+
+    // The oldest share, far past the first page, is still recognised as owned.
+    const lookup = await account('/api/me/shares/owned', 'POST', { ids: [...ids, 'otherUser001', 'AAAAAAAAAAAA'] });
+    const owned = (await lookup.json() as { owned: string[] }).owned;
+    expect(new Set(owned)).toEqual(new Set(ids));
+
+    const tooMany = Array.from({ length: 501 }, () => ids[0]);
+    expect((await account('/api/me/shares/owned', 'POST', { ids: tooMany })).status).toBe(400);
+    expect((await account('/api/me/shares/owned', 'POST', { ids: ['bad'] })).status).toBe(400);
+    expect((await routeAccountShares(new Request(ORIGIN + '/api/me/shares?cursor=bogus'),
+      env as unknown as WorkerEnv, USER, '/api/me/shares')).status).toBe(400);
+    expect((await routeAccountShares(new Request(ORIGIN + '/api/me/shares?limit=101'),
+      env as unknown as WorkerEnv, USER, '/api/me/shares')).status).toBe(400);
   });
 
   it('rejects cross-origin mutations and unknown routes', async () => {

@@ -76,9 +76,9 @@ npm run gallery:review -- remove <id> [<id>...]
 
 In the step-through review, each submission shows its title, author, owning account and email, times, any reports and the share page URL. Press `o` to open the page in a browser, then `a` to approve, `r` to reject, `s` to skip, `d` to take the share down or `q` to stop.
 
-- **approve** lists a pending, permanent, live share that belongs to an account. If it came back to review after reports, it keeps its original place and its reports are cleared.
+- **approve** lists a pending, permanent, live share that belongs to an account. If it came back to review after reports, it keeps its original place, and the reports filed so far are resolved. An ID that is not pending, such as one already listed, is left untouched together with any new reports.
 - **reject** keeps a pending share out of the gallery, or takes a listed one out. The share link stays up and the creator cannot resubmit it.
-- **dismiss** deletes reports judged unfounded without changing the listing.
+- **dismiss** resolves reports judged unfounded without changing the listing.
 - **remove** is a takedown for content that must not stay public at all, such as infringing or illegal material. It revokes the share as the creator's removal would: the link returns 404 at once, the title and author are cleared, and the hourly maintenance run deletes the images from R2. It asks for confirmation unless you pass `--yes`.
 
 A listed share that three distinct visitors report goes back to `pending` automatically, so check `reports` and the pending queue regularly. Titles and authors are visitor-supplied: the script strips control characters before printing them, but judge the artwork from its page rather than its title.

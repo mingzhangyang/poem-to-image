@@ -2,6 +2,7 @@ import { consumeRateLimit } from './db';
 import { bodyErrorResponse, jsonResponse, methodNotAllowed, readJsonBody } from './http';
 import type { WorkerEnv } from './env';
 import { deleteRevokedShareAssets, hasAllowedOrigin, imagePath, isShareId, tokenHash } from './shares';
+import { decodeCursor, encodeCursor, parseLimit } from './cursor';
 
 /**
  * Shares tied to a signed-in account (`/api/me/shares`).
@@ -17,7 +18,11 @@ import { deleteRevokedShareAssets, hasAllowedOrigin, imagePath, isShareId, token
 
 const MAX_CLAIMS_PER_REQUEST = 50;
 const CLAIM_BODY_LIMIT = 16 * 1024;
-const MAX_LISTED_SHARES = 200;
+export const ACCOUNT_PAGE_SIZE = 50;
+const MAX_ACCOUNT_PAGE_SIZE = 100;
+const MAX_OWNED_LOOKUP = 500;
+/** D1 allows at most 100 bound parameters per statement. */
+const LOOKUP_CHUNK = 90;
 
 type GalleryState = 'pending' | 'listed' | 'rejected' | null;
 
@@ -57,14 +62,32 @@ async function accountLimit(db: D1Database, userId: string): Promise<Response | 
 const LIVE_OWNED = `owner_user_id = ? AND published_at IS NOT NULL AND revoked_at IS NULL
   AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)`;
 
-async function listShares(env: WorkerEnv, userId: string): Promise<Response> {
-  const { results } = await env.DB.prepare(
-    `SELECT id, title, author, image_type, published_at, expiry_policy, expires_at, gallery_status
-     FROM shared_artworks WHERE ${LIVE_OWNED}
-     ORDER BY published_at DESC, id DESC LIMIT ?`,
-  ).bind(userId, MAX_LISTED_SHARES).all<AccountShareRow>();
+/** `GET /api/me/shares?cursor=&limit=`: the account's live shares, newest first, every page reachable. */
+async function listShares(request: Request, env: WorkerEnv, userId: string): Promise<Response> {
+  const params = new URL(request.url).searchParams;
+  const limit = parseLimit(params.get('limit'), ACCOUNT_PAGE_SIZE, MAX_ACCOUNT_PAGE_SIZE);
+  if (limit === null) return jsonResponse({ error: 'Invalid page size.', code: 'INVALID_LIMIT' }, 400);
+  const rawCursor = params.get('cursor');
+  const cursor = rawCursor ? decodeCursor(rawCursor) : null;
+  if (rawCursor && !cursor) return jsonResponse({ error: 'Invalid cursor.', code: 'INVALID_CURSOR' }, 400);
+
+  const columns = 'id, title, author, image_type, published_at, expiry_policy, expires_at, gallery_status';
+  const statement = cursor
+    ? env.DB.prepare(
+      `SELECT ${columns} FROM shared_artworks
+       WHERE ${LIVE_OWNED} AND (published_at < ? OR (published_at = ? AND id < ?))
+       ORDER BY published_at DESC, id DESC LIMIT ?`,
+    ).bind(userId, cursor[0], cursor[0], cursor[1], limit + 1)
+    : env.DB.prepare(
+      `SELECT ${columns} FROM shared_artworks WHERE ${LIVE_OWNED}
+       ORDER BY published_at DESC, id DESC LIMIT ?`,
+    ).bind(userId, limit + 1);
+  const { results } = await statement.all<AccountShareRow>();
+  const page = results.slice(0, limit);
+  const last = page[page.length - 1];
   return jsonResponse({
-    shares: results.map((row) => ({
+    nextCursor: results.length > limit && last ? encodeCursor(last.published_at, last.id) : null,
+    shares: page.map((row) => ({
       id: row.id,
       title: row.title,
       author: row.author,
@@ -77,6 +100,35 @@ async function listShares(env: WorkerEnv, userId: string): Promise<Response> {
       cardUrl: '/s/' + row.id + '/card.jpg',
     })),
   });
+}
+
+/**
+ * `POST /api/me/shares/owned` with `{ "ids": [...] }`: which of these shares
+ * belong to the account, whatever their state. The browser uses it to tell
+ * its local shares apart without paging through the whole account.
+ */
+async function ownedShares(request: Request, env: WorkerEnv, userId: string): Promise<Response> {
+  let body: unknown;
+  try {
+    body = await readJsonBody(request, CLAIM_BODY_LIMIT);
+  } catch (error) {
+    return bodyErrorResponse(error) ?? jsonResponse({ error: 'Request body must be valid JSON.' }, 400);
+  }
+  const ids = body && typeof body === 'object' ? (body as { ids?: unknown }).ids : undefined;
+  if (!Array.isArray(ids) || ids.length > MAX_OWNED_LOOKUP
+    || !ids.every((id): id is string => typeof id === 'string' && isShareId(id))) {
+    return jsonResponse({ error: 'Invalid lookup.', code: 'INVALID_LOOKUP' }, 400);
+  }
+  const unique = [...new Set(ids)];
+  const statements = [];
+  for (let start = 0; start < unique.length; start += LOOKUP_CHUNK) {
+    const chunk = unique.slice(start, start + LOOKUP_CHUNK);
+    statements.push(env.DB.prepare(
+      `SELECT id FROM shared_artworks WHERE owner_user_id = ? AND id IN (${chunk.map(() => '?').join(', ')})`,
+    ).bind(userId, ...chunk));
+  }
+  const results = statements.length ? await env.DB.batch<{ id: string }>(statements) : [];
+  return jsonResponse({ owned: results.flatMap((result) => result.results.map((row) => row.id)) });
 }
 
 async function claimShares(request: Request, env: WorkerEnv, userId: string): Promise<Response> {
@@ -155,7 +207,7 @@ async function updateGallery(request: Request, env: WorkerEnv, userId: string, i
 }
 
 /**
- * Routes `/api/me/shares`, `/api/me/shares/claim`, `/api/me/shares/:id` and
+ * Routes `/api/me/shares`, `/api/me/shares/owned`, `/api/me/shares/claim`, `/api/me/shares/:id` and
  * `/api/me/shares/:id/gallery` for an authenticated user.
  */
 export async function routeAccountShares(
@@ -171,7 +223,11 @@ export async function routeAccountShares(
 
   if (pathname === '/api/me/shares') {
     if (request.method !== 'GET') return methodNotAllowed(['GET']);
-    return listShares(env, userId);
+    return listShares(request, env, userId);
+  }
+  if (pathname === '/api/me/shares/owned') {
+    if (request.method !== 'POST') return methodNotAllowed(['POST']);
+    return ownedShares(request, env, userId);
   }
   if (pathname === '/api/me/shares/claim') {
     if (request.method !== 'POST') return methodNotAllowed(['POST']);

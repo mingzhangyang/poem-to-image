@@ -38,10 +38,17 @@ async function request(getToken: GetToken, path: string, init: RequestInit = {})
   return response.json();
 }
 
-export async function fetchAccountShares(getToken: GetToken): Promise<AccountShare[]> {
-  const body = await request(getToken, '/api/me/shares') as { shares?: unknown };
+export interface AccountSharePage {
+  shares: AccountShare[];
+  nextCursor: string | null;
+}
+
+/** One page of the account's shares, newest first. Pass `nextCursor` back for the next page. */
+export async function fetchAccountShares(getToken: GetToken, cursor: string | null = null): Promise<AccountSharePage> {
+  const path = '/api/me/shares' + (cursor ? '?cursor=' + encodeURIComponent(cursor) : '');
+  const body = await request(getToken, path) as { shares?: unknown; nextCursor?: unknown };
   if (!Array.isArray(body.shares)) throw new AccountShareError('MALFORMED_RESPONSE');
-  return body.shares.filter((item): item is AccountShare =>
+  const shares = body.shares.filter((item): item is AccountShare =>
     !!item && typeof item === 'object'
     && SHARE_ID.test((item as AccountShare).id)
     && typeof (item as AccountShare).title === 'string'
@@ -53,6 +60,23 @@ export async function fetchAccountShares(getToken: GetToken): Promise<AccountSha
       imageUrl: item.imageUrl === '/s/' + item.id + '/image.png' ? item.imageUrl : '/s/' + item.id + '/image.jpg',
       cardUrl: '/s/' + item.id + '/card.jpg',
     }));
+  return { shares, nextCursor: typeof body.nextCursor === 'string' ? body.nextCursor : null };
+}
+
+/**
+ * Which of these share IDs belong to the account, in any state. Used to tell
+ * this browser's local shares apart without paging through the account.
+ */
+export async function fetchOwnedShareIds(getToken: GetToken, ids: string[]): Promise<Set<string>> {
+  const owned = new Set<string>();
+  for (let start = 0; start < ids.length; start += 500) {
+    const body = await request(getToken, '/api/me/shares/owned', {
+      method: 'POST', body: JSON.stringify({ ids: ids.slice(start, start + 500) }),
+    }) as { owned?: unknown };
+    if (!Array.isArray(body.owned)) throw new AccountShareError('MALFORMED_RESPONSE');
+    for (const id of body.owned) if (typeof id === 'string') owned.add(id);
+  }
+  return owned;
 }
 
 /**

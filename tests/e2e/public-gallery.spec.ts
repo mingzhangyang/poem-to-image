@@ -87,23 +87,32 @@ test('signed-in creators save shares to their account and can submit them to the
   const published = await mockPublish(page);
   const calls: { method: string; path: string; auth: string | undefined; body: string | null }[] = [];
   let galleryStatus = 'none';
+  let claimedOnce = false;
   await page.route('**/api/me/shares**', async (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname;
     calls.push({ method: request.method(), path, auth: request.headers().authorization, body: request.postData() });
     if (path === '/api/me/shares/claim') {
+      claimedOnce = true;
       await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ claimed: [published.id] }) });
+    } else if (path === '/api/me/shares/owned') {
+      await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ owned: claimedOnce ? [published.id] : [] }) });
     } else if (path.endsWith('/gallery')) {
       galleryStatus = request.method() === 'PUT' ? 'pending' : 'none';
       await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ status: galleryStatus, eligible: true }) });
     } else {
+      // Two pages: the published share, then an older one behind the cursor.
+      const cursor = new URL(request.url()).searchParams.get('cursor');
+      const share = (id: string, title: string, status: string) => ({
+        id, title, author: 'William Shakespeare',
+        publishedAt: '2026-11-27 10:00:00', expiresAt: null, permanent: true, galleryStatus: status,
+        url: '/s/' + id, imageUrl: '/s/' + id + '/image.png', cardUrl: '/s/' + id + '/card.jpg',
+      });
       await route.fulfill({
         contentType: 'application/json',
-        body: JSON.stringify({ shares: [{
-          id: published.id, title: 'Sonnet 18', author: 'William Shakespeare',
-          publishedAt: '2026-11-27 10:00:00', expiresAt: null, permanent: true, galleryStatus,
-          url: '/s/' + published.id, imageUrl: '/s/' + published.id + '/image.png', cardUrl: '/s/' + published.id + '/card.jpg',
-        }] }),
+        body: JSON.stringify(cursor === 'page-2'
+          ? { shares: [share('OLDERSHARE01', 'An older poem', 'none')], nextCursor: null }
+          : { shares: [share(published.id, 'Sonnet 18', galleryStatus)], nextCursor: 'page-2' }),
       });
     }
   });
@@ -137,6 +146,9 @@ test('signed-in creators save shares to their account and can submit them to the
   await expect(library.getByText('Shares saved only in this browser')).toBeHidden();
   await library.getByRole('button', { name: 'Withdraw from gallery' }).click();
   await expect(library.getByText('Public gallery: Not submitted')).toBeVisible();
+  await library.getByRole('button', { name: 'Load more' }).click();
+  await expect(library.getByText('An older poem')).toBeVisible();
+  await expect(library.getByRole('button', { name: 'Load more' })).toBeHidden();
 });
 
 test('the gallery page lists approved artworks and loads more', async ({ page }) => {
@@ -187,6 +199,10 @@ test('after signing in, shares published anonymously in this browser can be adde
   let claimBody: unknown = null;
   await page.route('**/api/me/shares**', async (route) => {
     const path = new URL(route.request().url()).pathname;
+    if (path === '/api/me/shares/owned') {
+      await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ owned: claimed ? [published.id] : [] }) });
+      return;
+    }
     if (path === '/api/me/shares/claim') {
       claimBody = JSON.parse(route.request().postData() ?? 'null');
       claimed = true;
@@ -195,7 +211,7 @@ test('after signing in, shares published anonymously in this browser can be adde
     }
     await route.fulfill({
       contentType: 'application/json',
-      body: JSON.stringify({ shares: claimed ? [{
+      body: JSON.stringify({ nextCursor: null, shares: claimed ? [{
         id: published.id, title: 'Sonnet 18', author: '', publishedAt: '2026-11-27 10:00:00', expiresAt: '2026-12-27 10:00:00',
         permanent: false, galleryStatus: 'none',
         url: '/s/' + published.id, imageUrl: '/s/' + published.id + '/image.png', cardUrl: '/s/' + published.id + '/card.jpg',
