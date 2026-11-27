@@ -119,7 +119,7 @@ function RailTooltip({ children }: { children: string }) {
     <span
       aria-hidden="true"
       data-rail-tooltip=""
-      className="pointer-events-none invisible absolute left-full top-1/2 z-30 ml-2 -translate-y-1/2 whitespace-nowrap rounded-lg bg-[rgba(24,36,40,0.92)] px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:visible group-hover:opacity-100 group-hover:delay-200 group-focus-visible:visible group-focus-visible:opacity-100"
+      className="pointer-events-none invisible absolute left-full top-1/2 z-30 ml-3 -translate-y-1/2 whitespace-nowrap rounded-lg bg-[rgba(24,36,40,0.92)] px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:visible group-hover:opacity-100 group-hover:delay-200 group-focus-visible:visible group-focus-visible:opacity-100"
     >
       {children}
     </span>

@@ -29,7 +29,7 @@ test.describe('desktop navigation rail', () => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
 
     await expect(rail(page)).toHaveAttribute('aria-orientation', 'vertical');
-    await expect(rail(page).getByRole('tab')).toHaveText(
+    await expect(rail(page).getByRole('tab').locator('[id^="sidebar-rail-label-"]')).toHaveText(
       ['Templates', 'Size', 'Content', 'Typography', 'Background', 'Decor', 'Settings'],
     );
     // Content is the first-visit default.
@@ -90,8 +90,18 @@ test.describe('desktop navigation rail', () => {
     await tab(page, 'Size').hover();
     await expect(sizeTooltip).toBeVisible();
     await expect(sizeTooltip).toHaveText('Canvas Size');
-    // The tooltip overlays the panel column rather than being clipped by the rail.
-    expect((await sizeTooltip.boundingBox())!.x).toBeGreaterThan(railBox.x + railBox.width);
+    // The tooltip sits beside the rail and paints above the panel column.
+    const tooltipBox = (await sizeTooltip.boundingBox())!;
+    expect(tooltipBox.x).toBeGreaterThan(railBox.x + railBox.width);
+    // elementFromPoint skips pointer-events: none, so hit-test the tooltip for this check only.
+    const onTop = await sizeTooltip.evaluate((node, [x, y]) => {
+      (node as HTMLElement).style.pointerEvents = 'auto';
+      const hit = node.contains(document.elementFromPoint(x!, y!));
+      (node as HTMLElement).style.pointerEvents = '';
+      return hit;
+    },
+      [tooltipBox.x + tooltipBox.width - 4, tooltipBox.y + tooltipBox.height / 2]);
+    expect(onTop).toBe(true);
 
     await page.mouse.move(800, 400);
     await tab(page, 'Content').focus();
