@@ -496,6 +496,7 @@ const zhTW: TranslationMessages = {
     language: "語言",
     account: "帳戶",
     privacyPolicy: "隱私政策",
+    publicGallery: "公開圖庫",
     about: "關於",
     aboutDescription: "用 AI 將你的詩詞轉化為美麗的藝術圖片。",
     backToEditor: "返回編輯器",

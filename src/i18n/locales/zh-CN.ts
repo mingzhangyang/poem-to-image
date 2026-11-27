@@ -496,6 +496,7 @@ const zhCN: TranslationMessages = {
     language: "语言",
     account: "账户",
     privacyPolicy: "隐私政策",
+    publicGallery: "公开图库",
     about: "关于",
     aboutDescription: "用 AI 将你的诗词转化为美丽的艺术图片。",
     backToEditor: "返回编辑器",

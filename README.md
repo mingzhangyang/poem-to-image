@@ -9,6 +9,7 @@ Turn poems into AI-generated images with precise text control. Built with React 
 ## Features
 
 - **Public read-only artwork links**: publish immutable snapshot URLs such as `inkpoem.com/s/<id>`, with social preview, viewer download and a browser-local **My Shares** history backed by IndexedDB for link retrieval, removal-key backup, status checks and revocation. Uses D1 + a private R2 bucket; see [share setup & rollout instructions](docs/shareable-artwork-links.md).
+- **Public gallery**: creators can opt in to show a permanent share at `/gallery`. Submissions appear only after a maintainer approves them with `npm run gallery:review` (see the [operations runbook](docs/operations-runbook.md#public-gallery-review)), and visitors can report any shared artwork.
 - **Ornaments** (in the Decorations & Elements panel) can be filtered by mood, snapped into place, and layered above or below the poem. PNG export uses the original artwork at the selected export scale.
 - AI image generation via Gemini and OpenAI
 - Clerk authentication

@@ -5,6 +5,8 @@ import { pruneOrphanedShareAttempts, pruneRevokedShareAssets } from './shares';
 
 export async function runOperationalChecks(env: WorkerEnv): Promise<void> {
   await env.DB.prepare(`UPDATE shared_artworks SET revoked_at = CURRENT_TIMESTAMP, title = '', author = '', assets_deleted_at = CASE WHEN image_key IS NULL AND card_key IS NULL THEN CURRENT_TIMESTAMP ELSE assets_deleted_at END WHERE revoked_at IS NULL AND expires_at IS NOT NULL AND expires_at <= CURRENT_TIMESTAMP`).run();
+  // Reports only matter while their share is live; drop them once it is revoked.
+  await env.DB.prepare(`DELETE FROM share_reports WHERE share_id IN (SELECT id FROM shared_artworks WHERE revoked_at IS NOT NULL)`).run();
   const [health, prunedRateLimits, cleanedShareAssets, cleanedOrphanedAttempts] = await Promise.all([
     getOperationalHealth(env.DB),
     pruneExpiredRateLimits(env.DB),

@@ -41,8 +41,9 @@ it should succeed even if no prior POST reached the Worker.
    curl -i https://inkpoem.com/api/health/sharing
    ```
    HTTP 200 with `{"ready":true}` confirms the live Worker can query
-   the `shared_artworks`, `shared_artwork_upload_attempts` and
-   `rate_limits` tables (including `published_at`) and access the private
+   the `shared_artworks`, `shared_artwork_upload_attempts`, `share_reports`
+   and `rate_limits` tables (including `published_at` and the gallery
+   columns) and access the private
    R2 bucket. The rate-limit table matters to both first-time POST and
    DELETE of an unseen ID; without it, both mutations can fail while
    a public share page still returns a normal 404. HTTP
@@ -53,7 +54,8 @@ it should succeed even if no prior POST reached the Worker.
    ```sh
    npx wrangler r2 bucket list
    npx wrangler d1 migrations list DB --remote --config wrangler.jsonc
-   # Confirm 0002 (rate_limits) as well as 0005 (shared_artworks).
+   # Confirm 0002 (rate_limits), 0005 (shared_artworks) and 0007 (gallery
+   # columns and share_reports).
    # Only if numbered migrations are pending:
    npx wrangler d1 migrations apply DB --remote --config wrangler.jsonc
    ```
@@ -120,6 +122,17 @@ backup is still necessary for long-term revocation access.
 **Important:** The browser-held key is not encryption. Do not show or send it
 in public links or browser diagnostics. The share endpoint itself stores
 only the key hash, so a lost key cannot be recovered from the server.
+
+## Public gallery (`/gallery`)
+
+Creators can opt in to show a share in the public gallery. Nothing is listed without both the creator's request and a maintainer's approval.
+
+- **Opt-in.** The publish dialog has an **Also submit to the public gallery** checkbox, off by default and enabled only when the expiration is **Never**. After a confirmed publication the browser sends the request; if it fails, the share stays published and the creator can resubmit from **My Shares**. Each permanent, published share in **My Shares** shows its gallery status with a submit or withdraw button. Shares published before the gallery existed are never listed unless their creator submits them.
+- **Only permanent shares.** The Worker refuses requests for shares with a 7-day or 30-day expiration (`409 SHARE_NOT_PERMANENT`), and the review script will not approve them.
+- **Owner endpoints.** `GET|PUT|DELETE /api/shares/:id/gallery` read, request or withdraw a listing. They require the private `X-Share-Delete-Token` header and return `{ status, eligible }`, where `status` is `none`, `pending`, `listed` or `rejected`. A rejected share keeps that status: neither a new request nor a withdrawal puts it back in the queue.
+- **Public listing.** `GET /api/gallery?cursor=&limit=` returns approved shares, newest approval first, 24 per page by default (at most 48), with an opaque `nextCursor`. Every query also requires a published, unrevoked, permanent row, so revoking a share removes it from the gallery at once. Thumbnails are the existing `card.jpg` social previews.
+- **Reports.** Every share page has a **Report this artwork** control for visitors who do not hold the removal key. `POST /api/shares/:id/report` takes `{ "reason": "copyright" | "privacy" | "inappropriate" | "other" }` and returns `202` whether or not the visitor had already reported it. Each visitor counts once per share (a per-share salted hash of `CF-Connecting-IP`), and reports are rate-limited per network to 10 an hour and 30 a day. When three distinct visitors have reported a listed share, it goes back to `pending` and drops out of the gallery until reviewed; the share link stays up. Reports of revoked shares are deleted by the hourly maintenance run.
+- **Review.** Maintainers review with `npm run gallery:review` (see the [operations runbook](operations-runbook.md#public-gallery-review)). There is no admin API: the script runs SQL against D1 through wrangler with the maintainer's Cloudflare login.
 
 ## Privacy and abuse controls
 

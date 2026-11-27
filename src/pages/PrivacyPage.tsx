@@ -58,6 +58,8 @@ export function PrivacyPage() {
           <p><strong className="text-gray-700">Usage data</strong> — We store records of AI generation requests and credit transactions in order to maintain your credit balance and provide transaction history.</p>
           <p><strong className="text-gray-700">Editor and AI content</strong> — Poem text sent for AI image generation is shared with the chosen provider (Google Gemini or OpenAI). Your ordinary unpublished editor drafts remain in this browser; we do not intentionally persist submitted poem text for AI generation.</p>
           <p><strong className="text-gray-700">Artwork you choose to publish</strong> — When you explicitly publish a shareable artwork link, we store a flattened image of your artwork, its social-preview image, the title and author you entered, and the creation time on Cloudflare R2/D1. This publication is publicly accessible to anyone with the link. Publishing does not upload your editable editor project.</p>
+          <p><strong className="text-gray-700">Public gallery</strong> — If you choose to submit a permanent share to the public gallery, we record that request and our review decision. An approved artwork, with its title and author, is listed at inkpoem.com/gallery, where anyone can browse it without the link. You can withdraw it from the gallery at any time without revoking the share.</p>
+          <p><strong className="text-gray-700">Reports</strong> — When a visitor reports a shared artwork, we store the reason they chose and a pseudonymous identifier derived from their network address and the artwork, so one visitor counts once. Reports are deleted when the share is revoked.</p>
           <p><strong className="text-gray-700">Publishing abuse protection</strong> — We use a hashed, pseudonymous network address identifier for temporary per-hour and per-day publishing rate limits; expired counters are periodically deleted.</p>
         </Section>
 
@@ -70,6 +72,7 @@ export function PrivacyPage() {
             <li>To improve the reliability and performance of the service</li>
             <li>To serve public artwork you deliberately publish and generate its share-preview metadata</li>
             <li>To enforce temporary anonymous publication limits</li>
+            <li>To review gallery submissions and reports about published artwork</li>
           </ul>
         </Section>
 

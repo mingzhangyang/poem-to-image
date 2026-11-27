@@ -31,7 +31,7 @@ function available(env: WorkerEnv): boolean {
 
 // Production requests must originate from this Worker host. When running Vite
 // locally, the browser's :3000 origin differs from the proxied Worker's :8787.
-function hasAllowedOrigin(request: Request): boolean {
+export function hasAllowedOrigin(request: Request): boolean {
   const rawOrigin = request.headers.get('origin');
   if (!rawOrigin) return true; // CLI clients do not always send Origin.
   const requestUrl = new URL(request.url);
@@ -65,8 +65,13 @@ export async function getShareReadiness(request: Request, env: WorkerEnv): Promi
     await env.DB.prepare(
       `SELECT id, title, author, image_key, image_type, card_key,
               delete_token_hash, content_fingerprint, created_at,
-              published_at, revoked_at, assets_deleted_at, expiry_policy, expires_at
+              published_at, revoked_at, assets_deleted_at, expiry_policy, expires_at,
+              gallery_status, gallery_requested_at, gallery_listed_at, gallery_reviewed_at
        FROM shared_artworks LIMIT 1`,
+    ).all();
+    // The public gallery and visitor reports (migration 0007).
+    await env.DB.prepare(
+      'SELECT share_id, reporter_hash, reason, created_at FROM share_reports LIMIT 1',
     ).all();
     await env.DB.prepare(
       `SELECT attempt_id, share_id, image_key, card_key, created_at
@@ -96,7 +101,7 @@ export function isShareId(id: string): boolean {
   return SHARE_ID_PATTERN.test(id);
 }
 
-async function tokenHash(token: string): Promise<string> {
+export async function tokenHash(token: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token));
   return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
 }
@@ -118,7 +123,7 @@ function artworkUrl(request: Request, id: string): string {
   return new URL('/s/' + id, request.url).toString();
 }
 
-function imagePath(id: string, mime: string): string {
+export function imagePath(id: string, mime: string): string {
   return '/s/' + id + '/image.' + (mime === 'image/png' ? 'png' : 'jpg');
 }
 
@@ -482,7 +487,7 @@ export async function deleteShare(request: Request, env: WorkerEnv, id: string):
   if (!row.revoked_at) {
     const result = await env.DB.prepare(
       `UPDATE shared_artworks
-       SET revoked_at = CURRENT_TIMESTAMP, title = '', author = ''
+       SET revoked_at = CURRENT_TIMESTAMP, title = '', author = '', gallery_status = NULL, gallery_listed_at = NULL
        WHERE id = ? AND delete_token_hash = ? AND revoked_at IS NULL`,
     ).bind(id, hash).run();
     if (result.meta.changes !== 1) {

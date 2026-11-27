@@ -14,6 +14,7 @@ import { logError, logInfo, requestIdFor, withRequestId } from './observability'
 import type { WorkerEnv } from './env';
 import { runOperationalChecks } from './maintenance';
 import { publishShare, getShareApi, deleteShare, getShareImage, getShareHtml, getShareReadiness, verifyShareForRecovery } from './shares';
+import { handleShareGallery, listGallery, reportShare } from './gallery';
 
 const MAX_AI_PROMPT_LENGTH = 500;
 const MAX_REQUEST_ID_LENGTH = 80;
@@ -371,6 +372,11 @@ async function routeRequest(request: Request, env: WorkerEnv): Promise<Response>
     if (pathname === '/api/shares') return publishShare(request, env);
     const shareRecovery = /^\/api\/shares\/([A-Za-z0-9_-]+)\/verify$/.exec(pathname);
     if (shareRecovery) return verifyShareForRecovery(request, env, shareRecovery[1]);
+    const shareGallery = /^\/api\/shares\/([A-Za-z0-9_-]+)\/gallery$/.exec(pathname);
+    if (shareGallery) return handleShareGallery(request, env, shareGallery[1]);
+    const shareReport = /^\/api\/shares\/([A-Za-z0-9_-]+)\/report$/.exec(pathname);
+    if (shareReport) return reportShare(request, env, shareReport[1]);
+    if (pathname === '/api/gallery') return listGallery(request, env);
     const shareApi = /^\/api\/shares\/([A-Za-z0-9_-]+)$/.exec(pathname);
     if (shareApi) {
       if (request.method === 'GET') return getShareApi(request, env, shareApi[1]);

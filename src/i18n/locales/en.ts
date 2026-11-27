@@ -504,6 +504,7 @@ const en = {
     language: "Language",
     account: "Account",
     privacyPolicy: "Privacy Policy",
+    publicGallery: "Public gallery",
     about: "About",
     aboutDescription: "Turn your poems into beautiful art with AI.",
     backToEditor: "Back to Editor",

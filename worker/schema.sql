@@ -94,7 +94,11 @@ CREATE TABLE IF NOT EXISTS shared_artworks (
   revoked_at TEXT,
   assets_deleted_at TEXT,
   expiry_policy TEXT NOT NULL DEFAULT 'never' CHECK (expiry_policy IN ('7d', '30d', 'never')),
-  expires_at TEXT
+  expires_at TEXT,
+  gallery_status TEXT CHECK (gallery_status IN ('pending', 'listed', 'rejected')),
+  gallery_requested_at TEXT,
+  gallery_listed_at TEXT,
+  gallery_reviewed_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS rate_limits (
@@ -138,3 +142,19 @@ CREATE INDEX IF NOT EXISTS idx_shared_artworks_cleanup_pending ON shared_artwork
   WHERE revoked_at IS NOT NULL AND assets_deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_shared_artworks_expiration ON shared_artworks(expires_at)
   WHERE expires_at IS NOT NULL AND revoked_at IS NULL;
+
+-- Public gallery listing and visitor reports (migration 0007).
+CREATE INDEX IF NOT EXISTS idx_shared_artworks_gallery_listed
+  ON shared_artworks(gallery_listed_at, id)
+  WHERE gallery_status = 'listed';
+CREATE INDEX IF NOT EXISTS idx_shared_artworks_gallery_pending
+  ON shared_artworks(gallery_requested_at)
+  WHERE gallery_status = 'pending';
+
+CREATE TABLE IF NOT EXISTS share_reports (
+  share_id TEXT NOT NULL,
+  reporter_hash TEXT NOT NULL,
+  reason TEXT NOT NULL CHECK (reason IN ('copyright', 'privacy', 'inappropriate', 'other')),
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (share_id, reporter_hash)
+);
