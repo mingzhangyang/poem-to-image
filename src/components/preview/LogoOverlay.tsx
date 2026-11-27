@@ -36,6 +36,8 @@ export const LogoOverlay: FC<LogoOverlayProps> = ({ ariaLabel, sizeLabel, effect
   const isDraggingRef = useRef(false);
   const beginPointerInteraction = usePreviewPointerInteraction(onInteractionStart, onInteractionEnd);
   const logoRef = useRef<HTMLDivElement>(null);
+  // An uploaded logo's natural size, so its box can fit the image like the export does.
+  const [naturalSize, setNaturalSize] = useState<{ url: string; width: number; height: number } | null>(null);
 
   /** The position is the image centre, which need not be the centre of an ornament's visible ink. */
   const anchorPoint = (frameRect: PreviewPositioningRect, position: RelativePosition) => ({
@@ -138,9 +140,17 @@ export const LogoOverlay: FC<LogoOverlayProps> = ({ ariaLabel, sizeLabel, effect
   const size = resizingTo ?? logo.size;
   const common: CSSProperties = { position: 'absolute', cursor: 'grab', userSelect: 'none' };
   // An ornament's box is its visible ink, so the transparent margin of its
-  // square image neither blocks the canvas edge nor catches taps. The image
-  // keeps the full size × size square, centred on the position and rotated
-  // about that centre, exactly as the export draws it.
+  // square image neither blocks the canvas edge nor catches taps (the image
+  // itself ignores pointers). The image keeps the full size × size square,
+  // centred on the position and rotated about that centre, exactly as the
+  // export draws it.
+  // An uploaded logo's box is its image fitted into the size × size square,
+  // also as the export draws it, so a wide logo has no blank bands to stop it
+  // short of the canvas edge. Until the image loads the box is square.
+  const natural = naturalSize?.url === logo.imageUrl ? naturalSize : null;
+  const longestSide = natural ? Math.max(natural.width, natural.height) : 1;
+  const logoWidth = natural ? size * natural.width / longestSide : size;
+  const logoHeight = natural ? size * natural.height / longestSide : size;
   const [contentLeft, contentTop, contentRight, contentBottom] = getOrnamentContentBox(logo.ornamentId, logo.flipped);
   const style: CSSProperties = logo.ornamentId ? {
     ...common,
@@ -156,8 +166,8 @@ export const LogoOverlay: FC<LogoOverlayProps> = ({ ariaLabel, sizeLabel, effect
     left: `${livePosition.positionX}%`,
     top: `${livePosition.positionY}%`,
     transform: 'translate(-50%, -50%)',
-    width: `${size}px`,
-    height: `${size}px`,
+    width: `${logoWidth}px`,
+    height: `${logoHeight}px`,
     opacity: logo.opacity,
     transformOrigin: 'center',
     rotate: `${logo.rotation}deg`,
@@ -172,7 +182,8 @@ export const LogoOverlay: FC<LogoOverlayProps> = ({ ariaLabel, sizeLabel, effect
     maxWidth: 'none',
     opacity: logo.opacity,
     transform: logo.flipped ? 'scaleX(-1)' : undefined,
-  } : { transform: logo.flipped ? 'scaleX(-1)' : undefined };
+    pointerEvents: 'none',
+  } : { transform: logo.flipped ? 'scaleX(-1)' : undefined, pointerEvents: 'none' };
 
   return (
     <div
@@ -191,6 +202,12 @@ export const LogoOverlay: FC<LogoOverlayProps> = ({ ariaLabel, sizeLabel, effect
         style={imageStyle}
         className={logo.ornamentId ? 'object-contain' : 'w-full h-full object-contain'}
         draggable={false}
+        onLoad={event => {
+          const { naturalWidth, naturalHeight } = event.currentTarget;
+          if (naturalWidth > 0 && naturalHeight > 0) {
+            setNaturalSize({ url: logo.imageUrl, width: naturalWidth, height: naturalHeight });
+          }
+        }}
       />
       {logo.ornamentId && ['-top-1 -left-1', '-top-1 -right-1', '-bottom-1 -left-1', '-bottom-1 -right-1'].map((corner, index, corners) => <button
         key={corner}

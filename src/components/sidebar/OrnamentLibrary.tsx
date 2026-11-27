@@ -1,6 +1,6 @@
 import { useContext, useEffect, useState } from 'react';
 import { ChevronDown, ChevronUp, Flower2 } from 'lucide-react';
-import { getOrnamentContentBox, getOrnamentContentExtents } from '../../ornaments/contentBox';
+import { getDuplicatePosition, getOrnamentAnchorPosition } from '../../ornaments/placement';
 import { OrnamentSelection } from '../../ornaments/selection';
 import manifest from '../../ornaments/manifest.json';
 import { getOrnamentName, ORNAMENT_CATEGORIES, ORNAMENT_MOODS, type OrnamentManifestItem } from '../../ornaments/taxonomy';
@@ -37,29 +37,8 @@ export function OrnamentLibrary({ t, decorations }: OrnamentLibraryProps) {
     if (selected) setExpanded(true);
   }, [selected]);
 
-  /**
-   * Places the ornament's visible ink, not its transparent margin, 3% inside
-   * the chosen corner or edge of the canvas. Canvas padding is for text, so
-   * ornaments may sit in it; positions stay percentages of the poem frame.
-   */
   function position(anchor: string, ornament: Pick<LogoConfig, 'ornamentId' | 'size' | 'rotation' | 'flipped'>) {
-    const area = placement();
-    const reach = getOrnamentContentExtents(
-      getOrnamentContentBox(ornament.ornamentId, ornament.flipped), ornament.size, ornament.rotation,
-    );
-    // Image centre in canvas pixels along one axis.
-    const place = (side: 'start' | 'end' | 'center', before: number, after: number, canvasSize: number) => {
-      const margin = canvasSize * 0.03;
-      return side === 'start' ? margin + before
-        : side === 'end' ? canvasSize - margin - after
-          : canvasSize / 2 + (before - after) / 2;
-    };
-    const x = place(anchor.endsWith('l') ? 'start' : anchor.endsWith('r') ? 'end' : 'center', reach.left, reach.right, area.canvasWidth);
-    const y = place(anchor.startsWith('t') ? 'start' : anchor.startsWith('b') ? 'end' : 'center', reach.top, reach.bottom, area.canvasHeight);
-    return {
-      positionX: (x - area.left) / area.width * 100,
-      positionY: (y - area.top) / area.height * 100,
-    };
+    return getOrnamentAnchorPosition(placement(), anchor, ornament);
   }
   function add(item: OrnamentManifestItem) {
     const { width, height } = placement();
@@ -158,7 +137,7 @@ export function OrnamentLibrary({ t, decorations }: OrnamentLibraryProps) {
                   {active.aboveText ? t('ornamentBelowText') : t('ornamentAboveText')}
                 </button>
                 <button type="button" className={chipClassName}
-                  onClick={() => setSelected(decorations.onAddOrnament(active.imageUrl, { ...active, positionX: Math.min(97, active.positionX + 2) }))}>
+                  onClick={() => setSelected(decorations.onAddOrnament(active.imageUrl, { ...active, ...getDuplicatePosition(placement(), active) }))}>
                   {t('ornamentDuplicate')}
                 </button>
                 <button type="button" className={chipClassName} onClick={() => decorations.onLogoRemove(active.id)}>{t('ornamentDelete')}</button>

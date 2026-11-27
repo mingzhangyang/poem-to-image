@@ -155,6 +155,7 @@ test('drags a banded ornament through the canvas padding until its visible ink t
   await page.goto('/');
   const isMobile = await openOrnaments(page, { decorations: 'Decor', ornaments: 'Ornaments' });
   await page.getByRole('button', { name: 'Greek Key Border', exact: true }).click();
+  await page.getByRole('button', { name: 'Move above text', exact: true }).click();
   if (isMobile) {
     await page.keyboard.press('Escape');
     await expect(page.locator('#mobile-controls-drawer')).toBeHidden();
@@ -166,6 +167,16 @@ test('drags a banded ornament through the canvas padding until its visible ink t
   const layerBox = (await layer.boundingBox())!;
   // The box that is selected and dragged is the band, not the image's transparent square.
   expect(layerBox.height).toBeLessThan(imageBox.height * 0.25);
+
+  // Even above the text, the transparent square neither catches pointers nor drags the band.
+  const blank = { x: layerBox.x + layerBox.width / 2, y: imageBox.y + imageBox.height * 0.15 };
+  expect(blank.y).toBeLessThan(layerBox.y - 4);
+  expect(await layer.evaluate((element, point) => element.contains(document.elementFromPoint(point.x, point.y)), blank)).toBe(false);
+  await page.mouse.move(blank.x, blank.y);
+  await page.mouse.down();
+  await page.mouse.move(blank.x + 40, blank.y + 40, { steps: 4 });
+  await page.mouse.up();
+  expect(await layer.boundingBox()).toEqual(layerBox);
 
   // Canvas padding keeps text off the paper edge; ornaments may use it.
   const canvas = (await page.locator('[data-artwork-canvas]').boundingBox())!;
@@ -202,4 +213,71 @@ test('drags a banded ornament through the canvas padding until its visible ink t
   const corner = (await layer.boundingBox())!;
   expect(corner.x - canvas.x).toBeCloseTo(canvas.width * 0.03, 0);
   expect(corner.y - canvas.y).toBeCloseTo(canvas.height * 0.03, 0);
+});
+
+test('drags a wide uploaded logo to the canvas edge by its image and exports it unstretched', async ({ page }) => {
+  await page.route('**/api/billing/packages', route => route.fulfill({ json: { packages: [] } }));
+  await page.addInitScript(() => {
+    Reflect.deleteProperty(window, 'showSaveFilePicker');
+    localStorage.setItem('poem-to-image.onboarding-dismissed', 'true');
+    localStorage.setItem('poem-to-image.language', 'en');
+  });
+  await page.goto('/');
+  await openPanel(page, 'Decor');
+  // An opaque 4:1 logo: red left half, blue right half.
+  const half = (red: number, blue: number) => sharp({ create: { width: 200, height: 100, channels: 3, background: { r: red, g: 0, b: blue } } }).png().toBuffer();
+  const logoPng = await sharp({ create: { width: 400, height: 100, channels: 3, background: '#000' } })
+    .composite([{ input: await half(220, 0), left: 0, top: 0 }, { input: await half(0, 220), left: 200, top: 0 }])
+    .png().toBuffer();
+  await page.getByLabel('Upload Logo').setInputFiles({ name: 'wide.png', mimeType: 'image/png', buffer: logoPng });
+  if (!isDesktopLayout(page)) {
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#mobile-controls-drawer')).toBeHidden();
+  }
+
+  const layer = page.locator('[data-artwork-canvas] [aria-label="Logo element"]');
+  // The box fits the image, with no blank bands above and below it.
+  await expect.poll(async () => {
+    const box = (await layer.boundingBox())!;
+    return Math.round(box.width / box.height * 10) / 10;
+  }).toBe(4);
+
+  const canvas = (await page.locator('[data-artwork-canvas]').boundingBox())!;
+  const box = (await layer.boundingBox())!;
+  const start = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  await page.mouse.move(start.x, start.y);
+  await page.mouse.down();
+  await page.mouse.move(start.x, start.y - canvas.height, { steps: 6 });
+  await page.mouse.up();
+  const atTop = (await layer.boundingBox())!;
+  expect(Math.abs(atTop.y - canvas.y)).toBeLessThan(2);
+
+  if (!isDesktopLayout(page)) return;
+  await page.getByRole('button', { name: 'Export Image', exact: true }).click();
+  const downloading = page.waitForEvent('download');
+  await page.getByRole('dialog').getByRole('button', { name: 'Save Image', exact: true }).click();
+  const exported = sharp((await (await downloading).path())!);
+  const { width } = await exported.metadata();
+  const scale = width! / canvas.width;
+  // Sample the middle of each half of the logo where the preview shows it.
+  const sample = async (fractionX: number) => {
+    const pixel = await exported.clone().extract({
+      left: Math.round((atTop.x - canvas.x + atTop.width * fractionX) * scale),
+      top: Math.round((atTop.y - canvas.y + atTop.height / 2) * scale),
+      width: 1, height: 1,
+    }).removeAlpha().raw().toBuffer();
+    return [...pixel];
+  };
+  const [left, right] = await Promise.all([sample(0.25), sample(0.75)]);
+  expect(left[0]).toBeGreaterThan(180);
+  expect(left[2]).toBeLessThan(40);
+  expect(right[2]).toBeGreaterThan(180);
+  expect(right[0]).toBeLessThan(40);
+  // Just below the logo in the preview, the export shows paper, not a stretched logo.
+  const below = await exported.clone().extract({
+    left: Math.round((atTop.x - canvas.x + atTop.width / 4) * scale),
+    top: Math.round((atTop.y - canvas.y + atTop.height + 4) * scale),
+    width: 1, height: 1,
+  }).removeAlpha().raw().toBuffer();
+  expect(below[0] > 180 && below[2] < 40).toBe(false);
 });
