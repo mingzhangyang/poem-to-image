@@ -66,10 +66,54 @@ test.describe('desktop navigation rail', () => {
     await expect(rail(page).getByRole('heading')).toHaveCount(0);
     const brandBox = await brand.boundingBox();
     const firstTabBox = await tab(page, 'Templates').boundingBox();
-    expect(brandBox!.x + brandBox!.width).toBeLessThanOrEqual(72);
+    expect(brandBox!.x + brandBox!.width).toBeLessThanOrEqual(64);
     expect(brandBox!.y + brandBox!.height).toBeLessThanOrEqual(firstTabBox!.y);
     // The subtitle and wordmark header no longer sit above the active panel.
     await expect(page.getByText('Poetic moods', { exact: false })).toBeHidden();
+  });
+
+  test('rail tabs show only icons, with the full title as a hover and focus tooltip', async ({ page }) => {
+    await dismissOnboarding(page);
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+
+    const railBox = (await rail(page).boundingBox())!;
+    expect(railBox.width).toBeLessThanOrEqual(64);
+    // Labels stay as accessible names but take no visible space.
+    const labelSizes = await rail(page).locator('[id^="sidebar-rail-label-"]').evaluateAll(
+      (labels) => labels.map((label) => label.getBoundingClientRect().width),
+    );
+    expect(labelSizes).toHaveLength(7);
+    for (const width of labelSizes) expect(width).toBeLessThanOrEqual(1);
+
+    const sizeTooltip = tab(page, 'Size').locator('[data-rail-tooltip]');
+    await expect(sizeTooltip).toBeHidden();
+    await tab(page, 'Size').hover();
+    await expect(sizeTooltip).toBeVisible();
+    await expect(sizeTooltip).toHaveText('Canvas Size');
+    // The tooltip overlays the panel column rather than being clipped by the rail.
+    expect((await sizeTooltip.boundingBox())!.x).toBeGreaterThan(railBox.x + railBox.width);
+
+    await page.mouse.move(800, 400);
+    await tab(page, 'Content').focus();
+    await page.keyboard.press('ArrowDown');
+    await expect(tab(page, 'Typography')).toBeFocused();
+    await expect(tab(page, 'Typography').locator('[data-rail-tooltip]')).toBeVisible();
+  });
+
+  test('the rail links to the public gallery outside the tab list', async ({ page }) => {
+    await dismissOnboarding(page);
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+
+    const gallery = page.getByRole('link', { name: 'Public gallery', exact: true }).first();
+    await expect(gallery).toBeVisible();
+    await expect(rail(page).getByRole('link')).toHaveCount(0);
+    const galleryBox = (await gallery.boundingBox())!;
+    const settingsBox = (await tab(page, 'Settings').boundingBox())!;
+    expect(galleryBox.x + galleryBox.width).toBeLessThanOrEqual(64);
+    expect(galleryBox.y).toBeGreaterThan(settingsBox.y);
+
+    await gallery.click();
+    await expect(page).toHaveURL(/\/gallery$/);
   });
 
   test('the desktop panel fills an opaque column flat and pins its heading while scrolling', async ({ page }) => {

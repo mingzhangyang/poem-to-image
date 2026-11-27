@@ -4,9 +4,9 @@ import type { SidebarPanel } from '../../types';
 
 export interface NavigationItem {
   icon: LucideIcon;
-  /** Short label shown on the desktop rail, the mobile dock and the More menu. */
+  /** Short label: the mobile dock and More menu show it; on the icon-only desktop rail it is the tab's accessible name. */
   labelKey: TranslationKey;
-  /** Full title: the panel heading, the mobile drawer title and the rail tooltip. */
+  /** Full title: the panel heading, the mobile drawer title and the desktop rail tooltip. */
   titleKey: TranslationKey;
 }
 
