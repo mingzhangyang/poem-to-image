@@ -571,10 +571,18 @@ function EditorApp({ initialState, initialRevision, promoteInitial }: EditorAppP
       logos: decorations.logos,
       signatures: decorations.signatures,
       language,
-      getFrameSize: () => ({
-        width: poemFrameRef.current?.clientWidth || canvasWidth,
-        height: poemFrameRef.current?.clientHeight || canvasHeight,
-      }),
+      getPlacementArea: () => {
+        const frame = poemFrameRef.current;
+        return {
+          // The frame's padding box, which is what element percentages refer to.
+          left: frame ? frame.offsetLeft + frame.clientLeft : 0,
+          top: frame ? frame.offsetTop + frame.clientTop : 0,
+          width: frame?.clientWidth || canvasWidth,
+          height: frame?.clientHeight || canvasHeight,
+          canvasWidth,
+          canvasHeight,
+        };
+      },
       onAddOrnament: decorations.addLogo,
       onAddCustomText: decorations.addCustomText,
       onAddSignature: decorations.addSignature,

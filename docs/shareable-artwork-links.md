@@ -167,7 +167,7 @@ revoked or expired share also drops out of the banner.
 
 ## Public gallery (`/gallery`)
 
-Creators can opt in to show a share in the public gallery. Nothing is listed without both the creator's request and a maintainer's approval.
+Creators can opt in to show a share in the public gallery. Nothing is listed without both the creator's request and a maintainer's approval. Visitors reach the gallery from the foot of the desktop navigation rail, the Settings panel and the bottom of every share page.
 
 - **Opt-in, signed in only.** The publish dialog has an **Also submit to the public gallery** checkbox, off by default and enabled only for a signed-in creator with the expiration set to **Never**. After a confirmed publication the browser claims the share for the account, then submits it; if either step fails, the share stays published and the creator can submit it from **My Shares** or the account page, where every account share shows its gallery status with a submit or withdraw button. Anonymous shares cannot be submitted until they are added to an account.
 - **Only permanent shares.** The Worker refuses requests for shares with a 7-day or 30-day expiration (`409 SHARE_NOT_PERMANENT`), and the review script will not approve them.

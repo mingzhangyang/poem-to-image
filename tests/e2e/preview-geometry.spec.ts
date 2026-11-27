@@ -190,15 +190,35 @@ test('dragging poem position at enlarged zoom preserves normalized coordinates',
     return position !== null && position.exportLeft !== undefined && position.exportTop !== undefined;
   }).toBe(true);
 
+  // Drag commit measures the rendered DOM box and persists that center, which
+  // can differ slightly from the transient CSS percentage read above. Use the
+  // committed center as the baseline for the exact keyboard nudge.
+  const dragged = (await readSavedPoemPosition(page))!;
+  expect(dragged.positionX).toBeGreaterThan(before.x);
+  expect(dragged.positionY).toBeGreaterThan(before.y);
+  expect(dragged.positionX - before.x).toBeCloseTo(20 / frame!.width * 100, 0);
+  expect(dragged.positionY - before.y).toBeCloseTo(10 / frame!.height * 100, 0);
+  // Wait for the preview to reflect the committed center before moving again.
+  await expect(async () => {
+    const position = await holder.evaluate((el) => ({
+      x: Number.parseFloat((el as HTMLElement).style.left),
+      y: Number.parseFloat((el as HTMLElement).style.top),
+    }));
+    expect(position.x).toBeCloseTo(dragged.positionX, 3);
+    expect(position.y).toBeCloseTo(dragged.positionY, 3);
+  }).toPass({ timeout: 5000 });
+
   // Dragging records an explicit preview top-left for Canvas export. A later
   // keyboard move must clear this old anchor or export ignores the new center.
   await poem.focus();
   await poem.press('ArrowRight');
-  await expect.poll(async () => {
+  await expect(async () => {
     const position = await readSavedPoemPosition(page);
-    return position !== null && position.exportLeft === undefined && position.exportTop === undefined;
-  }).toBe(true);
-  const movedX = (await readSavedPoemPosition(page))?.positionX;
-  expect(movedX).toBeDefined();
-  expect(movedX!).toBeCloseTo(after.x + 1, 3);
+    expect(position).not.toBeNull();
+    expect(position!.exportLeft).toBeUndefined();
+    expect(position!.exportTop).toBeUndefined();
+    expect(position!.positionX).toBeCloseTo(dragged.positionX + 1, 3);
+    expect(position!.positionY).toBeCloseTo(dragged.positionY, 3);
+    expect(position!.boxWidth).toBe(dragged.boxWidth);
+  }).toPass({ timeout: 5000 });
 });

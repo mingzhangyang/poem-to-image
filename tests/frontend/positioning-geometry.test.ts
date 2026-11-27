@@ -4,6 +4,7 @@ import {
   clampToDragBounds,
   didFontReadyChangeTextBox,
   didTextBoxDimensionsChange,
+  getAnchoredDragBounds,
   getCanvasPositioningRect,
   getCanvasTextOrigin,
   getKeyboardDragBounds,
@@ -67,6 +68,31 @@ test('drag bounds match measured preview element and cannot exceed canvas extent
   assert.equal(huge.maxPositionX, 50);
   assert.equal(huge.minPositionY, 50);
   assert.equal(huge.maxPositionY, 50);
+});
+
+test('anchored drag bounds let an off-centre box reach every frame edge', () => {
+  const frame = { left: 100, top: 60, width: 400, height: 200 };
+  // Anchor at (300, 160); the box spans 20 px left, 60 px right, 10 px up, 30 px down of it.
+  const bounds = getAnchoredDragBounds(frame, { left: 280, right: 360, top: 150, bottom: 190 }, { x: 300, y: 160 });
+  assert.deepEqual(bounds, {
+    minPositionX: 5, maxPositionX: 85,
+    minPositionY: 5, maxPositionY: 85,
+  });
+  // A box wider than the frame is centred on that axis.
+  const wide = getAnchoredDragBounds(frame, { left: 0, right: 600, top: 150, bottom: 170 }, { x: 200, y: 160 });
+  assert.equal(wide.minPositionX, wide.maxPositionX);
+  assert.equal(wide.minPositionX, 25);
+});
+
+test('anchored drag bounds can extend past the frame to a larger limit, such as the canvas padding', () => {
+  // A 400 × 200 frame inside 40 px of canvas padding.
+  const frame = { left: 140, top: 100, width: 400, height: 200 };
+  const canvas = { left: 100, top: 60, width: 480, height: 280 };
+  const bounds = getAnchoredDragBounds(frame, { left: 320, right: 360, top: 190, bottom: 210 }, { x: 340, y: 200 }, canvas);
+  const expected = { minPositionX: -5, maxPositionX: 105, minPositionY: -15, maxPositionY: 115 };
+  for (const [key, value] of Object.entries(expected)) {
+    assert.ok(Math.abs(bounds[key as keyof typeof bounds] - value) < 1e-9, `${key}: ${bounds[key as keyof typeof bounds]}`);
+  }
 });
 
 test('arrow keys and modifier steps have identical bounds for poem and decorations', () => {
