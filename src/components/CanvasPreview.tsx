@@ -345,7 +345,7 @@ export function CanvasPreview({
     >
       <TransparentGrid visible={backgroundType === 'transparent'} />
 
-      <div className="flex absolute left-[calc(4.25rem+env(safe-area-inset-left))] top-4 z-20 items-center gap-1 rounded-full border border-[rgba(20,169,155,0.16)] bg-[rgba(255,253,249,0.72)] px-1.5 py-1 text-xs text-(--app-accent-700) shadow-[0_10px_24px_var(--app-accent-shadow)] backdrop-blur-sm opacity-80 transition-opacity duration-200 hover:opacity-100 focus-within:opacity-100 lg:left-6 lg:top-6">
+      <div className="flex absolute left-[calc(1rem+env(safe-area-inset-left))] top-[calc(1rem+env(safe-area-inset-top))] z-20 items-center gap-1 rounded-full border border-[rgba(20,169,155,0.16)] bg-[rgba(255,253,249,0.72)] px-1.5 py-1 text-xs text-(--app-accent-700) shadow-[0_10px_24px_var(--app-accent-shadow)] backdrop-blur-sm opacity-80 transition-opacity duration-200 hover:opacity-100 focus-within:opacity-100 lg:left-6 lg:top-6">
         <button
           type="button"
           onClick={onUndo}
@@ -368,7 +368,7 @@ export function CanvasPreview({
         </button>
       </div>
 
-      <div className="flex absolute right-4 top-4 z-20 items-center gap-0.5 rounded-full border border-[rgba(20,169,155,0.16)] bg-[rgba(255,253,249,0.72)] px-1.5 py-1 text-xs text-(--app-accent-700) shadow-[0_10px_24px_var(--app-accent-shadow)] backdrop-blur-sm opacity-80 transition-opacity duration-200 hover:opacity-100 focus-within:opacity-100 lg:right-6 lg:top-6">
+      <div className="flex absolute right-[calc(1rem+env(safe-area-inset-right))] top-[calc(1rem+env(safe-area-inset-top))] z-20 items-center gap-0.5 rounded-full border border-[rgba(20,169,155,0.16)] bg-[rgba(255,253,249,0.72)] px-1.5 py-1 text-xs text-(--app-accent-700) shadow-[0_10px_24px_var(--app-accent-shadow)] backdrop-blur-sm opacity-80 transition-opacity duration-200 hover:opacity-100 focus-within:opacity-100 lg:right-6 lg:top-6">
         <button
           type="button"
           onClick={() => onPreviewZoomChange(clamp(previewZoom - ZOOM_STEP, ZOOM_MIN, ZOOM_MAX))}
