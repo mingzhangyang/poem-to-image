@@ -480,9 +480,23 @@ export interface TypographySectionProps {
   onTextShadowOffsetXChange: (value: number) => void;
 }
 
+/**
+ * Where element positions are measured: the poem frame inside the canvas
+ * padding, with its offset in the canvas and the canvas size, all in
+ * unscaled canvas pixels.
+ */
+export interface PlacementArea {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+  canvasWidth: number;
+  canvasHeight: number;
+}
+
 export interface DecorationsSectionProps {
   language: string;
-  getFrameSize: () => {width: number; height: number};
+  getPlacementArea: () => PlacementArea;
   onAddOrnament: (imageUrl: string, options: Partial<LogoConfig>) => string;
   showBorder: boolean;
   borderStyle: BorderStyle;

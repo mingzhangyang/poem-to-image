@@ -234,7 +234,7 @@ test.describe('desktop navigation rail', () => {
     await page.getByRole('button', { name: /^Ornaments/ }).click();
     await page.getByRole('button', { name: 'Autumn', exact: true }).click();
     await page.getByRole('button', { name: 'Chrysanthemum', exact: true }).click();
-    const ornament = page.locator('img[alt="Chrysanthemum"]').first();
+    const ornament = page.locator('[data-artwork-canvas] div[tabindex="0"][aria-label="Chrysanthemum"]').first();
     await expect(ornament).toBeVisible();
     await openPanel(page, 'Content');
     await expect(page.getByRole('slider', { name: 'Rotation', exact: true })).toHaveCount(0);
@@ -313,7 +313,7 @@ test.describe('mobile dock and More menu', () => {
     const drawer = page.locator('#mobile-controls-drawer');
     await drawer.getByRole('button', { name: 'Close controls' }).click();
     await expect(drawer).toBeHidden();
-    await page.locator('img[alt="Chrysanthemum"]').first().click();
+    await page.locator('[data-artwork-canvas] div[tabindex="0"][aria-label="Chrysanthemum"]').first().click();
     await expect(drawer).toBeHidden();
   });
 });

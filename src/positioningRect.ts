@@ -118,6 +118,47 @@ export function getPreviewDragBounds(frameRect: PreviewPositioningRect, boxRect:
   };
 }
 
+/**
+ * The whole artwork canvas, padding included, for a positioning frame inside
+ * it. Canvas padding keeps text off the paper edge; images such as logos and
+ * ornaments may use it, so they are limited by this rect instead.
+ */
+export function getArtworkCanvasRect(frameElement: HTMLElement): PreviewPositioningRect {
+  const canvas = frameElement.closest<HTMLElement>('[data-artwork-canvas]');
+  if (!canvas) return getPreviewPositioningRect(frameElement);
+  const { left, top, width, height } = canvas.getBoundingClientRect();
+  return { left, top, width: Math.max(1, width), height: Math.max(1, height) };
+}
+
+/**
+ * Drag bounds for a box whose position is a point other than its centre,
+ * such as an ornament positioned by its image centre whose visible ink is
+ * off-centre. Positions stay percentages of `frameRect`, but the box is kept
+ * inside `limitRect` (the frame itself unless given), so a position may fall
+ * below 0% or above 100% when the limit is larger than the frame. A box
+ * larger than the limit on an axis is centred in it on that axis.
+ */
+export function getAnchoredDragBounds(
+  frameRect: PreviewPositioningRect,
+  boxRect: Pick<DOMRect, 'left' | 'right' | 'top' | 'bottom'>,
+  anchor: { x: number; y: number },
+  limitRect: PreviewPositioningRect = frameRect,
+): DragBounds {
+  const axis = (before: number, after: number, frameStart: number, frameSize: number, limitStart: number, limitSize: number) => {
+    const toPercent = (point: number) => ((point - frameStart) / frameSize) * 100;
+    const min = toPercent(limitStart + Math.max(0, before));
+    const max = toPercent(limitStart + limitSize - Math.max(0, after));
+    return min <= max ? [min, max] : [(min + max) / 2, (min + max) / 2];
+  };
+  const [minPositionX, maxPositionX] = axis(
+    anchor.x - boxRect.left, boxRect.right - anchor.x, frameRect.left, frameRect.width, limitRect.left, limitRect.width,
+  );
+  const [minPositionY, maxPositionY] = axis(
+    anchor.y - boxRect.top, boxRect.bottom - anchor.y, frameRect.top, frameRect.height, limitRect.top, limitRect.height,
+  );
+  return { minPositionX, maxPositionX, minPositionY, maxPositionY };
+}
+
 const DEFAULT_DRAG_BOUNDS: DragBounds = {
   minPositionX: 0,
   maxPositionX: 100,

@@ -101,6 +101,10 @@ class FakeImage {
       this.naturalWidth = 960;
       this.naturalHeight = 1200;
     }
+    if (value === 'data:image/png;base64,wide-logo') {
+      this.naturalWidth = 800;
+      this.naturalHeight = 200;
+    }
     requestedImages.push(value);
     queueMicrotask(() => this.onload?.());
   }
@@ -579,6 +583,18 @@ test('Canvas export places text and image overlays at the shared inset-border ce
     'custom text center must use the shared positioning rectangle');
   assert.ok(translations.some((op) => op.args[0] === 426 && op.args[1] === 224),
     'logo center must use the same positioned rectangle');
+});
+
+test('uploaded logos keep their aspect ratio inside the size square, as in the preview', async () => {
+  const scene = makeScene();
+  scene.decorations.logos = [{
+    id: 'wide', imageUrl: 'data:image/png;base64,wide-logo',
+    positionX: 50, positionY: 50, size: 100, rotation: 0, opacity: 1,
+  }];
+  await renderCanvasExport(scene, { skipPoem: true });
+  const drawn = mainTrace().find(op => op.op === 'drawImage');
+  assert.ok(drawn);
+  assert.deepEqual(drawn.args.slice(1), [-50, -12.5, 100, 25]);
 });
 
 test('export draws poem sections at independent selected font weights', async () => {

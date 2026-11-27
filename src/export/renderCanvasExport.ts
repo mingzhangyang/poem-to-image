@@ -269,9 +269,12 @@ async function drawLogo(ctx: CanvasRenderingContext2D, logo: LogoConfig, frameRe
   ctx.rotate((logo.rotation * Math.PI) / 180);
   ctx.globalAlpha = logo.opacity;
   if (logo.flipped) ctx.scale(-1, 1);
-  const scale = logo.size / Math.max(image.naturalWidth, image.naturalHeight);
-  const width = logo.ornamentId ? image.naturalWidth * scale : logo.size;
-  const height = logo.ornamentId ? image.naturalHeight * scale : logo.size;
+  // Fit the image into the size × size square, keeping its aspect ratio, as
+  // the preview does for both ornaments and uploaded logos.
+  const longestSide = Math.max(image.naturalWidth, image.naturalHeight);
+  const scale = longestSide > 0 ? logo.size / longestSide : 1;
+  const width = longestSide > 0 ? image.naturalWidth * scale : logo.size;
+  const height = longestSide > 0 ? image.naturalHeight * scale : logo.size;
   ctx.drawImage(image, -width / 2, -height / 2, width, height);
   ctx.restore();
 }

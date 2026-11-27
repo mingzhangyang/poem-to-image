@@ -1,5 +1,6 @@
 import { useContext, useEffect, useState } from 'react';
 import { ChevronDown, ChevronUp, Flower2 } from 'lucide-react';
+import { getDuplicatePosition, getOrnamentAnchorPosition } from '../../ornaments/placement';
 import { OrnamentSelection } from '../../ornaments/selection';
 import manifest from '../../ornaments/manifest.json';
 import { getOrnamentName, ORNAMENT_CATEGORIES, ORNAMENT_MOODS, type OrnamentManifestItem } from '../../ornaments/taxonomy';
@@ -29,29 +30,21 @@ export function OrnamentLibrary({ t, decorations }: OrnamentLibraryProps) {
   const layers = decorations.logos.filter(item => item.ornamentId);
   const active = layers.find(item => item.id === selected) ?? layers.at(-1);
   const name = (ornamentId: string) => getOrnamentName(ornamentId, decorations.language);
-  const frame = decorations.getFrameSize;
+  const placement = decorations.getPlacementArea;
 
   // Selecting an ornament on the canvas reveals its controls.
   useEffect(() => {
     if (selected) setExpanded(true);
   }, [selected]);
 
-  function position(anchor: string, size: number, rotation = 0) {
-    const { width, height } = frame();
-    const radians = rotation * Math.PI / 180;
-    const half = size * (Math.abs(Math.sin(radians)) + Math.abs(Math.cos(radians))) / 2;
-    const x = Math.min(50, 3 + half / width * 100);
-    const y = Math.min(50, 3 + half / height * 100);
-    return {
-      positionX: anchor.endsWith('l') ? x : anchor.endsWith('r') ? 100 - x : 50,
-      positionY: anchor.startsWith('t') ? y : anchor.startsWith('b') ? 100 - y : 50,
-    };
+  function position(anchor: string, ornament: Pick<LogoConfig, 'ornamentId' | 'size' | 'rotation' | 'flipped'>) {
+    return getOrnamentAnchorPosition(placement(), anchor, ornament);
   }
   function add(item: OrnamentManifestItem) {
-    const { width, height } = frame();
+    const { width, height } = placement();
     const size = Math.min(width, height) * item.default_scale;
     setSelected(decorations.onAddOrnament(item.file, {
-      ornamentId: item.id, size, ...position(item.default_anchor, size),
+      ornamentId: item.id, size, ...position(item.default_anchor, { ornamentId: item.id, size, rotation: 0 }),
     }));
   }
   function update(changes: Partial<LogoConfig>) {
@@ -123,12 +116,12 @@ export function OrnamentLibrary({ t, decorations }: OrnamentLibraryProps) {
               </select>
               <div className="flex flex-wrap gap-1">
                 {ANCHORS.map(([anchor, label]) => (
-                  <button type="button" key={anchor} className={chipClassName} onClick={() => update(position(anchor, active.size, active.rotation))}>{t(label)}</button>
+                  <button type="button" key={anchor} className={chipClassName} onClick={() => update(position(anchor, active))}>{t(label)}</button>
                 ))}
               </div>
               <label className="flex items-center justify-between gap-2">
                 {t('size')}
-                <input type="range" className="app-range flex-1" min="12" max={Math.max(active.size, Math.min(frame().width, frame().height))} value={active.size} onChange={event => update({ size: +event.target.value })} />
+                <input type="range" className="app-range flex-1" min="12" max={Math.max(active.size, Math.min(placement().width, placement().height))} value={active.size} onChange={event => update({ size: +event.target.value })} />
               </label>
               <label className="flex items-center justify-between gap-2">
                 {t('ornamentRotation')}
@@ -144,7 +137,7 @@ export function OrnamentLibrary({ t, decorations }: OrnamentLibraryProps) {
                   {active.aboveText ? t('ornamentBelowText') : t('ornamentAboveText')}
                 </button>
                 <button type="button" className={chipClassName}
-                  onClick={() => setSelected(decorations.onAddOrnament(active.imageUrl, { ...active, positionX: Math.min(97, active.positionX + 2) }))}>
+                  onClick={() => setSelected(decorations.onAddOrnament(active.imageUrl, { ...active, ...getDuplicatePosition(placement(), active) }))}>
                   {t('ornamentDuplicate')}
                 </button>
                 <button type="button" className={chipClassName} onClick={() => decorations.onLogoRemove(active.id)}>{t('ornamentDelete')}</button>
