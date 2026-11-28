@@ -4,6 +4,7 @@ const fr: TranslationMessages = {
     appTitle: "InkPoem",
     subtitle: "Émotions poétiques · Jaillissant du papier",
     templates: "Modèles",
+    templatesShort: "Modèles",
     templatesHint: "Appliquez un style prêt à l'emploi sans régler chaque paramètre manuellement.",
     applyTemplate: "Appliquer",
     templateApplied: "Appliqué",

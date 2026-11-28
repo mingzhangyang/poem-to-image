@@ -4,6 +4,7 @@ const es: TranslationMessages = {
     appTitle: "InkPoem",
     subtitle: "Emoción poética · Que cobra vida en el papel",
     templates: "Plantillas",
+    templatesShort: "Plantillas",
     templatesHint: "Aplica una dirección visual ya preparada sin ajustar manualmente cada parámetro.",
     applyTemplate: "Aplicar",
     templateApplied: "Aplicada",
