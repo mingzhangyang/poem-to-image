@@ -483,17 +483,24 @@ describe('shares owned by an account', () => {
     await claim([share]);
     expect((await account('/api/me/shares/' + share.id, 'DELETE', undefined, 'user_someone_else')).status).toBe(404);
 
-    const revoked = await account('/api/me/shares/' + share.id, 'DELETE');
-    expect(revoked.status).toBe(200);
+    // Discard the first response, as if the client timed out after the commit.
+    await account('/api/me/shares/' + share.id, 'DELETE');
     expect(await accountShares()).toEqual([]);
     expect((await SELF.fetch(ORIGIN + '/api/shares/' + share.id)).status).toBe(404);
-    const row = await env.DB.prepare('SELECT title, assets_deleted_at FROM shared_artworks WHERE id = ?')
-      .bind(share.id).first<{ title: string; assets_deleted_at: string | null }>();
+    const readRevocation = () => env.DB.prepare('SELECT title, revoked_at, assets_deleted_at FROM shared_artworks WHERE id = ?')
+      .bind(share.id).first<{ title: string; revoked_at: string | null; assets_deleted_at: string | null }>();
+    const row = await readRevocation();
     expect(row?.title).toBe('');
+    expect(row?.revoked_at).not.toBeNull();
     expect(row?.assets_deleted_at).not.toBeNull();
-    // A revoked share can no longer be claimed or revoked again.
     expect(await claim([share])).toEqual([]);
-    expect((await account('/api/me/shares/' + share.id, 'DELETE')).status).toBe(404);
+    // The same owner can safely retry and retire their browser's removal key.
+    const retry = await account('/api/me/shares/' + share.id, 'DELETE');
+    expect(retry.status).toBe(200);
+    expect(await retry.json()).toEqual({ revoked: true });
+    expect(await readRevocation()).toEqual(row);
+    expect((await account('/api/me/shares/' + share.id, 'DELETE', undefined, 'user_someone_else')).status).toBe(404);
+    expect((await account('/api/me/shares/MISSINGSHARE', 'DELETE')).status).toBe(404);
   });
 
   it('pages through more than 200 shares and classifies ownership independently of the page', async () => {

@@ -43,7 +43,7 @@ function withDeadline<T>(promise: Promise<T>, signal: AbortSignal | undefined): 
 }
 
 async function request(getToken: GetToken, path: string, init: RequestInit = {}, options: RequestOptions = {}): Promise<unknown> {
-  const signal = options.timeoutMs === undefined ? undefined : AbortSignal.timeout(options.timeoutMs);
+  const signal = AbortSignal.timeout(options.timeoutMs ?? ACCOUNT_PUBLICATION_TIMEOUT_MS);
   const token = await withDeadline(getToken(), signal);
   if (!token) throw new AccountShareError('SIGNED_OUT');
   const headers = new Headers(init.headers);

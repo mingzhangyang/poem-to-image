@@ -276,3 +276,64 @@ test('a share held by another account stops being offered after one claim attemp
   await expect(page.getByText(/Artworks this browser published without an account/)).toBeHidden();
   expect(claims).toBe(1);
 });
+
+for (const failure of ['list', 'owned'] as const) {
+  test('successful local claim survives unavailable ' + failure + ' refresh', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'chromium-mobile', 'Account page flow is the same on mobile');
+    test.setTimeout(90_000);
+    const published = await mockPublish(page);
+    const dialog = await openPublishDialog(page, false);
+    await dialog.getByRole('button', { name: 'Publish artwork', exact: true }).click();
+    await expect(page.getByRole('dialog', { name: 'Your artwork is published' })).toBeVisible({ timeout: 45_000 });
+
+    await page.addInitScript(() => {
+      (window as Window & { __INKPOEM_DEV_TEST_ACCOUNT?: unknown }).__INKPOEM_DEV_TEST_ACCOUNT = {
+        userId: 'user_e2e_partial_outage', token: 'e2e-token',
+      };
+    });
+    await page.route('**/api/me', (route) => route.fulfill({
+      contentType: 'application/json', body: JSON.stringify({ userId: 'user_e2e_partial_outage', email: null, balance: 0 }),
+    }));
+    await page.route('**/api/templates', (route) => route.fulfill({ contentType: 'application/json', body: '{"templates":[]}' }));
+    await page.route('**/api/billing/**', (route) => route.fulfill({ contentType: 'application/json', body: '{"packages":[],"balance":0,"items":[]}' }));
+    let release!: () => void;
+    const pending = new Promise<void>((resolve) => { release = resolve; });
+    let claims = 0;
+    let failedRequests = 0;
+    await page.route('**/api/me/shares**', async (route) => {
+      const path = new URL(route.request().url()).pathname;
+      if (path === '/api/me/shares/claim') {
+        claims++;
+        await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ claimed: [published.id], ownedElsewhere: [] }) });
+        return;
+      }
+      if ((path === '/api/me/shares' && failure === 'list') || (path.endsWith('/owned') && failure === 'owned')) {
+        failedRequests++;
+        await pending;
+        await route.fulfill({ status: 503, contentType: 'application/json', body: '{}' });
+        return;
+      }
+      await route.fulfill({ contentType: 'application/json', body: '{"nextCursor":null,"shares":[]}' });
+    });
+
+    await page.goto('/account');
+    await expect(page.getByRole('heading', { name: 'My artworks' })).toBeVisible();
+    const account = page.locator('section[aria-labelledby="account-shares-title"]');
+    await expect.poll(() => failedRequests).toBe(1);
+    // Wait for the pending-request render, rather than asserting before load starts.
+    await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    await expect(account.getByRole('button', { name: 'Add to my account' })).toBeHidden();
+    release();
+    await expect(account.getByText('Local published artworks to check: 1.', { exact: false })).toBeVisible();
+    await account.getByRole('button', { name: 'Add to my account' }).click();
+    await expect.poll(() => failedRequests).toBe(2);
+    await expect(account.getByText('Saved to your account. You can manage it on any device.')).toBeVisible();
+    await expect(account.getByText('Could not load the artworks in your account.')).toBeVisible();
+    await expect(account.getByRole('button', { name: 'Add to my account' })).toBeHidden();
+    await account.getByRole('button', { name: 'Try again' }).click();
+    await expect.poll(() => failedRequests).toBe(3);
+    await expect(account.getByText('Could not load the artworks in your account.')).toBeVisible();
+    await expect(account.getByRole('button', { name: 'Add to my account' })).toBeHidden();
+    expect(claims).toBe(1);
+  });
+}

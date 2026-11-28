@@ -5,7 +5,7 @@ import type { Language } from '../translations';
 import {
   claimShares, fetchAccountShares, fetchOwnedShareIds, readOwnedElsewhere, rememberOwnedElsewhere,
   requestGalleryListing, revokeAccountShare, withdrawGalleryListing,
-  type AccountShare,
+  AccountShareError, type AccountShare,
 } from './accountSharesApi';
 import { shareCopy } from './copy';
 import { galleryCopy } from './galleryCopy';
@@ -30,11 +30,17 @@ function formatDate(value: string, language: Language): string {
  * Shares owned by the signed-in account, manageable from any device without
  * removal keys. Also offers to add shares this browser published anonymously.
  */
-export function AccountShareList({
+export function AccountShareList(props: Props) {
+  const { isSignedIn, userId } = useAppAuth();
+  // Confirmed ownership and in-flight operations must never cross accounts.
+  return isSignedIn ? <SignedInAccountShareList key={userId} {...props} /> : null;
+}
+
+function SignedInAccountShareList({
   language, onAccountIds, disabled = false,
   headingClassName = 'text-sm font-semibold text-(--app-accent-900)',
 }: Props) {
-  const { isSignedIn, userId, getToken } = useAppAuth();
+  const { getToken } = useAppAuth();
   const copy = shareCopy[language];
   const gallery = galleryCopy[language];
   const [shares, setShares] = useState<AccountShare[] | null>(null);
@@ -43,46 +49,65 @@ export function AccountShareList({
   const [unclaimed, setUnclaimed] = useState<LocalShare[]>([]);
   const [localById, setLocalById] = useState<Map<string, LocalShare>>(new Map());
   const [loadFailed, setLoadFailed] = useState(false);
+  const [loadDiagnostic, setLoadDiagnostic] = useState('');
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [copiedId, setCopiedId] = useState('');
   const loadTicket = useRef(0);
+  const active = useRef(false);
+  const knownOwned = useRef(new Set<string>());
   const onAccountIdsRef = useRef(onAccountIds);
   useEffect(() => { onAccountIdsRef.current = onAccountIds; }, [onAccountIds]);
 
   const load = useCallback(async () => {
+    if (!active.current) return;
     const ticket = ++loadTicket.current;
     setLoadFailed(false);
+    setLoadDiagnostic('');
+    // Do not describe unverified local ownership as anonymous while loading.
+    setUnclaimed([]);
+    let local: LocalShare[] = [];
     try {
-      const [page, local] = await Promise.all([
-        fetchAccountShares(getToken),
-        listLocalShares().catch(() => [] as LocalShare[]),
-      ]);
-      // Ask the server which local shares the account owns: the first page
-      // of the account list does not show every share.
+      local = await listLocalShares().catch(() => [] as LocalShare[]);
+      if (ticket !== loadTicket.current) return;
+      setLocalById(new Map(local.map((share) => [share.id, share])));
+      const page = await fetchAccountShares(getToken);
+      if (ticket !== loadTicket.current) return;
+      for (const share of page.shares) knownOwned.current.add(share.id);
+      // The first page does not show every share, including revoked shares.
       const owned = local.length ? await fetchOwnedShareIds(getToken, local.map((share) => share.id)) : new Set<string>();
       if (ticket !== loadTicket.current) return;
+      for (const id of owned) knownOwned.current.add(id);
       setShares(page.shares);
       setNextCursor(page.nextCursor);
-      setLocalById(new Map(local.map((share) => [share.id, share])));
-      const elsewhere = readOwnedElsewhere();
-      setUnclaimed(local.filter((share) => share.state === 'published'
-        && !owned.has(share.id) && !elsewhere.has(share.id)));
-      onAccountIdsRef.current?.(owned);
-    } catch {
-      if (ticket === loadTicket.current) setLoadFailed(true);
+    } catch (caught) {
+      if (ticket === loadTicket.current) {
+        setLoadFailed(true);
+        setLoadDiagnostic(caught instanceof AccountShareError ? caught.message : 'NETWORK_OR_RESPONSE_ERROR');
+      }
+    } finally {
+      if (ticket === loadTicket.current) {
+        const elsewhere = readOwnedElsewhere();
+        const owned = knownOwned.current;
+        setUnclaimed(local.filter((share) => share.state === 'published'
+          && !owned.has(share.id) && !elsewhere.has(share.id)));
+        onAccountIdsRef.current?.(new Set(owned));
+      }
     }
   }, [getToken]);
 
   useEffect(() => {
-    if (!isSignedIn) return;
+    active.current = true;
     setShares(null);
+    setUnclaimed([]);
+    setLocalById(new Map());
     void load();
-    // Not a DOM ref: bumping the ticket discards a load that finishes after unmount.
+    // Invalidate in-flight loads and prevent old-account mutations from reloading.
     const tickets = loadTicket;
-    return () => { tickets.current++; };
-  }, [isSignedIn, userId, load]);
+    const lifetime = active;
+    return () => { lifetime.current = false; tickets.current++; };
+  }, [load]);
 
   const loadMore = async () => {
     if (!nextCursor || loadingMore) return;
@@ -104,8 +129,6 @@ export function AccountShareList({
     }
   };
 
-  if (!isSignedIn) return null;
-
   const run = async (id: string, action: () => Promise<void>, failure: string) => {
     if (busy || disabled) return;
     setBusy(id);
@@ -122,18 +145,23 @@ export function AccountShareList({
 
   const claimAll = () => run('claim', async () => {
     const { claimed, ownedElsewhere } = await claimShares(getToken, unclaimed);
+    if (!active.current) return;
     rememberOwnedElsewhere(ownedElsewhere);
+    for (const id of claimed) knownOwned.current.add(id);
+    onAccountIdsRef.current?.(new Set(knownOwned.current));
     // Neither claimed nor held elsewhere: the share was revoked or expired, or
     // the key no longer matches. Re-check it so its local state stops saying
     // "published" and the banner does not offer it again.
     const settled = new Set([...claimed, ...ownedElsewhere]);
     const unavailable = unclaimed.filter((share) => !settled.has(share.id));
-    await Promise.all(unavailable.map((share) => checkLocalShareStatus(share).catch(() => null)));
+    setUnclaimed((current) => current.filter((share) => !settled.has(share.id)));
     const messages = [];
+    if (claimed.length) messages.push(gallery.linked);
     if (ownedElsewhere.length) messages.push(gallery.claimOwnedElsewhere.replace('{count}', String(ownedElsewhere.length)));
     if (unavailable.length) messages.push(gallery.claimUnavailable.replace('{count}', String(unavailable.length)));
-    await load();
     setNotice(messages.join(' '));
+    await Promise.all(unavailable.map((share) => checkLocalShareStatus(share).catch(() => null)));
+    await load();
   }, gallery.claimFailed);
 
   const revoke = (share: AccountShare) => {
@@ -172,7 +200,7 @@ export function AccountShareList({
       <h3 id="account-shares-title" className={headingClassName}>{gallery.accountTitle}</h3>
       {unclaimed.length > 0 ? (
         <div className="space-y-2 rounded-xl border border-(--app-accent-200) bg-(--app-accent-50) p-3 text-sm text-(--app-accent-800)">
-          <p>{gallery.claimBanner.replace('{count}', String(unclaimed.length))}</p>
+          <p>{(loadFailed ? gallery.claimRecoveryBanner : gallery.claimBanner).replace('{count}', String(unclaimed.length))}</p>
           <button type="button" onClick={() => void claimAll()} disabled={!!busy || disabled}
             className="app-button-secondary rounded-lg px-3 py-2 text-xs font-semibold disabled:opacity-50">
             {busy === 'claim' ? gallery.loading : gallery.claimButton}
@@ -185,7 +213,7 @@ export function AccountShareList({
       {error ? <p role="alert" className="text-sm text-red-700">{error}</p> : null}
       {loadFailed ? (
         <div role="alert" className="flex items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
-          <span>{gallery.accountLoadError}</span>
+          <span>{gallery.accountLoadError}{loadDiagnostic ? <span className="block text-xs">{loadDiagnostic}</span> : null}</span>
           <button type="button" onClick={() => void load()} className="shrink-0 underline">{gallery.retry}</button>
         </div>
       ) : shares === null ? (
