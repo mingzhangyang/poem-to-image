@@ -11,24 +11,35 @@
       import { PublishDialog } from '/src/sharing/PublishDialog.tsx';
       import { prepareLocalShare, markLocalSharePublished } from '/src/sharing/shareLibrary.ts';
 
-      const initialLibrary = new URLSearchParams(location.search).has('library');
+      const params = new URLSearchParams(location.search);
+      const initialLibrary = params.has('library');
+      // ?mode=ok simulates a fully confirmed publication (local state saved).
+      const confirmed = params.get('mode') === 'ok';
       const credentials = await prepareLocalShare('a'.repeat(64), 'Local artwork', '', 'never');
       if (initialLibrary) await markLocalSharePublished(credentials.id, credentials.deleteToken);
       const root = createRoot(document.getElementById('root'));
       // Simulate the publish protocol's confirmed-live / storage-recovery result;
       // the subsequent persistence retry uses the real IndexedDB implementation.
-      const publish = async () => ({ ...credentials, recoveryRequired: true,
-        url: new URL('/s/' + credentials.id, location.origin).href });
-      function render(userId) {
+      const publish = async () => {
+        const url = new URL('/s/' + credentials.id, location.origin).href;
+        if (!confirmed) return { ...credentials, recoveryRequired: true, url };
+        await markLocalSharePublished(credentials.id, credentials.deleteToken);
+        return { ...credentials, url };
+      };
+      let userId = 'account-a';
+      let isOpen = true;
+      function render() {
         root.render(createElement(AppAuthContext.Provider, {
           value: { isLoaded: true, isSignedIn: !!userId, userId, user: null, getToken: async () => userId },
         }, createElement(PublishDialog, {
-          language: 'en', isOpen: true, initialLibrary, onClose: () => {}, publish,
+          language: 'en', isOpen, initialLibrary, publish,
+          onClose: () => { isOpen = false; render(); },
         })));
       }
       // Change auth context without remounting PublishDialog or reloading the page.
-      window.addEventListener('test-auth-change', (event) => flushSync(() => render(event.detail)));
-      render('account-a');
+      window.addEventListener('test-auth-change', (event) => { userId = event.detail; flushSync(render); });
+      window.addEventListener('test-open', () => { isOpen = true; flushSync(render); });
+      render();
     </script>
   </body>
 </html>
