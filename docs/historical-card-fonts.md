@@ -15,7 +15,15 @@ CNS, MOE Li, Chine-Culture Jinwen and Chongxi Seal load by `FontFace` only
 when selected. They are never eagerly bundled into the JavaScript. The
 `fonts:sync` script fetches pinned original binaries into `public/fonts` at
 production build time and validates size and SHA-256 before publishing them as
-same-origin static assets. `npm run dev` does not run `fonts:sync`, so Vite can
+same-origin static assets. Valid local files are reused without network access.
+For a missing or invalid file, try the raw original font hosted by the sibling
+Chinese Seal site (`seal.orangely.xyz/fonts/`), then the previous InkPoem
+production deployment (`inkpoem.com/fonts/`), then the official source (unzip
+where required). Each candidate is independently checked against the pinned
+size and SHA-256; HTTP errors, unexpected HTML and mismatched fonts fall back
+to the next source. If none verifies, the build fails with per-source details
+rather than publishing a missing or changed font. The original licenses and
+attribution remain unchanged. `npm run dev` does not run `fonts:sync`, so Vite can
 start offline; historical faces still require an explicit `npm run fonts:sync`
 before local previews use them. `prebuild` retains strict asset verification.
 This increases build-time and deployment size:

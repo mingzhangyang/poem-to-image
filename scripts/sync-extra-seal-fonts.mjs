@@ -1,9 +1,9 @@
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { inflateRawSync } from 'node:zlib';
-import { dirname } from 'node:path';
+import { basename, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { fetchFontBytes } from './fetch-font.mjs';
+import { fetchPinnedFontBytes } from './fetch-font.mjs';
 
 /** Unmodified upstream bytes. CC BY-ND faces must not be subset or rewritten. */
 const FACES = [
@@ -72,9 +72,13 @@ async function install(face) {
   } catch (error) {
     if (error?.code !== 'ENOENT' && !String(error?.message).includes('integrity mismatch')) throw error;
   }
-  const zip = await fetchFontBytes(face.url, face.name);
-  const bytes = unzipEntry(zip, face.entry);
-  verify(face, bytes);
+  const bytes = await fetchPinnedFontBytes({
+    name: face.name,
+    file: basename(destination),
+    url: face.url,
+    decode: zip => unzipEntry(zip, face.entry),
+    verify: bytes => verify(face, bytes),
+  });
   await mkdir(dirname(destination), { recursive: true });
   const temporary = `${destination}.${process.pid}.tmp`;
   try {
