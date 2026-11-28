@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head><meta charset="utf-8"><title>Publish dialog regression harness</title></head>
+  <body>
+    <div id="root"></div>
+    <script type="module">
+      import { createElement } from 'react';
+      import { createRoot } from 'react-dom/client';
+      import { flushSync } from 'react-dom';
+      import { AppAuthContext } from '/src/context/auth.tsx';
+      import { PublishDialog } from '/src/sharing/PublishDialog.tsx';
+      import { prepareLocalShare, markLocalSharePublished } from '/src/sharing/shareLibrary.ts';
+
+      const initialLibrary = new URLSearchParams(location.search).has('library');
+      const credentials = await prepareLocalShare('a'.repeat(64), 'Local artwork', '', 'never');
+      if (initialLibrary) await markLocalSharePublished(credentials.id, credentials.deleteToken);
+      const root = createRoot(document.getElementById('root'));
+      // Simulate the publish protocol's confirmed-live / storage-recovery result;
+      // the subsequent persistence retry uses the real IndexedDB implementation.
+      const publish = async () => ({ ...credentials, recoveryRequired: true,
+        url: new URL('/s/' + credentials.id, location.origin).href });
+      function render(userId) {
+        root.render(createElement(AppAuthContext.Provider, {
+          value: { isLoaded: true, isSignedIn: !!userId, userId, user: null, getToken: async () => userId },
+        }, createElement(PublishDialog, {
+          language: 'en', isOpen: true, initialLibrary, onClose: () => {}, publish,
+        })));
+      }
+      // Change auth context without remounting PublishDialog or reloading the page.
+      window.addEventListener('test-auth-change', (event) => flushSync(() => render(event.detail)));
+      render('account-a');
+    </script>
+  </body>
+</html>

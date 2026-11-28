@@ -40,7 +40,12 @@ interface Props {
 export function PublishDialog({ language, isOpen, onClose, publish, initialLibrary = false }: Props) {
   const copy = shareCopy[language];
   const gallery = galleryCopy[language];
-  const { isSignedIn, getToken } = useAppAuth();
+  const auth = useAppAuth();
+  const { isSignedIn, userId } = auth;
+  const activeAccountId = isSignedIn ? userId : null;
+  const authRef = useRef(auth);
+  useEffect(() => { authRef.current = auth; }, [auth]);
+  const publishIntentRef = useRef<{ userId: string; submitToGallery: boolean } | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const urlRef = useRef<HTMLInputElement>(null);
   const recoveryKeyRef = useRef<HTMLInputElement>(null);
@@ -64,7 +69,7 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
   // What happened after a confirmed publication: saving it to the signed-in
   // account, and the optional gallery submission (which needs the account).
   const [afterPublish, setAfterPublish] = useState<{ linked: boolean; gallery: 'submitted' | 'failed' | null } | null>(null);
-  const [accountIds, setAccountIds] = useState<ReadonlySet<string>>(new Set());
+  const [accountOwnership, setAccountOwnership] = useState<{ userId: string; ids: ReadonlySet<string> } | null>(null);
   const libraryLoadRef = useRef(0);
 
   // A live share without persistent revocation credentials cannot be dismissed
@@ -76,9 +81,14 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
   const canClose = !inFlightRef.current && !publishing && !recoveryBusy
     && !libraryAction && !needsBackup;
   const close = () => { if (canClose) onClose(); };
-  // Shares already in the account are managed there, without their keys.
-  const localRecords = records.filter((share) => !accountIds.has(share.id));
+  // Only a successful lookup for the current account may hide local keys.
+  const localRecords = records.filter((share) => !activeAccountId
+    || accountOwnership?.userId !== activeAccountId || !accountOwnership.ids.has(share.id));
   useDialogA11y({ isOpen, dialogRef, onClose: close });
+
+  useEffect(() => {
+    setAccountOwnership(null);
+  }, [activeAccountId, showLibrary]);
 
   useEffect(() => {
     if (isOpen) {
@@ -94,7 +104,8 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
       setExposedKey(null);
       setSubmitToGallery(false);
       setAfterPublish(null);
-      setAccountIds(new Set());
+      setAccountOwnership(null);
+      publishIntentRef.current = null;
     }
   }, [isOpen, initialLibrary]);
 
@@ -114,37 +125,55 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
     return () => { active = false; };
   }, [isOpen, showLibrary, copy.recoveryStorageUnavailable]);
 
+  const completeAccountPublication = async (published: PublishedShare) => {
+    const intent = publishIntentRef.current;
+    if (!intent) return;
+    // A recovery may happen after a session change. Never claim or submit on
+    // behalf of a different account; show the existing failure notice instead.
+    const getPublicationToken = async () => {
+      const current = authRef.current;
+      if (!current.isSignedIn || current.userId !== intent.userId) return null;
+      const token = await current.getToken();
+      return authRef.current.isSignedIn && authRef.current.userId === intent.userId ? token : null;
+    };
+    let linked = false;
+    let galleryOutcome: 'submitted' | 'failed' | null = null;
+    try {
+      linked = (await claimShares(getPublicationToken, [published])).claimed.includes(published.id);
+    } catch {
+      linked = false;
+    }
+    if (intent.submitToGallery) {
+      try {
+        if (!linked) throw new Error('NOT_LINKED');
+        await requestGalleryListing(getPublicationToken, published.id);
+        galleryOutcome = 'submitted';
+      } catch {
+        // The share itself is live; the creator can resubmit from My shares.
+        galleryOutcome = 'failed';
+      }
+    }
+    setAfterPublish({ linked, gallery: galleryOutcome });
+  };
+
   const handlePublish = async () => {
     if (inFlightRef.current) return;
+    // An uncertain publication retries the original ID and account intent.
+    if (!result?.statusUnknown) {
+      publishIntentRef.current = activeAccountId ? {
+        userId: activeAccountId, submitToGallery: submitToGallery && expiry === 'never',
+      } : null;
+    }
     inFlightRef.current = true;
     setPublishing(true);
     setError('');
     setAfterPublish(null);
     try {
       const published = await publish(expiry);
-      setResult(published);
-      if (isSignedIn && !published.statusUnknown && !published.recoveryRequired) {
-        // Publishing is anonymous; the browser's removal key proves ownership
-        // so the share can be tied to the account straight away.
-        let linked = false;
-        let galleryOutcome: 'submitted' | 'failed' | null = null;
-        try {
-          linked = (await claimShares(getToken, [published])).claimed.includes(published.id);
-        } catch {
-          linked = false;
-        }
-        if (submitToGallery && expiry === 'never') {
-          try {
-            if (!linked) throw new Error('NOT_LINKED');
-            await requestGalleryListing(getToken, published.id);
-            galleryOutcome = 'submitted';
-          } catch {
-            // The share itself is live; the creator can resubmit from My shares.
-            galleryOutcome = 'failed';
-          }
-        }
-        setAfterPublish({ linked, gallery: galleryOutcome });
+      if (!published.statusUnknown && !published.recoveryRequired) {
+        await completeAccountPublication(published);
       }
+      setResult(published);
     } catch (caught) {
       const code = caught instanceof Error ? caught.message : '';
       setError(code === 'RATE_LIMITED' ? copy.limitError
@@ -183,24 +212,31 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
   };
 
   const handleRetrySave = async () => {
-    if (!result) return;
+    if (!result || inFlightRef.current || recoveryBusy) return;
     if (result.statusUnknown) {
       if (result.pendingChanged) return;
       await handlePublish(); // Reuses the exact IndexedDB ID and content fingerprint.
       return;
     }
     if (!result.recoveryRequired) return;
+    inFlightRef.current = true;
+    setRecoveryBusy(true);
+    setError('');
     try {
       await markLocalSharePublished(result.id, result.deleteToken);
+      await completeAccountPublication(result);
       setResult({ ...result, recoveryRequired: false });
-      setError('');
     } catch {
       setError(copy.recoveryRetryFailed);
+    } finally {
+      inFlightRef.current = false;
+      setRecoveryBusy(false);
     }
   };
 
   const handleRevoke = async () => {
-    if (!unresolved || !result || recoveryBusy) return;
+    if (!unresolved || !result || recoveryBusy || inFlightRef.current) return;
+    inFlightRef.current = true;
     setRecoveryBusy(true);
     setError('');
     try {
@@ -219,6 +255,7 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
         ? ' (' + caught.message + ')' : '';
       setError(copy.recoveryRevokeFailed + detail);
     } finally {
+      inFlightRef.current = false;
       setRecoveryBusy(false);
     }
   };
@@ -327,8 +364,13 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
         {showLibrary ? (
           <div className="space-y-4">
             <div className="max-h-[60vh] space-y-5 overflow-y-auto">
-            {isSignedIn ? (
-              <AccountShareList language={language} onAccountIds={setAccountIds} disabled={!!libraryAction} />
+            {activeAccountId ? (
+              <AccountShareList key={activeAccountId} language={language} disabled={!!libraryAction}
+                onAccountIds={(ids) => {
+                  if (authRef.current.isSignedIn && authRef.current.userId === activeAccountId) {
+                    setAccountOwnership({ userId: activeAccountId, ids });
+                  }
+                }} />
             ) : (
               <p className="rounded-xl border border-(--app-accent-200) bg-(--app-accent-50) px-3 py-2 text-xs leading-5 text-(--app-accent-800)">
                 {gallery.accountHint}
