@@ -136,7 +136,7 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
       const token = await current.getToken();
       return authRef.current.isSignedIn && authRef.current.userId === intent.userId ? token : null;
     };
-    let linked = false;
+    let linked: boolean;
     let galleryOutcome: 'submitted' | 'failed' | null = null;
     try {
       linked = (await claimShares(getPublicationToken, [published])).claimed.includes(published.id);
