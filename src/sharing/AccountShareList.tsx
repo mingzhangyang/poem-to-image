@@ -5,7 +5,7 @@ import type { Language } from '../translations';
 import {
   claimShares, fetchAccountShares, fetchOwnedShareIds, readOwnedElsewhere, rememberOwnedElsewhere,
   requestGalleryListing, revokeAccountShare, withdrawGalleryListing,
-  type AccountShare,
+  AccountShareError, type AccountShare,
 } from './accountSharesApi';
 import { shareCopy } from './copy';
 import { galleryCopy } from './galleryCopy';
@@ -43,6 +43,7 @@ export function AccountShareList({
   const [unclaimed, setUnclaimed] = useState<LocalShare[]>([]);
   const [localById, setLocalById] = useState<Map<string, LocalShare>>(new Map());
   const [loadFailed, setLoadFailed] = useState(false);
+  const [loadDiagnostic, setLoadDiagnostic] = useState('');
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -54,11 +55,15 @@ export function AccountShareList({
   const load = useCallback(async () => {
     const ticket = ++loadTicket.current;
     setLoadFailed(false);
+    setLoadDiagnostic('');
     try {
-      const [page, local] = await Promise.all([
-        fetchAccountShares(getToken),
-        listLocalShares().catch(() => [] as LocalShare[]),
-      ]);
+      const local = await listLocalShares().catch(() => [] as LocalShare[]);
+      if (ticket !== loadTicket.current) return;
+      const elsewhere = readOwnedElsewhere();
+      setLocalById(new Map(local.map((share) => [share.id, share])));
+      // Preserve explicit recovery even if the account service cannot list shares.
+      setUnclaimed(local.filter((share) => share.state === 'published' && !elsewhere.has(share.id)));
+      const page = await fetchAccountShares(getToken);
       // Ask the server which local shares the account owns: the first page
       // of the account list does not show every share.
       const owned = local.length ? await fetchOwnedShareIds(getToken, local.map((share) => share.id)) : new Set<string>();
@@ -66,18 +71,22 @@ export function AccountShareList({
       setShares(page.shares);
       setNextCursor(page.nextCursor);
       setLocalById(new Map(local.map((share) => [share.id, share])));
-      const elsewhere = readOwnedElsewhere();
       setUnclaimed(local.filter((share) => share.state === 'published'
         && !owned.has(share.id) && !elsewhere.has(share.id)));
       onAccountIdsRef.current?.(owned);
-    } catch {
-      if (ticket === loadTicket.current) setLoadFailed(true);
+    } catch (caught) {
+      if (ticket === loadTicket.current) {
+        setLoadFailed(true);
+        setLoadDiagnostic(caught instanceof AccountShareError ? caught.message : 'NETWORK_OR_RESPONSE_ERROR');
+      }
     }
   }, [getToken]);
 
   useEffect(() => {
     if (!isSignedIn) return;
     setShares(null);
+    setUnclaimed([]);
+    setLocalById(new Map());
     void load();
     // Not a DOM ref: bumping the ticket discards a load that finishes after unmount.
     const tickets = loadTicket;
@@ -172,7 +181,7 @@ export function AccountShareList({
       <h3 id="account-shares-title" className={headingClassName}>{gallery.accountTitle}</h3>
       {unclaimed.length > 0 ? (
         <div className="space-y-2 rounded-xl border border-(--app-accent-200) bg-(--app-accent-50) p-3 text-sm text-(--app-accent-800)">
-          <p>{gallery.claimBanner.replace('{count}', String(unclaimed.length))}</p>
+          <p>{(loadFailed ? gallery.claimRecoveryBanner : gallery.claimBanner).replace('{count}', String(unclaimed.length))}</p>
           <button type="button" onClick={() => void claimAll()} disabled={!!busy || disabled}
             className="app-button-secondary rounded-lg px-3 py-2 text-xs font-semibold disabled:opacity-50">
             {busy === 'claim' ? gallery.loading : gallery.claimButton}
@@ -185,7 +194,7 @@ export function AccountShareList({
       {error ? <p role="alert" className="text-sm text-red-700">{error}</p> : null}
       {loadFailed ? (
         <div role="alert" className="flex items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
-          <span>{gallery.accountLoadError}</span>
+          <span>{gallery.accountLoadError}{loadDiagnostic ? <span className="block text-xs">{loadDiagnostic}</span> : null}</span>
           <button type="button" onClick={() => void load()} className="shrink-0 underline">{gallery.retry}</button>
         </div>
       ) : shares === null ? (
