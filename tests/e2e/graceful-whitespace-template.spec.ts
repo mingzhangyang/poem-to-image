@@ -126,12 +126,32 @@ test('a custom copy keeps its handwriting and drops it when another template is 
   })).toEqual([false, 'the poet', 'Mr Dafoe']);
 });
 
+test('Chinese template navigation keeps the short dock label and full drawer title at 320px', async ({ page, isMobile }) => {
+  test.skip(!isMobile, 'The dock is the mobile layout');
+  await page.setViewportSize({ width: 320, height: 700 });
+  await page.addInitScript(() => localStorage.setItem('poem-to-image.language', 'zh-CN'));
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+
+  const dock = page.locator('#mobile-dock');
+  const templates = dock.getByRole('button', { name: '模版', exact: true });
+  await expect(templates).toBeVisible();
+  await expect(dock.getByRole('button')).toHaveCount(5);
+  await expect(dock.getByRole('button', { name: '模板主题', exact: true })).toHaveCount(0);
+  const box = (await templates.boundingBox())!;
+  expect(box.width).toBeGreaterThanOrEqual(44);
+  expect(box.height).toBeGreaterThanOrEqual(44);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+
+  await templates.click();
+  await expect(page.getByRole('dialog', { name: '模板主题', exact: true })).toBeVisible();
+});
+
 test('Chinese variant previews exactly one poem and keeps its seal, without Latin handwriting', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.evaluate(() => localStorage.setItem('poem-to-image.language', 'zh-CN'));
   await page.reload({ waitUntil: 'domcontentloaded' });
 
-  await openPanel(page, '模板主题');
+  await openPanel(page, '模版');
   await page.getByRole('button', { name: /^更多 \(/ }).click();
   const library = page.getByRole('dialog', { name: '系统模板' });
   const card = library.getByRole('button', { name: /婉约留白/ });
