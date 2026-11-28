@@ -30,11 +30,17 @@ function formatDate(value: string, language: Language): string {
  * Shares owned by the signed-in account, manageable from any device without
  * removal keys. Also offers to add shares this browser published anonymously.
  */
-export function AccountShareList({
+export function AccountShareList(props: Props) {
+  const { isSignedIn, userId } = useAppAuth();
+  // Confirmed ownership and in-flight operations must never cross accounts.
+  return isSignedIn ? <SignedInAccountShareList key={userId} {...props} /> : null;
+}
+
+function SignedInAccountShareList({
   language, onAccountIds, disabled = false,
   headingClassName = 'text-sm font-semibold text-(--app-accent-900)',
 }: Props) {
-  const { isSignedIn, userId, getToken } = useAppAuth();
+  const { getToken } = useAppAuth();
   const copy = shareCopy[language];
   const gallery = galleryCopy[language];
   const [shares, setShares] = useState<AccountShare[] | null>(null);
@@ -49,49 +55,59 @@ export function AccountShareList({
   const [notice, setNotice] = useState('');
   const [copiedId, setCopiedId] = useState('');
   const loadTicket = useRef(0);
+  const active = useRef(false);
+  const knownOwned = useRef(new Set<string>());
   const onAccountIdsRef = useRef(onAccountIds);
   useEffect(() => { onAccountIdsRef.current = onAccountIds; }, [onAccountIds]);
 
   const load = useCallback(async () => {
+    if (!active.current) return;
     const ticket = ++loadTicket.current;
     setLoadFailed(false);
     setLoadDiagnostic('');
+    // Do not describe unverified local ownership as anonymous while loading.
+    setUnclaimed([]);
+    let local: LocalShare[] = [];
     try {
-      const local = await listLocalShares().catch(() => [] as LocalShare[]);
+      local = await listLocalShares().catch(() => [] as LocalShare[]);
       if (ticket !== loadTicket.current) return;
-      const elsewhere = readOwnedElsewhere();
       setLocalById(new Map(local.map((share) => [share.id, share])));
-      // Preserve explicit recovery even if the account service cannot list shares.
-      setUnclaimed(local.filter((share) => share.state === 'published' && !elsewhere.has(share.id)));
       const page = await fetchAccountShares(getToken);
-      // Ask the server which local shares the account owns: the first page
-      // of the account list does not show every share.
+      if (ticket !== loadTicket.current) return;
+      for (const share of page.shares) knownOwned.current.add(share.id);
+      // The first page does not show every share, including revoked shares.
       const owned = local.length ? await fetchOwnedShareIds(getToken, local.map((share) => share.id)) : new Set<string>();
       if (ticket !== loadTicket.current) return;
+      for (const id of owned) knownOwned.current.add(id);
       setShares(page.shares);
       setNextCursor(page.nextCursor);
-      setLocalById(new Map(local.map((share) => [share.id, share])));
-      setUnclaimed(local.filter((share) => share.state === 'published'
-        && !owned.has(share.id) && !elsewhere.has(share.id)));
-      onAccountIdsRef.current?.(owned);
     } catch (caught) {
       if (ticket === loadTicket.current) {
         setLoadFailed(true);
         setLoadDiagnostic(caught instanceof AccountShareError ? caught.message : 'NETWORK_OR_RESPONSE_ERROR');
       }
+    } finally {
+      if (ticket === loadTicket.current) {
+        const elsewhere = readOwnedElsewhere();
+        const owned = knownOwned.current;
+        setUnclaimed(local.filter((share) => share.state === 'published'
+          && !owned.has(share.id) && !elsewhere.has(share.id)));
+        onAccountIdsRef.current?.(new Set(owned));
+      }
     }
   }, [getToken]);
 
   useEffect(() => {
-    if (!isSignedIn) return;
+    active.current = true;
     setShares(null);
     setUnclaimed([]);
     setLocalById(new Map());
     void load();
-    // Not a DOM ref: bumping the ticket discards a load that finishes after unmount.
+    // Invalidate in-flight loads and prevent old-account mutations from reloading.
     const tickets = loadTicket;
-    return () => { tickets.current++; };
-  }, [isSignedIn, userId, load]);
+    const lifetime = active;
+    return () => { lifetime.current = false; tickets.current++; };
+  }, [load]);
 
   const loadMore = async () => {
     if (!nextCursor || loadingMore) return;
@@ -113,8 +129,6 @@ export function AccountShareList({
     }
   };
 
-  if (!isSignedIn) return null;
-
   const run = async (id: string, action: () => Promise<void>, failure: string) => {
     if (busy || disabled) return;
     setBusy(id);
@@ -131,18 +145,23 @@ export function AccountShareList({
 
   const claimAll = () => run('claim', async () => {
     const { claimed, ownedElsewhere } = await claimShares(getToken, unclaimed);
+    if (!active.current) return;
     rememberOwnedElsewhere(ownedElsewhere);
+    for (const id of claimed) knownOwned.current.add(id);
+    onAccountIdsRef.current?.(new Set(knownOwned.current));
     // Neither claimed nor held elsewhere: the share was revoked or expired, or
     // the key no longer matches. Re-check it so its local state stops saying
     // "published" and the banner does not offer it again.
     const settled = new Set([...claimed, ...ownedElsewhere]);
     const unavailable = unclaimed.filter((share) => !settled.has(share.id));
-    await Promise.all(unavailable.map((share) => checkLocalShareStatus(share).catch(() => null)));
+    setUnclaimed((current) => current.filter((share) => !settled.has(share.id)));
     const messages = [];
+    if (claimed.length) messages.push(gallery.linked);
     if (ownedElsewhere.length) messages.push(gallery.claimOwnedElsewhere.replace('{count}', String(ownedElsewhere.length)));
     if (unavailable.length) messages.push(gallery.claimUnavailable.replace('{count}', String(unavailable.length)));
-    await load();
     setNotice(messages.join(' '));
+    await Promise.all(unavailable.map((share) => checkLocalShareStatus(share).catch(() => null)));
+    await load();
   }, gallery.claimFailed);
 
   const revoke = (share: AccountShare) => {

@@ -189,8 +189,17 @@ async function revokeShare(env: WorkerEnv, userId: string, id: string): Promise<
      WHERE id = ? AND owner_user_id = ? AND revoked_at IS NULL
      RETURNING id, image_key, card_key`,
   ).bind(id, userId).first<{ id: string; image_key: string | null; card_key: string | null }>();
-  if (!row) return notFound();
-  await deleteRevokedShareAssets(env, row);
+  if (row) {
+    await deleteRevokedShareAssets(env, row);
+  } else {
+    // A previous request may have committed before its response was lost.
+    // Only the same verified owner can acknowledge an existing revocation.
+    // Asset cleanup from the first request is retried by maintenance if needed.
+    const revoked = await env.DB.prepare(
+      'SELECT id FROM shared_artworks WHERE id = ? AND owner_user_id = ? AND revoked_at IS NOT NULL',
+    ).bind(id, userId).first<{ id: string }>();
+    if (!revoked) return notFound();
+  }
   return jsonResponse({ revoked: true });
 }
 
