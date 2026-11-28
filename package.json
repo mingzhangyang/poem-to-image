@@ -16,7 +16,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "npm run test:unit && npm run test:worker",
-    "test:unit": "node --import tsx --test tests/frontend/*.test.ts tests/worker/auth-claims.test.ts tests/worker/billing-validation.test.ts",
+    "test:unit": "node --import tsx --test tests/frontend/*.test.ts tests/worker/auth-claims.test.ts tests/worker/billing-validation.test.ts scripts/font-sync.test.mjs",
     "test:worker": "vitest run --config vitest.worker.config.ts",
     "test:e2e": "playwright test",
     "verify": "npm run cf:typegen && npm run typecheck && npm run lint && npm test && npm run build && npm run verify:build",
