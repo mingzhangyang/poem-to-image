@@ -159,9 +159,14 @@ revoked or expired share also drops out of the banner.
   `{ "ids": [...] }` (at most 500), which answers for every owned share in any
   state, independent of the list page shown. Shares published in another
   browser can only be added from that browser.
-- **Failure handling.** If the claim after publishing fails, the share is
-  still published and stays in the browser-local list, from where it can be
-  added later. The publish dialog says so.
+- **Failure handling.** The publish dialog shows the link as soon as the
+  publication is confirmed and can be closed at once; the claim (and any
+  gallery submission) runs in the background, shown as "Saving to your
+  account…" until it finishes. Each request gives up after 15 seconds. If the
+  claim fails or times out, the share is still published and stays in the
+  browser-local list, from where it can be added later. The publish dialog
+  says so. An outcome that arrives after the dialog closed, or after the next
+  publication started, is not shown.
 - Anonymous creators keep the browser-held key as their only way to remove a
   share; nothing about anonymous publishing changed.
 

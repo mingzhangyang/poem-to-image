@@ -68,9 +68,23 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
   const [submitToGallery, setSubmitToGallery] = useState(false);
   // What happened after a confirmed publication: saving it to the signed-in
   // account, and the optional gallery submission (which needs the account).
-  const [afterPublish, setAfterPublish] = useState<{ linked: boolean; gallery: 'submitted' | 'failed' | null } | null>(null);
+  // `pending` while the requests run in the background; the result page and
+  // closing the dialog never wait for them.
+  const [afterPublish, setAfterPublish] = useState<
+    { pending: true } | { pending: false; linked: boolean; gallery: 'submitted' | 'failed' | null } | null
+  >(null);
   const [accountOwnership, setAccountOwnership] = useState<{ userId: string; ids: ReadonlySet<string> } | null>(null);
   const libraryLoadRef = useRef(0);
+  // Bumped whenever an account publication outcome becomes stale (dialog
+  // closed or unmounted, a new publication started), so a late response
+  // cannot write a notice that belongs to an earlier publication.
+  const afterPublishRef = useRef(0);
+  const discardAfterPublish = () => {
+    afterPublishRef.current += 1;
+    setAfterPublish(null);
+  };
+
+  useEffect(() => () => { afterPublishRef.current += 1; }, []);
 
   // A live share without persistent revocation credentials cannot be dismissed
   // accidentally. The user must first confirm an independent backup or revoke.
@@ -103,6 +117,7 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
       setLibraryError('');
       setExposedKey(null);
       setSubmitToGallery(false);
+      afterPublishRef.current += 1;
       setAfterPublish(null);
       setAccountOwnership(null);
       publishIntentRef.current = null;
@@ -125,9 +140,24 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
     return () => { active = false; };
   }, [isOpen, showLibrary, copy.recoveryStorageUnavailable]);
 
-  const completeAccountPublication = async (published: PublishedShare) => {
+  /** Start claiming the share (and the optional gallery submission) without
+   * blocking the caller. Only the latest publication may report its outcome. */
+  const startAccountPublication = (published: PublishedShare) => {
     const intent = publishIntentRef.current;
-    if (!intent) return;
+    const ticket = ++afterPublishRef.current;
+    if (!intent) {
+      setAfterPublish(null);
+      return;
+    }
+    setAfterPublish({ pending: true });
+    void completeAccountPublication(published, intent).then((outcome) => {
+      if (ticket === afterPublishRef.current) setAfterPublish({ pending: false, ...outcome });
+    });
+  };
+
+  const completeAccountPublication = async (
+    published: PublishedShare, intent: { userId: string; submitToGallery: boolean },
+  ): Promise<{ linked: boolean; gallery: 'submitted' | 'failed' | null }> => {
     // A recovery may happen after a session change. Never claim or submit on
     // behalf of a different account; show the existing failure notice instead.
     const getPublicationToken = async () => {
@@ -136,6 +166,8 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
       const token = await current.getToken();
       return authRef.current.isSignedIn && authRef.current.userId === intent.userId ? token : null;
     };
+    // Both requests time out (accountSharesApi), which counts as a failure:
+    // the creator can add the share or resubmit it from My shares.
     let linked: boolean;
     let galleryOutcome: 'submitted' | 'failed' | null = null;
     try {
@@ -153,7 +185,7 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
         galleryOutcome = 'failed';
       }
     }
-    setAfterPublish({ linked, gallery: galleryOutcome });
+    return { linked, gallery: galleryOutcome };
   };
 
   const handlePublish = async () => {
@@ -167,13 +199,13 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
     inFlightRef.current = true;
     setPublishing(true);
     setError('');
-    setAfterPublish(null);
+    discardAfterPublish();
     try {
       const published = await publish(expiry);
-      if (!published.statusUnknown && !published.recoveryRequired) {
-        await completeAccountPublication(published);
-      }
       setResult(published);
+      if (!published.statusUnknown && !published.recoveryRequired) {
+        startAccountPublication(published);
+      }
     } catch (caught) {
       const code = caught instanceof Error ? caught.message : '';
       setError(code === 'RATE_LIMITED' ? copy.limitError
@@ -224,8 +256,8 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
     setError('');
     try {
       await markLocalSharePublished(result.id, result.deleteToken);
-      await completeAccountPublication(result);
       setResult({ ...result, recoveryRequired: false });
+      startAccountPublication(result);
     } catch {
       setError(copy.recoveryRetryFailed);
     } finally {
@@ -438,6 +470,7 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
                 setRevoked(false);
                 setError('');
                 setBackupConfirmed(false);
+                discardAfterPublish();
               }}
               className="app-button-primary w-full rounded-xl px-4 py-3 font-semibold disabled:opacity-50">
               {copy.libraryNew}
@@ -509,7 +542,11 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
                 {copied ? <Check size={16} /> : <Copy size={16} />}{copied ? copy.copied : copy.copy}
               </button>
             </div>
-            {afterPublish ? (
+            {afterPublish?.pending ? (
+              <p role="status" className="flex items-center gap-2 rounded-xl border border-(--app-accent-200) bg-(--app-accent-50) px-4 py-3 text-sm leading-6 text-(--app-accent-800)">
+                <Loader2 size={16} className="shrink-0 animate-spin" />{gallery.linking}
+              </p>
+            ) : afterPublish ? (
               <div role="status" className={'space-y-1 rounded-xl border px-4 py-3 text-sm leading-6 '
                 + (afterPublish.linked && afterPublish.gallery !== 'failed'
                   ? 'border-(--app-accent-200) bg-(--app-accent-50) text-(--app-accent-800)'
