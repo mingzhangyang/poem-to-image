@@ -58,6 +58,9 @@ export function PrivacyPage() {
           <p><strong className="text-gray-700">Usage data</strong> — We store records of AI generation requests and credit transactions in order to maintain your credit balance and provide transaction history.</p>
           <p><strong className="text-gray-700">Editor and AI content</strong> — Poem text sent for AI image generation is shared with the chosen provider (Google Gemini or OpenAI). Your ordinary unpublished editor drafts remain in this browser; we do not intentionally persist submitted poem text for AI generation.</p>
           <p><strong className="text-gray-700">Artwork you choose to publish</strong> — When you explicitly publish a shareable artwork link, we store a flattened image of your artwork, its social-preview image, the title and author you entered, and the creation time on Cloudflare R2/D1. This publication is publicly accessible to anyone with the link. Publishing does not upload your editable editor project.</p>
+          <p><strong className="text-gray-700">Shares saved to your account</strong> — If you are signed in when you publish, or later choose to add shares from this browser to your account, we link those shares to your account ID so you can list and remove them on any device. Shares published while signed out are not linked to any account.</p>
+          <p><strong className="text-gray-700">Public gallery</strong> — If you choose to submit a permanent share from your account to the public gallery, we record that request and our review decision. Reviewers can see which account submitted it. An approved artwork, with its title and author, is listed at inkpoem.com/gallery, where anyone can browse it without the link. You can withdraw it from the gallery at any time without revoking the share.</p>
+          <p><strong className="text-gray-700">Reports</strong> — When a visitor reports a shared artwork, we store the reason they chose and a pseudonymous identifier computed with a secret key from the artwork and their network address (for IPv6, the network prefix), so one visitor counts once. We do not store the address itself. Reports are deleted once we have reviewed them, when the share is revoked, or after 90 days at the latest.</p>
           <p><strong className="text-gray-700">Publishing abuse protection</strong> — We use a hashed, pseudonymous network address identifier for temporary per-hour and per-day publishing rate limits; expired counters are periodically deleted.</p>
         </Section>
 
@@ -70,6 +73,7 @@ export function PrivacyPage() {
             <li>To improve the reliability and performance of the service</li>
             <li>To serve public artwork you deliberately publish and generate its share-preview metadata</li>
             <li>To enforce temporary anonymous publication limits</li>
+            <li>To review gallery submissions and reports about published artwork</li>
           </ul>
         </Section>
 
@@ -86,7 +90,7 @@ export function PrivacyPage() {
 
         <Section title="Data Retention">
           <p>We retain account and transaction records for account and billing operations. You can request access or deletion by contacting us, subject to applicable recordkeeping requirements.</p>
-          <p>Published artworks remain available until you revoke their share using the private deletion capability saved in the publishing browser or independently backed up by you. Do not include that key in a publicly shared link. Revocation immediately removes public access and clears the stored title and author. We delete the corresponding artwork images from storage, retrying failed deletions during scheduled maintenance; a non-content revocation tombstone remains in the database. Copies already downloaded by visitors or cached by third-party social platforms cannot be recalled.</p>
+          <p>Published artworks remain available until you revoke their share, from your account if the share is linked to it, or otherwise using the private deletion capability saved in the publishing browser or independently backed up by you. Do not include that key in a publicly shared link. Revocation immediately removes public access and clears the stored title and author. We delete the corresponding artwork images from storage, retrying failed deletions during scheduled maintenance; a non-content revocation tombstone remains in the database. Copies already downloaded by visitors or cached by third-party social platforms cannot be recalled.</p>
         </Section>
 
         <Section title="Cookies">

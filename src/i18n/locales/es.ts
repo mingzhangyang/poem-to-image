@@ -496,6 +496,7 @@ const es: TranslationMessages = {
     language: "Idioma",
     account: "Cuenta",
     privacyPolicy: "Política de privacidad",
+    publicGallery: "Galería pública",
     about: "Acerca de",
     aboutDescription: "Convierte tus poemas en hermosas obras de arte con IA.",
     backToEditor: "Volver al editor",

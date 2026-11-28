@@ -58,6 +58,31 @@ Investigate these result classes:
 
 Use the Stripe session ID as the support-safe lookup identifier. Do not copy card details, bearer tokens, full webhook payloads, or poem content into logs or tickets.
 
+## Public gallery review
+
+Signed-in creators submit permanent shares to the public gallery at `/gallery`; nothing appears there until a maintainer approves it. Review the queue with the script in the repository root. It runs SQL through `wrangler d1 execute`, so it needs `npm ci` and a `npx wrangler login` for the production Cloudflare account. It targets the production database unless you pass `--local`.
+
+```sh
+npm run gallery:review                # step through pending submissions one by one
+npm run gallery:review -- pending     # list pending submissions
+npm run gallery:review -- reports     # list live shares with visitor reports
+npm run gallery:review -- listed      # list what the gallery shows now
+npm run gallery:review -- show <id>
+npm run gallery:review -- approve <id> [<id>...]
+npm run gallery:review -- reject <id> [<id>...]
+npm run gallery:review -- dismiss <id> [<id>...]
+npm run gallery:review -- remove <id> [<id>...]
+```
+
+In the step-through review, each submission shows its title, author, owning account and email, times, any reports and the share page URL. Press `o` to open the page in a browser, then `a` to approve, `r` to reject, `s` to skip, `d` to take the share down or `q` to stop.
+
+- **approve** lists a pending, permanent, live share that belongs to an account. If it came back to review after reports, it keeps its original place, and the reports filed so far are resolved. An ID that is not pending, such as one already listed, is left untouched together with any new reports.
+- **reject** keeps a pending share out of the gallery, or takes a listed one out. The share link stays up and the creator cannot resubmit it.
+- **dismiss** resolves reports judged unfounded without changing the listing.
+- **remove** is a takedown for content that must not stay public at all, such as infringing or illegal material. It revokes the share as the creator's removal would: the link returns 404 at once, the title and author are cleared, and the hourly maintenance run deletes the images from R2. It asks for confirmation unless you pass `--yes`.
+
+A listed share that three distinct visitors report goes back to `pending` automatically, so check `reports` and the pending queue regularly. Visitors are counted per IPv4 address or IPv6 /64. Open reports are deleted after 90 days, so act on them within that time. Reports need the `SHARE_REPORT_SECRET` Worker secret (at least 32 characters, e.g. `openssl rand -hex 32`); `/api/health/sharing` returns `SHARE_REPORTS_UNCONFIGURED` while it is missing. Rotating it makes earlier reporters count as new visitors on shares they already reported. Titles and authors are visitor-supplied: the script strips control characters before printing them, but judge the artwork from its page rather than its title.
+
 ## Refunds and disputes
 
 Refund and dispute events are not automatically converted into credit reversals. Credits already granted remain until an operator reviews the account and records an explicit, auditable adjustment. Never assume a Stripe refund changed the D1 balance. Product/legal owners still need to approve the customer-facing refund and credit-expiration policy before commercial launch.

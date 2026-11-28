@@ -163,6 +163,21 @@ test('desktop rail carries the app mark and the panel column drops the brand hea
   assert.equal(brand.includes('role="tab"'), false);
 });
 
+test('desktop rail tabs are icon-only and the gallery link sits outside the tab list', () => {
+  const sidebar = readRepoFile('src/components/Sidebar.tsx');
+  const rail = readRepoFile('src/components/sidebar/SidebarRail.tsx');
+  // The label stays as the tab's accessible name (and names the tab panel) but is not shown.
+  assert.match(rail, /<span id=\{getRailLabelId\(view\)\} className="sr-only">\{t\(labelKey\)\}<\/span>/);
+  assert.match(rail, /<RailTooltip>\{t\(titleKey\)\}<\/RailTooltip>/);
+  const tooltip = rail.slice(rail.indexOf('function RailTooltip'));
+  assert.match(tooltip, /aria-hidden="true"/, 'the tooltip repeats the accessible name');
+  assert.match(tooltip, /group-focus-visible:visible/, 'keyboard users must see the tooltip too');
+  const link = rail.slice(rail.indexOf('export function RailGalleryLink'));
+  assert.match(link, /to="\/gallery"/);
+  assert.equal(link.includes('role="tab"'), false, 'the gallery leaves the editor, so it is a link, not a tab');
+  assert.match(sidebar, /<SidebarRail\b[\s\S]*?\/>\s*<RailGalleryLink t=\{t\} \/>/, 'the gallery link follows the tab list');
+});
+
 test('control panels float as cards only in the mobile drawer', () => {
   const section = readRepoFile('src/components/ControlSection.tsx');
   for (const cls of ['lg:rounded-none', 'lg:shadow-none', 'lg:border-0', 'lg:backdrop-blur-none', 'lg:sticky']) {

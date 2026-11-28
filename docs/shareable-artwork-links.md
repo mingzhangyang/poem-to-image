@@ -41,19 +41,25 @@ it should succeed even if no prior POST reached the Worker.
    curl -i https://inkpoem.com/api/health/sharing
    ```
    HTTP 200 with `{"ready":true}` confirms the live Worker can query
-   the `shared_artworks`, `shared_artwork_upload_attempts` and
-   `rate_limits` tables (including `published_at`) and access the private
+   the `shared_artworks`, `shared_artwork_upload_attempts`, `share_reports`
+   and `rate_limits` tables (including `published_at`, the gallery columns,
+   `owner_user_id` and the review generations) and access the private
    R2 bucket. The rate-limit table matters to both first-time POST and
    DELETE of an unseen ID; without it, both mutations can fail while
    a public share page still returns a normal 404. HTTP
    503 with `SHARE_DB_UNAVAILABLE`, `SHARE_SCHEMA_UNAVAILABLE` or
-   `SHARE_STORAGE_UNAVAILABLE` directs the next check. This is a
+   `SHARE_STORAGE_UNAVAILABLE` directs the next check;
+   `SHARE_REPORTS_UNCONFIGURED` means the `SHARE_REPORT_SECRET` Worker
+   secret is missing or shorter than 32 characters, so visitor reports
+   fail with 503 (`npx wrangler secret put SHARE_REPORT_SECRET`, with a
+   value from `openssl rand -hex 32`). This is a
    **readiness probe, not a successful publish test**.
 2. Confirm the production bindings and the numbered migration:
    ```sh
    npx wrangler r2 bucket list
    npx wrangler d1 migrations list DB --remote --config wrangler.jsonc
-   # Confirm 0002 (rate_limits) as well as 0005 (shared_artworks).
+   # Confirm 0002 (rate_limits), 0005 (shared_artworks), 0007 (gallery
+   # columns, review generations and share_reports) and 0008 (owner_user_id).
    # Only if numbered migrations are pending:
    npx wrangler d1 migrations apply DB --remote --config wrangler.jsonc
    ```
@@ -110,16 +116,65 @@ the original browser pending state can be retried after recovery.
 Open **Export / Share → My Shares** on desktop or mobile. The list survives
 closing the publish dialog and reloading the editor (on the same browser
 profile). It includes published, pending and migrated unverified records.
-Each entry offers its link, explicit private key backup, creator-authorized
-status verification, and token-authenticated revocation. A server-confirmed
-DELETE erases the local key and keeps a revoked tombstone so old credentials
-are not resurrected by migration. There is no user account, cloud backup or
-cross-device sync. Clearing site data also removes IndexedDB; a private key
-backup is still necessary for long-term revocation access.
+Each entry offers its link, creator-authorized status verification and
+token-authenticated revocation; copying the private key is tucked under a
+**Back up removal key** disclosure, because creators do not need it to remove
+a share from the same browser. A server-confirmed DELETE erases the local key
+and keeps a revoked tombstone so old credentials are not resurrected by
+migration. Clearing site data also removes IndexedDB, after which an
+anonymous share can be removed only with a key backed up beforehand.
+Signed-in creators avoid this: see the next section.
 
 **Important:** The browser-held key is not encryption. Do not show or send it
 in public links or browser diagnostics. The share endpoint itself stores
 only the key hash, so a lost key cannot be recovered from the server.
+
+## Shares owned by an account
+
+Publishing stays anonymous and uses the protocol above unchanged. When the
+creator is signed in, the browser then **claims** the new share for their
+account: `POST /api/me/shares/claim` with `{ "shares": [{ "id", "deleteToken" }] }`
+(at most 50 per request) and the Clerk bearer token. The removal key proves
+ownership; the Worker stores only `owner_user_id` on the row (migration
+`0008_share_owners.sql`). A share already owned by another account is left
+alone, and claiming one's own share again is a no-op. The response lists
+the `claimed` IDs and, among the rest, the IDs whose key matched but that
+another account holds (`ownedElsewhere`); a key that does not match reveals
+nothing. The browser remembers `ownedElsewhere` IDs in `localStorage` and
+stops offering them in the "add to my account" banner, and re-checks the
+status of any share that was neither claimed nor held elsewhere, so a
+revoked or expired share also drops out of the banner.
+
+- **My artworks.** Signed-in creators see their account's shares in **My
+  Shares** and on the account page, on any device: `GET /api/me/shares?cursor=&limit=`
+  lists live, published shares with their expiry and gallery status, newest
+  first, 50 per page by default (at most 100), with a `nextCursor` so every
+  share stays reachable; the list has a **Load more** button. They revoke
+  with `DELETE /api/me/shares/:id`, which needs no removal key and deletes the
+  R2 images like the key-based DELETE.
+- **Earlier anonymous shares.** If this browser holds published shares that
+  are not yet in the account, the list offers **Add to my account**, which
+  claims them with the keys saved in IndexedDB. To tell which local shares are
+  already in the account, the browser asks `POST /api/me/shares/owned` with
+  `{ "ids": [...] }` (at most 500), which answers for every owned share in any
+  state, independent of the list page shown. Shares published in another
+  browser can only be added from that browser.
+- **Failure handling.** If the claim after publishing fails, the share is
+  still published and stays in the browser-local list, from where it can be
+  added later. The publish dialog says so.
+- Anonymous creators keep the browser-held key as their only way to remove a
+  share; nothing about anonymous publishing changed.
+
+## Public gallery (`/gallery`)
+
+Creators can opt in to show a share in the public gallery. Nothing is listed without both the creator's request and a maintainer's approval. Visitors reach the gallery from the foot of the desktop navigation rail, the Settings panel and the bottom of every share page.
+
+- **Opt-in, signed in only.** The publish dialog has an **Also submit to the public gallery** checkbox, off by default and enabled only for a signed-in creator with the expiration set to **Never**. After a confirmed publication the browser claims the share for the account, then submits it; if either step fails, the share stays published and the creator can submit it from **My Shares** or the account page, where every account share shows its gallery status with a submit or withdraw button. Anonymous shares cannot be submitted until they are added to an account.
+- **Only permanent shares.** The Worker refuses requests for shares with a 7-day or 30-day expiration (`409 SHARE_NOT_PERMANENT`), and the review script will not approve them.
+- **Owner endpoints.** `PUT|DELETE /api/me/shares/:id/gallery` request or withdraw a listing for a share the signed-in account owns, and return `{ status, eligible }`, where `status` is `none`, `pending`, `listed` or `rejected`. A rejected share keeps that status: neither a new request nor a withdrawal puts it back in the queue. Account endpoints are rate-limited to 30 requests a minute per user.
+- **Public listing.** `GET /api/gallery?cursor=&limit=` returns approved shares, newest approval first, 24 per page by default (at most 48), with an opaque `nextCursor`. Every query also requires a published, unrevoked, permanent row, so revoking a share removes it from the gallery at once. Thumbnails are the existing `card.jpg` social previews.
+- **Reports.** Every share page has a **Report this artwork** control for visitors who do not hold the removal key. `POST /api/shares/:id/report` takes `{ "reason": "copyright" | "privacy" | "inappropriate" | "other" }` and returns `202` whether or not the visitor had already reported it. Each visitor counts once per share, and reports are rate-limited per network to 10 an hour and 30 a day. A visitor's network is their IPv4 address from `CF-Connecting-IP`, or the /64 of an IPv6 address, since one subscriber can pick any address in their /64. The stored reporter identifier and the rate-limit key are HMAC-SHA-256 digests keyed with the `SHARE_REPORT_SECRET` Worker secret, so they cannot be reversed by hashing every IPv4 address; without the secret (or with one under 32 characters) the endpoint returns `503 REPORTS_NOT_CONFIGURED`. A report stays open until a maintainer next reviews the share (approve, reject, remove or dismiss). Each review increments the share's `gallery_review_generation` in the same statement, and each report records the generation current when it was filed, so write order decides which reports a review resolved, even within the same second. A visitor whose report was resolved can report again. When three distinct visitors have open reports on a listed share, it goes back to `pending` and drops out of the gallery until reviewed; the share link stays up. Storing a report and checking this threshold run as one atomic D1 batch, and the check runs on every report, so a repeated report also completes a check an earlier request did not finish. The hourly maintenance run deletes resolved reports, reports of revoked shares, and open reports older than 90 days (`REPORT_RETENTION_DAYS` in `worker/gallery.ts`), so reports on shares nobody reviews are not kept indefinitely.
+- **Review.** Maintainers review with `npm run gallery:review` (see the [operations runbook](operations-runbook.md#public-gallery-review)). There is no admin API: the script runs SQL against D1 through wrangler with the maintainer's Cloudflare login. It shows each submission's account and email, and approves only account-owned shares.
 
 ## Privacy and abuse controls
 

@@ -9,6 +9,8 @@ Turn poems into AI-generated images with precise text control. Built with React 
 ## Features
 
 - **Public read-only artwork links**: publish immutable snapshot URLs such as `inkpoem.com/s/<id>`, with social preview, viewer download and a browser-local **My Shares** history backed by IndexedDB for link retrieval, removal-key backup, status checks and revocation. Uses D1 + a private R2 bucket; see [share setup & rollout instructions](docs/shareable-artwork-links.md).
+- **Account-owned shares**: when a creator is signed in, each new share is tied to their account (and earlier anonymous shares from the same browser can be added), so they can list and remove their artworks on any device without a removal key.
+- **Public gallery**: signed-in creators can opt in to show a permanent share at `/gallery`. Submissions appear only after a maintainer approves them with `npm run gallery:review` (see the [operations runbook](docs/operations-runbook.md#public-gallery-review)), and visitors can report any shared artwork.
 - **Ornaments** (in the Decorations & Elements panel) can be filtered by mood, snapped into place, and layered above or below the poem. Canvas padding only keeps text off the paper edge: ornaments can be dragged or snapped into it, and uploaded logos dragged into it, up to the canvas edge. Uploaded logos keep their aspect ratio within their size in both the preview and the export. PNG export uses the original artwork at the selected export scale.
 - AI image generation via Gemini and OpenAI
 - Clerk authentication
@@ -61,6 +63,8 @@ Place a transparent PNG or WebP of at least 1024 × 1024 pixels in `public/ornam
    CLERK_JWT_AUDIENCE=your-clerk-audience
    STRIPE_SECRET_KEY=your_key_here
    STRIPE_WEBHOOK_SECRET=your_key_here
+   # Visitor reports on shared artworks; at least 32 characters (openssl rand -hex 32):
+   SHARE_REPORT_SECRET=your_random_secret_here
    ```
 5. Copy `.env.example` to `.env` for the frontend and set the public Clerk key:
    ```
@@ -99,6 +103,7 @@ The Vite dev server proxies `/api/*` requests to the local Worker on port `8787`
    npx wrangler secret put STRIPE_WEBHOOK_SECRET
    npx wrangler secret put GEMINI_API_KEY
    npx wrangler secret put OPENAI_API_KEY
+   npx wrangler secret put SHARE_REPORT_SECRET   # openssl rand -hex 32
    ```
 7. Set Worker auth validation variables (must match your Clerk instance and frontend origins):
    ```

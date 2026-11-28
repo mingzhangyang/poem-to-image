@@ -10,7 +10,7 @@ import { EXPORT_ITEM, PANEL_GROUP_ORDER, PANEL_GROUPS, SETTINGS_ITEM, isPanelGro
 import { SettingsPanel } from './sidebar/SettingsPanel';
 import { SidebarFooter } from './sidebar/SidebarFooter';
 import { SidebarHeader } from './sidebar/SidebarHeader';
-import { RailBrand, SidebarRail, getRailLabelId } from './sidebar/SidebarRail';
+import { RailBrand, RailGalleryLink, SidebarRail, getRailLabelId } from './sidebar/SidebarRail';
 import { TemplatesPanel } from './sidebar/TemplatesPanel';
 import { TypographyPanel } from './sidebar/TypographyPanel';
 import { useDialogA11y } from '../hooks/useDialogA11y';
@@ -311,7 +311,7 @@ export function Sidebar({
 
       {/* Desktop sidebar: an opaque column holding the navigation rail and the active panel, flat against the page */}
       <aside className="hidden lg:flex lg:order-1 lg:h-screen shrink-0 bg-(--app-surface-strong) border-r border-[rgba(34,48,52,0.08)] z-10 flex-row">
-        <div className="flex w-[72px] shrink-0 flex-col border-r border-[rgba(34,48,52,0.06)] bg-(--app-surface)">
+        <div className="flex w-16 shrink-0 flex-col border-r border-[rgba(34,48,52,0.06)] bg-(--app-surface)">
           <RailBrand t={t} />
           <SidebarRail
             t={t}
@@ -320,6 +320,7 @@ export function Sidebar({
             panelId={DESKTOP_PANEL_ID}
             badges={{ decorations: placedDecorationCount }}
           />
+          <RailGalleryLink t={t} />
         </div>
         <div className="flex min-w-0 flex-col lg:w-[320px] xl:w-[360px]">
           <div

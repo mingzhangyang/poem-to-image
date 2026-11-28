@@ -11,3 +11,7 @@ CLERK_ALLOWED_AUTHORIZED_PARTIES=http://localhost:3000
 # Stripe — https://stripe.com
 STRIPE_SECRET_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
+
+# Visitor reports on shared artworks: HMAC key, at least 32 characters.
+# Generate one with: openssl rand -hex 32
+SHARE_REPORT_SECRET=replace_with_openssl_rand_hex_32

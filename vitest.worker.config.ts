@@ -17,6 +17,7 @@ export default defineConfig(async () => {
             CLERK_ALLOWED_AUTHORIZED_PARTIES: 'https://inkpoem.test',
             STRIPE_SECRET_KEY: 'test_stripe_secret',
             STRIPE_WEBHOOK_SECRET: 'test_webhook_secret',
+            SHARE_REPORT_SECRET: 'test_share_report_secret_0123456789abcdef',
           },
           serviceBindings: {
             ASSETS: async (request: Request) => {

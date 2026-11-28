@@ -496,6 +496,7 @@ const de: TranslationMessages = {
     language: "Sprache",
     account: "Konto",
     privacyPolicy: "Datenschutzrichtlinie",
+    publicGallery: "Öffentliche Galerie",
     about: "Über",
     aboutDescription: "Verwandeln Sie Ihre Gedichte mit KI in schöne Kunst.",
     backToEditor: "Zurück zum Editor",

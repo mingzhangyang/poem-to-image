@@ -496,6 +496,7 @@ const ko: TranslationMessages = {
     language: "언어",
     account: "계정",
     privacyPolicy: "개인정보 처리방침",
+    publicGallery: "공개 갤러리",
     about: "정보",
     aboutDescription: "AI로 시를 아름다운 예술로 변환하세요.",
     backToEditor: "편집기로 돌아가기",

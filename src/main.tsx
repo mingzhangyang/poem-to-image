@@ -16,6 +16,7 @@ const PrivacyPage = lazy(async () => ({ default: (await import('./pages/PrivacyP
 const AboutPage = lazy(async () => ({ default: (await import('./pages/AboutPage.tsx')).AboutPage }));
 
 const ShareViewerPage = lazy(async () => ({ default: (await import('./pages/ShareViewerPage.tsx')).default }));
+const GalleryPage = lazy(async () => ({ default: (await import('./pages/GalleryPage.tsx')).default }));
 
 const runtimeClerkKey = typeof window !== 'undefined'
   ? (window as { __INKPOEM_CLERK_PUBLISHABLE_KEY?: string }).__INKPOEM_CLERK_PUBLISHABLE_KEY
@@ -80,6 +81,7 @@ createRoot(document.getElementById('root')!).render(
       <ToastProvider>
         <Routes>
           <Route path="/s/:id" element={<Suspense fallback={<RouteFallback />}><ShareViewerPage /></Suspense>} />
+          <Route path="/gallery" element={<Suspense fallback={<RouteFallback />}><GalleryPage /></Suspense>} />
           <Route path="/*" element={<EditorWithAuth />} />
         </Routes>
       </ToastProvider>

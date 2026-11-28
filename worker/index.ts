@@ -14,6 +14,8 @@ import { logError, logInfo, requestIdFor, withRequestId } from './observability'
 import type { WorkerEnv } from './env';
 import { runOperationalChecks } from './maintenance';
 import { publishShare, getShareApi, deleteShare, getShareImage, getShareHtml, getShareReadiness, verifyShareForRecovery } from './shares';
+import { listGallery, reportShare } from './gallery';
+import { routeAccountShares } from './accountShares';
 
 const MAX_AI_PROMPT_LENGTH = 500;
 const MAX_REQUEST_ID_LENGTH = 80;
@@ -371,6 +373,9 @@ async function routeRequest(request: Request, env: WorkerEnv): Promise<Response>
     if (pathname === '/api/shares') return publishShare(request, env);
     const shareRecovery = /^\/api\/shares\/([A-Za-z0-9_-]+)\/verify$/.exec(pathname);
     if (shareRecovery) return verifyShareForRecovery(request, env, shareRecovery[1]);
+    const shareReport = /^\/api\/shares\/([A-Za-z0-9_-]+)\/report$/.exec(pathname);
+    if (shareReport) return reportShare(request, env, shareReport[1]);
+    if (pathname === '/api/gallery') return listGallery(request, env);
     const shareApi = /^\/api\/shares\/([A-Za-z0-9_-]+)$/.exec(pathname);
     if (shareApi) {
       if (request.method === 'GET') return getShareApi(request, env, shareApi[1]);
@@ -402,6 +407,15 @@ async function routeRequest(request: Request, env: WorkerEnv): Promise<Response>
       if (request.method === 'DELETE') return handleDeleteTemplate(templateId, request, env);
       if (request.method === 'PATCH') return handleRenameTemplate(templateId, request, env);
       return methodNotAllowed(['DELETE', 'PATCH']);
+    }
+
+    // ── Shares owned by the signed-in account ───────────────────────────
+    if (pathname === '/api/me/shares' || pathname.startsWith('/api/me/shares/')) {
+      if (!hasRequiredAuthConfig(env) || !env.DB) return json({ error: 'Auth not configured.' }, 503);
+      const user = await getAuthenticatedRequestUser(request, env);
+      if (!user) return unauthorized();
+      await ensureUser(env.DB, user.userId, user.email);
+      return routeAccountShares(request, env, user.userId, pathname);
     }
 
     // ── Auth ────────────────────────────────────────────────────────────

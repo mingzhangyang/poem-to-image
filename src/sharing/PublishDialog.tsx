@@ -2,6 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { Check, Copy, ExternalLink, Link2, Loader2, Trash2, X } from 'lucide-react';
 import { useDialogA11y } from '../hooks/useDialogA11y';
 import { shareCopy } from './copy';
+import { useAppAuth } from '../context/auth';
+import { AccountShareList } from './AccountShareList';
+import { claimShares, requestGalleryListing } from './accountSharesApi';
+import { galleryCopy } from './galleryCopy';
 import { removePublishCredentialsSafely } from './publishProtocol';
 import {
   checkLocalShareStatus, listLocalShares, markLocalSharePublished,
@@ -35,6 +39,13 @@ interface Props {
 
 export function PublishDialog({ language, isOpen, onClose, publish, initialLibrary = false }: Props) {
   const copy = shareCopy[language];
+  const gallery = galleryCopy[language];
+  const auth = useAppAuth();
+  const { isSignedIn, userId } = auth;
+  const activeAccountId = isSignedIn ? userId : null;
+  const authRef = useRef(auth);
+  useEffect(() => { authRef.current = auth; }, [auth]);
+  const publishIntentRef = useRef<{ userId: string; submitToGallery: boolean } | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const urlRef = useRef<HTMLInputElement>(null);
   const recoveryKeyRef = useRef<HTMLInputElement>(null);
@@ -54,6 +65,11 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
   const [libraryAction, setLibraryAction] = useState('');
   const [libraryError, setLibraryError] = useState('');
   const [exposedKey, setExposedKey] = useState<string | null>(null);
+  const [submitToGallery, setSubmitToGallery] = useState(false);
+  // What happened after a confirmed publication: saving it to the signed-in
+  // account, and the optional gallery submission (which needs the account).
+  const [afterPublish, setAfterPublish] = useState<{ linked: boolean; gallery: 'submitted' | 'failed' | null } | null>(null);
+  const [accountOwnership, setAccountOwnership] = useState<{ userId: string; ids: ReadonlySet<string> } | null>(null);
   const libraryLoadRef = useRef(0);
 
   // A live share without persistent revocation credentials cannot be dismissed
@@ -65,7 +81,14 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
   const canClose = !inFlightRef.current && !publishing && !recoveryBusy
     && !libraryAction && !needsBackup;
   const close = () => { if (canClose) onClose(); };
+  // Only a successful lookup for the current account may hide local keys.
+  const localRecords = records.filter((share) => !activeAccountId
+    || accountOwnership?.userId !== activeAccountId || !accountOwnership.ids.has(share.id));
   useDialogA11y({ isOpen, dialogRef, onClose: close });
+
+  useEffect(() => {
+    setAccountOwnership(null);
+  }, [activeAccountId, showLibrary]);
 
   useEffect(() => {
     if (isOpen) {
@@ -79,6 +102,10 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
       setError('');
       setLibraryError('');
       setExposedKey(null);
+      setSubmitToGallery(false);
+      setAfterPublish(null);
+      setAccountOwnership(null);
+      publishIntentRef.current = null;
     }
   }, [isOpen, initialLibrary]);
 
@@ -98,13 +125,55 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
     return () => { active = false; };
   }, [isOpen, showLibrary, copy.recoveryStorageUnavailable]);
 
+  const completeAccountPublication = async (published: PublishedShare) => {
+    const intent = publishIntentRef.current;
+    if (!intent) return;
+    // A recovery may happen after a session change. Never claim or submit on
+    // behalf of a different account; show the existing failure notice instead.
+    const getPublicationToken = async () => {
+      const current = authRef.current;
+      if (!current.isSignedIn || current.userId !== intent.userId) return null;
+      const token = await current.getToken();
+      return authRef.current.isSignedIn && authRef.current.userId === intent.userId ? token : null;
+    };
+    let linked: boolean;
+    let galleryOutcome: 'submitted' | 'failed' | null = null;
+    try {
+      linked = (await claimShares(getPublicationToken, [published])).claimed.includes(published.id);
+    } catch {
+      linked = false;
+    }
+    if (intent.submitToGallery) {
+      try {
+        if (!linked) throw new Error('NOT_LINKED');
+        await requestGalleryListing(getPublicationToken, published.id);
+        galleryOutcome = 'submitted';
+      } catch {
+        // The share itself is live; the creator can resubmit from My shares.
+        galleryOutcome = 'failed';
+      }
+    }
+    setAfterPublish({ linked, gallery: galleryOutcome });
+  };
+
   const handlePublish = async () => {
     if (inFlightRef.current) return;
+    // An uncertain publication retries the original ID and account intent.
+    if (!result?.statusUnknown) {
+      publishIntentRef.current = activeAccountId ? {
+        userId: activeAccountId, submitToGallery: submitToGallery && expiry === 'never',
+      } : null;
+    }
     inFlightRef.current = true;
     setPublishing(true);
     setError('');
+    setAfterPublish(null);
     try {
-      setResult(await publish(expiry));
+      const published = await publish(expiry);
+      if (!published.statusUnknown && !published.recoveryRequired) {
+        await completeAccountPublication(published);
+      }
+      setResult(published);
     } catch (caught) {
       const code = caught instanceof Error ? caught.message : '';
       setError(code === 'RATE_LIMITED' ? copy.limitError
@@ -143,24 +212,31 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
   };
 
   const handleRetrySave = async () => {
-    if (!result) return;
+    if (!result || inFlightRef.current || recoveryBusy) return;
     if (result.statusUnknown) {
       if (result.pendingChanged) return;
       await handlePublish(); // Reuses the exact IndexedDB ID and content fingerprint.
       return;
     }
     if (!result.recoveryRequired) return;
+    inFlightRef.current = true;
+    setRecoveryBusy(true);
+    setError('');
     try {
       await markLocalSharePublished(result.id, result.deleteToken);
+      await completeAccountPublication(result);
       setResult({ ...result, recoveryRequired: false });
-      setError('');
     } catch {
       setError(copy.recoveryRetryFailed);
+    } finally {
+      inFlightRef.current = false;
+      setRecoveryBusy(false);
     }
   };
 
   const handleRevoke = async () => {
-    if (!unresolved || !result || recoveryBusy) return;
+    if (!unresolved || !result || recoveryBusy || inFlightRef.current) return;
+    inFlightRef.current = true;
     setRecoveryBusy(true);
     setError('');
     try {
@@ -179,6 +255,7 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
         ? ' (' + caught.message + ')' : '';
       setError(copy.recoveryRevokeFailed + detail);
     } finally {
+      inFlightRef.current = false;
       setRecoveryBusy(false);
     }
   };
@@ -270,16 +347,48 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
             </select>
           </label>
         ) : null}
+        {!showLibrary && !result && !revoked ? (
+          <label className="mb-4 flex items-start gap-3 rounded-xl border border-(--app-accent-200) px-3 py-3 text-sm text-(--app-accent-800)">
+            <input type="checkbox" className="mt-1 h-4 w-4 shrink-0"
+              checked={submitToGallery && isSignedIn && expiry === 'never'}
+              disabled={publishing || !isSignedIn || expiry !== 'never'}
+              onChange={(event) => setSubmitToGallery(event.target.checked)} />
+            <span>
+              <span className="block font-medium">{gallery.submit}</span>
+              <span className="mt-1 block text-xs leading-5 text-(--app-accent-600)">
+                {!isSignedIn ? gallery.loginToSubmit : expiry === 'never' ? gallery.submitHint : gallery.needsPermanent}
+              </span>
+            </span>
+          </label>
+        ) : null}
         {showLibrary ? (
           <div className="space-y-4">
-            <p className="text-xs leading-5 text-(--app-accent-600)">{copy.libraryLocalOnly}</p>
+            <div className="max-h-[60vh] space-y-5 overflow-y-auto">
+            {activeAccountId ? (
+              <AccountShareList key={activeAccountId} language={language} disabled={!!libraryAction}
+                onAccountIds={(ids) => {
+                  if (authRef.current.isSignedIn && authRef.current.userId === activeAccountId) {
+                    setAccountOwnership({ userId: activeAccountId, ids });
+                  }
+                }} />
+            ) : (
+              <p className="rounded-xl border border-(--app-accent-200) bg-(--app-accent-50) px-3 py-2 text-xs leading-5 text-(--app-accent-800)">
+                {gallery.accountHint}
+              </p>
+            )}
+            {isSignedIn && localRecords.length > 0 ? (
+              <h3 className="text-sm font-semibold text-(--app-accent-900)">{gallery.localOnlyTitle}</h3>
+            ) : null}
+            {!isSignedIn || localRecords.length > 0 ? (
+              <p className="text-xs leading-5 text-(--app-accent-600)">{copy.libraryLocalOnly}</p>
+            ) : null}
             {libraryBusy ? <p role="status" className="text-sm text-(--app-accent-700)">{copy.loading}</p> : null}
             {libraryError ? <p role="alert" className="text-sm text-red-700">{libraryError}</p> : null}
-            {!libraryBusy && records.length === 0 ? (
+            {!isSignedIn && !libraryBusy && records.length === 0 ? (
               <p className="rounded-xl border border-(--app-accent-200) p-4 text-sm text-(--app-accent-700)">{copy.libraryEmpty}</p>
             ) : null}
-            <div className="max-h-[50vh] space-y-3 overflow-y-auto">
-              {records.map((share) => (
+            <div className="space-y-3">
+              {localRecords.map((share) => (
                 <div key={share.id} className="space-y-2 rounded-xl border border-(--app-accent-200) bg-white/75 p-3">
                   <div className="flex items-start justify-between gap-2">
                     <p className="min-w-0 truncate font-medium text-(--app-accent-900)">
@@ -297,8 +406,6 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
                   <div className="flex flex-wrap gap-2">
                     <button type="button" onClick={() => void handleCopyLocal(new URL('/s/' + share.id, window.location.origin).toString())}
                       className="app-button-secondary rounded-lg px-3 py-2 text-xs">{copy.copy}</button>
-                    <button type="button" onClick={() => void handleCopyLocal(share.deleteToken, share.id)}
-                      className="app-button-secondary rounded-lg px-3 py-2 text-xs">{copy.recoveryCopy}</button>
                     <button type="button" disabled={!!libraryAction} onClick={() => void handleCheckLocal(share)}
                       className="app-button-secondary rounded-lg px-3 py-2 text-xs disabled:opacity-50">
                       {libraryAction === share.id ? copy.loading : copy.libraryCheck}
@@ -306,6 +413,11 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
                     <button type="button" disabled={!!libraryAction} onClick={() => void handleRemoveLocal(share)}
                       className="rounded-lg border border-red-200 px-3 py-2 text-xs text-red-800 disabled:opacity-50">{copy.revoke}</button>
                   </div>
+                  <details className="text-xs text-(--app-accent-700)">
+                    <summary className="cursor-pointer select-none">{gallery.advancedKey}</summary>
+                    <button type="button" onClick={() => void handleCopyLocal(share.deleteToken, share.id)}
+                      className="app-button-secondary mt-2 rounded-lg px-3 py-2 text-xs">{copy.recoveryCopy}</button>
+                  </details>
                   {exposedKey === share.id ? (
                     <label className="block text-xs text-(--app-accent-700)">
                       {copy.recoveryKey}
@@ -316,6 +428,7 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
                   ) : null}
                 </div>
               ))}
+            </div>
             </div>
             <button type="button" disabled={!!libraryAction}
               onClick={() => {
@@ -396,7 +509,19 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
                 {copied ? <Check size={16} /> : <Copy size={16} />}{copied ? copy.copied : copy.copy}
               </button>
             </div>
-            <p className="text-xs leading-5 text-(--app-accent-600)">{copy.localManage}</p>
+            {afterPublish ? (
+              <div role="status" className={'space-y-1 rounded-xl border px-4 py-3 text-sm leading-6 '
+                + (afterPublish.linked && afterPublish.gallery !== 'failed'
+                  ? 'border-(--app-accent-200) bg-(--app-accent-50) text-(--app-accent-800)'
+                  : 'border-amber-300 bg-amber-50 text-amber-950')}>
+                <p>{afterPublish.linked ? gallery.linked : gallery.linkFailed}</p>
+                {afterPublish.gallery ? (
+                  <p>{afterPublish.gallery === 'submitted' ? gallery.submitted : gallery.submitFailed}</p>
+                ) : null}
+              </div>
+            ) : (
+              <p className="text-xs leading-5 text-(--app-accent-600)">{copy.localManage}</p>
+            )}
             <button type="button" onClick={() => setShowLibrary(true)}
               className="app-button-secondary w-full rounded-xl px-4 py-3 text-sm font-semibold">{copy.manageShares}</button>
             <a href={result.url} target="_blank" rel="noopener noreferrer"
@@ -425,3 +550,4 @@ export function PublishDialog({ language, isOpen, onClose, publish, initialLibra
     </div>
   );
 }
+

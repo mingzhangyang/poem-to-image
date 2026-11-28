@@ -496,6 +496,7 @@ const ja: TranslationMessages = {
     language: "言語",
     account: "アカウント",
     privacyPolicy: "プライバシーポリシー",
+    publicGallery: "公開ギャラリー",
     about: "について",
     aboutDescription: "AIであなたの詩を美しいアートに変えます。",
     backToEditor: "エディタに戻る",

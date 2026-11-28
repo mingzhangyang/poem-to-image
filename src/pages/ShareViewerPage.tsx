@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { Check, Copy, Download, ExternalLink, Loader2, Share2, Trash2 } from 'lucide-react';
+import { Check, Copy, Download, ExternalLink, Flag, Loader2, Share2, Trash2 } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { readPreferredLanguage } from '../hooks/useLang';
 import { SHARE_OWNER_KEY_PREFIX, shareCopy } from '../sharing/copy';
 import { removePublishCredentialsSafely } from '../sharing/publishProtocol';
 import { findLocalShare, markLocalShareRevokedSafely } from '../sharing/shareLibrary';
+import { REPORT_REASONS, reportShare, type ReportReason } from '../sharing/galleryApi';
+import { galleryCopy } from '../sharing/galleryCopy';
 
 interface PublicArtwork {
   id: string; title: string; author: string; createdAt: string;
@@ -13,7 +15,9 @@ interface PublicArtwork {
 
 export default function ShareViewerPage() {
   const { id = '' } = useParams();
-  const copy = shareCopy[readPreferredLanguage()];
+  const language = readPreferredLanguage();
+  const copy = shareCopy[language];
+  const gallery = galleryCopy[language];
   const [artwork, setArtwork] = useState<PublicArtwork | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -160,12 +164,69 @@ export default function ShareViewerPage() {
               ) : null}
               {error ? <p role="alert" className="mt-2 text-sm text-red-700">{error}</p> : null}
             </div>
-            <a href="/" className="mt-12 inline-flex items-center gap-2 text-sm text-teal-900 underline">
-              {copy.poweredBy}<ExternalLink size={14} />
-            </a>
+            <div className="mt-12 flex flex-wrap justify-center gap-x-6 gap-y-3 text-sm">
+              <a href="/" className="inline-flex items-center gap-2 text-teal-900 underline">
+                {copy.poweredBy}<ExternalLink size={14} />
+              </a>
+              <a href="/gallery" className="text-teal-900 underline">{gallery.browse}</a>
+            </div>
+            {!deleteToken ? <ReportArtwork id={artwork.id} copy={gallery} /> : null}
           </>
         )}
       </main>
     </div>
+  );
+}
+
+function ReportArtwork({ id, copy }: { id: string; copy: (typeof galleryCopy)[keyof typeof galleryCopy] }) {
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState<ReportReason | ''>('');
+  const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'failed' | 'limited'>('idle');
+
+  if (state === 'sent') {
+    return <p role="status" className="mt-6 text-xs text-slate-600">{copy.reportThanks}</p>;
+  }
+  if (!open) {
+    return (
+      <button type="button" onClick={() => setOpen(true)}
+        className="mt-6 inline-flex items-center gap-1.5 text-xs text-slate-500 underline hover:text-slate-700">
+        <Flag size={13} />{copy.report}
+      </button>
+    );
+  }
+  const submit = async () => {
+    if (!reason || state === 'sending') return;
+    setState('sending');
+    try {
+      await reportShare(id, reason);
+      setState('sent');
+    } catch (caught) {
+      setState(caught instanceof Error && caught.message === 'RATE_LIMITED' ? 'limited' : 'failed');
+    }
+  };
+  return (
+    <fieldset className="mt-6 w-full max-w-md rounded-xl border border-slate-200 bg-white/70 px-4 py-3 text-left">
+      <legend className="px-1 text-sm font-medium text-slate-700">{copy.reportPrompt}</legend>
+      <div className="mt-1 space-y-2">
+        {REPORT_REASONS.map((value) => (
+          <label key={value} className="flex items-center gap-2 text-sm text-slate-700">
+            <input type="radio" name="report-reason" value={value} checked={reason === value}
+              onChange={() => setReason(value)} />
+            {copy.reasons[value]}
+          </label>
+        ))}
+      </div>
+      {state === 'failed' || state === 'limited' ? (
+        <p role="alert" className="mt-2 text-xs text-red-700">{state === 'limited' ? copy.reportLimited : copy.reportFailed}</p>
+      ) : null}
+      <div className="mt-3 flex gap-3">
+        <button type="button" disabled={!reason || state === 'sending'} onClick={() => void submit()}
+          className="inline-flex min-h-9 items-center gap-2 rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50">
+          {state === 'sending' ? <Loader2 size={13} className="animate-spin" /> : null}{copy.reportSubmit}
+        </button>
+        <button type="button" onClick={() => { setOpen(false); setState('idle'); }}
+          className="text-xs text-slate-600 underline">{copy.reportCancel}</button>
+      </div>
+    </fieldset>
   );
 }
