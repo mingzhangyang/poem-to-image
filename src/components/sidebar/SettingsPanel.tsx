@@ -1,4 +1,4 @@
-import { ChevronRight, CreditCard, Globe, Images, Info, Loader2, LogIn, Shield } from 'lucide-react';
+import { ChevronRight, CreditCard, Globe, Info, Loader2, LogIn, Shield } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { AuthSignInButton, AuthUserButton } from '../auth/ClerkUi';
 import { useAppAuth } from '../../context/auth';
@@ -104,13 +104,6 @@ export function SettingsPanel({ t, language, onLanguageChange, billing }: Settin
 
       {/* Pages */}
       <section className="space-y-1">
-        <Link
-          to="/gallery"
-          className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[rgba(237,244,243,0.6)] transition-colors text-sm text-(--app-accent-800)"
-        >
-          <Images className="w-4 h-4 text-[var(--app-accent-500)] shrink-0" />
-          <span>{t('publicGallery')}</span>
-        </Link>
         <Link
           to="/privacy"
           className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[rgba(237,244,243,0.6)] transition-colors text-sm text-(--app-accent-800)"

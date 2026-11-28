@@ -12,6 +12,7 @@ const en = {
     appTitle: "InkPoem",
     subtitle: "Poetic moods · Leaping off the page",
     templates: "Templates",
+    templatesShort: "Templates",
     templatesHint: "Apply a ready-made visual direction for users who do not want to tune every parameter manually.",
     applyTemplate: "Apply",
     templateApplied: "Applied",

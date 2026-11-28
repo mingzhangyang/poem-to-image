@@ -4,6 +4,7 @@ const de: TranslationMessages = {
     appTitle: "InkPoem",
     subtitle: "Dichterische Bilder · Springen vom Papier",
     templates: "Vorlagen",
+    templatesShort: "Vorlagen",
     templatesHint: "Wende einen fertigen Stil an, ohne jeden Parameter manuell abstimmen zu müssen.",
     applyTemplate: "Anwenden",
     templateApplied: "Aktiv",

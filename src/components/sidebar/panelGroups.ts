@@ -16,7 +16,7 @@ export interface NavigationItem {
  * definition; Sidebar.tsx maps each id to its panel component.
  */
 export const PANEL_GROUPS: Record<SidebarPanel, NavigationItem> = {
-  templates: { icon: Sparkles, labelKey: 'templates', titleKey: 'templates' },
+  templates: { icon: Sparkles, labelKey: 'templatesShort', titleKey: 'templates' },
   canvasSize: { icon: Maximize, labelKey: 'canvasSizeShort', titleKey: 'canvasSize' },
   content: { icon: Type, labelKey: 'content', titleKey: 'content' },
   typography: { icon: LayoutTemplate, labelKey: 'typography', titleKey: 'typography' },

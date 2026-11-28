@@ -4,6 +4,7 @@ const ko: TranslationMessages = {
     appTitle: "InkPoem",
     subtitle: "시정화의 · 지면에 약동하다",
     templates: "템플릿",
+    templatesShort: "템플릿",
     templatesHint: "세부 옵션을 하나씩 조정하지 않아도 완성된 스타일을 한 번에 적용할 수 있습니다.",
     applyTemplate: "적용",
     templateApplied: "적용됨",

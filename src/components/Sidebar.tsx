@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Ellipsis, X } from 'lucide-react';
+import { Ellipsis, Images, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import type { SidebarPanel, SidebarProps } from '../types';
 import { BackgroundPanel } from './sidebar/BackgroundPanel';
 import { CanvasSizePanel } from './sidebar/CanvasSizePanel';
@@ -18,7 +19,7 @@ import { useDialogA11y } from '../hooks/useDialogA11y';
 type MobileDestination = SidebarPanel | 'export' | 'settings';
 type MobilePanel = MobileDestination | 'more';
 
-/** Destinations pinned to the mobile dock, in order. The rest are under More. */
+/** Control drawers pinned to the mobile dock, in order. The rest are under More. */
 const MOBILE_DOCK: readonly MobileDestination[] = ['templates', 'content', 'decorations', 'export'];
 
 const MOBILE_DESTINATIONS: readonly MobileDestination[] = [...PANEL_GROUP_ORDER, 'export', 'settings'];
@@ -162,6 +163,15 @@ export function Sidebar({
           </li>
         );
       })}
+      <li>
+        <Link
+          to="/gallery"
+          className="flex min-h-12 w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium text-(--app-accent-800) transition-colors hover:bg-[rgba(237,244,243,0.8)] active:bg-[rgba(237,244,243,0.8)]"
+        >
+          <Images aria-hidden="true" className="h-5 w-5 shrink-0 text-(--app-accent-600)" />
+          <span>{t('publicGallery')}</span>
+        </Link>
+      </li>
     </ul>
   );
 

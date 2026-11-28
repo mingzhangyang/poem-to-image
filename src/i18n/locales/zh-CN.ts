@@ -4,6 +4,7 @@ const zhCN: TranslationMessages = {
     appTitle: "InkPoem",
     subtitle: "诗情画意 · 跃然纸上",
     templates: "模板主题",
+    templatesShort: "模版",
     templatesHint: "为不想手动调参数的用户准备了几套现成风格，一键即可套用整套视觉搭配。",
     applyTemplate: "一键套用",
     templateApplied: "已应用",

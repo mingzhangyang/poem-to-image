@@ -4,6 +4,7 @@ const ja: TranslationMessages = {
     appTitle: "InkPoem",
     subtitle: "詩情画意 · 紙上に躍る",
     templates: "テンプレート",
+    templatesShort: "テンプレート",
     templatesHint: "細かなパラメーター調整をしなくても、完成済みのスタイルをワンクリックで適用できます。",
     applyTemplate: "適用",
     templateApplied: "適用中",

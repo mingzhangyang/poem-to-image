@@ -4,6 +4,7 @@ const zhTW: TranslationMessages = {
     appTitle: "InkPoem",
     subtitle: "詩情畫意 · 躍然紙上",
     templates: "模板主題",
+    templatesShort: "模版",
     templatesHint: "為不想手動調參數的使用者準備了幾套現成風格，一鍵即可套用整套視覺搭配。",
     applyTemplate: "一鍵套用",
     templateApplied: "已套用",

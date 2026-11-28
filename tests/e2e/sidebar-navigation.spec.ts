@@ -122,6 +122,8 @@ test.describe('desktop navigation rail', () => {
     expect(galleryBox.x + galleryBox.width).toBeLessThanOrEqual(64);
     expect(galleryBox.y).toBeGreaterThan(settingsBox.y);
 
+    await tab(page, 'Settings').click();
+    await expect(page.getByRole('tabpanel').getByRole('link', { name: 'Public gallery', exact: true })).toHaveCount(0);
     await gallery.click();
     await expect(page).toHaveURL(/\/gallery$/);
   });
@@ -311,6 +313,41 @@ test.describe('mobile dock and More menu', () => {
     await expect(page.locator('[data-content-inline-fields]')).toHaveCount(0);
   });
 
+  test('the public gallery is a direct link in More, even on a narrow mobile viewport', async ({ page }) => {
+    await dismissOnboarding(page);
+    await page.setViewportSize({ width: 320, height: 700 });
+    await page.route('**/api/gallery*', (route) => route.fulfill({
+      contentType: 'application/json', body: JSON.stringify({ items: [], nextCursor: null }),
+    }));
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+
+    const dock = page.locator('#mobile-dock');
+    await expect(dock.locator('button, a')).toHaveText(['Templates', 'Content', 'Decor', 'Export', 'More']);
+    await expect(dock.getByRole('link', { name: 'Public gallery', exact: true })).toHaveCount(0);
+    await dock.getByRole('button', { name: 'More', exact: true }).click();
+    const gallery = page.getByRole('dialog', { name: 'More', exact: true }).getByRole('link', { name: 'Public gallery', exact: true });
+    await expect(gallery).toBeVisible();
+    await expect(gallery).toHaveAttribute('href', '/gallery');
+    await expect(gallery).not.toHaveAttribute('aria-controls', 'mobile-controls-drawer');
+    const sizes = await dock.locator('button, a').evaluateAll((items) => items.map((item) => {
+      const { width, height } = item.getBoundingClientRect();
+      return { width, height };
+    }));
+    for (const { width, height } of sizes) {
+      expect(width).toBeGreaterThanOrEqual(44);
+      expect(height).toBeGreaterThanOrEqual(44);
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+
+    await gallery.click();
+    await expect(page).toHaveURL(/\/gallery$/);
+    await expect(page.getByRole('heading', { name: 'Public gallery', exact: true })).toBeVisible();
+    await page.goBack();
+    await expect(dock.getByRole('button', { name: 'More', exact: true })).toBeVisible();
+    await dock.getByRole('button', { name: 'More', exact: true }).click();
+    await expect(gallery).toBeVisible();
+  });
+
   test('More lists the panels that are not pinned and opens each one', async ({ page }) => {
     await dismissOnboarding(page);
     await page.goto('/', { waitUntil: 'domcontentloaded' });
@@ -332,7 +369,7 @@ test.describe('mobile dock and More menu', () => {
     const menu = page.getByRole('dialog', { name: 'More', exact: true });
     await expect(menu).toBeVisible();
     await expect(more).toHaveAttribute('aria-expanded', 'true');
-    await expect(menu.getByRole('listitem')).toHaveText(destinations.map(([label]) => label));
+    await expect(menu.getByRole('listitem')).toHaveText([...destinations.map(([label]) => label), 'Public gallery']);
     await menu.getByRole('button', { name: 'Close controls' }).click();
     await expect(drawer).toBeHidden();
 
@@ -343,6 +380,9 @@ test.describe('mobile dock and More menu', () => {
       await expect(panel).toBeVisible();
       await expect(panel).toBeFocused();
       await expect(control).toBeVisible();
+      if (label === 'Settings') {
+        await expect(panel.getByRole('link', { name: 'Public gallery', exact: true })).toHaveCount(0);
+      }
       // A destination from More keeps More highlighted.
       await expect(more).toHaveAttribute('aria-expanded', 'true');
       await expect(more).toHaveClass(/bg-\(--app-accent-700\)/);
