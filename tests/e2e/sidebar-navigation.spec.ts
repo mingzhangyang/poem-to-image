@@ -313,7 +313,7 @@ test.describe('mobile dock and More menu', () => {
     await expect(page.locator('[data-content-inline-fields]')).toHaveCount(0);
   });
 
-  test('the public gallery is a direct dock link, even on a narrow mobile viewport', async ({ page }) => {
+  test('the public gallery is a direct link in More, even on a narrow mobile viewport', async ({ page }) => {
     await dismissOnboarding(page);
     await page.setViewportSize({ width: 320, height: 700 });
     await page.route('**/api/gallery*', (route) => route.fulfill({
@@ -322,8 +322,10 @@ test.describe('mobile dock and More menu', () => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
 
     const dock = page.locator('#mobile-dock');
-    await expect(dock.locator('button, a')).toHaveText(['Templates', 'Content', 'Decor', 'Export', 'Public gallery', 'More']);
-    const gallery = dock.getByRole('link', { name: 'Public gallery', exact: true });
+    await expect(dock.locator('button, a')).toHaveText(['Templates', 'Content', 'Decor', 'Export', 'More']);
+    await expect(dock.getByRole('link', { name: 'Public gallery', exact: true })).toHaveCount(0);
+    await dock.getByRole('button', { name: 'More', exact: true }).click();
+    const gallery = page.getByRole('dialog', { name: 'More', exact: true }).getByRole('link', { name: 'Public gallery', exact: true });
     await expect(gallery).toBeVisible();
     await expect(gallery).toHaveAttribute('href', '/gallery');
     await expect(gallery).not.toHaveAttribute('aria-controls', 'mobile-controls-drawer');
@@ -341,6 +343,8 @@ test.describe('mobile dock and More menu', () => {
     await expect(page).toHaveURL(/\/gallery$/);
     await expect(page.getByRole('heading', { name: 'Public gallery', exact: true })).toBeVisible();
     await page.goBack();
+    await expect(dock.getByRole('button', { name: 'More', exact: true })).toBeVisible();
+    await dock.getByRole('button', { name: 'More', exact: true }).click();
     await expect(gallery).toBeVisible();
   });
 
@@ -365,7 +369,7 @@ test.describe('mobile dock and More menu', () => {
     const menu = page.getByRole('dialog', { name: 'More', exact: true });
     await expect(menu).toBeVisible();
     await expect(more).toHaveAttribute('aria-expanded', 'true');
-    await expect(menu.getByRole('listitem')).toHaveText(destinations.map(([label]) => label));
+    await expect(menu.getByRole('listitem')).toHaveText([...destinations.map(([label]) => label), 'Public gallery']);
     await menu.getByRole('button', { name: 'Close controls' }).click();
     await expect(drawer).toBeHidden();
 

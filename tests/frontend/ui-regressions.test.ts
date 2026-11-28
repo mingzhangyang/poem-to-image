@@ -126,13 +126,15 @@ test('mobile dock pins four destinations and lists the rest under More', () => {
   assert.match(sidebar, /t\('quickMore'\)/);
 });
 
-test('mobile dock links directly to the public gallery rather than hiding it in Settings', () => {
+test('mobile More menu links directly to the public gallery rather than hiding it in Settings', () => {
   const sidebar = readRepoFile('src/components/Sidebar.tsx');
   const settings = readRepoFile('src/components/sidebar/SettingsPanel.tsx');
   const dock = sidebar.slice(sidebar.indexOf('{/* Mobile dock */}'), sidebar.indexOf('{/* Mobile drawer */}'));
-  assert.match(dock, /grid-cols-6/);
-  const link = dock.match(/<Link\b[^>]*to="\/gallery"[\s\S]*?<\/Link>/);
-  assert.ok(link, 'the gallery must be a real navigation link in the dock');
+  assert.match(dock, /grid-cols-5/);
+  assert.doesNotMatch(dock, /to="\/gallery"/);
+  const more = sidebar.slice(sidebar.indexOf('const moreMenu ='), sidebar.indexOf('const settingsPanel ='));
+  const link = more.match(/<Link\b[^>]*to="\/gallery"[\s\S]*?<\/Link>/);
+  assert.ok(link, 'the gallery must be a real navigation link in More');
   assert.match(link[0], /t\('publicGallery'\)/);
   assert.doesNotMatch(link[0], /aria-controls|aria-expanded|setActiveMobilePanel/);
   assert.doesNotMatch(settings, /to="\/gallery"/);

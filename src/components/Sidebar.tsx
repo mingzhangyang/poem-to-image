@@ -163,6 +163,15 @@ export function Sidebar({
           </li>
         );
       })}
+      <li>
+        <Link
+          to="/gallery"
+          className="flex min-h-12 w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium text-(--app-accent-800) transition-colors hover:bg-[rgba(237,244,243,0.8)] active:bg-[rgba(237,244,243,0.8)]"
+        >
+          <Images aria-hidden="true" className="h-5 w-5 shrink-0 text-(--app-accent-600)" />
+          <span>{t('publicGallery')}</span>
+        </Link>
+      </li>
     </ul>
   );
 
@@ -224,8 +233,8 @@ export function Sidebar({
   return (
     <>
       {/* Mobile dock */}
-      <div className="lg:hidden fixed inset-x-0 bottom-0 z-20 px-2 sm:px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pointer-events-none">
-        <div id="mobile-dock" className="pointer-events-auto mx-auto grid max-w-md grid-cols-6 items-stretch gap-1 rounded-[1.75rem] border border-white/70 bg-[rgba(255,253,249,0.92)] p-1.5 sm:p-2 shadow-[0_18px_50px_var(--app-accent-shadow)] backdrop-blur">
+      <div className="lg:hidden fixed inset-x-0 bottom-0 z-20 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pointer-events-none">
+        <div id="mobile-dock" className="pointer-events-auto mx-auto grid max-w-md grid-cols-5 items-stretch gap-1 rounded-[1.75rem] border border-white/70 bg-[rgba(255,253,249,0.92)] p-2 shadow-[0_18px_50px_var(--app-accent-shadow)] backdrop-blur">
           {MOBILE_DOCK.map((destination) => {
             const { icon: Icon, labelKey } = getMobileItem(destination);
             const isActive = isDockButtonActive(destination);
@@ -243,14 +252,6 @@ export function Sidebar({
               </button>
             );
           })}
-          {/* Like the desktop rail link, the gallery leaves the editor; it does not open a drawer. */}
-          <Link
-            to="/gallery"
-            className={`${mobileButtonClassName(false)} focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--app-accent-700)`}
-          >
-            <Images aria-hidden="true" className="h-4 w-4 shrink-0 text-(--app-accent-600)" />
-            <span className="max-w-full break-words text-center">{t('publicGallery')}</span>
-          </Link>
           <button
             type="button"
             onClick={() => setActiveMobilePanel('more')}
